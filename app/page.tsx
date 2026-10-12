@@ -31,7 +31,7 @@ export default function Home() {
         <div className="container-shell hero-grid-new">
           <div className="hero-copy">
             <div className="hero-kicker"><Sparkles size={14}/> Custom AI agents · Intelligent software</div>
-            <h1 className="display"><span className="display-line">AI systems that do</span><span className="display-line serif-italic">real work.</span></h1>
+            <h1 className="display"><span className="display-line">AI systems</span><span className="display-line">that do <span className="serif-italic">real work.</span></span></h1>
             <p className="lede">We engineer custom AI agents and connected software that turn business information into structured, reviewable action.</p>
             <div className="hero-actions"><ArrowLink href="/work">Explore Our Work</ArrowLink><Link className="button button-light" href="/contact">Discuss a Project<ArrowRight size={15}/></Link></div>
             <div className="hero-trust"><span><Check size={13}/> Designed around your operation</span><span><Check size={13}/> Human oversight where it matters</span></div>
@@ -45,7 +45,7 @@ export default function Home() {
         <div className="container-shell">
           <div className="section-heading-wide"><div><Eyebrow>What we build</Eyebrow><h2 className="h2">Intelligence inside the <span className="serif-italic">system.</span></h2></div><p className="lede">Not a chatbot bolted onto the side. We combine AI, workflow architecture, and application engineering into software that fits the way work actually moves.</p></div>
           <div className="capability-canvas">
-            {capabilities.map(([name, text], index) => <div className={`capability-tile tile-${index + 1}`} key={name}><span className="capability-icon">{index === 0 ? <Bot size={22}/> : index === 1 ? <Route size={22}/> : <FileInput size={22}/>}</span><span className="num">0{index + 1}</span><h3>{name}</h3><p>{text}</p><div className="capability-signal" aria-hidden="true"><i/><i/><i/><i/></div></div>)}
+            {capabilities.map(([name, text], index) => <div className={`capability-tile tile-${index + 1}`} key={name}><span className="capability-icon">{index === 0 ? <Bot size={22}/> : index === 1 ? <Route size={22}/> : <FileInput size={22}/>}</span><span className="num">0{index + 1}</span><h3>{name}</h3><p>{text}</p>{index === 0 ? <div className="capability-system" aria-hidden="true"><span>Business signal</span><i>→</i><span>Agent reasoning</span><i>→</i><span>Reviewable action</span></div> : <div className="capability-signal" aria-hidden="true"><i/><i/><i/><i/></div>}</div>)}
           </div>
         </div>
       </section>
