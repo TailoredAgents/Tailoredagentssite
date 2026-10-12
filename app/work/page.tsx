@@ -15,8 +15,11 @@ export default function WorkPage() {
     <>
       <PageHero eyebrow="Our work" title={<>Evidence in the <span className="serif-italic">system.</span></>} description="We use our own operating environment to confront the difficult parts of applied AI: fragmented data, real workflows, edge cases, permissions, integrations, and human accountability." meta="Featured project · StonegateOS" />
       <section className="dark-section section-pad">
-        <div className="container-shell showcase-grid">
-          <div className="showcase-copy"><Eyebrow>Flagship internal platform</Eyebrow><h2 className="h2">StonegateOS</h2><p className="lede">A connected operating platform created around the requirements of a service business—from customer acquisition and quoting to field execution, partner coordination, intelligence, and oversight.</p><p className="text-muted">The public repository shows a production-oriented monorepo spanning a customer website, desktop Team Console, phone-first field application, Partner Portal, API services, and durable workers.</p><Link className="button button-ghost" href="/work/stonegateos">Explore the case study<ArrowRight size={15}/></Link></div>
+        <div className="container-shell showcase-intro">
+          <div className="showcase-copy"><Eyebrow>Flagship internal platform</Eyebrow><h2 className="h2">StonegateOS</h2></div>
+          <div className="showcase-copy"><p className="lede">A connected operating platform created around the requirements of a service business—from customer acquisition and quoting to field execution, partner coordination, intelligence, and oversight.</p><p className="text-muted">The public repository shows a production-oriented monorepo spanning a customer website, desktop Team Console, phone-first field application, Partner Portal, API services, and durable workers.</p><Link className="button button-ghost" href="/work/stonegateos">Explore the case study<ArrowRight size={15}/></Link></div>
+        </div>
+        <div className="container-shell product-stage">
           <ProductWindow />
         </div>
       </section>
