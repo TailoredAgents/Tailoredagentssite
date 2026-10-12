@@ -20,6 +20,7 @@ export function SiteFooter() {
               <Link href="/privacy">Privacy</Link>
               <Link href="/terms">Terms</Link>
               <Link href="/contact">Start a conversation</Link>
+              <a href={siteConfig.phoneHref}>{siteConfig.phone}</a>
             </div>
           </div>
         </div>

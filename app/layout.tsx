@@ -34,6 +34,7 @@ const organizationJsonLd = {
   name: siteConfig.name,
   url: siteConfig.url,
   description: siteConfig.description,
+  telephone: siteConfig.phoneHref.replace("tel:", ""),
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
