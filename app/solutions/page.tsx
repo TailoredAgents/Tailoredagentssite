@@ -54,6 +54,11 @@ export default function SolutionsPage() {
   return (
     <>
       <PageHero eyebrow="Solutions" title={<>AI designed for <span className="serif-italic">actual work.</span></>} description="We develop intelligent systems around defined business processes, combining AI with the software, integrations, controls, and human judgment needed to make it useful." meta="Agents · Automation · Connected software" />
+      <section className="solution-system-intro">
+        <div className="container-shell solution-system-flow" aria-label="Our solution design process">
+          <div><span>01</span><small>Start with</small><b>Operating problem</b></div><i>→</i><div><span>02</span><small>Design the</small><b>System & context</b></div><i>→</i><div><span>03</span><small>Control the</small><b>Automation boundary</b></div><i>→</i><div><span>04</span><small>Review the</small><b>Operational outcome</b></div>
+        </div>
+      </section>
       <div className="container-shell">
         {solutions.map((solution, index) => (
           <section className="detail-section" key={solution.title}>

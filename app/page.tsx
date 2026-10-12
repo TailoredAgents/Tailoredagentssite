@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Bot, ChartNoAxesCombined, Check, FileInput, MessageSquareMore, PhoneCall, Route, Sparkles } from "lucide-react";
+import { ArrowRight, Bot, ChartNoAxesCombined, Check, FileInput, MessageSquareMore, Route, Sparkles } from "lucide-react";
 import { HeroCallSystem } from "@/components/hero-call-system";
 import { ProductWindow } from "@/components/product-window";
-import { WorkflowShowcase } from "@/components/workflow-showcase";
 import { ArrowLink, Eyebrow, FinalCta } from "@/components/ui";
 
 export const metadata: Metadata = {
@@ -18,11 +17,10 @@ const capabilities = [
   ["Custom Software Engineering", "Applications, internal platforms, integrations, and interfaces designed around specific business requirements."],
 ];
 
-const solutions = [
-  { label: "Customer Engagement", title: "Useful answers. Clear handoffs.", text: "Qualify inquiries, prepare approved responses, coordinate next steps, and keep customer records current—with deliberate escalation when judgment matters.", tags: ["Qualification", "Messaging", "Scheduling"] },
-  { label: "Call Intelligence", title: "Turn conversations into context.", text: "Transcribe recorded calls, extract decision-relevant details, draft structured CRM notes, and give managers practical coaching signals.", tags: ["Transcription", "CRM notes", "Coaching"] },
-  { label: "Marketing Intelligence", title: "Make campaign data legible.", text: "Connect advertising and content workflows so teams can evaluate search terms, understand performance, and review specific recommendations.", tags: ["Google Ads", "Analysis", "Review workflows"] },
-  { label: "Operations Automation", title: "Move work across the system.", text: "Coordinate documents, job information, media, reporting, and routine administrative processes across the tools your team already uses.", tags: ["Extraction", "Synchronization", "Human review"] },
+const operatingStories = [
+  { label: "Customer Engagement", title: "Useful answers. Clear handoffs.", text: "Qualify inquiries, prepare approved responses, coordinate next steps, and keep customer records current—with deliberate escalation when judgment matters.", tags: ["Qualification", "Messaging", "Scheduling"], visual: 0 },
+  { label: "Marketing Intelligence", title: "Evidence before action.", text: "Connect advertising and content workflows so teams can evaluate search terms, understand change, and review bounded recommendations.", tags: ["Campaign data", "Analysis", "Approval"], visual: 1 },
+  { label: "Operations Automation", title: "Move work through the system.", text: "Coordinate documents, job information, media, reporting, and routine administration across the tools the operation already depends on.", tags: ["Extraction", "Synchronization", "Human review"], visual: 2 },
 ];
 
 export default function Home() {
@@ -33,8 +31,8 @@ export default function Home() {
         <div className="container-shell hero-grid-new">
           <div className="hero-copy">
             <div className="hero-kicker"><Sparkles size={14}/> Custom AI agents · Intelligent software</div>
-            <h1 className="display">AI systems that do <span className="serif-italic">real work.</span></h1>
-            <p className="lede">We engineer custom agents, automation, and connected software that understand information, coordinate workflows, and help teams act with clarity.</p>
+            <h1 className="display"><span className="display-line">AI systems that do</span><span className="display-line serif-italic">real work.</span></h1>
+            <p className="lede">We engineer custom AI agents and connected software that turn business information into structured, reviewable action.</p>
             <div className="hero-actions"><ArrowLink href="/work">Explore Our Work</ArrowLink><Link className="button button-light" href="/contact">Discuss a Project<ArrowRight size={15}/></Link></div>
             <div className="hero-trust"><span><Check size={13}/> Designed around your operation</span><span><Check size={13}/> Human oversight where it matters</span></div>
           </div>
@@ -62,15 +60,25 @@ export default function Home() {
 
       <section className="section-pad solutions-section">
         <div className="container-shell">
-          <div className="section-heading-wide"><div><Eyebrow>Selected AI solutions</Eyebrow><h2 className="h2">Intelligence where it creates <span className="serif-italic">operational value.</span></h2></div><p className="lede">Each system is designed around a useful outcome, the surrounding business rules, and the people accountable for the result.</p></div>
-          <div className="solutions-list">
-            {solutions.map((solution, index) => <article className="solution-feature" key={solution.label}><div className="solution-copy"><Eyebrow>0{index + 1} · {solution.label}</Eyebrow><h3>{solution.title}</h3><p>{solution.text}</p><div className="solution-meta">{solution.tags.map((tag) => <span className="pill" key={tag}>{tag}</span>)}</div></div><div className="solution-visual"><MiniFlow index={index}/></div></article>)}
+          <div className="section-heading-wide"><div><Eyebrow>Connected intelligence</Eyebrow><h2 className="h2">Different workflows. One <span className="serif-italic">operating context.</span></h2></div><p className="lede">Call intelligence is only one part of the system. Customer engagement, marketing analysis, and operational automation all become more useful when they share reliable context.</p></div>
+          <div className="operating-stories">
+            {operatingStories.map((story, index) => <article className={`operating-story story-${index + 1}`} key={story.label}><div className="solution-copy"><Eyebrow>0{index + 1} · {story.label}</Eyebrow><h3>{story.title}</h3><p>{story.text}</p><div className="solution-meta">{story.tags.map((tag) => <span className="pill" key={tag}>{tag}</span>)}</div></div><div className="solution-visual"><MiniFlow index={story.visual}/></div></article>)}
           </div>
         </div>
       </section>
 
-      <section className="workflow-section section-pad">
-        <div className="container-shell"><div className="workflow-head"><div><Eyebrow>Workflow demonstration</Eyebrow><h2 className="h2">From signal to <span className="serif-italic">useful action.</span></h2></div><p className="lede">Explore how an intelligent system can turn everyday business information into a reviewable, structured outcome.</p></div><WorkflowShowcase /></div>
+      <section className="infrastructure-section section-pad">
+        <div className="container-shell">
+          <div className="infrastructure-heading"><div><Eyebrow>Enterprise engineering & integrations</Eyebrow><h2 className="h2">Built to work with your <span className="serif-italic">infrastructure.</span></h2></div><p className="lede">We connect intelligent software to the systems your business already relies on—from customer relationships and communications to operational databases, scheduling, and internal workflows.</p></div>
+          <div className="infrastructure-map" aria-label="Business systems connect through an intelligence and automation layer to governed operational outcomes">
+            <div className="system-column input-systems"><span className="system-column-label">Business systems</span><div className="system-node"><i>01</i><span><b>CRM & customer records</b><small>Contacts, activity, opportunities</small></span></div><div className="system-node"><i>02</i><span><b>Voice & communications</b><small>Calls, messages, notifications</small></span></div><div className="system-node"><i>03</i><span><b>Operational data</b><small>Scheduling, jobs, documents</small></span></div><div className="system-node"><i>04</i><span><b>External APIs</b><small>Providers and internal services</small></span></div></div>
+            <div className="system-connector" aria-hidden="true"><span/><span/><span/><span/></div>
+            <div className="intelligence-core"><span className="core-label">Tailored intelligence layer</span><div className="core-mark"><Bot size={25}/><span>TA</span></div><div className="core-orbit"><span>Agent orchestration</span><span>Structured extraction</span><span>Business rules</span><span>Context management</span></div><p>Purpose-built software coordinates models, data, integrations, and business logic around a bounded operational objective.</p></div>
+            <div className="system-connector outbound" aria-hidden="true"><span/><span/><span/></div>
+            <div className="system-column outcome-systems"><span className="system-column-label">Governed outcomes</span><div className="system-node"><i><Check size={12}/></i><span><b>Human approval</b><small>Review where judgment matters</small></span></div><div className="system-node"><i><Check size={12}/></i><span><b>Application updates</b><small>Traceable writes through APIs</small></span></div><div className="system-node"><i><Check size={12}/></i><span><b>Durable processing</b><small>Events, queues, retries, monitoring</small></span></div></div>
+          </div>
+          <div className="infrastructure-capabilities"><span>Custom backend applications</span><span>Event-driven processing</span><span>Database architecture</span><span>Access controls</span><span>Operational monitoring</span><span>Human oversight</span></div>
+        </div>
       </section>
 
       <section className="section-pad process-section">
@@ -87,7 +95,6 @@ export default function Home() {
 
 function MiniFlow({ index }: { index: number }) {
   if (index === 0) return <div className="solution-demo engagement-demo" aria-hidden="true"><div className="demo-head"><MessageSquareMore size={16}/><b>Engagement agent</b><span>Human available</span></div><div className="chat-line customer">Can you help with a commercial pickup next week?</div><div className="agent-thinking"><i/><span>Checking service fit, location, and schedule…</span></div><div className="chat-line agent">Yes. I can collect a few details and prepare the right scheduling path.</div><div className="demo-result"><Check size={13}/> Qualified inquiry · CRM record updated</div></div>;
-  if (index === 1) return <div className="solution-demo call-demo" aria-hidden="true"><div className="demo-head"><PhoneCall size={16}/><b>Call analysis</b><span>04:32</span></div><div className="demo-wave">{[32,58,42,75,48,82,38,67,91,54,78,46,62,84,37,73,52,88].map((n,i)=><i key={i} style={{height:`${n}%`}}/>)}</div><div className="call-extract"><span><small>Intent</small>Quote request</span><span><small>Timing</small>This week</span><span><small>Sentiment</small>Positive</span></div><div className="demo-result"><Sparkles size={13}/> CRM note and coaching summary ready</div></div>;
-  if (index === 2) return <div className="solution-demo marketing-demo" aria-hidden="true"><div className="demo-head"><ChartNoAxesCombined size={16}/><b>Campaign intelligence</b><span>Last 30 days</span></div><div className="marketing-chart"><div className="chart-line"/>{[42,58,47,70,62,88,76,96].map((n,i)=><i key={i} style={{height:`${n}%`}}/>)}</div><div className="insight-callout"><span>Opportunity detected</span><b>Focus review on high-intent local terms</b><p>Evidence and recommendation prepared for approval.</p></div></div>;
+  if (index === 1) return <div className="solution-demo marketing-demo" aria-hidden="true"><div className="demo-head"><ChartNoAxesCombined size={16}/><b>Campaign intelligence</b><span>Last 30 days</span></div><div className="marketing-chart"><div className="chart-line"/>{[42,58,47,70,62,88,76,96].map((n,i)=><i key={i} style={{height:`${n}%`}}/>)}</div><div className="insight-callout"><span>Opportunity detected</span><b>Focus review on high-intent local terms</b><p>Evidence and recommendation prepared for approval.</p></div></div>;
   return <div className="solution-demo automation-demo" aria-hidden="true"><div className="demo-head"><Route size={16}/><b>Automation run</b><span className="running-dot">Active</span></div>{[["Document received","Complete"],["Information extracted","Complete"],["Business rules applied","Complete"],["System records synchronized","Review"]].map(([a,b],i)=><div className="automation-row" key={a}><i>{i+1}</i><span><b>{a}</b><small>{b}</small></span><em className={b === "Review" ? "review" : ""}>{b === "Review" ? "Waiting" : "✓"}</em></div>)}</div>;
 }

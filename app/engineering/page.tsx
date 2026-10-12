@@ -27,6 +27,10 @@ export default function EngineeringPage() {
             {[['01 · Inputs','Business signals','Calls, messages, documents, events, and structured records.'],['02 · Intelligence','Interpret & prepare','Models extract, classify, reason, or draft within a bounded task.'],['03 · Controls','Validate & approve','Rules, confidence checks, permissions, and human decisions govern action.'],['04 · Systems','Write & observe','Approved results update connected software with traceable outcomes.']].map(([n,h,p]) => <div className="arch-block" key={n}><span>{n}</span><h3>{h}</h3><p>{p}</p></div>)}
           </div>
         </div>
+        <div className="container-shell engineering-principles">
+          <div><span className="concept-label">Engineering posture</span><p>Capability is only useful when the surrounding system is understandable, observable, and accountable.</p></div>
+          <ol><li><span>01</span><b>Defined boundaries</b><small>Explicit responsibilities and permissions</small></li><li><span>02</span><b>Observable behavior</b><small>Traceable inputs, decisions, and outcomes</small></li><li><span>03</span><b>Recoverable failure</b><small>Retries, escalation, and safe fallbacks</small></li><li><span>04</span><b>Human ownership</b><small>Clear approval and operating responsibility</small></li></ol>
+        </div>
       </section>
       <div className="container-shell">
         {practices.map(([title, copy, points], index) => (
