@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: tailored-agents-web
+    runtime: node
+    plan: starter
+    region: ohio
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    autoDeploy: false
+    envVars:
+      - key: NODE_VERSION
+        value: 22.18.0
+      - key: NEXT_PUBLIC_SITE_URL
+        value: https://tailoredagents.com
+      - key: RESEND_API_KEY
+        sync: false
+      - key: CONTACT_FROM_EMAIL
+        sync: false
+      - key: CONTACT_TO_EMAIL
+        sync: false
