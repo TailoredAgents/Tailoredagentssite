@@ -31,7 +31,7 @@ export default function Home() {
         <div className="container-shell hero-grid-new">
           <div className="hero-copy">
             <div className="hero-kicker"><Sparkles size={14}/> Custom AI agents · Intelligent software</div>
-            <h1 className="display"><span className="display-line">AI systems</span><span className="display-line">that do <span className="serif-italic">real work.</span></span></h1>
+            <h1 className="display"><span className="display-line">AI systems</span><span className="display-line">that do</span><span className="display-line serif-italic">real work.</span></h1>
             <p className="lede">We engineer custom AI agents and connected software that turn business information into structured, reviewable action.</p>
             <div className="hero-actions"><ArrowLink href="/work">Explore Our Work</ArrowLink><Link className="button button-light" href="/contact">Discuss a Project<ArrowRight size={15}/></Link></div>
             <div className="hero-trust"><span><Check size={13}/> Designed around your operation</span><span><Check size={13}/> Human oversight where it matters</span></div>
