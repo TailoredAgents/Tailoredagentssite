@@ -6,9 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start -H 0.0.0.0",
-    "lint": "oxlint .",
+    "lint": "oxlint app components lib next.config.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run lib",
+    "mail:dev": "npm --prefix apps/mail run dev",
+    "mail:check": "npm --prefix apps/mail run check",
+    "mail:test": "npm --prefix apps/mail test",
+    "mail:build": "npm --prefix apps/mail run build"
   },
   "engines": {
     "node": ">=22.0.0"

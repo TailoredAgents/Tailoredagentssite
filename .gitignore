@@ -24,3 +24,12 @@ yarn-error.log*
 /coverage
 /test-results
 /playwright-report
+
+# Separate mail app
+apps/mail/node_modules/
+apps/mail/.svelte-kit/
+apps/mail/.wrangler/
+apps/mail/.dev.vars*
+!apps/mail/.dev.vars.example
+apps/mail/test-results/
+apps/mail/playwright-report/

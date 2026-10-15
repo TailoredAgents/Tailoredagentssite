@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source not "../apps/mail";
 
 :root {
   --bg: #f7f9fc;

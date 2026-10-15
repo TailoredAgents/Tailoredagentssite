@@ -1,0 +1,149 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tailored-mail-local",
+  "main": ".svelte-kit/cloudflare/_worker.js",
+  "compatibility_date": "2026-10-14",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "workers_dev": true,
+  "assets": {
+    "directory": ".svelte-kit/cloudflare",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    "EMAIL_PROVIDER": "resend",
+    "MAIL_DOMAIN": "tailoredagents.com",
+    "APP_URL": "http://localhost:5173",
+    "API_SEND_ENABLED": "false"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tailored-mail-local",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "ATTACHMENTS",
+      "bucket_name": "tailored-mail-local-files"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "MAIL_JOBS",
+        "queue": "tailored-mail-local-jobs"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "tailored-mail-local-jobs",
+        "max_batch_size": 1,
+        "max_retries": 8,
+        "dead_letter_queue": "tailored-mail-local-failed",
+        "max_concurrency": 1
+      }
+    ]
+  },
+  "triggers": {
+    "crons": [
+      "*/5 * * * *"
+    ]
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "env": {
+    "staging": {
+      "name": "tailored-mail-staging",
+      "vars": {
+        "EMAIL_PROVIDER": "resend",
+        "MAIL_DOMAIN": "mail-test.tailoredagents.com",
+        "APP_URL": "https://tailored-mail-staging.jeffrey-78e.workers.dev",
+        "API_SEND_ENABLED": "false"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "tailored-mail-staging",
+          "migrations_dir": "migrations",
+          "database_id": "d88ea68e-0860-4dd5-87d9-cef6e0fbad71"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "ATTACHMENTS",
+          "bucket_name": "tailored-mail-staging-files"
+        }
+      ],
+      "queues": {
+        "producers": [
+          {
+            "binding": "MAIL_JOBS",
+            "queue": "tailored-mail-staging-jobs"
+          }
+        ],
+        "consumers": [
+          {
+            "queue": "tailored-mail-staging-jobs",
+            "max_batch_size": 1,
+            "max_retries": 8,
+            "dead_letter_queue": "tailored-mail-staging-failed",
+            "max_concurrency": 1
+          }
+        ]
+      }
+    },
+    "production": {
+      "name": "tailored-mail-production",
+      "vars": {
+        "EMAIL_PROVIDER": "resend",
+        "MAIL_DOMAIN": "tailoredagents.com",
+        "APP_URL": "https://mail.tailoredagents.com",
+        "API_SEND_ENABLED": "false"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "tailored-mail-production",
+          "migrations_dir": "migrations",
+          "database_id": "897cefdc-6c85-437c-a93e-7fcf0dbda1e9"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "ATTACHMENTS",
+          "bucket_name": "tailored-mail-production-files"
+        }
+      ],
+      "queues": {
+        "producers": [
+          {
+            "binding": "MAIL_JOBS",
+            "queue": "tailored-mail-production-jobs"
+          }
+        ],
+        "consumers": [
+          {
+            "queue": "tailored-mail-production-jobs",
+            "max_batch_size": 1,
+            "max_retries": 8,
+            "dead_letter_queue": "tailored-mail-production-failed",
+            "max_concurrency": 1
+          }
+        ]
+      },
+      "workers_dev": false,
+      "routes": [
+        {
+          "pattern": "mail.tailoredagents.com",
+          "custom_domain": true
+        }
+      ]
+    }
+  },
+  "account_id": "78ed83c6e3947c93763acef3a48a5561"
+}
