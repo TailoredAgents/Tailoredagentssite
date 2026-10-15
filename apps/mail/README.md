@@ -4,7 +4,7 @@ A separate, private team inbox for `@tailoredagents.com` at https://mail.tailore
 
 **Status: deployed at the final address for controlled team testing on October 15, 2026.** The production application uses its own Cloudflare database, private file bucket and queues. Resend has verified all five production sending/receiving DNS records, and the signed incoming-mail webhook is connected. The existing website's DNS records are preserved. Staging remains at https://tailored-mail-staging.jeffrey-78e.workers.dev with separate `@mail-test.tailoredagents.com` accounts and storage.
 
-Internal sending, receiving, replies and forwarding have passed staging checks. Gmail and Hotmail text replies also passed, including Reply All and conversation matching. Incoming attachment and original-MIME downloads remain unresolved: provider-issued download links failed secure connections in staging. Mailbox placement also remains unverified. Do not copy local or staging accounts into production.
+Internal sending, receiving, replies and forwarding have passed staging checks. Gmail and Hotmail text replies also passed, including Reply All and conversation matching. Incoming attachment and original-MIME downloads remain unresolved: provider-issued download links failed secure connections in staging, and incoming image downloads also returned 503 in production. Mailbox placement also remains unverified. Do not copy local or staging accounts into production.
 
 Based on Quickinbox commit `2af17e2fcd824aff0f5e8c91194f226dc2090d87`. Its MIT license is preserved in [LICENSE.md](LICENSE.md). [UPSTREAM.md](UPSTREAM.md) records the source. `UPSTREAM_README.md` is historical and does not describe this deployment.
 
@@ -23,7 +23,7 @@ Based on Quickinbox commit `2af17e2fcd824aff0f5e8c91194f226dc2090d87`. Its MIT l
 
 ## For the owner
 
-The production owner is **Jeffrey, `jeffrey@tailoredagents.com`**. The account uses protected production setup, independently of the local test seed.
+The production owner is **Jeffrey, `jeffrey@tailoredagents.com`**. The account was created through protected production setup with the owner's privately chosen password. Production sign-in is verified, setup is closed, and the one-time `SETUP_SECRET` has been removed.
 
 Open your account menu → **Manage team** to create accounts, add addresses, disable access, or reset passwords. Give temporary passwords to teammates privately. Passwords must be 15–128 characters; a memorable phrase works well.
 
@@ -166,6 +166,14 @@ For a longer retention period or recovery from a lost bucket/account, keep encry
 - These checks do not yet establish complete Gmail/Outlook compatibility or successful incoming attachment/MIME downloads. The owner authorized connecting the production domain for a controlled trial; the remaining checks still apply before normal team use.
 - A user-sent photo test also reached the test inbox, including metadata for a 2.3 MB JPEG. The actual image download returned 503, and the browser showed a pending-attachment warning instead of a viewable photo. A fresh provider download URL failed its TLS connection as well. Private evidence is in `~/.config/tailored-mail/photo-tests.json` and `photo-test-browser-validation.json`. Receiving a file's name and size is not a successful image-viewing test.
 
+### Production validation — October 15, 2026
+
+- The owner account was created in the fresh production database. Real sign-in, owner-only account management, setup closure, rejection of unsigned incoming notifications and rejection of cross-site changes passed. The setup secret was removed from Cloudflare and local setup storage afterward.
+- Real browser checks at `mail.tailoredagents.com` passed sign-in, compose, automatic draft saving, closing/reopening a draft with its original text and attachment, phone width and the Mail status page. No browser script errors occurred. The disposable browser-test draft was deleted afterward.
+- Two test emails with a small PNG were sent to the owner's supplied Gmail and Hotmail addresses, with the TA owner address in CC. Resend delivery events marked both sends delivered. Repeating each send request reused its original identifier. Each copied message arrived once in the TA inbox and joined the original conversation. This verifies the TA recipient copies; external replies to these production tests and Inbox versus Spam/Junk placement still need confirmation.
+- Both Sent image attachments downloaded successfully and matched the original 15,178-byte file by SHA-256. Both corresponding incoming image downloads returned 503, with their files pending. Deployment to the final domain has **not** fixed incoming attachments.
+- Private production test details are recorded in `~/.config/tailored-mail/production-validation.json` on the setup machine. No credentials, session cookies, message bodies or private test screenshots are committed.
+
 ### Current launch blocker
 
 On October 14, 2026, the freshly issued attachment and original-MIME download URLs from Resend used `cdn.resend.app`. Secure connections to that host failed from both the setup Mac (TLS errors) and the deployed Cloudflare Worker (`provider_download_unavailable`, connection failure). Both the attachment-list and individual-attachment APIs returned URLs on that host. No URL rewriting or insecure download fallback is used.
@@ -176,8 +184,8 @@ Message bodies are saved in private R2, incoming file rows remain pending with a
 
 ## Launch checklist — do not skip the live tests
 
-- [ ] Verify intended Cloudflare account, actual billing, private R2 and separate staging/production resources.
-- [ ] Verify Resend sender/receiving records, webhook signature and incoming endpoint.
+- [x] Verify intended Cloudflare account, owner-confirmed Workers Paid upgrade, Resend paid usage, private R2 and separate staging/production resources. Billing changes were not made by this app.
+- [x] Verify Resend sender/receiving records, webhook signature and incoming endpoint in staging and production.
 - [ ] Send and receive with Gmail, Outlook and two Tailored Agents users: To, CC, BCC, reply, reply-all, forwarding and attachments. Check real reply threading, especially the provider’s treatment of Message-ID.
 - [x] Deliver one message to two teammates exactly once; verify BCC privacy and independent read/archive/delete state (live archive/read and local delete tests).
 - [ ] Close/reopen new-message, reply and forward drafts with files; check Saved and the 20 MB total warning.
