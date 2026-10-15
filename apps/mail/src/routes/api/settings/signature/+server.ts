@@ -1,42 +1,24 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
-import { MAX_EMAIL_SIGNATURE_LENGTH } from '$lib/email-signature';
-import { getEmailSignature, updateEmailSignature } from '$lib/server/email-signature';
+import { getEmailSignature, getSignatureBanner, publicSignatureBanner, saveEmailSignature, SignatureInputError } from '$lib/server/email-signature';
 
 export const GET: RequestHandler = async ({ locals, platform }) => {
-	const db = platform?.env.DB;
-	if (!db || !locals.user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
-	}
-
-	return json(
-		{ signature: await getEmailSignature(db, locals.user.id) },
-		{ headers: { 'Cache-Control': 'no-store' } }
-	);
+ const db = platform?.env.DB;
+ if (!db || !locals.user) return json({ error: 'Unauthorized' }, { status: 401 });
+ const [signature, banner] = await Promise.all([getEmailSignature(db,locals.user.id),getSignatureBanner(db,locals.user.id)]);
+ return json({ signature, banner: publicSignatureBanner(banner) }, { headers: { 'Cache-Control': 'no-store' } });
 };
 
 export const PATCH: RequestHandler = async ({ request, locals, platform }) => {
-	const db = platform?.env.DB;
-	if (!db || !locals.user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
-	}
-
-	let body: { signature?: unknown };
-	try {
-		body = (await request.json()) as { signature?: unknown };
-	} catch {
-		return json({ error: 'Invalid request' }, { status: 400 });
-	}
-
-	if (typeof body.signature !== 'string') {
-		return json({ error: 'Signature must be text' }, { status: 400 });
-	}
-	if (body.signature.length > MAX_EMAIL_SIGNATURE_LENGTH) {
-		return json(
-			{ error: `Signature must be ${MAX_EMAIL_SIGNATURE_LENGTH} characters or fewer` },
-			{ status: 400 }
-		);
-	}
-
-	const signature = await updateEmailSignature(db, locals.user.id, body.signature);
-	return json({ ok: true, signature }, { headers: { 'Cache-Control': 'no-store' } });
+ const db = platform?.env.DB, bucket = platform?.env.ATTACHMENTS;
+ if (!db || !bucket || !locals.user) return json({ error: 'Unauthorized' }, { status: 401 });
+ let body: unknown;
+ try { body = await request.json(); }
+ catch { return json({ error: 'Invalid request' }, { status: 400 }); }
+ try {
+  return json({ ok: true, ...await saveEmailSignature(db,bucket,locals.user.id,body) }, { headers: { 'Cache-Control': 'no-store' } });
+ } catch (error) {
+  if (error instanceof SignatureInputError) return json({ error: error.message }, { status: 400 });
+  console.error(JSON.stringify({ event: 'signature_save_failed' }));
+  return json({ error: 'Your signature could not be saved. Please try again.' }, { status: 503 });
+ }
 };

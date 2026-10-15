@@ -21,6 +21,16 @@ Based on Quickinbox commit `2af17e2fcd824aff0f5e8c91194f226dc2090d87`. Its MIT l
 - Settings contains your signature, light/dark appearance, blocked senders, password change and shortcut help.
 - Sending failures leave the draft available. “Waiting to send” can also mean the service is checking an uncertain response; do not create a second copy in a new draft.
 
+### Add a signature banner
+
+Open **Settings → General → Your signature**. Enter your signature text, select **Upload banner**, choose a PNG or JPG, and select **Save signature**. Each teammate manages their own signature. A wide image around 1,200 × 300 pixels works well; images must be no larger than 1 MB. The preview fits the image to the email width, up to 600 pixels. You can add a website link and an image description, replace the banner, or remove it while keeping your text.
+
+The saved signature is added when sending new emails, replies, and forwards. It is embedded using an inline attachment rather than a public image URL. The image counts toward the 20 MB outgoing attachment limit. A plain-text alternative retains the signature text, image description and link. Individual email readers may choose how to display images; [Resend documents its inline-image behavior](https://resend.com/docs/dashboard/emails/embed-inline-images).
+
+Original uploads are private and can only be previewed by the account that owns them. Every outgoing message saves a separate copy before contacting Resend, so later signature changes do not alter sent messages or retry payloads. Replaced/removed originals are retained for 32 days; migration `0035_signature_banners.sql` adds the metadata and retention triggers. Apply it before deploying this version. Restoration uses the existing D1/R2 recovery procedure; the cleanup job preserves files referenced by restored signature records.
+
+Validated on October 15, 2026: 375 automated tests, 9 browser tests, type checks and the build passed. A real staging send delivered a PNG banner whose downloaded bytes matched the upload, and the image rendered inside the inbox. A reply delivered the second user's JPG banner; a forward preserved both images with separate content IDs. Repeating the original send reused its result. Test account signatures were restored afterward. The private verification record is `~/.config/tailored-mail/signature-banner-verification.json` on the setup machine. Gmail/Outlook rendering of this new signature feature has not been separately checked.
+
 ## For the owner
 
 The production owner is **Jeffrey, `jeffrey@tailoredagents.com`**. The account was created through protected production setup with the owner's privately chosen password. Production sign-in is verified, setup is closed, and the one-time `SETUP_SECRET` has been removed.

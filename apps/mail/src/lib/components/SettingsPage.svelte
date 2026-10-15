@@ -1,11 +1,13 @@
 <script lang="ts">
- import {onMount,untrack} from 'svelte';
+ import {onMount} from 'svelte';
  import {page} from '$app/stores';
  import {invalidateAll} from '$app/navigation';
  import {setThemePreference,type ThemePreference} from '$lib/theme';
  import type {SettingsSection} from '$lib/settings-section';
- let {data,section='all'}:{data:{signature:string};section?:SettingsSection}=$props();
- let signature=$state(untrack(()=>data.signature)),notice=$state(''),error=$state('');
+ import SignatureEditor from './SignatureEditor.svelte';
+ import type {SignatureBanner} from '$lib/email-signature';
+ let {data,section='all'}:{data:{signature:string;signatureBanner:SignatureBanner|null};section?:SettingsSection}=$props();
+ let notice=$state(''),error=$state('');
  let blocked=$state<{address:string}[]>([]),address=$state(''),labelName=$state(''),color=$state('blue');
  let currentPassword=$state(''),newPassword=$state('');
  const show=(name:string)=>section==='all'||section===name;
@@ -23,9 +25,7 @@
  {#if error}<p role="alert" class="ta-warning">{error}</p>{/if}
  {#if notice}<p role="status">{notice}</p>{/if}
  {#if show('general')}
- <section class="ta-panel"><h2>Your signature</h2><p>This text is added to messages you send.</p>
- <form onsubmit={async(e)=>{e.preventDefault();if(await action('/api/settings/signature','PATCH',{signature}))notice='Signature saved.';}}>
- <label>Signature<textarea bind:value={signature} maxlength="10000" rows="5"></textarea></label><button class="ta-button">Save signature</button></form></section>
+ <SignatureEditor signature={data.signature} banner={data.signatureBanner} />
  <section class="ta-panel"><h2>Blocked senders</h2><p>New messages from these addresses go to Junk.</p><form class="ta-inline" onsubmit={(e)=>{e.preventDefault();void block();}}><label>Email address<input type="email" required bind:value={address}/></label><button class="ta-button">Block sender</button></form>
  {#each blocked as sender}<div class="ta-inline"><span>{sender.address}</span><button onclick={async()=>{if(await action('/api/settings/blocked','DELETE',{address:sender.address}))await loadBlocked();}}>Unblock</button></div>{/each}</section>
  <section class="ta-panel"><h2>Change your password</h2><p>Use a phrase of at least 12 characters. You will sign in again afterward.</p><form onsubmit={(e)=>{e.preventDefault();void password();}}><label>Current password<input type="password" autocomplete="current-password" required bind:value={currentPassword}/></label><label>New password<input type="password" autocomplete="new-password" minlength="12" maxlength="128" required bind:value={newPassword}/></label><button class="ta-button">Change password</button></form></section>

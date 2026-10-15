@@ -16,7 +16,7 @@ import {
 	listAddressesForUser
 } from './domains';
 import { parseEmailAddress, parseEmailAddresses } from './email-address';
-import { getEmailSignature } from './email-signature';
+import { getEmailSignature, getSignatureBanner, signatureBannerAttachment } from './email-signature';
 import { stripHtml } from './html';
 import { insertEmail, listThreadMessages } from './mail-store';
 import { initialOutboundStatus, ProviderError, type EmailProvider } from './email-provider';
@@ -272,14 +272,19 @@ export async function sendAndStore(
   const bodyHtml = input.html ? cleanComposedHtml(input.html) : null;
   const bodyText = input.text?.trim() || (bodyHtml ? stripHtml(bodyHtml) : '');
   if (!bodyText && !bodyHtml) throw new Error('Message body is required');
-  const { text, html } = appendEmailSignature({ text:bodyText,html:bodyHtml,signature:pickEmailSignature(from.signature,await getEmailSignature(env.DB,user.id)) });
-  const attachments = input.attachments ?? [];
-  assertOutboundAttachments(attachments,input.allowCombinedAttachments);
+  const banner = await getSignatureBanner(env.DB,user.id);
+  // Stable per message, distinct from banners in quoted/forwarded conversations.
+  const contentId = banner ? `signature-${banner.id}-${(await sha256Hex(user.id+':'+input.idempotencyKey)).slice(0,32)}@tailoredagents` : '';
+  const { text, html } = appendEmailSignature({ text:bodyText,html:bodyHtml,signature:pickEmailSignature(from.signature,await getEmailSignature(env.DB,user.id)),banner:banner ? {...banner,contentId} : undefined });
+  assertOutboundAttachments(input.attachments ?? [],input.allowCombinedAttachments);
+  const attachments = [...(input.attachments ?? []),...(banner ? [await signatureBannerAttachment(env.ATTACHMENTS,banner,contentId)] : [])];
+  // The automatic image can be one extra file, but still counts toward 20 MB.
+  assertOutboundAttachments(attachments,true);
   if (input.apiPolicy) throw new SendPolicyError('api_sending_disabled',403,'External sending is disabled.');
   const subjectError = validateSubject(input.subject); if (subjectError) throw new Error(subjectError);
   if (!parseRecipients(input.to).length) throw new Error('At least one valid recipient is required');
   if (!input.idempotencyKey) throw new Error('Please reload the composer before sending.');
-  const fingerprint = await composeFingerprint(from,{...input,text,html:html ?? undefined});
+  const fingerprint = await composeFingerprint(from,{...input,text,html:html ?? undefined,attachments});
   const attempt = await claimSendAttempt(env.DB,user.id,input.idempotencyKey,fingerprint);
   if (attempt.kind === 'replay') return {emailId:attempt.emailId,providerId:attempt.providerId,from};
   const emailId = 'sent-' + await sha256Hex(attempt.id+':'+fingerprint);
@@ -295,7 +300,7 @@ export async function sendAndStore(
       replyToEmailId:input.replyToEmailId,domainId:from.domain_id,addressId:from.id,status:'queued',isRead:true,subjectMatch:false});
     await env.DB.prepare('UPDATE emails SET content_key=?,status=\'queued\',status_detail=NULL WHERE id=?').bind(contentKey,emailId).run();
     await indexFullText(env.DB,user.id,emailId,text);
-    if (attachments.length) await insertAttachments(env.DB,env.ATTACHMENTS,emailId,attachments,{enforceCountLimit:!input.allowCombinedAttachments});
+    if (attachments.length) await insertAttachments(env.DB,env.ATTACHMENTS,emailId,attachments,{enforceCountLimit:!input.allowCombinedAttachments && !banner});
     const payload = {from,senderName:from.label || user.name,to:input.to,cc:input.cc,bcc:input.bcc,subject:input.subject,text,html:html ?? undefined,
       inReplyTo:input.inReplyTo,references:input.references,headers:{'Message-ID':`<${messageId}>`},idempotencyKey:`${attempt.id}:${fingerprint}`};
     await env.ATTACHMENTS.put(payloadKey,JSON.stringify(payload));

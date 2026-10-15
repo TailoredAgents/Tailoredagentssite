@@ -1,4 +1,5 @@
 import {readLimitedText,BodyLimitError} from '$lib/server/request-body';
+import {MAX_SIGNATURE_REQUEST_BYTES} from '$lib/email-signature';
 import { redirect, type Handle } from '@sveltejs/kit';
 import { countUsers, getAuthenticatedSession, readSessionToken } from '$lib/server/auth';
 import { listAddressesForUser, listDomains } from '$lib/server/domains';
@@ -41,11 +42,15 @@ export const handle: Handle = async ({ event, resolve }) => {
   if ((pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) && !session?.user.is_admin) return error('Owner access required.', 403);
   if ((pathname.startsWith('/api/addresses') || pathname.startsWith('/api/domains')) && event.request.method !== 'GET' && !session?.user.is_admin) return error('Only the owner can manage email addresses.', 403);
   if (!['GET','HEAD','OPTIONS'].includes(event.request.method)) {
-    const limit = pathname.startsWith('/api/mail') || pathname.startsWith('/api/drafts') ? 30*1024*1024 : 64*1024;
+    const signatureUpload = pathname === '/api/settings/signature';
+    const limit = signatureUpload ? MAX_SIGNATURE_REQUEST_BYTES : pathname.startsWith('/api/mail') || pathname.startsWith('/api/drafts') ? 30*1024*1024 : 64*1024;
     try {
+      // Reject known oversized uploads before opening their stream. Still count
+      // actual bytes below for missing or inaccurate Content-Length headers.
+      if(Number(event.request.headers.get('Content-Length'))>limit)throw new BodyLimitError('Request too large');
       const body=await readLimitedText(event.request.body,limit);
       event.request=new Request(event.request,{body});
-    }catch(cause){if(cause instanceof BodyLimitError)return error('This message is too large. Attachments may total up to 20 MB.',413);throw cause;}
+    }catch(cause){if(cause instanceof BodyLimitError)return error(signatureUpload ? 'Choose a banner no larger than 1 MB.' : 'This message is too large. Attachments may total up to 20 MB.',413);throw cause;}
   }
   const response = await resolve(event, { transformPageChunk: ({ html }) => html.replace('<html lang="en">', '<html lang="en" data-ui-theme="zero">') });
   response.headers.set('Cache-Control', 'private, no-store');

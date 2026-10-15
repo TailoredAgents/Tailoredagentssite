@@ -10,7 +10,7 @@ export async function purgeExpiredMail(env: MailEnv): Promise<void> {
       const live=await env.DB.prepare("SELECT id FROM emails WHERE provider_id=? UNION SELECT provider_id FROM unassigned_mail WHERE provider_id=? AND assigned_user_id IS NULL LIMIT 1").bind(receivedId,receivedId).first();
       if(live)continue;
     }
-    const referenced = await env.DB.prepare('SELECT id FROM email_attachments WHERE storage_key=? UNION SELECT id FROM emails WHERE content_key=? UNION SELECT id FROM draft_files WHERE storage_key=? LIMIT 1').bind(row.storage_key,row.storage_key,row.storage_key).first();
+    const referenced = await env.DB.prepare('SELECT id FROM email_attachments WHERE storage_key=? UNION SELECT id FROM emails WHERE content_key=? UNION SELECT id FROM draft_files WHERE storage_key=? UNION SELECT id FROM signature_banners WHERE storage_key=? LIMIT 1').bind(row.storage_key,row.storage_key,row.storage_key,row.storage_key).first();
     if (!referenced) await env.ATTACHMENTS.delete(row.storage_key);
     await env.DB.prepare('DELETE FROM retained_objects WHERE storage_key=?').bind(row.storage_key).run();
   }

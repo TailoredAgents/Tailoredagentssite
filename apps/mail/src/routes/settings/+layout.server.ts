@@ -1,14 +1,15 @@
 import type { LayoutServerLoad } from './$types';
 import { listApiTokens } from '$lib/server/api-tokens';
-import { getEmailSignature } from '$lib/server/email-signature';
+import { getEmailSignature, getSignatureBanner, publicSignatureBanner } from '$lib/server/email-signature';
 import { listDeviceSessions } from '$lib/server/auth';
 import { listConnectedApps } from '$lib/server/oauth';
 import { readVapidConfiguration } from '$lib/server/push-notifications';
 
 export const load: LayoutServerLoad = async ({ locals, platform }) => {
 	const db = platform?.env.DB;
-	const [signature, apiTokens, devices, connectedApps] = await Promise.all([
+	const [signature, banner, apiTokens, devices, connectedApps] = await Promise.all([
 		locals.user && db ? getEmailSignature(db, locals.user.id) : '',
+		locals.user && db ? getSignatureBanner(db, locals.user.id) : null,
 		locals.user && db ? listApiTokens(db, locals.user.id) : [],
 		locals.user && db ? listDeviceSessions(db, locals.user.id, locals.currentSessionId) : [],
 		locals.user && db ? listConnectedApps(db, locals.user.id) : []
@@ -19,6 +20,7 @@ export const load: LayoutServerLoad = async ({ locals, platform }) => {
 		domains: locals.domains,
 		addresses: locals.addresses,
 		signature,
+		signatureBanner: publicSignatureBanner(banner),
 		apiTokens,
 		push: {
 			configured: Boolean(vapid),
