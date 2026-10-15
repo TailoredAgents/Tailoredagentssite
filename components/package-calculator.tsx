@@ -3,15 +3,13 @@
 import Link from "next/link";
 import { ArrowRight, Check, Info } from "lucide-react";
 import { type CSSProperties, useMemo, useState } from "react";
-import { calculatePackageBreakdown, FLEX_ANNUAL_RATE, FLEX_MONTHS, growthPackages } from "@/lib/packages";
+import { calculatePackageBreakdown, growthPackages, PAYMENT_PLAN_MONTHS } from "@/lib/packages";
 
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
   maximumFractionDigits: 2,
 });
-const flexAnnualPercentage = (FLEX_ANNUAL_RATE * 100).toFixed(0);
-
 export function PackageCalculator() {
   const [selectedId, setSelectedId] = useState("growth-foundation");
   const selected = growthPackages.find((plan) => plan.id === selectedId) ?? growthPackages[1];
@@ -83,7 +81,7 @@ export function PackageCalculator() {
             <div className="package-range-bounds"><span>{currency.format(selected.minimumUpfront)} minimum</span><span>{currency.format(selected.websitePrice)} paid in full</span></div>
             <p id="package-slider-help">
               {hasDeferredBalance
-                ? `The remaining website investment is spread across ${FLEX_MONTHS} months using an estimated ${flexAnnualPercentage}% annual flex rate on the outstanding balance.`
+                ? `The six-month payment-plan price is reflected in the website total. Pay more upfront to lower the monthly amount.`
                 : "Start here, then move the slider left to shift part of the website investment into six monthly payments."}
             </p>
           </div>
@@ -92,7 +90,7 @@ export function PackageCalculator() {
         <aside className="package-breakdown">
           <span className="micro-label">Your estimated structure</span>
           <div className="package-monthly-focus" aria-live="polite" aria-atomic="true">
-            <small>{hasDeferredBalance ? `Months 1–${FLEX_MONTHS}` : "Monthly SEO"}</small>
+            <small>{hasDeferredBalance ? `Months 1–${PAYMENT_PLAN_MONTHS}` : "Monthly SEO"}</small>
             <strong>{currency.format(breakdown.combinedMonthly)}<span>/mo</span></strong>
             <p>{hasDeferredBalance ? `Then ${currency.format(breakdown.ongoingMonthly)}/month while SEO remains active.` : "No deferred website payments."}</p>
           </div>
@@ -101,15 +99,14 @@ export function PackageCalculator() {
             <div><dt>{selected.websiteName} starting price</dt><dd>{currency.format(selected.websitePrice)}</dd></div>
             <div><dt>Upfront website payment</dt><dd>{currency.format(breakdown.upfront)}</dd></div>
             <div><dt>Deferred website amount</dt><dd>{currency.format(breakdown.deferredWebsite)}</dd></div>
-            <div><dt>Estimated flex cost</dt><dd>{currency.format(breakdown.flexCost)}</dd></div>
-            <div className="emphasis"><dt>Website flex payment</dt><dd>{currency.format(breakdown.websiteMonthly)}/mo × {FLEX_MONTHS}</dd></div>
+            <div className="emphasis"><dt>Website monthly payment</dt><dd>{currency.format(breakdown.websiteMonthly)}/mo × {PAYMENT_PLAN_MONTHS}</dd></div>
             <div><dt>{selected.seoName}</dt><dd>{currency.format(selected.seoMonthly)}/mo</dd></div>
             <div className="included"><dt>SEO Foundation Setup</dt><dd>Included <small>({currency.format(selected.seoSetupValue)} value)</small></dd></div>
           </dl>
 
-          <div className="package-total-line"><span>Estimated website total</span><strong>{currency.format(breakdown.websiteFlexTotal)}</strong></div>
+          <div className="package-total-line"><span>{hasDeferredBalance ? "Website payment-plan total" : "Website price"}</span><strong>{currency.format(breakdown.websitePlanTotal)}</strong></div>
           <Link className="button button-dark" href="/contact">Discuss this package<ArrowRight size={15} aria-hidden="true" /></Link>
-          <p className="package-estimate-note"><Info size={13} aria-hidden="true" />Estimate only. Final scope, payment schedule, and ownership terms are confirmed in a written proposal.</p>
+          <p className="package-estimate-note"><Info size={13} aria-hidden="true" />Estimate only. Final scope, payment-plan total, schedule, and ownership terms are confirmed in a written proposal.</p>
         </aside>
       </div>
     </div>

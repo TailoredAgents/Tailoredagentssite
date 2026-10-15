@@ -32,7 +32,7 @@ export default function PackagesPage() {
 
       <section className="section-pad package-builder-section" id="package-builder">
         <div className="container-shell">
-          <div className="section-heading-wide"><div><Eyebrow>Interactive package builder</Eyebrow><h2 className="h2">See where every dollar <span className="serif-italic">goes.</span></h2></div><p className="lede">The website price, deferred amount, estimated flex cost, setup value, and ongoing SEO are separated so the monthly number never hides the actual investment.</p></div>
+          <div className="section-heading-wide"><div><Eyebrow>Interactive package builder</Eyebrow><h2 className="h2">Compare both ways <span className="serif-italic">to pay.</span></h2></div><p className="lede">See the upfront payment, six-month website amount, complete website total, included setup value, and ongoing SEO in one clear view.</p></div>
           <PackageCalculator />
         </div>
       </section>
@@ -55,7 +55,7 @@ export default function PackagesPage() {
             <div><span>SEO</span><p>SEO remains month to month and may be canceled before the next billing cycle.</p></div>
             <div><span>Website</span><p>The website payment obligation is separate from SEO. Canceling SEO does not remove an unpaid website balance.</p></div>
             <div><span>Ownership</span><p>Website ownership transfers after the applicable website balance is paid in full.</p></div>
-            <div><span>Availability</span><p>Flex structures are estimates and are offered only after the payment terms and business scope are approved in writing.</p></div>
+            <div><span>Availability</span><p>Payment-plan structures are estimates and are offered only after the payment terms and business scope are approved in writing.</p></div>
             <div><span>Scope</span><p>Calculator results are estimates. The written proposal confirms deliverables, outside costs, and exact terms.</p></div>
           </div>
         </div>

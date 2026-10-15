@@ -14,19 +14,19 @@ describe("calculatePackageBreakdown", () => {
     expect(calculatePackageBreakdown(growthFoundation, 1000)).toEqual({
       upfront: 1000,
       deferredWebsite: 1250,
-      flexCost: 44.14,
-      websiteMonthly: 215.69,
-      combinedMonthly: 615.69,
+      paymentPlanPremium: 250,
+      websiteMonthly: 250,
+      combinedMonthly: 650,
       ongoingMonthly: 400,
-      websiteFlexTotal: 2294.14,
+      websitePlanTotal: 2500,
     });
   });
 
-  it("removes the flex premium when the website is paid in full", () => {
+  it("removes the payment-plan premium when the website is paid in full", () => {
     const result = calculatePackageBreakdown(growthFoundation, 2250);
-    expect(result.flexCost).toBe(0);
+    expect(result.paymentPlanPremium).toBe(0);
     expect(result.combinedMonthly).toBe(400);
-    expect(result.websiteFlexTotal).toBe(2250);
+    expect(result.websitePlanTotal).toBe(2250);
   });
 
   it("clamps an upfront amount to the package boundaries", () => {

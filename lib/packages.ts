@@ -1,5 +1,5 @@
-export const FLEX_MONTHS = 6;
-export const FLEX_ANNUAL_RATE = 0.12;
+export const PAYMENT_PLAN_MONTHS = 6;
+export const PAYMENT_PLAN_PREMIUM = 0.2;
 
 export type GrowthPackage = {
   id: string;
@@ -83,20 +83,16 @@ export const growthPackages = [
 export function calculatePackageBreakdown(plan: GrowthPackage, requestedUpfront: number) {
   const upfront = Math.min(plan.websitePrice, Math.max(plan.minimumUpfront, requestedUpfront));
   const deferredWebsite = plan.websitePrice - upfront;
-  const monthlyRate = FLEX_ANNUAL_RATE / 12;
-  const growthFactor = (1 + monthlyRate) ** FLEX_MONTHS;
-  const websiteMonthly = deferredWebsite === 0
-    ? 0
-    : Math.round((deferredWebsite * ((monthlyRate * growthFactor) / (growthFactor - 1))) * 100) / 100;
-  const flexCost = Math.round(((websiteMonthly * FLEX_MONTHS) - deferredWebsite) * 100) / 100;
+  const paymentPlanPremium = Math.round((deferredWebsite * PAYMENT_PLAN_PREMIUM) * 100) / 100;
+  const websiteMonthly = Math.round(((deferredWebsite + paymentPlanPremium) / PAYMENT_PLAN_MONTHS) * 100) / 100;
 
   return {
     upfront,
     deferredWebsite,
-    flexCost,
+    paymentPlanPremium,
     websiteMonthly,
     combinedMonthly: Math.round((websiteMonthly + plan.seoMonthly) * 100) / 100,
     ongoingMonthly: plan.seoMonthly,
-    websiteFlexTotal: Math.round((upfront + deferredWebsite + flexCost) * 100) / 100,
+    websitePlanTotal: Math.round((upfront + deferredWebsite + paymentPlanPremium) * 100) / 100,
   };
 }
