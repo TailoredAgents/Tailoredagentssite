@@ -31,7 +31,7 @@ The site publishes transparent starting points rather than gating prices behind 
 
 `lib/services.ts` is the source of truth for public pricing and package inclusions. Any price change should update the structured site copy and be reviewed against the actual delivery capacity before release.
 
-`lib/packages.ts` defines the website + SEO package calculator. Flexible packages currently estimate a 5.6% premium only on the deferred website balance across six months; SEO remains month to month and is calculated separately. Have the written payment terms reviewed for each applicable jurisdiction before accepting a flex-plan agreement.
+`lib/packages.ts` defines the website + SEO package calculator. Flexible packages currently estimate six equal payments using a 12% annual rate on the outstanding website balance; SEO remains month to month and is calculated separately. Have the written payment terms reviewed for each applicable jurisdiction before accepting a flex-plan agreement.
 
 ## Local development
 

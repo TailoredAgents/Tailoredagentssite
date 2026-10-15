@@ -8,17 +8,17 @@ describe("calculatePackageBreakdown", () => {
     expect(calculatePackageBreakdown(growthFoundation, 1000)).toEqual({
       upfront: 1000,
       deferredWebsite: 1250,
-      flexPremium: 70,
-      websiteMonthly: 220,
-      combinedMonthly: 620,
+      flexCost: 44.14,
+      websiteMonthly: 215.69,
+      combinedMonthly: 615.69,
       ongoingMonthly: 400,
-      websiteFlexTotal: 2320,
+      websiteFlexTotal: 2294.14,
     });
   });
 
   it("removes the flex premium when the website is paid in full", () => {
     const result = calculatePackageBreakdown(growthFoundation, 2250);
-    expect(result.flexPremium).toBe(0);
+    expect(result.flexCost).toBe(0);
     expect(result.combinedMonthly).toBe(400);
     expect(result.websiteFlexTotal).toBe(2250);
   });

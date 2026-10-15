@@ -32,7 +32,7 @@ export default function PackagesPage() {
 
       <section className="section-pad package-builder-section" id="package-builder">
         <div className="container-shell">
-          <div className="section-heading-wide"><div><Eyebrow>Interactive package builder</Eyebrow><h2 className="h2">See where every dollar <span className="serif-italic">goes.</span></h2></div><p className="lede">The website price, deferred amount, flexibility premium, setup value, and ongoing SEO are separated so the monthly number never hides the actual investment.</p></div>
+          <div className="section-heading-wide"><div><Eyebrow>Interactive package builder</Eyebrow><h2 className="h2">See where every dollar <span className="serif-italic">goes.</span></h2></div><p className="lede">The website price, deferred amount, estimated flex cost, setup value, and ongoing SEO are separated so the monthly number never hides the actual investment.</p></div>
           <PackageCalculator />
         </div>
       </section>

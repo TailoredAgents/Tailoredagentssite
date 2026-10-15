@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { ArrowRight, Check, Info } from "lucide-react";
 import { type CSSProperties, useMemo, useState } from "react";
-import { calculatePackageBreakdown, FLEX_MONTHS, FLEX_PREMIUM_RATE, growthPackages } from "@/lib/packages";
+import { calculatePackageBreakdown, FLEX_ANNUAL_RATE, FLEX_MONTHS, growthPackages } from "@/lib/packages";
 
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
-  maximumFractionDigits: 0,
+  maximumFractionDigits: 2,
 });
-const flexPremiumPercentage = (FLEX_PREMIUM_RATE * 100).toFixed(1);
+const flexAnnualPercentage = (FLEX_ANNUAL_RATE * 100).toFixed(0);
 
 export function PackageCalculator() {
   const [selectedId, setSelectedId] = useState("growth-foundation");
@@ -83,8 +83,8 @@ export function PackageCalculator() {
             <div className="package-range-bounds"><span>{currency.format(selected.minimumUpfront)} minimum</span><span>{currency.format(selected.websitePrice)} paid in full</span></div>
             <p id="package-slider-help">
               {hasDeferredBalance
-                ? `The remaining website investment is spread across ${FLEX_MONTHS} months with a ${flexPremiumPercentage}% flexibility premium applied only to the deferred amount.`
-                : "The website is paid in full, so there is no flexibility premium and only the monthly SEO service remains."}
+                ? `The remaining website investment is spread across ${FLEX_MONTHS} months using an estimated ${flexAnnualPercentage}% annual flex rate on the outstanding balance.`
+                : "The website is paid in full, so there is no flex cost and only the monthly SEO service remains."}
             </p>
           </div>
         </section>
@@ -101,7 +101,7 @@ export function PackageCalculator() {
             <div><dt>{selected.websiteName} starting price</dt><dd>{currency.format(selected.websitePrice)}</dd></div>
             <div><dt>Upfront website payment</dt><dd>{currency.format(breakdown.upfront)}</dd></div>
             <div><dt>Deferred website amount</dt><dd>{currency.format(breakdown.deferredWebsite)}</dd></div>
-            <div><dt>Flexibility premium</dt><dd>{currency.format(breakdown.flexPremium)}</dd></div>
+            <div><dt>Estimated flex cost</dt><dd>{currency.format(breakdown.flexCost)}</dd></div>
             <div className="emphasis"><dt>Website flex payment</dt><dd>{currency.format(breakdown.websiteMonthly)}/mo × {FLEX_MONTHS}</dd></div>
             <div><dt>{selected.seoName}</dt><dd>{currency.format(selected.seoMonthly)}/mo</dd></div>
             <div className="included"><dt>SEO Foundation Setup</dt><dd>Included <small>({currency.format(selected.seoSetupValue)} value)</small></dd></div>
