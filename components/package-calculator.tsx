@@ -65,7 +65,7 @@ export function PackageCalculator() {
 
           <div className="package-slider-block">
             <div className="package-slider-label">
-              <label htmlFor="upfront-investment">Choose your upfront website investment</label>
+              <label htmlFor="upfront-investment">Adjust your upfront website investment</label>
               <output htmlFor="upfront-investment">{currency.format(breakdown.upfront)}</output>
             </div>
             <input
@@ -84,7 +84,7 @@ export function PackageCalculator() {
             <p id="package-slider-help">
               {hasDeferredBalance
                 ? `The remaining website investment is spread across ${FLEX_MONTHS} months using an estimated ${flexAnnualPercentage}% annual flex rate on the outstanding balance.`
-                : "The website is paid in full, so there is no flex cost and only the monthly SEO service remains."}
+                : "Start here, then move the slider left to shift part of the website investment into six monthly payments."}
             </p>
           </div>
         </section>

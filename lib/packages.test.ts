@@ -4,6 +4,12 @@ import { calculatePackageBreakdown, growthPackages } from "./packages";
 const growthFoundation = growthPackages.find((plan) => plan.id === "growth-foundation")!;
 
 describe("calculatePackageBreakdown", () => {
+  it("starts every package at its paid-in-full amount", () => {
+    for (const plan of growthPackages) {
+      expect(plan.defaultUpfront).toBe(plan.websitePrice);
+    }
+  });
+
   it("builds the recommended Growth Foundation example", () => {
     expect(calculatePackageBreakdown(growthFoundation, 1000)).toEqual({
       upfront: 1000,
