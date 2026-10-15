@@ -16,6 +16,20 @@ The experience is deliberately presentation-led: custom editorial layouts, origi
 
 Most routes are statically rendered. Only `/api/contact` and `/api/health` run on the server.
 
+## Public pricing
+
+The site publishes transparent starting points rather than gating prices behind a form. `/pricing` contains the full package scopes, while the homepage and individual service pages provide shorter summaries.
+
+- Launch Website: $1,500
+- Custom Growth Website: from $2,250
+- Advanced Website: from $4,000
+- SEO Essentials: $400/month
+- SEO Growth: $650/month
+- Focused Workflow automation: from $650
+- Connected systems and custom software: tailored proposal
+
+`lib/services.ts` is the source of truth for public pricing and package inclusions. Any price change should update the structured site copy and be reviewed against the actual delivery capacity before release.
+
 ## Local development
 
 ```bash
@@ -89,8 +103,9 @@ Do not add a Cloudflare proxy or another CDN until certificate and redirect beha
 ## Launch blockers
 
 - Confirm the authorized inquiry recipient and a Resend-verified sender.
+- Replace the temporary personal phone number with the final Woodstock-area business number everywhere through `lib/site.ts`.
 - Add an authorized privacy/legal contact address and confirm governing-law language if counsel requires it.
 - Run browser-based responsive and accessibility QA. The implementation session did not have a connected browser surface, so screenshots and Lighthouse scores are not claimed.
-- Review public pricing, service scope, all copy, and the StonegateOS case study with the business owner before publication.
+- Review service scope, all copy, and the StonegateOS case study with the business owner before publication.
 
 See [the launch checklist](docs/LAUNCH_CHECKLIST.md) for the final production gate.

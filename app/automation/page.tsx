@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, CalendarCheck, DatabaseZap, MessagesSquare, PhoneCall, Route, Sparkles } from "lucide-react";
 import { HeroCallSystem } from "@/components/hero-call-system";
+import { PricingCards } from "@/components/pricing-cards";
 import { WorkflowShowcase } from "@/components/workflow-showcase";
 import { ArrowLink, Eyebrow, FinalCta } from "@/components/ui";
-import { servicePricing } from "@/lib/services";
+import { automationPlans } from "@/lib/services";
 
 export const metadata: Metadata = {
   title: "Business Automation & AI",
@@ -32,7 +33,7 @@ export default function AutomationPage() {
 
       <section className="section-pad growth-journey-section"><div className="container-shell"><div className="section-heading-wide"><div><Eyebrow>Start with one useful outcome</Eyebrow><h2 className="h2">Automation can grow with the <span className="serif-italic">business.</span></h2></div><p className="lede">A focused first implementation can establish the integration, review, and operating patterns needed for broader systems later.</p></div><div className="growth-journey automation-journey">{[["01","Choose","Identify one repeated workflow with a clear owner and meaningful outcome."],["02","Map","Understand inputs, decisions, exceptions, systems, and approval points."],["03","Implement","Build the smallest reliable automation that fits the surrounding operation."],["04","Evaluate","Observe real use, refine the workflow, and expand only when the value is clear."]].map(([n,h,p],index)=><article key={n}><span>{n}</span><div className="journey-icon"><Route size={18}/></div><h3>{h}</h3><p>{p}</p>{index<3&&<i aria-hidden="true">→</i>}</article>)}</div></div></section>
 
-      <section className="section-pad service-price-band"><div className="container-shell"><div><Eyebrow>Engagement model</Eyebrow><h2>{servicePricing.automation.price}</h2><p>{servicePricing.automation.note} We define the operational objective, system boundaries, implementation scope, and verification approach before proposing the work.</p></div><ArrowLink href="/contact">Discuss an Opportunity</ArrowLink></div></section>
+      <section className="section-pad package-section package-section-alt" id="pricing"><div className="container-shell"><div className="section-heading-wide"><div><Eyebrow>Automation pricing</Eyebrow><h2 className="h2">Price the focused workflow. Scope the connected <span className="serif-italic">system.</span></h2></div><p className="lede">A bounded workflow can begin at a clear price. Larger integrations and custom applications require a tailored proposal because the systems, data, and operating risks differ.</p></div><PricingCards plans={automationPlans} columns={2}/><div className="package-section-link"><ArrowLink href="/pricing">View all pricing details</ArrowLink></div></div></section>
       <FinalCta />
     </>
   );

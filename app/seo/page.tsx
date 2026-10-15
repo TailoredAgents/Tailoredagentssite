@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { BarChart3, CheckCircle2, FileSearch, Gauge, MapPin, SearchCheck } from "lucide-react";
 import { SeoDashboard } from "@/components/growth-visuals";
+import { PricingCards } from "@/components/pricing-cards";
 import { ArrowLink, Eyebrow, FinalCta } from "@/components/ui";
-import { servicePricing } from "@/lib/services";
+import { seoPlans } from "@/lib/services";
 
 export const metadata: Metadata = {
   title: "Local SEO & Growth Analytics",
@@ -30,7 +31,7 @@ export default function SeoPage() {
 
       <section className="section-pad dark-section seo-method-section"><div className="container-shell"><div className="infrastructure-heading"><div><Eyebrow>How the service works</Eyebrow><h2 className="h2">Continuous attention, with <span className="serif-italic">human judgment.</span></h2></div><p className="lede">Tools and AI-assisted analysis can help organize evidence. Recommendations and business decisions still require context, review, and clear ownership.</p></div><div className="seo-method-grid">{[["01","Measure","Review search, website, and inquiry signals that are actually configured and available."],["02","Diagnose","Separate technical issues, content gaps, local visibility opportunities, and measurement problems."],["03","Improve","Complete or coordinate prioritized changes within the agreed monthly scope."],["04","Explain","Report completed work, observed signals, open questions, and recommended next steps."]].map(([n,h,p])=><article key={n}><span>{n}</span><h3>{h}</h3><p>{p}</p></article>)}</div><p className="evidence-note">Search engines control rankings, and market conditions change. We do not guarantee positions, traffic, leads, or revenue.</p></div></section>
 
-      <section className="section-pad service-price-band"><div className="container-shell"><div><Eyebrow>Managed service starting point</Eyebrow><h2>{servicePricing.seo.qualifier} <span>{servicePricing.seo.price}</span></h2><p>{servicePricing.seo.note} The final scope reflects website condition, market coverage, reporting needs, and who completes recommended work.</p></div><ArrowLink href="/contact">Discuss Managed SEO</ArrowLink></div></section>
+      <section className="section-pad package-section package-section-alt" id="pricing"><div className="container-shell"><div className="section-heading-wide"><div><Eyebrow>Managed SEO packages</Eyebrow><h2 className="h2">Choose the improvement cadence that fits the <span className="serif-italic">business.</span></h2></div><p className="lede">Both plans begin with a three-month initial engagement, then continue month to month. Multi-location and content-heavy campaigns are scoped separately.</p></div><PricingCards plans={seoPlans} columns={2}/><div className="package-section-link"><ArrowLink href="/pricing">View all pricing details</ArrowLink></div></div></section>
       <FinalCta />
     </>
   );

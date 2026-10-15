@@ -10,6 +10,7 @@ export const siteConfig = {
     { href: "/websites", label: "Websites" },
     { href: "/seo", label: "SEO & Analytics" },
     { href: "/automation", label: "Automation" },
+    { href: "/pricing", label: "Pricing" },
     { href: "/work", label: "Our Work" },
     { href: "/company", label: "About" },
   ],

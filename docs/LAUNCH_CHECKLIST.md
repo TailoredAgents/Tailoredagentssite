@@ -4,6 +4,7 @@
 
 - [ ] Confirm the GitHub repository ownership and branch protections.
 - [ ] Confirm the authorized Tailored Agents business email address.
+- [ ] Replace the temporary personal phone number with the final Woodstock-area business number and verify every rendered location.
 - [ ] Verify the Resend sending domain and configure all three contact variables.
 - [ ] Confirm the legal/privacy contact channel and any required governing jurisdiction.
 - [ ] Review the public StonegateOS capability language with the system owner.

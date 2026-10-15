@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Accessibility, ArrowRight, Gauge, LayoutTemplate, Search, Smartphone } from "lucide-react";
 import { WebsiteConceptGallery } from "@/components/growth-visuals";
+import { PricingCards } from "@/components/pricing-cards";
 import { ArrowLink, Eyebrow, FinalCta } from "@/components/ui";
-import { servicePricing } from "@/lib/services";
+import { websitePlans } from "@/lib/services";
 
 export const metadata: Metadata = {
   title: "Website Design & Development",
@@ -46,7 +47,7 @@ export default function WebsitesPage() {
         <div className="container-shell"><div className="section-heading-wide"><div><Eyebrow>Development process</Eyebrow><h2 className="h2">From business context to a <span className="serif-italic">finished experience.</span></h2></div><p className="lede">Each phase resolves a different kind of uncertainty before the site is asked to perform in public.</p></div><div className="process-grid">{[["01","Discover","Clarify the audience, offer, differentiators, content, and technical needs."],["02","Design","Establish visual direction, page composition, and responsive behavior."],["03","Develop","Build the production site, interactions, forms, and SEO foundations."],["04","Launch","Verify quality, connect delivery systems, deploy, and identify next improvements."]].map(([n,h,p])=><div className="process-item" key={n}><span>{n}</span><h3>{h}</h3><p>{p}</p></div>)}</div></div>
       </section>
 
-      <section className="section-pad service-price-band"><div className="container-shell"><div><Eyebrow>Starting point</Eyebrow><h2>{servicePricing.websites.qualifier} <span>{servicePricing.websites.price}</span></h2><p>{servicePricing.websites.note} Page count, content development, integrations, and specialized functionality affect scope.</p></div><ArrowLink href="/free-review">Start with a Free Review</ArrowLink></div></section>
+      <section className="section-pad package-section package-section-alt" id="pricing"><div className="container-shell"><div className="section-heading-wide"><div><Eyebrow>Website packages</Eyebrow><h2 className="h2">A competitive place to start, with room to <span className="serif-italic">grow.</span></h2></div><p className="lede">Choose a focused launch scope or expand the build when more content, integrations, and customer-facing functionality are useful. Final deliverables and pricing are confirmed in writing.</p></div><PricingCards plans={websitePlans}/><div className="package-section-link"><ArrowLink href="/pricing">View all pricing details</ArrowLink></div></div></section>
       <FinalCta />
     </>
   );

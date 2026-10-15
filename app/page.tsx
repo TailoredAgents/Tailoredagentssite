@@ -86,11 +86,12 @@ export default function Home() {
 
       <section className="section-pad pricing-section">
         <div className="container-shell">
-          <div className="section-heading-wide"><div><Eyebrow>Services & starting prices</Eyebrow><h2 className="h2">Clear starting points. Thoughtful <span className="serif-italic">scope.</span></h2></div><p className="lede">Every proposal reflects the actual work involved. These starting points help establish the right scale for an initial conversation.</p></div>
+          <div className="section-heading-wide"><div><Eyebrow>Clear starting points</Eyebrow><h2 className="h2">Competitive options. Thoughtful <span className="serif-italic">scope.</span></h2></div><p className="lede">See the entry price before starting a conversation. Every paid engagement still receives a written scope so the deliverables, responsibilities, and complete price are clear.</p></div>
           <div className="pricing-grid">
-            {Object.values(servicePricing).map((item, index) => <article className={index === 0 ? "featured-price" : ""} key={item.label}><span>0{index + 1}</span><h3>{item.label}</h3><small>{item.qualifier}</small><strong>{item.price}</strong><p>{item.note}</p><Link href={index === 0 ? "/free-review" : index === 1 ? "/seo" : "/contact"}>{index === 0 ? "Request a free review" : index === 1 ? "Explore managed SEO" : "Discuss an opportunity"}<ArrowRight size={14}/></Link></article>)}
+            {Object.values(servicePricing).map((item, index) => <article className={index === 0 ? "featured-price" : ""} key={item.label}><span>0{index + 1}</span><h3>{item.label}</h3><small>{item.qualifier}</small><strong>{item.price}</strong><p>{item.note}</p><Link href={item.href}>{item.cta}<ArrowRight size={14}/></Link></article>)}
           </div>
-          <p className="pricing-note">Starting prices are directional, not fixed packages. Page count, content needs, locations, integrations, technical requirements, and ongoing scope affect the final proposal.</p>
+          <p className="pricing-note">Website packages begin at $1,500, managed SEO at $400 per month, and focused automation at $650. Page count, content, locations, integrations, and technical requirements affect the final proposal.</p>
+          <div className="section-end-link"><ArrowLink href="/pricing">Explore packages and pricing</ArrowLink></div>
         </div>
       </section>
 
