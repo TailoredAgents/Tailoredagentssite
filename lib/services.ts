@@ -4,6 +4,7 @@ export type PricingPlan = {
   price: string;
   pricePrefix?: string;
   billing?: string;
+  setup?: string;
   description: string;
   features: readonly string[];
   note: string;
@@ -78,6 +79,7 @@ export const seoPlans = [
     kicker: "Maintain the foundations",
     price: "$400",
     billing: "per month",
+    setup: "$350 one-time SEO Foundation Setup",
     description: "A practical baseline for a local business that wants consistent oversight and a measured improvement cadence.",
     features: [
       "Technical and on-page monitoring",
@@ -86,7 +88,7 @@ export const seoPlans = [
       "One prioritized improvement each month",
       "Plain-language monthly summary",
     ],
-    note: "Begins with a three-month initial engagement, then continues month to month.",
+    note: "Month to month after setup. Cancel before the next billing cycle with no long-term SEO commitment.",
     href: "/contact",
     cta: "Discuss SEO Essentials",
     featured: true,
@@ -96,6 +98,7 @@ export const seoPlans = [
     kicker: "A stronger monthly cadence",
     price: "$650",
     billing: "per month",
+    setup: "$500 one-time SEO Foundation Setup",
     description: "More active optimization for businesses competing across important services, locations, or local search opportunities.",
     features: [
       "Everything in SEO Essentials",
@@ -105,7 +108,7 @@ export const seoPlans = [
       "Conversion measurement",
       "Monthly planning and reporting",
     ],
-    note: "Begins with a three-month initial engagement. Multi-location and content-heavy campaigns are scoped separately.",
+    note: "Month to month after setup. Multi-location and content-heavy campaigns are scoped separately.",
     href: "/contact",
     cta: "Discuss SEO Growth",
   },

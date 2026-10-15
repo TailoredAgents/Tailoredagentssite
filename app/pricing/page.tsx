@@ -26,7 +26,7 @@ export default function PricingPage() {
             <Eyebrow>Clear pricing</Eyebrow>
             <h1 className="page-title">Serious work. Clear ways to <span className="serif-italic">start.</span></h1>
             <p className="lede">These packages establish a useful starting point without forcing every business into the same solution. We confirm the deliverables, timeline, and complete price in writing before paid work begins.</p>
-            <div className="hero-actions"><Link className="button button-dark" href="/free-review">Get a Free Website Review</Link><Link className="button button-light" href="#websites">Explore packages<ArrowDown size={15} aria-hidden="true" /></Link></div>
+            <div className="hero-actions"><Link className="button button-dark" href="/packages">Build a Flexible Package</Link><Link className="button button-light" href="#websites">Compare individual services<ArrowDown size={15} aria-hidden="true" /></Link></div>
           </div>
           <aside className="pricing-hero-panel" aria-label="Service starting prices">
             <span className="micro-label blue">Straightforward starting points</span>
@@ -45,7 +45,7 @@ export default function PricingPage() {
 
       <section className="section-pad package-section package-section-alt" id="seo">
         <div className="container-shell">
-          <div className="section-heading-wide"><div><Eyebrow>Local SEO & growth analytics</Eyebrow><h2 className="h2">A monthly cadence matched to the <span className="serif-italic">opportunity.</span></h2></div><p className="lede">Both plans begin with a three-month initial engagement so there is enough time to establish measurements, complete useful work, and evaluate the direction responsibly.</p></div>
+          <div className="section-heading-wide"><div><Eyebrow>Local SEO & growth analytics</Eyebrow><h2 className="h2">A monthly cadence matched to the <span className="serif-italic">opportunity.</span></h2></div><p className="lede">Both plans begin with a one-time foundation setup, then continue month to month without a long-term SEO commitment. Setup is included when SEO is paired with a new website package.</p></div>
           <PricingCards plans={seoPlans} columns={2} />
         </div>
       </section>
@@ -74,7 +74,7 @@ export default function PricingPage() {
           <div className="pricing-faq-list">
             <details><summary>Is the $1,500 Launch Website a complete website?</summary><p>Yes, within its defined scope: up to five essential pages, responsive design and development, a standard inquiry form, foundational SEO and analytics, one consolidated revision round, and deployment assistance. The client supplies the core copy, logo, and photography.</p></details>
             <details><summary>What usually increases a website price?</summary><p>Additional pages, copywriting, custom photography or media work, ecommerce, specialized forms, customer portals, third-party integrations, and custom application behavior add scope.</p></details>
-            <details><summary>Why does managed SEO begin with three months?</summary><p>Measurement setup, technical work, local-search improvements, and content changes need enough time to be implemented and evaluated. Search engines control rankings, so positions, traffic, leads, and revenue are not guaranteed.</p></details>
+            <details><summary>What does the SEO Foundation Setup cover?</summary><p>It establishes the technical audit, measurement baseline, search and location priorities, reporting environment, and initial action plan. Managed SEO then continues month to month and can be canceled before the next billing cycle.</p></details>
             <details><summary>When does automation need a tailored proposal?</summary><p>A proposal is needed when a workflow spans several systems, depends on custom APIs or data migration, requires a new interface, or needs broader operational testing and support.</p></details>
           </div>
         </div>

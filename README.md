@@ -25,10 +25,13 @@ The site publishes transparent starting points rather than gating prices behind 
 - Advanced Website: from $4,000
 - SEO Essentials: $400/month
 - SEO Growth: $650/month
+- SEO Foundation Setup: $350 for Essentials or $500 for Growth; included with a new website + SEO package
 - Focused Workflow automation: from $650
 - Connected systems and custom software: tailored proposal
 
 `lib/services.ts` is the source of truth for public pricing and package inclusions. Any price change should update the structured site copy and be reviewed against the actual delivery capacity before release.
+
+`lib/packages.ts` defines the website + SEO package calculator. Flexible packages currently estimate a 5.6% premium only on the deferred website balance across six months; SEO remains month to month and is calculated separately. Have the written payment terms reviewed for each applicable jurisdiction before accepting a flex-plan agreement.
 
 ## Local development
 

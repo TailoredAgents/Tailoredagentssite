@@ -17,6 +17,7 @@ export function PricingCards({ plans, columns = 3 }: { plans: readonly PricingPl
             <strong>{plan.price}</strong>
             {plan.billing && <span>{plan.billing}</span>}
           </div>
+          {plan.setup && <p className="package-setup">{plan.setup}</p>}
           <p className="package-description">{plan.description}</p>
           <ul>
             {plan.features.map((feature) => <li key={feature}><Check size={14} aria-hidden="true" />{feature}</li>)}
