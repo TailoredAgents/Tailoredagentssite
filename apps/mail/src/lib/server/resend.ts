@@ -164,9 +164,12 @@ export function createResendClient(apiKey: string) {
       const target = new URL(url);
       if (target.protocol !== 'https:' || target.username || target.password || /^(localhost|127\.|10\.|192\.168\.|169\.254\.|\[)/i.test(target.hostname)) throw new Error('Invalid provider download address');
       let response: Response;
-      try { response = await fetch(target, { redirect: 'error', signal: AbortSignal.timeout(30_000) }); }
+      // Workers rejects redirect:'error' before sending the request. Manual
+      // mode returns 3xx responses, which the status check below rejects.
+      try { response = await fetch(target, { redirect: 'manual', signal: AbortSignal.timeout(30_000) }); }
       catch { console.warn(JSON.stringify({event:'provider_download_unavailable',kind:'connection',host:target.hostname})); throw new Error('Provider file download is temporarily unavailable'); }
       if (!response.ok || !response.body) {
+        await response.body?.cancel().catch(() => {});
         console.warn(JSON.stringify({event:'provider_download_unavailable',kind:'response',status:response.status,host:target.hostname}));
         throw new Error('Provider file download is temporarily unavailable');
       }

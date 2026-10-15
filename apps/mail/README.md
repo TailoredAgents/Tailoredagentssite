@@ -4,11 +4,11 @@ A separate, private team inbox for `@tailoredagents.com` at https://mail.tailore
 
 **Status: deployed at the final address for controlled team testing on October 15, 2026.** The production application uses its own Cloudflare database, private file bucket and queues. Resend has verified all five production sending/receiving DNS records, and the signed incoming-mail webhook is connected. The existing website's DNS records are preserved. Staging remains at https://tailored-mail-staging.jeffrey-78e.workers.dev with separate `@mail-test.tailoredagents.com` accounts and storage.
 
-Internal sending, receiving, replies and forwarding have passed staging checks. Gmail and Hotmail text replies also passed, including Reply All and conversation matching. Incoming attachment and original-MIME downloads remain unresolved: provider-issued download links failed secure connections in staging, and incoming image downloads also returned 503 in production. Mailbox placement also remains unverified. Do not copy local or staging accounts into production.
+Internal sending, receiving, replies and forwarding have passed staging checks. Gmail and Hotmail text replies also passed, including Reply All and conversation matching. **The incoming attachment failure was fixed on October 15:** previously stalled photos and files are saved, production image downloads match the original bytes, embedded images display, forwarding preserves files, and complete original MIME is retained in private R2. Inbox versus Spam/Junk placement still needs confirmation. Do not copy local or staging accounts into production.
 
 Based on Quickinbox commit `2af17e2fcd824aff0f5e8c91194f226dc2090d87`. Its MIT license is preserved in [LICENSE.md](LICENSE.md). [UPSTREAM.md](UPSTREAM.md) records the source. `UPSTREAM_README.md` is historical and does not describe this deployment.
 
-**Trial scope.** The owner requested deployment to the final address and deferred further attachment testing until then. Moving to the final address does not establish that attachments are fixed. Keep that issue open during the trial; the launch checklist below remains the standard for relying on the application for normal team email.
+**Trial scope.** The owner requested deployment to the final address before completing attachment investigation. The attachment issue has since been fixed and verified on the live application. The remaining launch checklist items still apply; passing the attachment checks alone does not establish every mail-client behavior or mailbox placement.
 
 ## For the team
 
@@ -171,16 +171,28 @@ For a longer retention period or recovery from a lost bucket/account, keep encry
 - The owner account was created in the fresh production database. Real sign-in, owner-only account management, setup closure, rejection of unsigned incoming notifications and rejection of cross-site changes passed. The setup secret was removed from Cloudflare and local setup storage afterward.
 - Real browser checks at `mail.tailoredagents.com` passed sign-in, compose, automatic draft saving, closing/reopening a draft with its original text and attachment, phone width and the Mail status page. No browser script errors occurred. The disposable browser-test draft was deleted afterward.
 - Two test emails with a small PNG were sent to the owner's supplied Gmail and Hotmail addresses, with the TA owner address in CC. Resend delivery events marked both sends delivered. Repeating each send request reused its original identifier. Each copied message arrived once in the TA inbox and joined the original conversation. This verifies the TA recipient copies; external replies to these production tests and Inbox versus Spam/Junk placement still need confirmation.
-- Both Sent image attachments downloaded successfully and matched the original 15,178-byte file by SHA-256. Both corresponding incoming image downloads returned 503, with their files pending. Deployment to the final domain has **not** fixed incoming attachments.
+- Before the attachment fix below, both Sent image attachments downloaded successfully and matched the original 15,178-byte file by SHA-256, while both incoming copies returned 503. Those incoming copies have since been recovered and verified.
 - Private production test details are recorded in `~/.config/tailored-mail/production-validation.json` on the setup machine. No credentials, session cookies, message bodies or private test screenshots are committed.
 
-### Current launch blocker
+### Resolved attachment issue — October 15, 2026
 
-On October 14, 2026, the freshly issued attachment and original-MIME download URLs from Resend used `cdn.resend.app`. Secure connections to that host failed from both the setup Mac (TLS errors) and the deployed Cloudflare Worker (`provider_download_unavailable`, connection failure). Both the attachment-list and individual-attachment APIs returned URLs on that host. No URL rewriting or insecure download fallback is used.
+The deployed Workers runtime rejected the attachment downloader's `redirect: 'error'` option before making the network request. The catch block reported that as a connection failure, which obscured the cause. Earlier direct downloads on the setup Mac had also produced TLS errors; fresh Mac downloads later succeeded. A separate Cloudflare preview reproduced the unsupported-option error and demonstrated that the same signed URL succeeded with `redirect: 'manual'`.
 
-The owner subsequently reported that the same photo is visible in Resend's dashboard. That confirms a different result for the dashboard; it does not verify the TA inbox's file import. The next diagnostic step is to compare the dashboard's working image link with the failing API-issued link before assigning the underlying cause. Browser inspection was blocked by macOS Automation permissions, and copying the image link was unsuccessful. The owner chose to defer further investigation until deployment at the final address.
+The downloader now uses manual redirect handling and rejects non-success responses, including redirects, without following them. Rejected response bodies are cancelled. This applies to both incoming attachments and complete original MIME. HTTPS checks remain enabled; URLs are not rewritten, and the Resend API key is never sent to the file host.
 
-Message bodies are saved in private R2, incoming file rows remain pending with a visible warning, and durable jobs remain available for retry. This is a live integration failure, not a passing attachment test. After provider downloads become reachable, use **Mail status** to retry any jobs needing attention and verify incoming file bytes, embedded images, raw-message retention, expired-link recovery, and attachment forwarding. Keep this issue open during the owner's requested trial at the final address; do not mark the application ready for normal team email while these checks fail. Gmail and Outlook text round trips have passed; external file round trips and mailbox placement still need verification.
+A regression test executes the actual Resend client in workerd with an isolated file service. It failed before the fix and now passes complete-byte downloads, refusal to follow redirects, and a retry with a fresh signed URL after an expired link. Miniflare is declared as a test dependency at the same version already used by Wrangler. All **367 mail tests** pass, Svelte reports zero errors/warnings, and the app builds successfully.
+
+The fix was deployed to staging before production. Staging recovered the original 2,299,821-byte photo through the authenticated TA attachment endpoint, matched it byte-for-byte against Resend, and continued to return 404 to the other user. Stalled production incoming jobs were then retried through the owner recovery control.
+
+Production verification passed:
+
+- All three previously pending incoming files downloaded and matched fresh provider copies, including the owner's 4,826,516-byte photo.
+- A new message delivered a regular PNG, an embedded PNG and a text file. Each download matched its source, and anonymous requests were rejected.
+- The browser displayed the embedded image from private app storage with external images still blocked, opened a regular image attachment, and displayed the owner's 4284 × 5712 photo within the inbox and in its image viewer. There were no browser script errors.
+- Forwarding the test message to the owner's TA address delivered one incoming copy with all three original files intact.
+- The full original email was downloaded from private R2; its 6,613,257-byte MIME copy contained the same photo bytes as the inbox download.
+
+Evidence is kept privately in `~/.config/tailored-mail/production-attachment-fix-verification.json`, `staging-attachment-recovery.json`, `attachment-forward-recovery.json` and `production-raw-mail-verification.json`. Historical failed tests above describe the state before this fix. New provider interruptions can still put jobs into retry or attention states; use Mail status to inspect and retry those jobs after restoring service.
 
 ## Launch checklist — do not skip the live tests
 

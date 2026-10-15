@@ -37,7 +37,8 @@
     "wrangler": "^4.151.0",
     "tsx": "^4.20.0",
     "@playwright/test": "^1.58.0",
-    "@types/sanitize-html": "^2.16.0"
+    "@types/sanitize-html": "^2.16.0",
+    "miniflare": "5.20261012.0-beta"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",
