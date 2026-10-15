@@ -16,7 +16,7 @@
   <section class="ta-card"><h2>Create an account</h2><form class="ta-form-grid" onsubmit={add}>
     <label>Name<input bind:value={name} required maxlength="128" /></label>
     <label>Email name<input bind:value={localPart} placeholder="name" required /><small>@{data.domains[0]?.name ?? 'tailoredagents.com'}</small></label>
-    <label>Temporary password<input type="password" bind:value={password} required minlength="15" maxlength="128" autocomplete="new-password" /></label>
+    <label>Temporary password<input type="password" bind:value={password} required minlength="12" maxlength="128" autocomplete="new-password" /></label>
     <button class="ta-primary" disabled={busy || !data.domains.length}>Create account</button>
   </form><p style="font-size:12px">They must choose a new password when they first sign in.</p></section>
   <section class="ta-card"><h2>Team members</h2>{#each data.users as user(user.id)}<div class="ta-team-row">
@@ -25,6 +25,6 @@
     {#if !user.is_admin}<button disabled={busy} onclick={()=>change(`/api/admin/users/${user.id}`,{disabled:!user.disabled_at})}>{user.disabled_at?'Enable access':'Disable access'}</button>{/if}</div>
   </div>{/each}</section>
   <section class="ta-card"><h2>Add an email address</h2><p>Extra addresses deliver to the selected person’s private inbox.</p><form class="ta-form-grid" onsubmit={async(e)=>{e.preventDefault();if(await change('/api/addresses',{userId:aliasUser,localPart:aliasName,domainId:data.domains[0]?.id})){aliasName='';notice='Address added.';}}}><label>Team member<select required bind:value={aliasUser}><option value="">Choose a person</option>{#each data.users.filter(u=>!u.disabled_at) as user}<option value={user.id}>{user.name}</option>{/each}</select></label><label>Email name<input required bind:value={aliasName}/><small>@{data.domains[0]?.name}</small></label><button class="ta-primary" disabled={busy}>Add address</button></form>{#each data.addresses as address}<p>{address.address} → {data.users.find(u=>u.id===address.user_id)?.name}</p>{/each}</section>
-  {#if resetId}<section class="ta-card"><h2>Reset password</h2><form onsubmit={reset}><label>New temporary password<input type="password" bind:value={resetPassword} required minlength="15" maxlength="128" autocomplete="new-password" /></label><button class="ta-primary" style="margin-top:14px" disabled={busy}>Reset and sign out existing sessions</button><button type="button" class="ta-secondary" onclick={()=>resetId=''}>Cancel</button></form></section>{/if}
+  {#if resetId}<section class="ta-card"><h2>Reset password</h2><form onsubmit={reset}><label>New temporary password<input type="password" bind:value={resetPassword} required minlength="12" maxlength="128" autocomplete="new-password" /></label><button class="ta-primary" style="margin-top:14px" disabled={busy}>Reset and sign out existing sessions</button><button type="button" class="ta-secondary" onclick={()=>resetId=''}>Cancel</button></form></section>{/if}
   <p><a href="/admin/status">Mail status and recovery →</a> &nbsp; <a href="/admin/unassigned">Unassigned mail →</a></p>
 </div>

@@ -11,7 +11,7 @@ if(!email||!/^[^\s@']+@[^\s@']+$/.test(email)||(!local&&!['staging','production'
 }
 async function hiddenPassword():Promise<string>{
  if(!process.stdin.isTTY)throw new Error('Use a terminal, or --password-file with a private local file.');
- process.stdout.write('New temporary password (15–128 characters; hidden): ');
+ process.stdout.write('New temporary password (12–128 characters; hidden): ');
  return new Promise((resolve,reject)=>{
   let value='';process.stdin.setRawMode(true);process.stdin.resume();process.stdin.setEncoding('utf8');
   const finish=()=>{process.stdin.setRawMode(false);process.stdin.pause();process.stdin.off('data',read);process.stdout.write('\n');};

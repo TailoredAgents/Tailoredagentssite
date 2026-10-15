@@ -26,8 +26,8 @@
     <label>Owner setup key<input type="password" autocomplete="off" bind:value={secret} required /></label>
     <label>Your name<input autocomplete="name" bind:value={name} required maxlength="128" /></label>
     <label>Your email address<div class="ta-address"><input bind:value={localPart} required  aria-label="Email name" /><span>@{data.domain}</span></div></label>
-    <label>Password<input type="password" autocomplete="new-password" bind:value={password} minlength="15" maxlength="128" required /></label>
-    <small>A memorable phrase of at least 15 characters works well.</small>
+    <label>Password<input type="password" autocomplete="new-password" bind:value={password} minlength="12" maxlength="128" required /></label>
+    <small>A memorable phrase of at least 12 characters works well.</small>
     {#if error}<p role="alert" class="ta-error">{error}</p>{/if}
     <button class="ta-primary" disabled={!mounted || busy}>{busy ? 'Creating your inbox…' : 'Create my inbox'}</button>
   </form>

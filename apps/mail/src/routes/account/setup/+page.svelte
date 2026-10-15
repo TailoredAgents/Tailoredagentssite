@@ -103,7 +103,7 @@
 					type="password"
 					bind:value={password}
 					required
-					minlength="15"
+					minlength="12"
 					autocomplete="new-password"
 					class="auth-input"
 				/>
@@ -118,7 +118,7 @@
 					type="password"
 					bind:value={confirmPassword}
 					required
-					minlength="15"
+					minlength="12"
 					autocomplete="new-password"
 					class="auth-input"
 				/>

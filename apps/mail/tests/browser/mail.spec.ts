@@ -69,14 +69,23 @@ test('keyboard focus stays in Compose and dark mode fits the inbox',async({page}
  for(let i=0;i<30;i++){await page.keyboard.press('Tab');expect(await page.evaluate(()=>!!document.activeElement?.closest('[role="dialog"]'))).toBe(true);}
  await page.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).first().click();await expect(page.getByRole('dialog')).toHaveCount(0);
 });
-test('owner resets end existing sessions, require a new password, and disabling blocks access',async({page,browser})=>{
- await signIn(page);const headers={Origin:'http://localhost:8787'},part='browser-'+Date.now(),password='A temporary browser password';
+test('12-character passwords work for creation, setup, changes and resets; shorter passwords are rejected',async({page,browser})=>{
+ await signIn(page);const headers={Origin:'http://localhost:8787'},part='browser-'+Date.now(),password='Temp-pass-12',chosen='Chosen-pw-12',changed='Change-pw-12';
+ await page.goto('/admin');await expect(page.getByLabel('Temporary password',{exact:true})).toHaveAttribute('minlength','12');
+ expect((await page.request.post('/api/admin/users',{headers,data:{name:'Browser Test',localPart:part,domainId:'local-domain',password:password.slice(0,-1)}})).status()).toBe(400);
  const response=await page.request.post('/api/admin/users',{headers,data:{name:'Browser Test',localPart:part,domainId:'local-domain',password}});expect(response.status()).toBe(201);const {user}=await response.json();
  const context=await browser.newContext();const other=await context.newPage();await other.goto('/login');
  const login=()=>other.request.post('/api/auth/login',{headers,data:{email:part+'@tailoredagents.com',password}});
  expect((await login()).status()).toBe(200);expect((await other.request.get('/api/mail')).status()).toBe(403);await other.goto('/inbox');await expect(other).toHaveURL(/\/account\/setup/);
- expect((await other.request.post('/api/auth/complete-setup',{headers,data:{name:'Browser Test',password:'My chosen browser password',confirmPassword:'My chosen browser password'}})).status()).toBe(200);
- expect((await other.request.post('/api/auth/login',{headers,data:{email:part+'@tailoredagents.com',password:'My chosen browser password'}})).status()).toBe(200);expect((await other.request.get('/api/mail')).status()).toBe(200);
+ await expect(other.getByLabel('New password',{exact:true})).toHaveAttribute('minlength','12');
+ expect((await other.request.post('/api/auth/complete-setup',{headers,data:{name:'Browser Test',password:chosen.slice(0,-1),confirmPassword:chosen.slice(0,-1)}})).status()).toBe(400);
+ expect((await other.request.post('/api/auth/complete-setup',{headers,data:{name:'Browser Test',password:chosen,confirmPassword:chosen}})).status()).toBe(200);
+ expect((await other.request.post('/api/auth/login',{headers,data:{email:part+'@tailoredagents.com',password:chosen}})).status()).toBe(200);expect((await other.request.get('/api/mail')).status()).toBe(200);
+ await other.goto('/settings');await expect(other.getByLabel('New password',{exact:true})).toHaveAttribute('minlength','12');
+ expect((await other.request.post('/api/settings/password',{headers,data:{currentPassword:chosen,newPassword:changed.slice(0,-1)}})).status()).toBe(400);
+ expect((await other.request.post('/api/settings/password',{headers,data:{currentPassword:chosen,newPassword:changed}})).status()).toBe(200);
+ expect((await other.request.post('/api/auth/login',{headers,data:{email:part+'@tailoredagents.com',password:changed}})).status()).toBe(200);
+ expect((await page.request.patch('/api/admin/users/'+user.id,{headers,data:{password:password.slice(0,-1)}})).status()).toBe(400);
  expect((await page.request.patch('/api/admin/users/'+user.id,{headers,data:{password}})).status()).toBe(200);expect((await other.request.get('/api/mail')).status()).toBe(401);
  expect((await login()).status()).toBe(200);expect((await other.request.get('/api/mail')).status()).toBe(403);
  expect((await page.request.patch('/api/admin/users/'+user.id,{headers,data:{disabled:true}})).status()).toBe(200);expect((await other.request.get('/api/mail')).status()).toBe(401);expect((await login()).status()).toBe(401);await context.close();

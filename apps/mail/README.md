@@ -25,7 +25,7 @@ Based on Quickinbox commit `2af17e2fcd824aff0f5e8c91194f226dc2090d87`. Its MIT l
 
 The production owner is **Jeffrey, `jeffrey@tailoredagents.com`**. The account was created through protected production setup with the owner's privately chosen password. Production sign-in is verified, setup is closed, and the one-time `SETUP_SECRET` has been removed.
 
-Open your account menu → **Manage team** to create accounts, add addresses, disable access, or reset passwords. Give temporary passwords to teammates privately. Passwords must be 15–128 characters; a memorable phrase works well.
+Open your account menu → **Manage team** to create accounts, add addresses, disable access, or reset passwords. Give temporary passwords to teammates privately. Passwords must be 12–128 characters; a memorable phrase works well.
 
 **Unassigned mail** holds mail to unknown or disabled addresses. Review it and assign it to an active teammate. This folder is accessible only to the owner. Incoming To/CC/BCC recipients each receive their own copy; one person’s read/archive/delete choices do not change another person’s copy. BCC is not exposed in recipient copies.
 

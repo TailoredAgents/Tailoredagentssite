@@ -7,8 +7,8 @@ function derive(password: string, salt: Buffer): Promise<Buffer> {
   });
 }
 export function validatePassword(password: unknown): asserts password is string {
-  if (typeof password !== 'string' || password.length < 15 || password.length > 128) {
-    throw new Error('Use a password or phrase between 15 and 128 characters.');
+  if (typeof password !== 'string' || password.length < 12 || password.length > 128) {
+    throw new Error('Use a password or phrase between 12 and 128 characters.');
   }
 }
 export async function hashPassword(password: string): Promise<string> {

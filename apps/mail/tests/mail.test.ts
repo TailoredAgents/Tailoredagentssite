@@ -9,7 +9,7 @@ import {storeDraft,readDraftContent} from '../src/lib/server/drafts';
 import {sendAndStore,assertOutboundAttachments} from '../src/lib/server/outbox';
 import {mayRetrySend,recoverOutgoing} from '../src/lib/server/outgoing-recovery';
 import {ProviderError,type EmailProvider} from '../src/lib/server/email-provider';
-import {hashPassword,verifyPassword} from '../src/lib/server/password';
+import {hashPassword,verifyPassword,validatePassword} from '../src/lib/server/password';
 import {setUserPassword,login,getAuthenticatedSession} from '../src/lib/server/auth';
 import {queueEvent,processJob,maintainMail} from '../src/lib/server/mail-jobs';
 import {purgeExpiredMail} from '../src/lib/server/retention';
@@ -75,6 +75,14 @@ test('scrypt passwords, reset revocation and disabled accounts',async()=>{
  const f=fixture(),password='A long temporary password';const hash=await hashPassword(password);assert.match(hash,/^scrypt:32768:8:3:/);assert.ok(await verifyPassword(password,hash));assert.equal(await verifyPassword('wrong',hash),false);
  await f.db.prepare('UPDATE users SET password_hash=? WHERE id=?').bind(hash,'alice').run();const session=await login(f.db,f.user.email.replace('@tailoredagents.com','@example.com'),password);assert.ok(session);await setUserPassword(f.db,'alice','A different temporary password');assert.equal(await getAuthenticatedSession(f.db,session.token),null);
  await f.db.prepare("UPDATE users SET disabled_at=datetime('now') WHERE id='alice'").run();assert.equal(await login(f.db,'alice@example.com','A different temporary password'),null);
+});
+test('passwords accept 12 through 128 characters and reject values outside those limits',async()=>{
+ for(const value of [undefined,null,123,'','a'.repeat(11),'a'.repeat(129)])assert.throws(()=>validatePassword(value),/between 12 and 128/);
+ for(const length of [12,128]){
+  const password='a'.repeat(length);const hash=await hashPassword(password);
+  assert.ok(await verifyPassword(password,hash));
+ }
+ await assert.rejects(hashPassword('a'.repeat(11)),/between 12 and 128/);
 });
 test('duplicate incoming notifications create one durable job and private copies',async t=>{
  const f=fixture();receiveMock(t);await queueEvent(f.env,'event1',{type:'email.received',data:{email_id:'provider-1'}});await queueEvent(f.env,'event2',{type:'email.received',data:{email_id:'provider-1'}});

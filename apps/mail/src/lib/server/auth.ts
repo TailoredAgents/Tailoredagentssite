@@ -435,12 +435,7 @@ export async function completeFirstLogin(
 	if (name.length > 128) {
 		throw new Error('Name must be 128 characters or fewer');
 	}
-	if (input.password.length < 15 || input.password.length > 128) {
-		if (input.password.length > 128) {
-			throw new Error('Password must be 1024 characters or fewer');
-		}
-		throw new Error('Password must be at least 8 characters');
-	}
+	validatePassword(input.password);
 
 	const current = await db
 		.prepare(

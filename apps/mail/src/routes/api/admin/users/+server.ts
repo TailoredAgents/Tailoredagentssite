@@ -38,8 +38,8 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		return json({ error: 'Name, address, and domain are required' }, { status: 400 });
 	}
 
-	if (!body.password || body.password.length < 15) {
-		return json({ error: 'Password must be at least 15 characters' }, { status: 400 });
+	if (!body.password || body.password.length < 12) {
+		return json({ error: 'Password must be at least 12 characters' }, { status: 400 });
 	}
 
 	const domain = await getDomain(db, body.domainId);

@@ -52,7 +52,7 @@ export const POST: RequestHandler = async ({ request, locals, cookies, platform 
 	}
 	if (
 		typeof body.password !== 'string' ||
-		body.password.length < 15 ||
+		body.password.length < 12 ||
 		body.password.length > 128
 	) {
 		if (typeof body.password === 'string' && body.password.length > 128) {
