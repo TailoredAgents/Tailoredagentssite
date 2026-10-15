@@ -34,6 +34,11 @@ export default function PackagesPage() {
         <div className="container-shell">
           <div className="section-heading-wide"><div><Eyebrow>Interactive package builder</Eyebrow><h2 className="h2">Compare both ways <span className="serif-italic">to pay.</span></h2></div><p className="lede">See the upfront payment, six-month website amount, complete website total, included setup value, and ongoing SEO in one clear view.</p></div>
           <PackageCalculator />
+          <div className="package-agent-bridge">
+            <span><Bot size={20} aria-hidden="true" /></span>
+            <div><small>Optional next layer</small><h3>Start with growth. Add a tailored agent when the workflow is ready.</h3><p>Website and SEO clients can later add a managed agent for lead follow-up, call intelligence, scheduling, customer communication, or a defined internal process.</p></div>
+            <Link href="/automation">Explore AI & Automation<ArrowRight size={14} aria-hidden="true" /></Link>
+          </div>
         </div>
       </section>
 
@@ -43,7 +48,7 @@ export default function PackagesPage() {
           <div className="package-paths-grid">
             <article><Layers3 size={20} /><span>01</span><h3>Website only</h3><p>Focused business websites begin at $1,500, with larger growth and advanced scopes available.</p><Link href="/pricing#websites">View website pricing<ArrowRight size={14} /></Link></article>
             <article><ChartNoAxesCombined size={20} /><span>02</span><h3>SEO only</h3><p>Month-to-month managed SEO begins at $400 per month plus a one-time foundation setup.</p><Link href="/pricing#seo">View SEO pricing<ArrowRight size={14} /></Link></article>
-            <article><Bot size={20} /><span>03</span><h3>Automation & software</h3><p>Focused automations begin at $650. Connected systems and custom software receive a tailored scope.</p><Link href="/pricing#automation">View automation pricing<ArrowRight size={14} /></Link></article>
+            <article><Bot size={20} /><span>03</span><h3>AI agents & automation</h3><p>Focused automations begin at $650. Managed tailored agents begin at $750 per month plus activation and usage.</p><Link href="/pricing#automation">View AI & automation pricing<ArrowRight size={14} /></Link></article>
           </div>
         </div>
       </section>

@@ -6,8 +6,8 @@ import { ArrowLink, Eyebrow, FinalCta } from "@/components/ui";
 import { seoPlans } from "@/lib/services";
 
 export const metadata: Metadata = {
-  title: "Local SEO & Growth Analytics",
-  description: "Managed local SEO, website analytics, technical improvements, conversion measurement, and transparent reporting for growing service businesses.",
+  title: "Local SEO, Analytics & Growth Hub",
+  description: "Managed local SEO, website analytics, technical improvements, conversion measurement, and a clear client reporting direction for growing service businesses.",
   alternates: { canonical: "/seo" },
 };
 
@@ -25,7 +25,7 @@ export default function SeoPage() {
     <>
       <section className="service-hero seo-service-hero"><div className="container-shell service-hero-grid"><div><Eyebrow>Managed Local SEO & Analytics</Eyebrow><h1 className="page-title">Make visibility easier to understand—and improvement easier to <span className="serif-italic">manage.</span></h1><p className="lede">We help service businesses strengthen search foundations, understand website performance, and work through prioritized improvements with transparent reporting.</p><div className="hero-actions"><ArrowLink href="/free-review">Get a Free Website Review</ArrowLink><ArrowLink href="/contact">Discuss Ongoing SEO</ArrowLink></div><p className="service-hero-meta">No ranking guarantees · Human-reviewed analysis · Clear reporting</p></div><SeoDashboard compact /></div></section>
 
-      <section className="section-pad seo-dashboard-section"><div className="container-shell"><div className="section-heading-wide"><div><Eyebrow>Example reporting experience</Eyebrow><h2 className="h2">Signals become priorities. Priorities become <span className="serif-italic">visible work.</span></h2></div><p className="lede">Our reporting is designed to explain what is being monitored, what we changed, and what deserves attention next. The interface below uses synthetic data.</p></div><SeoDashboard /></div></section>
+      <section className="section-pad seo-dashboard-section"><div className="container-shell"><div className="section-heading-wide"><div><Eyebrow>Tailored Growth Hub concept</Eyebrow><h2 className="h2">Signals become priorities. Priorities become <span className="serif-italic">visible work.</span></h2></div><p className="lede">The Growth Hub direction brings monitored signals, completed work, recommended priorities, and future automation activity into one client workspace. The interface below is illustrative and uses synthetic data.</p></div><SeoDashboard /></div></section>
 
       <section className="section-pad seo-service-section"><div className="container-shell"><div className="section-heading-wide"><div><Eyebrow>Managed service</Eyebrow><h2 className="h2">The foundations, the evidence, and the <span className="serif-italic">follow-through.</span></h2></div><p className="lede">Search visibility depends on many connected factors. We focus on practical work we can explain and evaluate—not opaque activity or guaranteed outcomes.</p></div><div className="seo-service-grid">{seoServices.map(([Icon,title,text], index)=><article key={title}><span><Icon size={18}/></span><em>0{index+1}</em><h3>{title}</h3><p>{text}</p></article>)}</div></div></section>
 

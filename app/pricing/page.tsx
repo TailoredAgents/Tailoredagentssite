@@ -6,15 +6,15 @@ import { Eyebrow, FinalCta } from "@/components/ui";
 import { automationPlans, seoPlans, websitePlans } from "@/lib/services";
 
 export const metadata: Metadata = {
-  title: "Website, SEO & Automation Pricing",
-  description: "Clear starting prices for professional websites, managed local SEO, business automation, and custom software from Tailored Agents.",
+  title: "Website, SEO & AI Automation Pricing",
+  description: "Clear starting prices for professional websites, managed local SEO, focused automation, and managed AI agents from Tailored Agents.",
   alternates: { canonical: "/pricing" },
 };
 
 const pricingGroups = [
   ["Websites", "From $1,500", "#websites"],
   ["SEO & Analytics", "From $400/month", "#seo"],
-  ["Automation", "From $650", "#automation"],
+  ["AI & Automation", "From $650", "#automation"],
 ] as const;
 
 export default function PricingPage() {
@@ -52,8 +52,8 @@ export default function PricingPage() {
 
       <section className="section-pad package-section" id="automation">
         <div className="container-shell">
-          <div className="section-heading-wide"><div><Eyebrow>Automation & custom software</Eyebrow><h2 className="h2">Start focused. Expand when the value is <span className="serif-italic">clear.</span></h2></div><p className="lede">A single workflow can be priced predictably. Connected systems and custom applications require a tailored proposal because the operational and technical boundaries vary.</p></div>
-          <PricingCards plans={automationPlans} columns={2} />
+          <div className="section-heading-wide"><div><Eyebrow>AI agents, automation & custom software</Eyebrow><h2 className="h2">Start focused. Expand when the value is <span className="serif-italic">clear.</span></h2></div><p className="lede">Choose a one-time automation for a fixed workflow or a managed monthly agent when the responsibility requires monitoring, refinement, and variable usage.</p></div>
+          <PricingCards plans={automationPlans} />
         </div>
       </section>
 
@@ -75,6 +75,7 @@ export default function PricingPage() {
             <details><summary>Is the $1,500 Launch Website a complete website?</summary><p>Yes, within its defined scope: up to five essential pages, responsive design and development, a standard inquiry form, foundational SEO and analytics, one consolidated revision round, and deployment assistance. The client supplies the core copy, logo, and photography.</p></details>
             <details><summary>What usually increases a website price?</summary><p>Additional pages, copywriting, custom photography or media work, ecommerce, specialized forms, customer portals, third-party integrations, and custom application behavior add scope.</p></details>
             <details><summary>What does the SEO Foundation Setup cover?</summary><p>It establishes the technical audit, measurement baseline, search and location priorities, reporting environment, and initial action plan. Managed SEO then continues month to month and can be canceled before the next billing cycle.</p></details>
+            <details><summary>How are managed AI agents billed?</summary><p>The monthly management fee covers the defined agent, monitoring, refinement, support, and an agreed usage allowance. Activation, third-party software, voice or messaging costs, and usage above the allowance are identified separately in the proposal.</p></details>
             <details><summary>When does automation need a tailored proposal?</summary><p>A proposal is needed when a workflow spans several systems, depends on custom APIs or data migration, requires a new interface, or needs broader operational testing and support.</p></details>
           </div>
         </div>

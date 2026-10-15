@@ -42,7 +42,7 @@ const organizationJsonLd = {
     itemListElement: [
       { "@type": "Offer", itemOffered: { "@type": "Service", name: "Website Design & Development" } },
       { "@type": "Offer", itemOffered: { "@type": "Service", name: "Local SEO & Growth Analytics" } },
-      { "@type": "Offer", itemOffered: { "@type": "Service", name: "Business Automation & Custom Software" } },
+      { "@type": "Offer", itemOffered: { "@type": "Service", name: "Tailored AI Agents & Business Automation" } },
     ],
   },
 };

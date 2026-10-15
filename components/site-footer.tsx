@@ -8,7 +8,7 @@ export function SiteFooter() {
         <div className="footer-top">
           <div>
             <Link href="/" className="brand"><span className="brand-mark" aria-hidden="true" />TAILORED AGENTS</Link>
-            <p className="footer-statement">Premium websites, measurable digital growth, and intelligent business automation.</p>
+            <p className="footer-statement">Premium websites, measurable digital growth, and tailored AI automation.</p>
           </div>
           <div className="footer-links">
             <div>
@@ -29,7 +29,7 @@ export function SiteFooter() {
         </div>
         <div className="footer-bottom">
           <span>© {new Date().getFullYear()} Tailored Agents. All rights reserved.</span>
-          <span>Websites · Growth · Automation · Software engineering</span>
+          <span>Websites · Growth · AI agents · Software engineering</span>
         </div>
       </div>
     </footer>

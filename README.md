@@ -27,9 +27,12 @@ The site publishes transparent starting points rather than gating prices behind 
 - SEO Growth: $650/month
 - SEO Foundation Setup: $350 for Essentials or $500 for Growth; included with a new website + SEO package
 - Focused Workflow automation: from $650
-- Connected systems and custom software: tailored proposal
+- Managed Tailored Agent: from $500 activation plus $750/month and usage
+- Connected agent systems and custom software: tailored proposal
 
 `lib/services.ts` is the source of truth for public pricing and package inclusions. Any price change should update the structured site copy and be reviewed against the actual delivery capacity before release.
+
+The Tailored Growth Hub currently appears as an explicitly illustrative product direction. Do not describe it as an active client portal or included production feature until the multi-tenant platform and client access are operational.
 
 `lib/packages.ts` defines the website + SEO package calculator. The six-month option adds a 20% payment-plan premium to the deferred website amount; SEO remains month to month and is calculated separately. The customer-facing calculator shows the resulting monthly payment and complete website payment-plan total without presenting the premium as a separate line item. Have the written payment terms reviewed for each applicable jurisdiction before accepting a payment-plan agreement.
 

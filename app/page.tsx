@@ -1,24 +1,24 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BarChart3, Check, MonitorSmartphone, Search, Workflow } from "lucide-react";
+import { ArrowRight, BarChart3, Bot, Check, MonitorSmartphone, Search, Workflow } from "lucide-react";
 import { GrowthHeroVisual, SeoDashboard, WebsiteConceptGallery } from "@/components/growth-visuals";
 import { ProductWindow } from "@/components/product-window";
 import { ArrowLink, Eyebrow, FinalCta } from "@/components/ui";
 import { coreServices, servicePricing } from "@/lib/services";
 
 export const metadata: Metadata = {
-  title: "Premium Websites, Local SEO & Business Automation",
-  description: "Tailored Agents builds high-performing websites, improves local search visibility, and develops intelligent automations for growing businesses.",
+  title: "Premium Websites, Local SEO & AI Automation",
+  description: "Tailored Agents builds high-performing websites, improves local search visibility, and develops managed AI agents and intelligent automations for growing businesses.",
   alternates: { canonical: "/" },
 };
 
 const serviceIcons = [MonitorSmartphone, Search, Workflow];
 
 const growthSteps = [
-  ["01", "Discover", "Start with the business, the audience, and the opportunities worth pursuing."],
-  ["02", "Build", "Create a credible, fast website with clear services and useful inquiry paths."],
-  ["03", "Improve", "Monitor search visibility, website behavior, and the work that deserves attention next."],
-  ["04", "Automate", "Connect follow-up, communication, and operations when the business is ready."],
+  ["01", "Website", "Start with a credible customer experience, clear services, and useful inquiry paths."],
+  ["02", "Growth Hub", "Bring website signals, search priorities, completed work, and next actions into view."],
+  ["03", "Managed Growth", "Improve visibility and conversion through a consistent, human-reviewed monthly cadence."],
+  ["04", "Tailored Agent", "Add one bounded agent responsibility when a repeated workflow is ready for it."],
 ] as const;
 
 export default function Home() {
@@ -61,17 +61,22 @@ export default function Home() {
 
       <section className="section-pad analytics-showcase-section">
         <div className="container-shell analytics-intro">
-          <div><Eyebrow>Managed SEO & analytics</Eyebrow><h2 className="h2">Visibility you can measure. Improvements you can <span className="serif-italic">understand.</span></h2></div>
-          <div><p className="lede">Our managed service combines monitoring, analysis, technical improvements, local visibility work, and clear reporting—without hiding the work behind vague promises.</p><ArrowLink href="/seo" light>Explore SEO & Analytics</ArrowLink></div>
+          <div><Eyebrow>Managed SEO & Growth Hub</Eyebrow><h2 className="h2">Your website is the front door. The work behind it should be <span className="serif-italic">visible.</span></h2></div>
+          <div><p className="lede">Our managed-service experience is designed to bring performance signals, search priorities, completed work, and recommended next actions into one clear view. The dashboard shown below is illustrative.</p><ArrowLink href="/seo" light>Explore SEO & the Growth Hub</ArrowLink></div>
         </div>
         <div className="container-shell analytics-dashboard-stage"><SeoDashboard /></div>
+        <div className="container-shell hub-layer-grid">
+          <article><BarChart3 size={18}/><span>01 / Monitor</span><h3>Understand what is happening.</h3><p>Website activity, conversion events, visibility signals, and performance trends become easier to review.</p></article>
+          <article><Search size={18}/><span>02 / Improve</span><h3>Turn signals into priorities.</h3><p>See what was reviewed, what changed, what deserves attention next, and why the work matters.</p></article>
+          <article><Bot size={18}/><span>03 / Automate</span><h3>Add agents when the workflow is ready.</h3><p>The same business context can support approvals, activity history, and tailored agents as the engagement expands.</p></article>
+        </div>
       </section>
 
       <section className="section-pad growth-journey-section">
         <div className="container-shell">
-          <div className="section-heading-wide"><div><Eyebrow>A practical growth path</Eyebrow><h2 className="h2">Start where you are. Build toward what&apos;s <span className="serif-italic">next.</span></h2></div><p className="lede">You do not need to buy a large platform upfront. Start with a website, ongoing visibility work, or one focused automation.</p></div>
+          <div className="section-heading-wide"><div><Eyebrow>A practical growth path</Eyebrow><h2 className="h2">Start with what brings people in. Build what helps the business <span className="serif-italic">run.</span></h2></div><p className="lede">Each layer can stand on its own. Begin with the website and visibility work that matter now, then add automation only when a defined workflow makes the next investment useful.</p></div>
           <div className="growth-journey">
-            {growthSteps.map(([number, title, text], index) => <article key={title}><span>{number}</span><div className="journey-icon">{index === 0 ? <Search size={18}/> : index === 1 ? <MonitorSmartphone size={18}/> : index === 2 ? <BarChart3 size={18}/> : <Workflow size={18}/>}</div><h3>{title}</h3><p>{text}</p>{index < growthSteps.length - 1 && <i aria-hidden="true">→</i>}</article>)}
+            {growthSteps.map(([number, title, text], index) => <article key={title}><span>{number}</span><div className="journey-icon">{index === 0 ? <MonitorSmartphone size={18}/> : index === 1 ? <BarChart3 size={18}/> : index === 2 ? <Search size={18}/> : <Workflow size={18}/>}</div><h3>{title}</h3><p>{text}</p>{index < growthSteps.length - 1 && <i aria-hidden="true">→</i>}</article>)}
           </div>
         </div>
       </section>
@@ -90,7 +95,7 @@ export default function Home() {
           <div className="pricing-grid">
             {Object.values(servicePricing).map((item, index) => <article className={index === 0 ? "featured-price" : ""} key={item.label}><span>0{index + 1}</span><h3>{item.label}</h3><small>{item.qualifier}</small><strong>{item.price}</strong><p>{item.note}</p><Link href={item.href}>{item.cta}<ArrowRight size={14}/></Link></article>)}
           </div>
-          <p className="pricing-note">Website packages begin at $1,500, managed SEO at $400 per month, and focused automation at $650. Page count, content, locations, integrations, and technical requirements affect the final proposal.</p>
+          <p className="pricing-note">Website packages begin at $1,500, managed SEO at $400 per month, focused automation at $650, and managed tailored agents at $750 per month plus activation and usage. Scope, integrations, and technical requirements affect the final proposal.</p>
           <div className="section-end-link"><ArrowLink href="/pricing">Explore packages and pricing</ArrowLink></div>
         </div>
       </section>
