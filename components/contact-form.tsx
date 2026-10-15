@@ -39,6 +39,7 @@ export function ContactForm() {
 
   return (
     <form className="contact-form" onSubmit={submit} noValidate>
+      <input type="hidden" name="inquiryType" value="project" />
       <div className="form-grid">
         <div className="field"><label htmlFor="name">Name</label><input id="name" name="name" autoComplete="name" required aria-invalid={!!errors.name} aria-describedby={errors.name ? "name-error" : undefined}/>{errors.name && <p className="field-error" id="name-error">{errors.name}</p>}</div>
         <div className="field"><label htmlFor="organization">Business or organization</label><input id="organization" name="organization" autoComplete="organization" required aria-invalid={!!errors.organization} aria-describedby={errors.organization ? "organization-error" : undefined}/>{errors.organization && <p className="field-error" id="organization-error">{errors.organization}</p>}</div>

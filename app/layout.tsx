@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     title: siteConfig.title,
     description: siteConfig.description,
     url: siteConfig.url,
-    images: [{ url: absoluteUrl("/opengraph-image"), width: 1200, height: 630, alt: "Tailored Agents — AI systems that do real work." }],
+    images: [{ url: absoluteUrl("/opengraph-image"), width: 1200, height: 630, alt: "Tailored Agents — Better websites, more visibility, smarter business." }],
   },
   twitter: { card: "summary_large_image", title: siteConfig.title, description: siteConfig.description, images: [absoluteUrl("/opengraph-image")] },
   robots: { index: true, follow: true },
@@ -35,6 +35,16 @@ const organizationJsonLd = {
   url: siteConfig.url,
   description: siteConfig.description,
   telephone: siteConfig.phoneHref.replace("tel:", ""),
+  contactPoint: { "@type": "ContactPoint", telephone: siteConfig.phoneHref.replace("tel:", ""), contactType: "sales" },
+  hasOfferCatalog: {
+    "@type": "OfferCatalog",
+    name: "Tailored Agents services",
+    itemListElement: [
+      { "@type": "Offer", itemOffered: { "@type": "Service", name: "Website Design & Development" } },
+      { "@type": "Offer", itemOffered: { "@type": "Service", name: "Local SEO & Growth Analytics" } },
+      { "@type": "Offer", itemOffered: { "@type": "Service", name: "Business Automation & Custom Software" } },
+    ],
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

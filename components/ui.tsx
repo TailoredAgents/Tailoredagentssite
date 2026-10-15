@@ -24,8 +24,8 @@ export function FinalCta() {
   return (
     <section className="final-cta section-pad">
       <div className="container-shell final-cta-grid">
-        <div><Eyebrow>Start a conversation</Eyebrow><h2 className="h2">Let&apos;s build something <span className="serif-italic">useful.</span></h2><p>Tell us what your organization is working toward. We&apos;ll help explore where intelligent software and automation could make a meaningful difference.</p></div>
-        <div className="final-cta-action"><ArrowLink href="/contact" light>Discuss Your Project</ArrowLink></div>
+        <div><Eyebrow>Start with a clear next step</Eyebrow><h2 className="h2">Let&apos;s build something that moves your business <span className="serif-italic">forward.</span></h2><p>Begin with a free website review, or tell us about a broader growth, automation, or software opportunity.</p></div>
+        <div className="final-cta-action"><ArrowLink href="/free-review" light>Get a Free Website Review</ArrowLink><Link href="/contact" className="final-cta-secondary">Discuss a Project<ArrowRight size={14}/></Link></div>
       </div>
     </section>
   );

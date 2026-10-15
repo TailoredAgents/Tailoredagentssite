@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { FinalCta, PageHero } from "@/components/ui";
 
 export const metadata: Metadata = {
-  title: "AI Agents & Automation Solutions",
-  description: "Explore custom AI customer engagement, call intelligence, marketing intelligence, operations automation, and bespoke AI software.",
+  title: "Automation & AI Solutions",
+  description: "Explore tailored customer follow-up, call intelligence, marketing analysis, operations automation, integrations, and custom business software.",
   alternates: { canonical: "/solutions" },
 };
 
@@ -53,10 +53,10 @@ const solutions = [
 export default function SolutionsPage() {
   return (
     <>
-      <PageHero eyebrow="Solutions" title={<>AI designed for <span className="serif-italic">actual work.</span></>} description="We develop intelligent systems around defined business processes, combining AI with the software, integrations, controls, and human judgment needed to make it useful." meta="Agents · Automation · Connected software" />
+      <PageHero eyebrow="Detailed automation solutions" title={<>Better follow-up. Clearer workflows. <span className="serif-italic">Useful automation.</span></>} description="We develop tailored systems around defined business processes, combining automation, AI, software, integrations, controls, and human judgment where each one adds value." meta="Lead follow-up · Call intelligence · Operations · Custom software" />
       <section className="solution-system-intro">
         <div className="container-shell solution-system-flow" aria-label="Our solution design process">
-          <div><span>01</span><small>Start with</small><b>Operating problem</b></div><i>→</i><div><span>02</span><small>Design the</small><b>System & context</b></div><i>→</i><div><span>03</span><small>Control the</small><b>Automation boundary</b></div><i>→</i><div><span>04</span><small>Review the</small><b>Operational outcome</b></div>
+          <div><span>01</span><small>Start with</small><b>Business friction</b></div><i>→</i><div><span>02</span><small>Map the</small><b>Workflow & information</b></div><i>→</i><div><span>03</span><small>Define the</small><b>Automation boundary</b></div><i>→</i><div><span>04</span><small>Evaluate the</small><b>Business outcome</b></div>
         </div>
       </section>
       <div className="container-shell">

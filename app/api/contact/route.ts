@@ -47,33 +47,36 @@ export async function POST(request: NextRequest) {
   const to = process.env.CONTACT_TO_EMAIL;
   if (!apiKey || !from || !to) return NextResponse.json({ message: "Message delivery is not configured yet. Your details were not submitted. Please try again after the site owner completes launch configuration.", code: "DELIVERY_NOT_CONFIGURED" }, { status: 503 });
 
-  const fingerprint = createHash("sha256").update(`${data.email}|${data.organization}|${data.description}`).digest("hex");
+  const fingerprint = createHash("sha256").update(`${data.inquiryType}|${data.email}|${data.organization}|${data.websiteUrl || ""}|${data.description}`).digest("hex");
   const previous = recent.get(fingerprint);
   if (previous && now - previous < WINDOW_MS) return NextResponse.json({ message: "This inquiry was already received recently.", duplicate: true }, { status: 409 });
 
+  const isReview = data.inquiryType === "website-review";
   const text = [
-    "New Tailored Agents project inquiry",
+    isReview ? "New Tailored Agents free website review request" : "New Tailored Agents project inquiry",
     "",
     `Name: ${data.name}`,
     `Organization: ${data.organization}`,
     `Email: ${data.email}`,
     `Phone: ${data.phone || "Not provided"}`,
-    `Interest: ${data.interest}`,
+    `Inquiry type: ${isReview ? "Free website review" : "Project inquiry"}`,
+    `Website URL: ${data.websiteUrl || "Not provided"}`,
+    `Interest: ${data.interest || "Website review"}`,
     "",
-    "Project description:",
-    data.description,
+    isReview ? "Primary concern or goal:" : "Project description:",
+    data.description || "Not provided",
   ].join("\n");
 
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "Idempotency-Key": data.submissionId },
-      body: JSON.stringify({ from, to: [to], reply_to: data.email, subject: `Project inquiry — ${data.organization}`, text }),
+      body: JSON.stringify({ from, to: [to], reply_to: data.email, subject: isReview ? `Free website review — ${data.organization}` : `Project inquiry — ${data.organization}`, text }),
       signal: AbortSignal.timeout(10_000),
     });
     if (!response.ok) return NextResponse.json({ message: "We could not deliver your inquiry. Nothing was recorded; please try again later." }, { status: 502 });
     recent.set(fingerprint, now);
-    return NextResponse.json({ message: "Thank you. Your project inquiry has been sent." });
+    return NextResponse.json({ message: isReview ? "Thank you. Your website review request has been sent." : "Thank you. Your project inquiry has been sent." });
   } catch {
     return NextResponse.json({ message: "We could not reach the delivery service. Nothing was recorded; please try again later." }, { status: 502 });
   }

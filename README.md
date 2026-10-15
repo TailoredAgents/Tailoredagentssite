@@ -1,8 +1,8 @@
 # Tailored Agents website
 
-Production-ready marketing website for Tailored Agents, an AI engineering and custom software development company. The site is built with Next.js App Router, TypeScript, React, Tailwind CSS, and a small server-side contact handler.
+Production-ready marketing website for Tailored Agents, a premium website development, digital growth, business automation, and custom software company. The site is built with Next.js App Router, TypeScript, React, Tailwind CSS, and a small server-side contact handler.
 
-The experience is deliberately presentation-led: custom editorial layouts, system diagrams, synthetic interface demonstrations, and one focused interactive workflow component. It does not use stock photography, client logos, invented metrics, or generic AI imagery.
+The experience is deliberately presentation-led: custom editorial layouts, original website concepts, synthetic analytics demonstrations, system diagrams, and focused interactive workflow components. It does not use stock photography, client logos, invented results, or generic AI imagery.
 
 ## Technology
 
@@ -49,7 +49,7 @@ Never expose `RESEND_API_KEY` through a `NEXT_PUBLIC_` variable. Do not commit `
 
 ## Contact handling
 
-The form applies server-side field validation, a honeypot, a minimum completion time, request-size limits, an in-memory rate limit, a duplicate-content guard, and provider-level idempotency. It does not write inquiry contents to an application database or log them intentionally.
+The project inquiry and free website review forms share one protected delivery route. The review funnel uses a distinct public `websiteUrl` field while retaining `website` as the hidden honeypot. Both inquiry types apply server-side field validation, a minimum completion time, request-size limits, an in-memory rate limit, a duplicate-content guard, and provider-level idempotency. The application does not write inquiry contents to a database or log them intentionally.
 
 Render may run more than one service instance, so the in-memory abuse controls are per-instance. If traffic or abuse risk grows, replace them with a shared rate-limit service or edge/WAF control. Resend idempotency remains the final duplicate-delivery control.
 
@@ -88,10 +88,9 @@ Do not add a Cloudflare proxy or another CDN until certificate and redirect beha
 
 ## Launch blockers
 
-- Confirm the GitHub repository URL; no remote has been guessed or configured.
 - Confirm the authorized inquiry recipient and a Resend-verified sender.
 - Add an authorized privacy/legal contact address and confirm governing-law language if counsel requires it.
 - Run browser-based responsive and accessibility QA. The implementation session did not have a connected browser surface, so screenshots and Lighthouse scores are not claimed.
-- Review all copy and the StonegateOS case study with the business owner before publication.
+- Review public pricing, service scope, all copy, and the StonegateOS case study with the business owner before publication.
 
 See [the launch checklist](docs/LAUNCH_CHECKLIST.md) for the final production gate.

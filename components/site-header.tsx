@@ -23,7 +23,7 @@ export function SiteHeader() {
             return <Link className="nav-link" aria-current={current ? "page" : undefined} key={item.href} href={item.href}>{item.label}</Link>;
           })}
         </nav>
-        <Link className="nav-cta" href="/contact">Discuss a Project</Link>
+        <Link className="nav-cta" href="/free-review">Get a Free Review</Link>
         <button className="menu-button" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-controls="mobile-navigation" aria-label={open ? "Close menu" : "Open menu"}>
           {open ? <X size={22} /> : <Menu size={22} />}
         </button>
@@ -32,6 +32,7 @@ export function SiteHeader() {
         {siteConfig.nav.map((item) => (
           <Link key={item.href} href={item.href} onClick={() => setOpen(false)}>{item.label}<ArrowUpRight size={16} aria-hidden="true" /></Link>
         ))}
+        <Link href="/free-review" onClick={() => setOpen(false)}>Get a Free Review<ArrowUpRight size={16} aria-hidden="true" /></Link>
       </nav>
     </header>
   );
