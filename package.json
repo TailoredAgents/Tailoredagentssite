@@ -6,9 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start -H 0.0.0.0",
-    "lint": "oxlint app components lib next.config.ts",
+    "lint": "oxlint app components lib scripts next.config.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run lib",
+    "db:migrate": "node scripts/migrate.mjs",
     "mail:dev": "npm --prefix apps/mail run dev",
     "mail:check": "npm --prefix apps/mail run check",
     "mail:test": "npm --prefix apps/mail test",
@@ -19,18 +20,27 @@
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.14",
+    "better-auth": "^1.7.10",
     "lucide-react": "^0.468.0",
     "next": "16.4.0",
+    "pg": "^8.16.3",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "server-only": "^0.0.1",
     "tailwindcss": "^4.1.14"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "@types/pg": "^8.15.6",
     "@types/react": "^19.0.3",
     "@types/react-dom": "^19.0.2",
     "oxlint": "1.87.0",
     "typescript": "^5.7.2",
     "vitest": "5.0.4"
+  },
+  "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "^0.25.4"
+    }
   }
 }

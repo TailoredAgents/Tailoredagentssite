@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: starter
     region: ohio
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci && npm run db:migrate && npm run build
     startCommand: npm run start
     healthCheckPath: /api/health
     autoDeployTrigger: commit
@@ -18,4 +18,12 @@ services:
       - key: CONTACT_FROM_EMAIL
         sync: false
       - key: CONTACT_TO_EMAIL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      - key: BETTER_AUTH_URL
+        value: https://tailoredagents.com
+      - key: DASHBOARD_ALLOWED_EMAILS
         sync: false
