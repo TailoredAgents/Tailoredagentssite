@@ -1,3 +1,11 @@
+databases:
+  - name: tailored-agents-db
+    databaseName: tailored_agents
+    plan: 0.1c-256mb
+    region: ohio
+    postgresMajorVersion: "18"
+    ipAllowList: []
+
 services:
   - type: web
     name: tailored-agents-web
@@ -20,7 +28,9 @@ services:
       - key: CONTACT_TO_EMAIL
         sync: false
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: tailored-agents-db
+          property: connectionString
       - key: BETTER_AUTH_SECRET
         generateValue: true
       - key: BETTER_AUTH_URL

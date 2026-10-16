@@ -312,7 +312,8 @@ Only the Phase 1 tables are created in the first migration. Later tables should 
 - PostgreSQL is a separate managed resource connected through `DATABASE_URL`.
 - Migrations run before the production build and record applied filenames in `schema_migrations`.
 - If `DATABASE_URL` or authentication values are absent, migration is skipped, public routes remain healthy, auth APIs return an unavailable response, and the sign-in page explains that setup is incomplete.
-- No database plan is provisioned automatically in this phase because selecting a paid resource creates a recurring cost and Render's free PostgreSQL tier expires after 30 days.
+- The Render Blueprint provisions the owner-approved `0.1c-256mb` PostgreSQL plan in Ohio and injects its private connection string as `DATABASE_URL`.
+- Public database access is disabled in the Blueprint; administrative access should use an explicitly reviewed temporary rule if it is ever required.
 - Before storing real lead or client data, use a persistent paid database with recovery support and document a logical-backup schedule.
 - Long-running crawls, scheduled syncs, and agent runs should eventually move to a background worker or workflow service instead of blocking web requests.
 
@@ -366,7 +367,11 @@ PostgreSQL provides durable relational constraints, transactions, workspace isol
 
 ### October 15, 2026 — Do not silently provision a paid database
 
-The repository contains the database schema, migrations, and deployment contract, but the owner must select and connect the production PostgreSQL plan. The free Render database is not acceptable for real business records because it expires and lacks managed recovery.
+The initial release contained the database schema, migrations, and deployment contract without creating a paid resource. The free Render database is not acceptable for real business records because it expires and lacks managed recovery.
+
+### October 16, 2026 — Provision the approved database through the Blueprint
+
+The owner approved Render's smallest persistent PostgreSQL plan. The Blueprint now creates `tailored-agents-db`, restricts it to private-network access, and injects its connection string directly into the web service so database configuration cannot drift between resources.
 
 ## Maintaining this plan
 

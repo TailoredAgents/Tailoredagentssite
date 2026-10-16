@@ -167,18 +167,17 @@ npm run mail:build
 
 ## Render deployment
 
-`render.yaml` defines the existing Node web service, health check, automatic deploy trigger, build-time migration command, and required environment contract. It intentionally does not create a PostgreSQL instance because selecting a persistent paid resource creates a recurring cost that must be approved by the owner.
+`render.yaml` defines the Node web service, a persistent Render PostgreSQL database, their private-network connection, the health check, automatic deploy trigger, build-time migration command, and the remaining environment contract. The owner approved the smallest paid database plan on October 16, 2026.
 
 To activate the dashboard:
 
-1. Create a persistent Render PostgreSQL database in the same region as the web service, or select another approved PostgreSQL provider.
-2. Restrict public database access where the operational setup permits it.
-3. Connect its internal connection string as `DATABASE_URL`.
-4. Set `DASHBOARD_ALLOWED_EMAILS` to the approved internal accounts.
-5. Confirm `RESEND_API_KEY` and `CONTACT_FROM_EMAIL`, or set `DASHBOARD_FROM_EMAIL` separately.
-6. Confirm Render generated `BETTER_AUTH_SECRET` and set `BETTER_AUTH_URL=https://tailoredagents.com`.
-7. Redeploy. The build runs migrations before `next build`.
-8. Visit `/sign-in`, complete the first allowlisted login, and verify `/dashboard`, activity, settings, sign-out, expired-link behavior, and denial for a non-allowlisted address.
+1. Sync the Render Blueprint and approve creation of `tailored-agents-db` on the `0.1c-256mb` plan.
+2. Confirm the database and web service are both in Ohio and `DATABASE_URL` resolves from the database connection string.
+3. Set `DASHBOARD_ALLOWED_EMAILS` to the approved internal accounts.
+4. Confirm `RESEND_API_KEY` and `CONTACT_FROM_EMAIL`, or set `DASHBOARD_FROM_EMAIL` separately.
+5. Confirm Render generated `BETTER_AUTH_SECRET` and set `BETTER_AUTH_URL=https://tailoredagents.com`.
+6. Redeploy. The build runs migrations before `next build`.
+7. Visit `/sign-in`, complete the first allowlisted login, and verify `/dashboard`, activity, settings, sign-out, expired-link behavior, and denial for a non-allowlisted address.
 
 The web process starts with `next start -H 0.0.0.0`; Next.js reads Render's injected `PORT` automatically.
 
@@ -197,7 +196,7 @@ Do not add another proxy or CDN until certificate, forwarding-header, authentica
 
 ## Current release gates
 
-- Select and connect the persistent PostgreSQL plan before activating the dashboard with real business data.
+- Sync the Blueprint and confirm the approved persistent PostgreSQL resource is healthy before activating the dashboard with real business data.
 - Configure the dashboard allowlist and complete live sign-in/denial/session tests.
 - Confirm the authorized inquiry recipient and a Resend-verified sender.
 - Replace the temporary personal phone number through `lib/site.ts` when the final Woodstock-area business number is ready.

@@ -21,9 +21,9 @@ Use this checklist for the public website and private dashboard. The mail applic
 
 ## PostgreSQL and dashboard activation
 
-- [ ] Select a persistent PostgreSQL plan deliberately; do not store real business records on an expiring free database.
-- [ ] Place the database in an appropriate region and restrict external access where practical.
-- [ ] Set `DATABASE_URL` as a server-only Render environment value.
+- [x] Select a persistent PostgreSQL plan deliberately; the owner approved `0.1c-256mb` on October 16, 2026.
+- [ ] Sync the Blueprint and confirm `tailored-agents-db` is created in Ohio with public access disabled.
+- [ ] Confirm Render injects the database's private connection string into `DATABASE_URL`.
 - [ ] Confirm `BETTER_AUTH_SECRET` is generated, private, and at least 32 high-entropy characters.
 - [ ] Set `BETTER_AUTH_URL=https://tailoredagents.com` using the final canonical hostname.
 - [ ] Set `DASHBOARD_ALLOWED_EMAILS` to the exact approved internal accounts.
