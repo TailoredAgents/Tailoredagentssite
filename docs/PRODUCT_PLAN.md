@@ -1,6 +1,6 @@
 # Tailored Agents product plan
 
-Last updated: October 15, 2026
+Last updated: October 16, 2026
 
 This document is the durable product and implementation plan for the Tailored Agents website, internal dashboard, future client Growth Hub, analytics platform, SEO workspace, and eventual SEO agent. It records the intended sequence, boundaries, data model, security posture, and completion criteria so future work does not drift from the business goals.
 
@@ -33,15 +33,15 @@ The software product grows out of those services. The immediate goal is not to l
 - A production Next.js 16.4 marketing website deployed on Render.
 - Public pages for websites, SEO, automation, engineering, packages, pricing, work, company, and contact.
 - Transparent starting prices and an interactive website/SEO package calculator.
-- Project inquiry and free website-review forms delivered through Resend when configured.
+- Project inquiry and free website-review forms stored in PostgreSQL, with Resend notifications when configured.
+- A Blueprint-managed persistent PostgreSQL database and private internal operations dashboard.
+- Lead qualification and conversion plus client, contact, site, project, milestone, and project-record workflows.
 - A separate Tailored Mail application under `apps/mail`, deployed independently to Cloudflare Workers.
 - Conceptual Growth Hub and analytics visuals that are explicitly presented as illustrative.
 
 ### Not yet operational
 
-- A persistent database for the website application.
-- Authenticated Tailored Agents dashboard access.
-- Lead, client, website, project, or activity records in the web application.
+- Production dashboard sign-in until the internal allowlist and Resend magic-link delivery are configured and verified.
 - First-party conversion analytics or connected GA4/Search Console reporting.
 - Client accounts or a client-facing Growth Hub.
 - A public interactive product demo.
@@ -106,7 +106,7 @@ Exit criteria:
 
 ### Phase 1 — Backend and private dashboard foundation
 
-Status: implementation in this release; activation requires a PostgreSQL connection and dashboard environment values.
+Status: implemented. Production sign-in activation still requires the dashboard email allowlist and Resend configuration.
 
 Deliverables:
 
@@ -135,6 +135,8 @@ Exit criteria:
 ### Phase 2 — Internal operations
 
 Goal: make the dashboard useful every day before making it customer-facing.
+
+Status: implemented in this release. Production use remains gated on credential rotation, backup/restore preparation, and live authentication and workflow verification.
 
 Deliverables:
 
@@ -269,11 +271,14 @@ Exit criteria:
 ### Operations
 
 - `leads`: inquiry and qualification lifecycle.
-- `clients`: future client business records.
-- `client_contacts`: future contacts belonging to a client.
+- `clients`: client business records and lifecycle state.
+- `contacts`: contacts belonging to a client.
 - `sites`: websites, domains, and environment state.
-- `projects`: future scoped engagements and delivery status.
-- `project_items`: future milestones, decisions, deliverables, and tasks.
+- `projects`: scoped engagements and delivery status.
+- `project_milestones`: project checkpoints and completion state.
+- `project_records`: project deliverables, decisions, and internal notes.
+- `lead_notes`: attributed internal lead follow-up notes.
+- `request_rate_limits`: shared, short-lived public-form abuse controls.
 - `audit_logs`: append-only security and business activity.
 
 ### Measurement and integrations
@@ -290,7 +295,7 @@ Exit criteria:
 - `recommendations`, `content_briefs`, and `content_revisions`.
 - `agent_definitions`, `agent_runs`, `agent_steps`, and `approvals`.
 
-Only the Phase 1 tables are created in the first migration. Later tables should be added when their behavior and retention rules are being implemented, not speculatively.
+The first migration creates the identity, tenancy, initial lead/site, and audit foundation. The second migration adds only the Phase 2 operational records, shared inquiry controls, delivery states, and retention metadata used by the implemented workflows. Later-phase tables should be added with their behavior and retention rules, not speculatively.
 
 ## Security and privacy baseline
 
@@ -372,6 +377,10 @@ The initial release contained the database schema, migrations, and deployment co
 ### October 16, 2026 — Provision the approved database through the Blueprint
 
 The owner approved Render's smallest persistent PostgreSQL plan. The Blueprint now creates `tailored-agents-db`, restricts it to private-network access, and injects its connection string directly into the web service so database configuration cannot drift between resources.
+
+### October 16, 2026 — Make inquiry storage independent of email delivery
+
+Public inquiries are stored transactionally before the application attempts a Resend notification. This lets Tailored Agents begin collecting and managing leads while email setup is pending, keeps delivery failure visible, and prevents provider availability from discarding a valid inquiry. Public inquiry content defaults to 24-month retention; non-won expired inquiries are anonymized and audit events expire after 36 months.
 
 ## Maintaining this plan
 

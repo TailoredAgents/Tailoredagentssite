@@ -25,12 +25,13 @@ Use this checklist for the public website and private dashboard. The mail applic
 - [ ] Sync the Blueprint and confirm `tailored-agents-db` is created in Ohio with public access disabled.
 - [ ] Confirm Render injects the database's private connection string into `DATABASE_URL`.
 - [ ] Confirm `BETTER_AUTH_SECRET` is generated, private, and at least 32 high-entropy characters.
+- [ ] Rotate the database password and authentication secret previously exposed during setup, then update only Render's secret store.
 - [ ] Set `BETTER_AUTH_URL=https://tailoredagents.com` using the final canonical hostname.
 - [ ] Set `DASHBOARD_ALLOWED_EMAILS` to the exact approved internal accounts.
 - [ ] Confirm `RESEND_API_KEY` and a verified `CONTACT_FROM_EMAIL` or `DASHBOARD_FROM_EMAIL` sender.
 - [ ] Run `npm run db:migrate` and verify every expected filename exists once in `schema_migrations`.
 - [ ] Confirm the Tailored Agents workspace and production site seed records exist.
-- [ ] Establish logical backup, retention, restore, and credential-rotation procedures before Phase 2 stores real lead/client records.
+- [ ] Establish and test logical backup, retention, restore, and credential-rotation procedures before relying on stored lead/client records.
 
 ## Authentication and authorization
 
@@ -51,7 +52,8 @@ Use this checklist for the public website and private dashboard. The mail applic
 - [ ] Run lint, strict type checking, unit tests, production build, and `npm audit`.
 - [ ] Confirm all public routes return 200 and unknown routes show the branded 404.
 - [ ] Confirm `/api/health` returns 200 without exposing configuration.
-- [ ] Confirm unconfigured project and website-review forms report failure.
+- [ ] Confirm project and website-review forms persist leads when Resend is unconfigured and clearly report successful receipt.
+- [ ] Confirm the dashboard shows `not_configured`, `sent`, and `failed` notification states accurately.
 - [ ] Confirm each configured inquiry type delivers exactly once with the correct subject and reply-to behavior.
 - [ ] Confirm no secrets, private records, internal addresses, or security evidence exist in the source/build output.
 
@@ -76,16 +78,17 @@ Use this checklist for the public website and private dashboard. The mail applic
 - [ ] Verify the authentication callback uses the canonical host and does not create a redirect loop between apex and `www`.
 - [ ] Submit authorized project and website-review test inquiries and confirm receipt and duplicate protection.
 
-## Phase 2 data gate
+## Phase 2 operations gate
 
-Complete these before persisting public inquiries in PostgreSQL:
-
-- [ ] Approve inquiry retention and deletion rules.
-- [ ] Add database-backed abuse controls suitable for multiple web instances.
-- [ ] Make database persistence and email delivery failure states explicit and retry-safe.
-- [ ] Add role-aware lead mutations and same-transaction audit records.
-- [ ] Test export, deletion, backup, and restore with non-production records.
-- [ ] Confirm privacy disclosures match the data actually stored.
+- [x] Define 24-month inquiry anonymization and 36-month audit retention defaults.
+- [x] Add database-backed abuse controls suitable for multiple web instances.
+- [x] Make database persistence independent from email delivery and expose delivery state.
+- [x] Add role-aware mutations and same-transaction audit records.
+- [x] Update privacy disclosures for stored inquiries and hashed rate-limit identifiers.
+- [ ] Verify lead qualification, notes, ownership, next actions, won/lost state, and conversion in production.
+- [ ] Verify client, contact, site, project, milestone, and project-record create/edit flows in production.
+- [ ] Test safe export, anonymization, backup, and restore with non-production records.
+- [ ] Schedule `npm run db:retention` at least monthly in addition to deployment-time maintenance.
 
 ## After each release
 

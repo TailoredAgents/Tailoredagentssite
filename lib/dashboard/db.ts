@@ -29,11 +29,11 @@ export function getDatabasePool() {
   return globalDatabase.tailoredAgentsDatabasePool;
 }
 
-async function insertAuditLog(
+export async function insertAuditLog(
   client: PoolClient,
   input: {
     workspaceId: string;
-    actorUserId: string;
+    actorUserId?: string | null;
     action: string;
     targetType: string;
     targetId?: string;
@@ -47,7 +47,7 @@ async function insertAuditLog(
     [
       randomUUID(),
       input.workspaceId,
-      input.actorUserId,
+      input.actorUserId ?? null,
       input.action,
       input.targetType,
       input.targetId ?? null,

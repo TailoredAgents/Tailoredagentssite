@@ -93,9 +93,17 @@ type CountRow = { count: string };
 
 export async function getDashboardOverview(context: DashboardContext) {
   const pool = getDatabasePool();
-  const [leadCount, siteCount, activityCount, recentActivity] = await Promise.all([
+  const [leadCount, clientCount, projectCount, siteCount, activityCount, recentActivity] = await Promise.all([
     pool.query<CountRow>(
       "SELECT count(*)::text AS count FROM leads WHERE workspace_id = $1 AND status <> 'archived'",
+      [context.workspace.id],
+    ),
+    pool.query<CountRow>(
+      "SELECT count(*)::text AS count FROM clients WHERE workspace_id = $1 AND status <> 'archived'",
+      [context.workspace.id],
+    ),
+    pool.query<CountRow>(
+      "SELECT count(*)::text AS count FROM projects WHERE workspace_id = $1 AND status IN ('planned', 'active', 'on_hold')",
       [context.workspace.id],
     ),
     pool.query<CountRow>(
@@ -131,6 +139,8 @@ export async function getDashboardOverview(context: DashboardContext) {
   return {
     counts: {
       leads: Number(leadCount.rows[0]?.count ?? 0),
+      clients: Number(clientCount.rows[0]?.count ?? 0),
+      projects: Number(projectCount.rows[0]?.count ?? 0),
       sites: Number(siteCount.rows[0]?.count ?? 0),
       activity: Number(activityCount.rows[0]?.count ?? 0),
     },

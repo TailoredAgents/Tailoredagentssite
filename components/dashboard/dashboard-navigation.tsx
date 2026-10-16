@@ -9,6 +9,7 @@ import {
   ChevronDown,
   Gauge,
   Globe2,
+  FolderKanban,
   LogOut,
   Search,
   Settings,
@@ -20,9 +21,10 @@ import type { DashboardContext } from "@/lib/dashboard/data";
 
 const navigation = [
   { label: "Overview", href: "/dashboard", icon: Gauge },
-  { label: "Leads", icon: UsersRound, phase: "Phase 2" },
-  { label: "Clients", icon: Building2, phase: "Phase 2" },
-  { label: "Sites", icon: Globe2, phase: "Phase 2" },
+  { label: "Leads", href: "/dashboard/leads", icon: UsersRound },
+  { label: "Clients", href: "/dashboard/clients", icon: Building2 },
+  { label: "Projects", href: "/dashboard/projects", icon: FolderKanban },
+  { label: "Sites", href: "/dashboard/sites", icon: Globe2 },
   { label: "Analytics", icon: BarChart3, phase: "Phase 3" },
   { label: "SEO workspace", icon: Search, phase: "Phase 5" },
 ] as const;

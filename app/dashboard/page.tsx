@@ -1,4 +1,4 @@
-import { Activity, ArrowUpRight, BarChart3, CircleCheck, Clock3, Database, Globe2, Inbox, LockKeyhole, Search, ShieldCheck } from "lucide-react";
+import { Activity, ArrowUpRight, Building2, CircleCheck, Clock3, FolderKanban, Globe2, Inbox, Search, ShieldCheck, UsersRound } from "lucide-react";
 import { getDashboardOverview, requireDashboardContext } from "@/lib/dashboard/data";
 
 function formatActivity(action: string) {
@@ -23,18 +23,18 @@ export default async function DashboardPage() {
       <div className="dashboard-content">
         <section className="dashboard-page-heading">
           <div>
-            <span>Phase 1 · Foundation</span>
+            <span>Phase 2 · Internal operations</span>
             <h1>Welcome back, {context.user.name.split(" ")[0]}.</h1>
-            <p>The private operating foundation is active. Real client operations and measurement are the next layers.</p>
+            <p>New inquiries, client relationships, managed sites, projects, milestones, decisions, and delivery records now share one operating context.</p>
           </div>
-          <div className="dashboard-heading-badge"><i /><span><strong>System status</strong><small>Foundation operational</small></span></div>
+          <div className="dashboard-heading-badge"><i /><span><strong>System status</strong><small>Operations active</small></span></div>
         </section>
 
         <section className="dashboard-metrics" aria-label="Workspace overview">
-          <article><span><Inbox size={17} /></span><small>Active leads</small><strong>{overview.counts.leads}</strong><em>Lead capture arrives in Phase 2</em></article>
-          <article><span><Globe2 size={17} /></span><small>Managed sites</small><strong>{overview.counts.sites}</strong><em>Tailored Agents production site</em></article>
-          <article><span><Activity size={17} /></span><small>Recorded activity</small><strong>{overview.counts.activity}</strong><em>Append-only audit events</em></article>
-          <article className="dashboard-metric-planned"><span><BarChart3 size={17} /></span><small>Measurement</small><strong>Not connected</strong><em>Instrumentation begins in Phase 3</em></article>
+          <article><span><Inbox size={17} /></span><small>Active leads</small><strong>{overview.counts.leads}</strong><em>Persisted from public inquiries</em></article>
+          <article><span><Building2 size={17} /></span><small>Clients</small><strong>{overview.counts.clients}</strong><em>Active relationship records</em></article>
+          <article><span><FolderKanban size={17} /></span><small>Open projects</small><strong>{overview.counts.projects}</strong><em>Planned, active, or on hold</em></article>
+          <article><span><Globe2 size={17} /></span><small>Managed sites</small><strong>{overview.counts.sites}</strong><em>Production and working environments</em></article>
         </section>
 
         <div className="dashboard-overview-grid">
@@ -42,12 +42,12 @@ export default async function DashboardPage() {
             <div className="dashboard-panel-heading"><div><span>Foundation checklist</span><h2>Built for the work ahead</h2></div><small>Phase 1</small></div>
             <div className="dashboard-foundation-list">
               {[
-                [LockKeyhole, "Private access", "Allowlisted, single-use email links and database sessions."],
-                [Database, "Durable data model", "PostgreSQL migrations, workspaces, roles, sites, leads, and audit records."],
-                [ShieldCheck, "Authorization boundary", "Server-only checks at the data layer—not just hidden interface elements."],
-                [CircleCheck, "Honest release state", "Planned modules remain visibly staged until their workflows are operational."],
+                [Inbox, "Durable inquiry capture", "Validated submissions are recorded even when notification email is unavailable."],
+                [UsersRound, "Connected relationships", "Lead conversion creates the client, primary contact, project, and optional site together."],
+                [FolderKanban, "Delivery workspace", "Milestones, deliverables, decisions, and notes stay connected to the engagement."],
+                [ShieldCheck, "Audited operations", "Role checks and workspace ownership are repeated inside every important mutation."],
               ].map(([Icon, title, text]) => {
-                const ItemIcon = Icon as typeof LockKeyhole;
+                const ItemIcon = Icon as typeof Inbox;
                 return <article key={String(title)}><span><ItemIcon size={17} /></span><div><h3>{String(title)}</h3><p>{String(text)}</p></div><CircleCheck size={16} /></article>;
               })}
             </div>
@@ -56,8 +56,8 @@ export default async function DashboardPage() {
           <section className="dashboard-panel dashboard-roadmap-panel">
             <div className="dashboard-panel-heading"><div><span>Delivery path</span><h2>What comes next</h2></div></div>
             <ol className="dashboard-roadmap">
-              <li className="is-active"><i>01</i><span><strong>Foundation</strong><small>Auth, database, roles, audit trail</small></span><em>Current</em></li>
-              <li><i>02</i><span><strong>Internal operations</strong><small>Leads, clients, sites, projects</small></span></li>
+              <li><i>01</i><span><strong>Foundation</strong><small>Auth, database, roles, audit trail</small></span><em>Complete</em></li>
+              <li className="is-active"><i>02</i><span><strong>Internal operations</strong><small>Leads, clients, sites, projects</small></span><em>Current</em></li>
               <li><i>03</i><span><strong>Measurement</strong><small>Conversions, Search Console, analytics</small></span></li>
               <li><i>04</i><span><strong>Client Growth Hub</strong><small>Reports, approvals, public demo</small></span></li>
               <li><i>05</i><span><strong>SEO workspace</strong><small>Audits and reviewed recommendations</small></span></li>

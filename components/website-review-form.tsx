@@ -39,7 +39,7 @@ export function WebsiteReviewForm() {
       startedAt.current = Date.now();
       setStatus({ type: "success", message: result.message });
     } catch {
-      setStatus({ type: "error", message: "A network error prevented delivery. Nothing was recorded; please try again." });
+      setStatus({ type: "error", message: "A network error interrupted the request. Please check your connection before trying again." });
     }
   }
 

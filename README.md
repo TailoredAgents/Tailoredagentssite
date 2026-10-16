@@ -1,6 +1,6 @@
 # Tailored Agents
 
-This repository contains the Tailored Agents public website, the foundation of its private operating dashboard, and a separately deployed team mail application.
+This repository contains the Tailored Agents public website, its private operating dashboard, and a separately deployed team mail application.
 
 The business currently delivers premium websites, managed local SEO and growth analytics, focused automation, managed agents, and custom software. The product direction is to turn the internal delivery workflow into a secure Growth Hub over time. Analytics and human-reviewed SEO operations come before any autonomous SEO agent.
 
@@ -15,12 +15,12 @@ Operational today:
 - Production Next.js marketing site deployed on Render.
 - Service, package, pricing, work, industry, company, legal, and contact routes.
 - Transparent starting prices and a website/SEO package calculator.
-- Project inquiry and free website-review delivery through Resend when configured.
+- Durable project-inquiry and free website-review capture in PostgreSQL, with Resend notification delivery when configured.
 - Conceptual Growth Hub and analytics visuals labeled as illustrative.
 
 ### Private dashboard
 
-Phase 1 is implemented in the application source:
+Phases 1 and 2 are implemented in the application source:
 
 - Versioned PostgreSQL migrations.
 - Allowlisted passwordless authentication using short-lived, single-use links.
@@ -29,9 +29,12 @@ Phase 1 is implemented in the application source:
 - Initial site, lead, and append-only audit tables.
 - Server-only authorization and narrow dashboard data-transfer objects.
 - Protected `/dashboard`, `/dashboard/activity`, and `/dashboard/settings` routes.
+- Lead search, qualification, ownership, notes, next actions, conversion, and safe CSV export.
+- Client, contact, site, and project workspaces with milestones, deliverables, decisions, and notes.
+- Shared database-backed inquiry controls, delivery status, retention metadata, and audited mutations.
 - Safe setup behavior: the marketing site remains operational when dashboard infrastructure is absent.
 
-Activation still requires the owner to connect a persistent PostgreSQL database and set the dashboard environment variables. Client operations, measurement, client accounts, SEO tooling, and the SEO agent are not implemented yet.
+The Blueprint provisions the persistent database. Private dashboard access still requires the internal email allowlist and Resend magic-link configuration. Measurement, client accounts, SEO tooling, and the SEO agent are not implemented yet.
 
 ### Tailored Mail
 
@@ -93,7 +96,7 @@ Copy-Item .env.example .env.local
 npm run dev
 ```
 
-Open `http://localhost:3000`. Public pages render without delivery or database credentials. The inquiry forms clearly report unconfigured delivery, and the team sign-in page clearly reports incomplete dashboard setup.
+Open `http://localhost:3000`. Public pages render without dashboard credentials. Inquiry capture requires `DATABASE_URL`; notification email is optional. The team sign-in page reports incomplete setup until its full authentication contract is configured.
 
 For a working local dashboard, provide a PostgreSQL database, set every dashboard variable below, run `npm run db:migrate`, and start the application. The first allowlisted identity to complete a magic-link sign-in becomes the Tailored Agents workspace owner; later allowlisted identities become administrators.
 
@@ -102,10 +105,9 @@ For a working local dashboard, provide a PostgreSQL database, set every dashboar
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `NEXT_PUBLIC_SITE_URL` | Yes | Canonical public origin, normally `https://tailoredagents.com`. |
-| `RESEND_API_KEY` | For email delivery | Server-only Resend API credential used by inquiries and dashboard links. |
-| `CONTACT_FROM_EMAIL` | For email delivery | Sender on a domain verified by Resend. Also serves as the dashboard sender unless overridden. |
-| `CONTACT_TO_EMAIL` | For inquiry delivery | Authorized business inbox that receives public inquiries. |
-| `TRUSTED_PROXY_IPS` | Optional | Explicitly trusted custom proxies allowed to set forwarding headers. |
+| `RESEND_API_KEY` | For notifications and sign-in | Server-only Resend API credential used by inquiry notifications and dashboard links. Public inquiries are still stored without it. |
+| `CONTACT_FROM_EMAIL` | For notifications and sign-in | Sender on a domain verified by Resend. Also serves as the dashboard sender unless overridden. |
+| `CONTACT_TO_EMAIL` | For inquiry notifications | Authorized business inbox that receives public-inquiry notifications. |
 | `DATABASE_URL` | Dashboard | Server-only PostgreSQL connection string. |
 | `BETTER_AUTH_SECRET` | Dashboard | At least 32 high-entropy characters used by authentication. |
 | `BETTER_AUTH_URL` | Dashboard | Canonical authentication origin, normally `https://tailoredagents.com`. |
@@ -120,6 +122,7 @@ The migration runner creates `schema_migrations`, applies each new `.sql` file f
 
 ```powershell
 npm run db:migrate
+npm run db:retention
 ```
 
 If `DATABASE_URL` is absent, the command exits successfully after reporting that dashboard migrations were skipped. This keeps the existing marketing deployment safe while infrastructure is being connected.
@@ -139,11 +142,11 @@ Do not use an expiring free database for real business data. Render's free Postg
 
 ## Contact handling
 
-The project inquiry and free website-review forms share one protected delivery route. The review funnel uses a public `websiteUrl` field while retaining `website` as the hidden honeypot. Both types apply server-side field validation, minimum completion time, request-size limits, an in-memory rate limit, a duplicate-content guard, and provider idempotency.
+The project-inquiry and free website-review forms share one protected route. Both types are validated on the server and stored as leads before optional notification delivery. Missing or failed Resend delivery does not discard an inquiry; its delivery state remains visible to the team.
 
-Phase 1 does not write inquiry contents to PostgreSQL. Persisting inquiries as leads while preserving email delivery is a Phase 2 task. The application does not intentionally log inquiry contents.
+The route applies a honeypot, minimum completion time, request-size limit, PostgreSQL-backed rate limit, duplicate fingerprint window, unique submission identifiers, and provider idempotency. The rate-limit key is one-way hashed; raw IP addresses and inquiry contents are not intentionally written to application logs.
 
-Render may run multiple instances, so the current public-form abuse controls remain per instance. Phase 2 should move those controls to shared storage before higher traffic or abuse risk.
+New inquiries receive a 24-month retention date. The retention command anonymizes expired inquiries that have not become won business, removes their notes, deletes expired rate-limit records, and expires audit events after 36 months. Won/converted business records require deliberate business-record handling instead of automatic inquiry anonymization. Run `npm run db:retention` at least monthly; Render also runs it during deployments.
 
 ## Checks
 
@@ -167,14 +170,14 @@ npm run mail:build
 
 ## Render deployment
 
-`render.yaml` defines the Node web service, a persistent Render PostgreSQL database, their private-network connection, the health check, automatic deploy trigger, build-time migration command, and the remaining environment contract. The owner approved the smallest paid database plan on October 16, 2026.
+`render.yaml` defines the Node web service, a persistent Render PostgreSQL database, their private-network connection, the health check, automatic deploy trigger, build-time migration and retention commands, and the remaining environment contract. The owner approved the smallest paid database plan on October 16, 2026.
 
 To activate the dashboard:
 
 1. Sync the Render Blueprint and approve creation of `tailored-agents-db` on the `0.1c-256mb` plan.
 2. Confirm the database and web service are both in Ohio and `DATABASE_URL` resolves from the database connection string.
 3. Set `DASHBOARD_ALLOWED_EMAILS` to the approved internal accounts.
-4. Confirm `RESEND_API_KEY` and `CONTACT_FROM_EMAIL`, or set `DASHBOARD_FROM_EMAIL` separately.
+4. When the Resend account owner is available, set `RESEND_API_KEY` and a verified `CONTACT_FROM_EMAIL`, or set `DASHBOARD_FROM_EMAIL` separately. Inquiry capture works before this; magic-link sign-in does not.
 5. Confirm Render generated `BETTER_AUTH_SECRET` and set `BETTER_AUTH_URL=https://tailoredagents.com`.
 6. Redeploy. The build runs migrations before `next build`.
 7. Visit `/sign-in`, complete the first allowlisted login, and verify `/dashboard`, activity, settings, sign-out, expired-link behavior, and denial for a non-allowlisted address.
@@ -196,8 +199,8 @@ Do not add another proxy or CDN until certificate, forwarding-header, authentica
 
 ## Current release gates
 
-- Sync the Blueprint and confirm the approved persistent PostgreSQL resource is healthy before activating the dashboard with real business data.
-- Configure the dashboard allowlist and complete live sign-in/denial/session tests.
+- Confirm the Blueprint-managed PostgreSQL resource is healthy, private, backed up, and restorable before relying on it for business records.
+- Rotate any setup credentials that were exposed outside the intended secret store, then configure the dashboard allowlist and complete live sign-in/denial/session tests.
 - Confirm the authorized inquiry recipient and a Resend-verified sender.
 - Replace the temporary personal phone number through `lib/site.ts` when the final Woodstock-area business number is ready.
 - Add an authorized privacy/legal contact and confirm governing-law language if counsel requires it.
