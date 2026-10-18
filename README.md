@@ -2,7 +2,7 @@
 
 This repository contains the Tailored Agents public website, its private operating dashboard, and a separately deployed team mail application.
 
-The business currently delivers premium websites, managed local SEO and growth analytics, focused automation, managed agents, and custom software. The product direction is to turn the internal delivery workflow into a secure Growth Hub over time. Analytics and human-reviewed SEO operations come before any autonomous SEO agent.
+The business uses premium websites and managed local SEO as the primary client entry point, then expands suitable relationships into website intelligence, focused automation, managed operations agents, and custom software. The product direction is to connect those services through a secure Growth Hub over time. Analytics and human-reviewed SEO operations come before any autonomous SEO agent.
 
 Read [the product plan](docs/PRODUCT_PLAN.md) before making architectural or roadmap changes. It is the source of truth for the current state, delivery phases, security boundaries, deferred decisions, and eventual SEO-agent scope.
 
@@ -15,6 +15,7 @@ Operational today:
 - Production Next.js marketing site deployed on Render.
 - Service, package, pricing, work, industry, company, legal, and contact routes.
 - Transparent starting prices and a website/SEO package calculator.
+- A founding-client pricing direction for standardized website and operations agents, clearly separated from custom implementation work and unfinished product capabilities.
 - Durable project-inquiry and free website-review capture in PostgreSQL, with Resend notification delivery when configured.
 - Privacy-conscious first-party measurement for public page views, acquisition, next-step clicks, and inquiry conversions.
 - Conceptual Growth Hub and analytics visuals labeled as illustrative.
@@ -37,7 +38,7 @@ Phases 1 and 2 are implemented, and the first Phase 3 measurement release is act
 - Read-only Google Search Console OAuth, encrypted offline credentials, normalized search metrics, manual refresh, and daily Render ingestion once production credentials are authorized.
 - Safe setup behavior: the marketing site remains operational when dashboard infrastructure is absent.
 
-The Blueprint provisions the persistent database. Private dashboard access requires the internal email allowlist and an initial dashboard password; Resend is optional and affects inquiry notifications only. Search Console code is implemented but remains disconnected until production OAuth credentials and a verified property are authorized. GA4, client accounts, SEO tooling, and the SEO agent are not implemented yet.
+The Blueprint provisions the persistent database. Private dashboard access requires the internal email allowlist and an initial dashboard password; Resend is optional and affects inquiry notifications only. Search Console code is implemented but remains disconnected until production OAuth credentials and a verified property are authorized. GA4, client accounts, SEO tooling, the SEO agent, and a generally available standardized-agent catalog are not implemented yet; the public agent prices describe a limited founding-client rollout rather than universal availability.
 
 ### Tailored Mail
 
@@ -79,11 +80,16 @@ The site publishes transparent starting points rather than gating prices behind 
 - SEO Essentials: $400/month
 - SEO Growth: $650/month
 - SEO Foundation Setup: $350 for Essentials or $500 for Growth; included with a new website and SEO package
+- Website Chat Assistant: $99/month during the founding-client rollout, with $0 setup for a standard deployment
+- Lead Qualification Assistant: $149/month during the founding-client rollout, with $0 setup for a standard deployment
+- Lead Follow-Up Agent: $199/month plus messaging usage during the founding-client rollout, with $0 setup for a standard deployment
+- AI Phone Receptionist: $299/month plus voice usage during the founding-client rollout, with $0 setup for a standard configuration
 - Focused Workflow automation: from $650
-- Managed Tailored Agent: from $500 activation plus $750/month and usage
-- Connected agent systems and custom software: tailored proposal
+- Custom agent systems and connected software: tailored proposal
 
 `lib/services.ts` is the source of truth for public pricing and package inclusions. Review any price change against actual delivery capacity before release.
+
+Founding-client pricing is an introductory commercial program, not a claim that every agent is immediately available or suitable for every business. Fit, standard configuration, usage, outside software, compliance needs, and nonstandard integrations are confirmed before billing. Advanced agents and custom systems retain implementation pricing and an individually defined support model.
 
 The Growth Hub remains a product direction until its client access and production workflows are operational. Do not describe a conceptual dashboard as an included live client portal.
 

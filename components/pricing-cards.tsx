@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 import type { PricingPlan } from "@/lib/services";
 
-export function PricingCards({ plans, columns = 3 }: { plans: readonly PricingPlan[]; columns?: 2 | 3 }) {
+export function PricingCards({ plans, columns = 3 }: { plans: readonly PricingPlan[]; columns?: 2 | 3 | 4 }) {
   return (
     <div className={`pricing-package-grid pricing-package-grid-${columns}`}>
       {plans.map((plan) => (

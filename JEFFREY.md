@@ -29,6 +29,17 @@ The Search Console application code, database migration, dashboard reporting, ma
 
 Start from the `main` commit that contains this handoff or a newer commit. Read this file completely before taking action. Also read `README.md`, `docs/PRODUCT_PLAN.md`, `docs/LAUNCH_CHECKLIST.md`, and the applicable Next.js documentation under `node_modules/next/dist/docs/` before changing application code.
 
+### Commercial direction to preserve
+
+- Websites and managed SEO remain the primary way Tailored Agents acquires and begins serving clients.
+- The relationship can expand into two agent categories: website intelligence and business operations.
+- Founding-client standard offers are the Website Chat Assistant at $99/month, Lead Qualification Assistant at $149/month, Lead Follow-Up Agent at $199/month plus messaging usage, and AI Phone Receptionist at $299/month plus voice usage.
+- The approved standard configuration has $0 setup. Nonstandard knowledge preparation, integrations, compliance needs, outside software, and custom development are scoped separately.
+- Advanced agents and connected systems retain implementation pricing, support pricing, and usage terms defined by proposal.
+- Normal analytics and the eventual human-reviewed SEO intelligence layer are included in managed SEO rather than sold as separate agent subscriptions.
+- Public prices describe a limited founding-client rollout. Do not treat every listed agent as generally available or technically complete until its delivery workflow and product gate pass.
+- The long-term architecture should let these services share client context, evidence, approvals, activity history, and reporting through the Growth Hub without weakening tenant isolation.
+
 ## Ownership and repository boundaries
 
 Austin owns public website design, public-facing copy, brand presentation, and marketing-page iteration. Jeffrey owns backend, database, dashboard, analytics, integrations, client access, SEO tooling, agent infrastructure, and technical production validation.

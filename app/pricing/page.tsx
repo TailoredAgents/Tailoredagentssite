@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowDown, FileCheck2, Handshake, ReceiptText } from "lucide-react";
 import { PricingCards } from "@/components/pricing-cards";
 import { Eyebrow, FinalCta } from "@/components/ui";
-import { automationPlans, seoPlans, websitePlans } from "@/lib/services";
+import { customAutomationPlans, foundingAgentPlans, seoPlans, websitePlans } from "@/lib/services";
 
 export const metadata: Metadata = {
   title: "Website, SEO & AI Automation Pricing",
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 const pricingGroups = [
   ["Websites", "From $1,500", "#websites"],
   ["SEO & Analytics", "From $400/month", "#seo"],
-  ["AI & Automation", "From $650", "#automation"],
+  ["AI agent add-ons", "From $99/month", "#automation"],
 ] as const;
 
 export default function PricingPage() {
@@ -25,7 +25,7 @@ export default function PricingPage() {
           <div>
             <Eyebrow>Clear pricing</Eyebrow>
             <h1 className="page-title">Serious work. Clear ways to <span className="serif-italic">start.</span></h1>
-            <p className="lede">These packages establish a useful starting point without forcing every business into the same solution. We confirm the deliverables, timeline, and complete price in writing before paid work begins.</p>
+            <p className="lede">These packages establish a useful starting point without forcing every business into the same solution. Founding-client agent pricing makes expansion accessible, while every engagement still receives a written scope before paid work begins.</p>
             <div className="hero-actions"><Link className="button button-dark" href="/packages">Build a Flexible Package</Link><Link className="button button-light" href="#websites">Compare individual services<ArrowDown size={15} aria-hidden="true" /></Link></div>
           </div>
           <aside className="pricing-hero-panel" aria-label="Service starting prices">
@@ -52,8 +52,11 @@ export default function PricingPage() {
 
       <section className="section-pad package-section" id="automation">
         <div className="container-shell">
-          <div className="section-heading-wide"><div><Eyebrow>AI agents, automation & custom software</Eyebrow><h2 className="h2">Start focused. Expand when the value is <span className="serif-italic">clear.</span></h2></div><p className="lede">Choose a one-time automation for a fixed workflow or a managed monthly agent when the responsibility requires monitoring, refinement, and variable usage.</p></div>
-          <PricingCards plans={automationPlans} />
+          <div className="section-heading-wide"><div><Eyebrow>Founding-client AI add-ons</Eyebrow><h2 className="h2">Start with one useful capability. Expand when the value is <span className="serif-italic">clear.</span></h2></div><p className="lede">These introductory monthly offers are designed for repeatable website and business workflows. Availability, fit, usage, integrations, and the standard configuration are confirmed before billing.</p></div>
+          <PricingCards plans={foundingAgentPlans} columns={4} />
+          <div className="founding-pricing-note"><strong>Why founding-client pricing?</strong><span>We are building our early client base and standardizing these services without reducing the level of management, review, or support. Standard deployments have $0 setup; usage and nonstandard work remain separate.</span></div>
+          <div className="pricing-subsection-heading"><Eyebrow>Custom automation & advanced agents</Eyebrow><h2 className="h2">Some systems should be scoped around the <span className="serif-italic">business.</span></h2><p className="lede">Broader integrations, advanced agent responsibilities, portals, and custom software retain implementation pricing and an individually defined support model.</p></div>
+          <PricingCards plans={customAutomationPlans} columns={2} />
         </div>
       </section>
 
@@ -75,7 +78,9 @@ export default function PricingPage() {
             <details><summary>Is the $1,500 Launch Website a complete website?</summary><p>Yes, within its defined scope: up to five essential pages, responsive design and development, a standard inquiry form, foundational SEO and analytics, one consolidated revision round, and deployment assistance. The client supplies the core copy, logo, and photography.</p></details>
             <details><summary>What usually increases a website price?</summary><p>Additional pages, copywriting, custom photography or media work, ecommerce, specialized forms, customer portals, third-party integrations, and custom application behavior add scope.</p></details>
             <details><summary>What does the SEO Foundation Setup cover?</summary><p>It establishes the technical audit, measurement baseline, search and location priorities, reporting environment, and initial action plan. Managed SEO then continues month to month and can be canceled before the next billing cycle.</p></details>
-            <details><summary>How are managed AI agents billed?</summary><p>The monthly management fee covers the defined agent, monitoring, refinement, support, and an agreed usage allowance. Activation, third-party software, voice or messaging costs, and usage above the allowance are identified separately in the proposal.</p></details>
+            <details><summary>What does founding-client pricing mean?</summary><p>It is introductory pricing for early clients who are a good fit for a standardized agent configuration. It is not reduced-service work. Availability is limited, and the written scope confirms the responsibility, support, boundaries, usage, and any outside costs.</p></details>
+            <details><summary>Does $0 setup apply to every AI agent?</summary><p>No. It applies to the standard configuration of the listed founding-client agents. Custom knowledge preparation, nonstandard call flows, CRM writes, migrations, specialized compliance requirements, broader integrations, and custom software require a separate scope.</p></details>
+            <details><summary>How are agent usage costs handled?</summary><p>Voice minutes, phone numbers, text messages, third-party software, and volume beyond an included allowance are identified separately before launch. The exact usage model depends on the selected agent and providers.</p></details>
             <details><summary>When does automation need a tailored proposal?</summary><p>A proposal is needed when a workflow spans several systems, depends on custom APIs or data migration, requires a new interface, or needs broader operational testing and support.</p></details>
           </div>
         </div>

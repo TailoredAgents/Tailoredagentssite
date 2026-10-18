@@ -8,6 +8,8 @@ Use this checklist for the public website and private dashboard. The mail applic
 - [ ] Confirm public copy distinguishes current production features from illustrative or planned product direction.
 - [ ] Confirm the Growth Hub is not described as included client access until Phase 4 is operational.
 - [ ] Confirm the SEO agent is not described as active until its evaluation, approval, and audit controls pass.
+- [ ] Confirm founding-client agent pricing is described as a limited rollout rather than general availability, and that $0 setup is limited to the approved standard configuration.
+- [ ] Confirm usage, outside software, nonstandard integrations, compliance work, and custom development are not implied to be included in the introductory monthly price.
 - [ ] Update the README, environment example, migration notes, and this checklist in the same release as architecture changes.
 
 ## Ownership and business configuration

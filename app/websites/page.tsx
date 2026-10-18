@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Accessibility, ArrowRight, Gauge, LayoutTemplate, Search, Smartphone } from "lucide-react";
+import { Accessibility, ArrowRight, Bot, Gauge, LayoutTemplate, Search, Smartphone } from "lucide-react";
 import { WebsiteConceptGallery } from "@/components/growth-visuals";
 import { PricingCards } from "@/components/pricing-cards";
 import { ArrowLink, Eyebrow, FinalCta } from "@/components/ui";
@@ -45,6 +45,13 @@ export default function WebsitesPage() {
 
       <section className="section-pad process-section">
         <div className="container-shell"><div className="section-heading-wide"><div><Eyebrow>Development process</Eyebrow><h2 className="h2">From business context to a <span className="serif-italic">finished experience.</span></h2></div><p className="lede">Each phase resolves a different kind of uncertainty before the site is asked to perform in public.</p></div><div className="process-grid">{[["01","Discover","Clarify the audience, offer, differentiators, content, and technical needs."],["02","Design","Establish visual direction, page composition, and responsive behavior."],["03","Develop","Build the production site, interactions, forms, and SEO foundations."],["04","Launch","Verify quality, connect delivery systems, deploy, and identify next improvements."]].map(([n,h,p])=><div className="process-item" key={n}><span>{n}</span><h3>{h}</h3><p>{p}</p></div>)}</div></div>
+      </section>
+
+      <section className="section-pad website-agent-section">
+        <div className="container-shell">
+          <div className="section-heading-wide"><div><Eyebrow>Built to expand</Eyebrow><h2 className="h2">The website can become more useful <span className="serif-italic">over time.</span></h2></div><p className="lede">Launch the customer experience first. When the business is ready, add a managed chat assistant, lead qualification, booking handoff, follow-up, or voice-enabled help without turning the original project into an oversized build.</p></div>
+          <div className="package-agent-bridge"><span><Bot size={20} aria-hidden="true" /></span><div><small>Founding-client website agents</small><h3>Standard website assistants begin at $99 per month with $0 setup.</h3><p>Availability is limited, and the standard configuration, knowledge readiness, usage, and handoff boundaries are confirmed before billing.</p></div><Link href="/automation#founding-pricing">Explore website agents<ArrowRight size={14} aria-hidden="true" /></Link></div>
+        </div>
       </section>
 
       <section className="section-pad package-section package-section-alt" id="pricing"><div className="container-shell"><div className="section-heading-wide"><div><Eyebrow>Website packages</Eyebrow><h2 className="h2">A competitive place to start, with room to <span className="serif-italic">grow.</span></h2></div><p className="lede">Choose a focused launch scope or expand the build when more content, integrations, and customer-facing functionality are useful. Final deliverables and pricing are confirmed in writing.</p></div><PricingCards plans={websitePlans}/><div className="package-section-link"><ArrowLink href="/pricing">View all pricing details</ArrowLink></div></div></section>

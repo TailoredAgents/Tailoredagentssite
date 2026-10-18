@@ -15,10 +15,10 @@ export const metadata: Metadata = {
 const serviceIcons = [MonitorSmartphone, Search, Workflow];
 
 const growthSteps = [
-  ["01", "Website", "Start with a credible customer experience, clear services, and useful inquiry paths."],
-  ["02", "Growth Hub", "Bring website signals, search priorities, completed work, and next actions into view."],
-  ["03", "Managed Growth", "Improve visibility and conversion through a consistent, human-reviewed monthly cadence."],
-  ["04", "Tailored Agent", "Add one bounded agent responsibility when a repeated workflow is ready for it."],
+  ["01", "Website foundation", "Start with a credible customer experience, clear services, and useful inquiry paths."],
+  ["02", "Managed growth", "Build visibility and understand results through SEO, analytics, and human-reviewed priorities."],
+  ["03", "Website intelligence", "Add chat, qualification, booking, or follow-up when the customer journey is ready."],
+  ["04", "Business operations", "Expand into calls, service, documents, and connected workflows one useful responsibility at a time."],
 ] as const;
 
 export default function Home() {
@@ -68,13 +68,13 @@ export default function Home() {
         <div className="container-shell hub-layer-grid">
           <article><BarChart3 size={18}/><span>01 / Monitor</span><h3>Understand what is happening.</h3><p>Website activity, conversion events, visibility signals, and performance trends become easier to review.</p></article>
           <article><Search size={18}/><span>02 / Improve</span><h3>Turn signals into priorities.</h3><p>See what was reviewed, what changed, what deserves attention next, and why the work matters.</p></article>
-          <article><Bot size={18}/><span>03 / Automate</span><h3>Add agents when the workflow is ready.</h3><p>The same business context can support approvals, activity history, and tailored agents as the engagement expands.</p></article>
+          <article><Bot size={18}/><span>03 / Expand</span><h3>Add intelligence when the workflow is ready.</h3><p>The same business context can support website assistants, lead follow-up, approvals, activity history, and operational agents as the engagement expands.</p></article>
         </div>
       </section>
 
       <section className="section-pad growth-journey-section">
         <div className="container-shell">
-          <div className="section-heading-wide"><div><Eyebrow>A practical growth path</Eyebrow><h2 className="h2">Start with what brings people in. Build what helps the business <span className="serif-italic">run.</span></h2></div><p className="lede">Each layer can stand on its own. Begin with the website and visibility work that matter now, then add automation only when a defined workflow makes the next investment useful.</p></div>
+          <div className="section-heading-wide"><div><Eyebrow>A long-term technology partner</Eyebrow><h2 className="h2">Start with what brings people in. Build what helps the business <span className="serif-italic">run.</span></h2></div><p className="lede">Websites and managed SEO establish the foundation. From there, add customer-facing intelligence and operational agents over time—all designed to connect through the same relationship and shared business context.</p></div>
           <div className="growth-journey">
             {growthSteps.map(([number, title, text], index) => <article key={title}><span>{number}</span><div className="journey-icon">{index === 0 ? <MonitorSmartphone size={18}/> : index === 1 ? <BarChart3 size={18}/> : index === 2 ? <Search size={18}/> : <Workflow size={18}/>}</div><h3>{title}</h3><p>{text}</p>{index < growthSteps.length - 1 && <i aria-hidden="true">→</i>}</article>)}
           </div>
@@ -95,7 +95,7 @@ export default function Home() {
           <div className="pricing-grid">
             {Object.values(servicePricing).map((item, index) => <article className={index === 0 ? "featured-price" : ""} key={item.label}><span>0{index + 1}</span><h3>{item.label}</h3><small>{item.qualifier}</small><strong>{item.price}</strong><p>{item.note}</p><Link href={item.href}>{item.cta}<ArrowRight size={14}/></Link></article>)}
           </div>
-          <p className="pricing-note">Website packages begin at $1,500, managed SEO at $400 per month, focused automation at $650, and managed tailored agents at $750 per month plus activation and usage. Scope, integrations, and technical requirements affect the final proposal.</p>
+          <p className="pricing-note">Website packages begin at $1,500 and managed SEO at $400 per month. Founding-client website agents begin at $99 per month with $0 setup for a standard deployment. Custom workflows, advanced agents, integrations, and usage are scoped separately.</p>
           <div className="section-end-link"><ArrowLink href="/pricing">Explore packages and pricing</ArrowLink></div>
         </div>
       </section>

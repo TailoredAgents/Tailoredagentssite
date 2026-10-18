@@ -1,19 +1,33 @@
 # Tailored Agents product plan
 
-Last updated: October 16, 2026
+Last updated: October 18, 2026
 
 This document is the durable product and implementation plan for the Tailored Agents website, internal dashboard, future client Growth Hub, analytics platform, SEO workspace, and eventual SEO agent. It records the intended sequence, boundaries, data model, security posture, and completion criteria so future work does not drift from the business goals.
 
 ## Product direction
 
-Tailored Agents begins with services that can be delivered credibly now:
+Tailored Agents uses websites and managed SEO as the primary entry point for client relationships:
 
 1. Premium website design and development.
 2. Managed local SEO and growth analytics.
-3. Focused business automation and, where justified, managed agents.
-4. Custom software and connected systems for qualified projects.
+3. Standardized website intelligence and business-operations agents introduced through a limited founding-client rollout.
+4. Focused business automation and, where justified, advanced managed agents.
+5. Custom software and connected systems for qualified projects.
 
-The software product grows out of those services. The immediate goal is not to launch a broad autonomous-agent platform. It is to build a reliable internal operating system that helps Tailored Agents manage leads, clients, websites, work, and evidence. That system can then become a client-facing Growth Hub and, only after the data and workflows are trustworthy, support a bounded SEO agent.
+The software product grows out of those services. A website creates the customer-facing foundation, managed SEO adds recurring improvement and reporting, website intelligence adds chat, qualification, booking, or follow-up, and operations agents can later support calls, service, documents, reporting, and connected workflows. These capabilities should accumulate through one client relationship and shared infrastructure rather than become unrelated systems.
+
+The immediate goal is not to launch a broad autonomous-agent platform. It is to build a reliable internal operating system that helps Tailored Agents manage leads, clients, websites, work, evidence, and eventually bounded agent activity. That system can then become a client-facing Growth Hub and, only after the data and workflows are trustworthy, support a bounded SEO agent.
+
+### Commercial service ladder
+
+- Websites generally carry the larger upfront project fee and establish the initial client relationship.
+- Managed SEO and growth analytics create recurring monthly value after launch.
+- Standardized agents use a $0 setup model for the approved standard configuration and a recurring monthly fee, with usage and nonstandard work identified separately.
+- Founding-client introductory prices are $99/month for a Website Chat Assistant, $149/month for a Lead Qualification Assistant, $199/month plus messaging usage for a Lead Follow-Up Agent, and $299/month plus voice usage for an AI Phone Receptionist.
+- Smaller future add-ons may generally fall between $49 and $149 per month, but they must not be published as available before their scope and delivery model exist.
+- Advanced agents, broader integrations, and custom software retain implementation pricing plus an individually defined support and usage model.
+- Normal analytics and the planned human-reviewed SEO intelligence layer belong inside the existing managed SEO subscription rather than becoming separate agent charges.
+- Founding-client pricing is positioned as an introductory program for suitable early clients, not as low-service or universally available work.
 
 ## Product principles
 
@@ -45,6 +59,7 @@ The software product grows out of those services. The immediate goal is not to l
 - Production-authorized Google Search Console data; the implementation is complete but remains disconnected until the verified property and OAuth client are configured.
 - Client accounts or a client-facing Growth Hub.
 - A public interactive product demo.
+- A generally available standardized website-agent or operations-agent catalog; the public site describes a limited founding-client rollout without claiming that every listed capability is operational.
 - Automated SEO auditing, recommendations, content generation, or publishing.
 
 ## Intended users and access
@@ -403,6 +418,10 @@ Phase 3 begins with a small first-party event stream instead of immediately addi
 ### October 18, 2026 — Connect search evidence read-only
 
 The Search Console integration uses the narrow read-only scope, exact production-property matching, single-use OAuth state, encrypted offline credentials, finalized Google data, and idempotent rolling imports. A small Render cron provides one daily refresh; manual refresh uses the same bounded path. Imported query and page evidence is retained for 18 months. GA4 remains deferred because the first-party event stream already owns conversion measurement.
+
+### October 18, 2026 — Expand client relationships through modular agents
+
+Websites and managed SEO remain the primary acquisition offer. Suitable clients can then add standardized website intelligence or business-operations agents through the same long-term relationship and, eventually, the same Growth Hub. Founding-client prices make the first repeatable agents accessible without treating Tailored Agents as a discount provider. Standard configurations use $0 setup and recurring fees; custom integrations and advanced systems remain separately scoped. Public messaging must distinguish the limited founding rollout from generally available or fully implemented capabilities.
 
 ## Maintaining this plan
 

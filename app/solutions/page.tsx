@@ -3,26 +3,26 @@ import { FinalCta, PageHero } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Automation & AI Solutions",
-  description: "Explore tailored customer follow-up, call intelligence, marketing analysis, operations automation, integrations, and custom business software.",
+  description: "Explore website AI assistants, lead qualification, phone reception, follow-up, marketing intelligence, operations automation, and custom software.",
   alternates: { canonical: "/solutions" },
 };
 
 const solutions = [
   {
-    title: "AI Customer Engagement",
-    problem: "Customer inquiries arrive across channels, context gets lost, and timely follow-up depends on repetitive manual work.",
-    system: "An engagement layer that qualifies inbound requests, prepares approved answers, coordinates next steps, and keeps customer records synchronized.",
-    workflow: "Inquiry → classify intent → apply business rules → prepare response → route or escalate → update record.",
-    integrations: ["CRM", "SMS & messaging", "Scheduling", "Web forms"],
-    oversight: "Operators approve sensitive or nonstandard responses; exceptions and low-confidence cases route to a person.",
+    title: "Website AI & Lead Qualification",
+    problem: "Website visitors have questions at every hour, while useful context can be lost between a generic form submission and the team's first response.",
+    system: "A business-trained website assistant that answers approved questions, gathers lead context, applies qualification rules, and prepares the next handoff.",
+    workflow: "Visitor question → approved answer → capture context → qualify → book, route, or escalate.",
+    integrations: ["Website", "Web forms", "Scheduling", "CRM"],
+    oversight: "The business approves source knowledge, qualification questions, escalation rules, and any action beyond standard website assistance.",
   },
   {
-    title: "AI Call Intelligence",
-    problem: "Important customer context stays inside recordings while CRM notes, follow-up, and coaching remain inconsistent.",
-    system: "A recorded-call pipeline for transcription, structured information extraction, concise documentation, next-step detection, and reviewable coaching insights.",
-    workflow: "Recording → transcription → entity and intent extraction → CRM draft → coaching analysis → manager review.",
-    integrations: ["Telephony", "CRM", "Task systems", "Reporting"],
-    oversight: "Teams define recording consent and retention policies. Generated notes and coaching signals remain reviewable and traceable.",
+    title: "AI Phone & Missed-call Recovery",
+    problem: "Calls arrive while teams are busy, after hours, or in the field, and a missed conversation can become a missed customer.",
+    system: "A bounded phone and recovery workflow that handles approved common needs, captures caller intent, coordinates the next step, and escalates exceptions.",
+    workflow: "Inbound or missed call → identify need → capture details → answer, book, route, or follow up → log outcome.",
+    integrations: ["Telephony", "Scheduling", "CRM", "SMS & messaging"],
+    oversight: "Call flows, recording and consent rules, transfers, sensitive topics, and escalation behavior are approved before launch.",
   },
   {
     title: "AI Marketing Intelligence",
