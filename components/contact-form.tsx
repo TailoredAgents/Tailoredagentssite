@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight, LoaderCircle } from "lucide-react";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { interestOptions, type ContactErrors } from "@/lib/contact";
+import { trackAnalyticsEvent } from "@/lib/analytics/client";
 
 type Status = { type: "idle" | "submitting" | "success" | "error"; message?: string };
 
@@ -32,13 +33,16 @@ export function ContactForm() {
       form.reset();
       startedAt.current = Date.now();
       setStatus({ type: "success", message: result.message });
+      if (response.status === 201) {
+        trackAnalyticsEvent("form_success", { formType: "project" });
+      }
     } catch {
       setStatus({ type: "error", message: "A network error interrupted the request. Please check your connection before trying again." });
     }
   }
 
   return (
-    <form className="contact-form" onSubmit={submit} noValidate>
+    <form className="contact-form" data-analytics-form="project" onSubmit={submit} noValidate>
       <input type="hidden" name="inquiryType" value="project" />
       <div className="form-grid">
         <div className="field"><label htmlFor="name">Name</label><input id="name" name="name" autoComplete="name" required aria-invalid={!!errors.name} aria-describedby={errors.name ? "name-error" : undefined}/>{errors.name && <p className="field-error" id="name-error">{errors.name}</p>}</div>

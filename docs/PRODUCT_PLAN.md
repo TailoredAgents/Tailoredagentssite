@@ -34,6 +34,7 @@ The software product grows out of those services. The immediate goal is not to l
 - Public pages for websites, SEO, automation, engineering, packages, pricing, work, company, and contact.
 - Transparent starting prices and an interactive website/SEO package calculator.
 - Project inquiry and free website-review forms stored in PostgreSQL, with Resend notifications when configured.
+- First-party page, acquisition, intent, form, and conversion events with an internal analytics dashboard.
 - A Blueprint-managed persistent PostgreSQL database and private internal operations dashboard.
 - Lead qualification and conversion plus client, contact, site, project, milestone, and project-record workflows.
 - A separate Tailored Mail application under `apps/mail`, deployed independently to Cloudflare Workers.
@@ -41,8 +42,7 @@ The software product grows out of those services. The immediate goal is not to l
 
 ### Not yet operational
 
-- Production dashboard sign-in until the internal allowlist and initial owner password are configured and verified.
-- First-party conversion analytics or connected GA4/Search Console reporting.
+- Connected Google Search Console or GA4 reporting.
 - Client accounts or a client-facing Growth Hub.
 - A public interactive product demo.
 - Automated SEO auditing, recommendations, content generation, or publishing.
@@ -159,6 +159,8 @@ Exit criteria:
 
 Goal: collect and explain the evidence needed for growth work.
 
+Status: in progress. Privacy-reviewed first-party instrumentation, retention, attribution, conversion definitions, freshness state, and internal acquisition/conversion reporting are implemented. Google Search Console ingestion and the decision on whether GA4 adds enough value remain open.
+
 Deliverables:
 
 - Privacy-reviewed first-party events for page views, CTA clicks, phone clicks, form starts, successful submissions, and booked-call outcomes.
@@ -171,7 +173,7 @@ Deliverables:
 
 Implementation note:
 
-Instrumentation should begin early in this phase so reporting has history. The polished reporting interface can follow once event quality has been verified.
+Instrumentation is live first so reporting can accumulate history. The dashboard labels external integrations as unconnected rather than filling their views with synthetic data.
 
 Exit criteria:
 
@@ -283,8 +285,8 @@ Exit criteria:
 
 ### Measurement and integrations
 
-- `analytics_events`: future first-party events.
-- `daily_metrics`: future normalized reporting aggregates.
+- `analytics_events`: implemented first-party events with session-scoped attribution and retention.
+- `daily_metrics`: deferred until observed volume or ingestion workload justifies maintained aggregates; current bounded reports query indexed events directly.
 - `integration_connections`: future encrypted provider connection metadata.
 - `sync_runs`: future ingestion state, cursor, freshness, and failure history.
 
@@ -295,7 +297,7 @@ Exit criteria:
 - `recommendations`, `content_briefs`, and `content_revisions`.
 - `agent_definitions`, `agent_runs`, `agent_steps`, and `approvals`.
 
-The first migration creates the identity, tenancy, initial lead/site, and audit foundation. The second migration adds only the Phase 2 operational records, shared inquiry controls, delivery states, and retention metadata used by the implemented workflows. Later-phase tables should be added with their behavior and retention rules, not speculatively.
+The first migration creates the identity, tenancy, initial lead/site, and audit foundation. The second migration adds the Phase 2 operational records, shared inquiry controls, delivery states, and retention metadata. The third migration adds the implemented first-party event stream and its 25-month retention contract. Later-phase tables should be added with their behavior and retention rules, not speculatively.
 
 ## Security and privacy baseline
 
@@ -305,6 +307,7 @@ The first migration creates the identity, tenancy, initial lead/site, and audit 
 - Dashboard access is denied unless the current email is still allowlisted and the user has an active workspace membership.
 - Authorization must be repeated in every protected data-access function and mutation.
 - The browser never receives database URLs, Resend keys, auth secrets, provider tokens, or full database rows.
+- First-party analytics uses a session-scoped random identifier, honors DNT/GPC, and does not persist raw IP addresses, user-agent strings, form contents, or full referrer URLs with events.
 - All client-supplied fields, route parameters, and integration payloads must be validated on the server.
 - Important mutations must write an audit record in the same transaction where practical.
 - Provider credentials must be encrypted at rest before integration work begins.
@@ -385,6 +388,10 @@ Public inquiries are stored transactionally before the application attempts a Re
 ### October 18, 2026 — Make dashboard login independent of email delivery
 
 The private dashboard uses an allowlisted email and password backed by Better Auth database sessions. The first approved identity creates the owner account with a password stored privately in Render and hashed in PostgreSQL. Resend remains optional for public-inquiry notifications and no longer blocks dashboard access.
+
+### October 18, 2026 — Own the initial measurement layer
+
+Phase 3 begins with a small first-party event stream instead of immediately adding another analytics vendor. Session-scoped identifiers, normalized attribution, explicit conversion events, bounded retention, and a private reporting view create useful historical data without advertising profiles or persistent analytics cookies. Search Console remains the next external source; GA4 is optional rather than assumed.
 
 ## Maintaining this plan
 

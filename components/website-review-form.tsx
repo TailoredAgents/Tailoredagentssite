@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight, LoaderCircle } from "lucide-react";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import type { ContactErrors } from "@/lib/contact";
+import { trackAnalyticsEvent } from "@/lib/analytics/client";
 
 type Status = { type: "idle" | "submitting" | "success" | "error"; message?: string };
 
@@ -38,13 +39,16 @@ export function WebsiteReviewForm() {
       form.reset();
       startedAt.current = Date.now();
       setStatus({ type: "success", message: result.message });
+      if (response.status === 201) {
+        trackAnalyticsEvent("form_success", { formType: "website-review" });
+      }
     } catch {
       setStatus({ type: "error", message: "A network error interrupted the request. Please check your connection before trying again." });
     }
   }
 
   return (
-    <form className="contact-form review-request-form" onSubmit={submit} noValidate>
+    <form className="contact-form review-request-form" data-analytics-form="website-review" onSubmit={submit} noValidate>
       <input type="hidden" name="inquiryType" value="website-review" />
       <div className="form-heading"><span>Request your review</span><h2>Tell us where to look.</h2><p>Share your current website and the best way to reach you. The goal field is optional.</p></div>
       <div className="form-grid">

@@ -90,6 +90,18 @@ Use this checklist for the public website and private dashboard. The mail applic
 - [ ] Test safe export, anonymization, backup, and restore with non-production records.
 - [ ] Schedule `npm run db:retention` at least monthly in addition to deployment-time maintenance.
 
+## Phase 3 measurement gate
+
+- [ ] Confirm migration `0003_first_party_analytics.sql` is recorded once in `schema_migrations`.
+- [ ] Confirm a public page view appears in `/dashboard/analytics` without recording a raw IP address, user-agent string, full referrer URL, or form contents.
+- [ ] Verify CTA, phone, form-start, and successful inquiry events use their documented definitions and do not double count duplicate inquiry submissions.
+- [ ] Verify UTM source, medium, and campaign plus external referring host attribution with authorized test visits.
+- [ ] Verify Do Not Track and Global Privacy Control prevent client-side event requests.
+- [ ] Verify `/dashboard` and `/sign-in` activity is excluded from public analytics.
+- [ ] Verify 7, 30, and 90-day reports, empty states, funnel counts, top pages, acquisition rows, and last-event freshness.
+- [ ] Confirm analytics events expire after 25 months through `npm run db:retention`.
+- [ ] Keep Search Console and GA4 marked unconnected until real authorization and successful ingestion exist.
+
 ## After each release
 
 - [ ] Monitor Render health, migration output, authentication errors, database capacity, and failed email delivery without logging message contents or secrets.

@@ -23,7 +23,7 @@ export default async function DashboardPage() {
       <div className="dashboard-content">
         <section className="dashboard-page-heading">
           <div>
-            <span>Phase 2 · Internal operations</span>
+            <span>Phase 3 · Measurement</span>
             <h1>Welcome back, {context.user.name.split(" ")[0]}.</h1>
             <p>New inquiries, client relationships, managed sites, projects, milestones, decisions, and delivery records now share one operating context.</p>
           </div>
@@ -57,8 +57,8 @@ export default async function DashboardPage() {
             <div className="dashboard-panel-heading"><div><span>Delivery path</span><h2>What comes next</h2></div></div>
             <ol className="dashboard-roadmap">
               <li><i>01</i><span><strong>Foundation</strong><small>Auth, database, roles, audit trail</small></span><em>Complete</em></li>
-              <li className="is-active"><i>02</i><span><strong>Internal operations</strong><small>Leads, clients, sites, projects</small></span><em>Current</em></li>
-              <li><i>03</i><span><strong>Measurement</strong><small>Conversions, Search Console, analytics</small></span></li>
+              <li><i>02</i><span><strong>Internal operations</strong><small>Leads, clients, sites, projects</small></span><em>Complete</em></li>
+              <li className="is-active"><i>03</i><span><strong>Measurement</strong><small>Conversions, attribution, source health</small></span><em>Current</em></li>
               <li><i>04</i><span><strong>Client Growth Hub</strong><small>Reports, approvals, public demo</small></span></li>
               <li><i>05</i><span><strong>SEO workspace</strong><small>Audits and reviewed recommendations</small></span></li>
               <li><i>06</i><span><strong>Bounded SEO agent</strong><small>Evidence-backed drafts with approval</small></span></li>

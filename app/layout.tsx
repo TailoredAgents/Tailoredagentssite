@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteFrame } from "@/components/site-frame";
+import { AnalyticsTracker } from "@/components/analytics-tracker";
 import { absoluteUrl, siteConfig } from "@/lib/site";
 import "./globals.css";
 
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en" className={`${geist.variable} ${geistMono.variable}`}>
       <body>
         <a className="skip-link" href="#main-content">Skip to content</a>
+        <AnalyticsTracker />
         <SiteFrame
           header={<SiteHeader />}
           footer={<SiteFooter />}

@@ -16,11 +16,12 @@ Operational today:
 - Service, package, pricing, work, industry, company, legal, and contact routes.
 - Transparent starting prices and a website/SEO package calculator.
 - Durable project-inquiry and free website-review capture in PostgreSQL, with Resend notification delivery when configured.
+- Privacy-conscious first-party measurement for public page views, acquisition, next-step clicks, and inquiry conversions.
 - Conceptual Growth Hub and analytics visuals labeled as illustrative.
 
 ### Private dashboard
 
-Phases 1 and 2 are implemented in the application source:
+Phases 1 and 2 are implemented, and the first Phase 3 measurement release is active in the application source:
 
 - Versioned PostgreSQL migrations.
 - Allowlisted email-and-password authentication with hashed credentials.
@@ -28,13 +29,14 @@ Phases 1 and 2 are implemented in the application source:
 - Workspace membership and owner/admin/member/viewer roles.
 - Initial site, lead, and append-only audit tables.
 - Server-only authorization and narrow dashboard data-transfer objects.
-- Protected `/dashboard`, `/dashboard/activity`, and `/dashboard/settings` routes.
+- Protected dashboard routes for operations, activity, settings, and real website analytics.
 - Lead search, qualification, ownership, notes, next actions, conversion, and safe CSV export.
 - Client, contact, site, and project workspaces with milestones, deliverables, decisions, and notes.
 - Shared database-backed inquiry controls, delivery status, retention metadata, and audited mutations.
+- Real acquisition, conversion, content, funnel, trend, and freshness reporting from first-party events.
 - Safe setup behavior: the marketing site remains operational when dashboard infrastructure is absent.
 
-The Blueprint provisions the persistent database. Private dashboard access requires the internal email allowlist and an initial dashboard password; Resend is optional and affects inquiry notifications only. Measurement, client accounts, SEO tooling, and the SEO agent are not implemented yet.
+The Blueprint provisions the persistent database. Private dashboard access requires the internal email allowlist and an initial dashboard password; Resend is optional and affects inquiry notifications only. Search Console/GA4 connections, client accounts, SEO tooling, and the SEO agent are not implemented yet.
 
 ### Tailored Mail
 
@@ -148,6 +150,14 @@ The route applies a honeypot, minimum completion time, request-size limit, Postg
 
 New inquiries receive a 24-month retention date. The retention command anonymizes expired inquiries that have not become won business, removes their notes, deletes expired rate-limit records, and expires audit events after 36 months. Won/converted business records require deliberate business-record handling instead of automatic inquiry anonymization. Run `npm run db:retention` at least monthly; Render also runs it during deployments.
 
+## First-party analytics
+
+Public pages record a narrow set of first-party events: page views, selected CTA clicks, phone clicks, form starts, successful inquiry submissions, and future booked-call links. Events use a random session-scoped identifier in browser session storage. The system does not set an analytics cookie or store a persistent visitor ID, raw IP address, user-agent string, full referrer URL, or form contents with analytics events.
+
+The event route accepts only same-origin, schema-validated payloads, applies database-backed rate limiting, and stores normalized paths, external referrer hosts, and UTM attribution. Do Not Track and Global Privacy Control disable client-side measurement. Events expire after 25 months through `npm run db:retention`.
+
+`/dashboard/analytics` reports observed first-party data only. Google Search Console ingestion is the next Phase 3 slice. GA4 remains optional and should be connected only if it contributes useful data without duplicating the first-party system.
+
 ## Checks
 
 Run the complete website gate after dependency, schema, authentication, route, or design changes:
@@ -205,6 +215,7 @@ Do not add another proxy or CDN until certificate, forwarding-header, authentica
 - Replace the temporary personal phone number through `lib/site.ts` when the final Woodstock-area business number is ready.
 - Add an authorized privacy/legal contact and confirm governing-law language if counsel requires it.
 - Complete browser-based responsive, accessibility, and authenticated-flow QA.
+- Verify production analytics ingestion, conversion definitions, privacy controls, and 7/30/90-day dashboard ranges.
 - Review service scope, public copy, and the StonegateOS case study with the business owner.
 
 See [the launch checklist](docs/LAUNCH_CHECKLIST.md) for the complete production gate.

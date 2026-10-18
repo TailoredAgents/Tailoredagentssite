@@ -45,8 +45,9 @@ try {
   `);
   const limits = await client.query("DELETE FROM request_rate_limits WHERE expires_at <= now()");
   const audit = await client.query("DELETE FROM audit_logs WHERE retained_until <= now()");
+  const analytics = await client.query("DELETE FROM analytics_events WHERE retained_until <= now()");
   await client.query("COMMIT");
-  console.log(`Retention complete: ${leads.rowCount ?? 0} leads anonymized, ${notes.rowCount ?? 0} lead notes removed, ${limits.rowCount ?? 0} rate-limit records removed, ${audit.rowCount ?? 0} audit events expired.`);
+  console.log(`Retention complete: ${leads.rowCount ?? 0} leads anonymized, ${notes.rowCount ?? 0} lead notes removed, ${limits.rowCount ?? 0} rate-limit records removed, ${audit.rowCount ?? 0} audit events expired, ${analytics.rowCount ?? 0} analytics events expired.`);
 } catch (error) {
   await client.query("ROLLBACK");
   throw error;
