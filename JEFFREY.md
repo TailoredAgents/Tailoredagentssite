@@ -1,12 +1,33 @@
 # Jeffrey technical handoff: production closeout and product roadmap
 
+## Instructions to Jeffrey's Codex IDE
+
+If Jeffrey asks you only to read or follow `JEFFREY.md`, treat this file as the full task brief and begin the workflow below. Do not require him to restate the roadmap in chat.
+
+1. Read this entire file before taking action. Do not stop after the Search Console section; the later sections define the complete product roadmap and safety gates.
+2. Read `AGENTS.md`, `README.md`, `docs/PRODUCT_PLAN.md`, and `docs/LAUNCH_CHECKLIST.md` completely.
+3. Inspect the repository, current branch, recent commits, working tree, existing infrastructure declarations, migrations, tests, and documentation. Preserve all existing work and never discard unrelated changes.
+4. Identify the first incomplete workstream in **Master execution sequence** using repository state and verified production evidence. Do not redo work that is already proven complete.
+5. Create or switch to the appropriate `jeffrey/...` branch before making repository changes. Never implement roadmap work directly on `main`.
+6. Create and maintain a concrete working plan for the active workstream. Work autonomously through every safe code, documentation, test, and diagnostic step in scope.
+7. For Google, DNS, Render, email-provider, payment, or other external-account actions, guide Jeffrey one step at a time and inspect the resulting non-secret state when tooling permits. Never request that a password, two-factor code, API secret, token, database URL, or DNS verification value be pasted into chat.
+8. Pause only when a human must enter credentials, approve a new cost, make a business decision, or authorize a materially broader action. State exactly what Jeffrey must do and how you will verify it afterward.
+9. Follow the applicable instructions in `node_modules/next/dist/docs/` before changing Next.js code. Use versioned database migrations and the repository's existing security and data-access patterns.
+10. Complete the release gate appropriate to the change. At minimum, code releases require lint, strict type checking, tests, a production build, dependency audit, migration verification when applicable, and focused authorization tests.
+11. Update `README.md`, `docs/PRODUCT_PLAN.md`, and `docs/LAUNCH_CHECKLIST.md` in the same branch whenever capability or phase status changes. Describe only what is genuinely operational.
+12. Review the final diff for secret leakage, unrelated edits, unsafe migrations, authorization gaps, misleading product claims, and conflicts with Austin's public design work.
+13. Commit and push completed repository work to the active `jeffrey/...` branch. Do not create an empty commit for external configuration that produced no repository change.
+14. Deliver the required non-secret completion report and stop at the workstream's review gate. Do not begin the next major workstream until Austin accepts the preceding one and the accepted branch is merged into `main`.
+
+When information is uncertain, investigate the repository and authoritative primary documentation rather than guessing. The objective is to complete the Tailored Agents vision safely and sequentially, not merely to generate code or interfaces.
+
 ## Assignment
 
 Own the remaining technical roadmap for Tailored Agents while Austin works on public website design and marketing presentation. Begin by completing the production Google Search Console connection. Then close the Phase 2 and Phase 3 production gates before proceeding sequentially through the client Growth Hub, the human-operated SEO workspace, and the bounded SEO agent.
 
 The Search Console application code, database migration, dashboard reporting, manual sync, and Render cron job are already implemented. Its activation is configuration and verification work; do not redesign or replace that integration.
 
-Start from `main` at commit `af2a51f` or newer. Read this file completely before taking action. Also read `README.md`, `docs/PRODUCT_PLAN.md`, `docs/LAUNCH_CHECKLIST.md`, and the applicable Next.js documentation under `node_modules/next/dist/docs/` before changing application code.
+Start from the `main` commit that contains this handoff or a newer commit. Read this file completely before taking action. Also read `README.md`, `docs/PRODUCT_PLAN.md`, `docs/LAUNCH_CHECKLIST.md`, and the applicable Next.js documentation under `node_modules/next/dist/docs/` before changing application code.
 
 ## Ownership and repository boundaries
 
