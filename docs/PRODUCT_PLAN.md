@@ -41,7 +41,7 @@ The software product grows out of those services. The immediate goal is not to l
 
 ### Not yet operational
 
-- Production dashboard sign-in until the internal allowlist and Resend magic-link delivery are configured and verified.
+- Production dashboard sign-in until the internal allowlist and initial owner password are configured and verified.
 - First-party conversion analytics or connected GA4/Search Console reporting.
 - Client accounts or a client-facing Growth Hub.
 - A public interactive product demo.
@@ -106,12 +106,12 @@ Exit criteria:
 
 ### Phase 1 — Backend and private dashboard foundation
 
-Status: implemented. Production sign-in activation still requires the dashboard email allowlist and Resend configuration.
+Status: implemented. Production sign-in activation still requires the dashboard email allowlist and initial owner password.
 
 Deliverables:
 
 - PostgreSQL connection layer and versioned, repeatable migrations.
-- Passwordless magic-link authentication for explicitly allowlisted internal email addresses.
+- Email-and-password authentication for explicitly allowlisted internal email addresses.
 - Secure, HTTP-only database sessions.
 - Tailored Agents internal workspace bootstrap.
 - Workspace membership and role model.
@@ -300,7 +300,7 @@ The first migration creates the identity, tenancy, initial lead/site, and audit 
 ## Security and privacy baseline
 
 - Authentication is invitation/allowlist based; there is no public account registration.
-- Passwordless links are short-lived, single-use, stored hashed, and sent only to allowlisted addresses.
+- Passwords are hashed by Better Auth, public registration is unavailable, and identity remains restricted to allowlisted addresses.
 - Sessions are stored in PostgreSQL and delivered through secure HTTP-only cookies.
 - Dashboard access is denied unless the current email is still allowlisted and the user has an active workspace membership.
 - Authorization must be repeated in every protected data-access function and mutation.
@@ -338,14 +338,14 @@ Dashboard foundation:
 - `BETTER_AUTH_SECRET`: at least 32 high-entropy characters.
 - `BETTER_AUTH_URL`: canonical application origin.
 - `DASHBOARD_ALLOWED_EMAILS`: comma-separated internal email allowlist.
-- `DASHBOARD_FROM_EMAIL`: optional dashboard-specific sender; falls back to `CONTACT_FROM_EMAIL`.
+- `DASHBOARD_INITIAL_PASSWORD`: private password of at least 10 characters used to create the first owner credential.
 
 Future integrations must use server-only environment variables or encrypted database records. Do not introduce `NEXT_PUBLIC_` credentials.
 
 ## Decisions that are intentionally deferred
 
 - The final client billing and subscription system.
-- Whether client workspaces require SSO or MFA beyond email links.
+- Whether client workspaces require SSO or MFA beyond the internal password flow.
 - The primary analytics stack beyond first-party conversion events and authorized Google integrations.
 - The crawler/runtime used for large SEO scans.
 - The model provider and orchestration framework for the SEO agent.
@@ -381,6 +381,10 @@ The owner approved Render's smallest persistent PostgreSQL plan. The Blueprint n
 ### October 16, 2026 — Make inquiry storage independent of email delivery
 
 Public inquiries are stored transactionally before the application attempts a Resend notification. This lets Tailored Agents begin collecting and managing leads while email setup is pending, keeps delivery failure visible, and prevents provider availability from discarding a valid inquiry. Public inquiry content defaults to 24-month retention; non-won expired inquiries are anonymized and audit events expire after 36 months.
+
+### October 18, 2026 — Make dashboard login independent of email delivery
+
+The private dashboard uses an allowlisted email and password backed by Better Auth database sessions. The first approved identity creates the owner account with a password stored privately in Render and hashed in PostgreSQL. Resend remains optional for public-inquiry notifications and no longer blocks dashboard access.
 
 ## Maintaining this plan
 

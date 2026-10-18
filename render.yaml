@@ -37,3 +37,5 @@ services:
         value: https://tailoredagents.com
       - key: DASHBOARD_ALLOWED_EMAILS
         sync: false
+      - key: DASHBOARD_INITIAL_PASSWORD
+        sync: false

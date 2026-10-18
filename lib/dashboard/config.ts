@@ -4,9 +4,7 @@ type DashboardEnvironment = Partial<Record<
   | "BETTER_AUTH_URL"
   | "NEXT_PUBLIC_SITE_URL"
   | "DASHBOARD_ALLOWED_EMAILS"
-  | "DASHBOARD_FROM_EMAIL"
-  | "CONTACT_FROM_EMAIL"
-  | "RESEND_API_KEY",
+  | "DASHBOARD_INITIAL_PASSWORD",
   string | undefined
 >>;
 
@@ -16,8 +14,7 @@ export type DashboardConfiguration = {
   databaseUrl: string;
   authSecret: string;
   baseUrl: string;
-  sender: string;
-  resendApiKey: string;
+  initialPassword: string;
   allowedEmails: ReadonlySet<string>;
 };
 
@@ -40,18 +37,14 @@ export function resolveDashboardConfiguration(
     environment.NEXT_PUBLIC_SITE_URL ??
     "http://localhost:3000"
   ).replace(/\/$/, "");
-  const sender = (
-    environment.DASHBOARD_FROM_EMAIL ?? environment.CONTACT_FROM_EMAIL ?? ""
-  ).trim();
-  const resendApiKey = environment.RESEND_API_KEY?.trim() ?? "";
+  const initialPassword = environment.DASHBOARD_INITIAL_PASSWORD ?? "";
   const allowedEmails = parseAllowedEmails(environment.DASHBOARD_ALLOWED_EMAILS);
   const missing: string[] = [];
 
   if (!databaseUrl) missing.push("DATABASE_URL");
   if (authSecret.length < 32) missing.push("BETTER_AUTH_SECRET");
-  if (!sender) missing.push("DASHBOARD_FROM_EMAIL or CONTACT_FROM_EMAIL");
-  if (!resendApiKey) missing.push("RESEND_API_KEY");
   if (allowedEmails.size === 0) missing.push("DASHBOARD_ALLOWED_EMAILS");
+  if (initialPassword.length < 10) missing.push("DASHBOARD_INITIAL_PASSWORD");
 
   return {
     ready: missing.length === 0,
@@ -59,8 +52,7 @@ export function resolveDashboardConfiguration(
     databaseUrl,
     authSecret,
     baseUrl,
-    sender,
-    resendApiKey,
+    initialPassword,
     allowedEmails,
   };
 }

@@ -36,14 +36,14 @@ export default async function SignInPage({
           <span className="signin-kicker"><LockKeyhole size={13} />Private workspace</span>
           <h1>One clear place to run the work behind the <em>growth.</em></h1>
           <p>The Tailored Agents dashboard brings client operations, website health, measurement, and future growth tools into a secure internal workspace.</p>
-          <div className="signin-trust"><ShieldCheck size={17} /><span><strong>Passwordless access</strong><small>Short-lived, single-use links for approved team accounts.</small></span></div>
+          <div className="signin-trust"><ShieldCheck size={17} /><span><strong>Team-only access</strong><small>Email allowlisting and database-backed sessions keep this workspace private.</small></span></div>
         </div>
 
         <div className="signin-card">
           <div className="signin-card-heading">
             <span>Team access</span>
             <h2>Sign in to the dashboard</h2>
-            <p>Enter an approved Tailored Agents email address. We will send a secure one-time link.</p>
+            <p>Use an approved Tailored Agents email address and your dashboard password.</p>
           </div>
 
           {!configuration.ready ? (
@@ -55,7 +55,6 @@ export default async function SignInPage({
             <SignInForm enabled />
           )}
 
-          {status === "invalid-link" ? <p className="signin-notice">That link is invalid or has expired. Request a fresh link below.</p> : null}
           {status === "unauthorized" ? <p className="signin-notice">A new sign-in is required, or this account does not currently have workspace access.</p> : null}
           <p className="signin-privacy">Access attempts are rate limited. Account availability is not disclosed.</p>
         </div>

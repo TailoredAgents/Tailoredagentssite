@@ -8,8 +8,8 @@ export default async function SettingsPage() {
   const context = await requireDashboardContext();
   const settings = [
     [Database, "PostgreSQL", "Connected", "Durable application and session storage"],
-    [KeyRound, "Passwordless authentication", "Active", "Single-use links with a 10-minute lifetime"],
-    [Mail, "Email delivery", "Active", "Server-side delivery through the configured provider"],
+    [KeyRound, "Password authentication", "Active", "Hashed credentials with database-backed sessions"],
+    [Mail, "Inquiry email delivery", process.env.RESEND_API_KEY ? "Active" : "Optional", "Resend notifications do not control dashboard access"],
     [UsersRound, "Access policy", "Allowlist only", "No public registration or client access"],
   ] as const;
 

@@ -23,7 +23,7 @@ Operational today:
 Phases 1 and 2 are implemented in the application source:
 
 - Versioned PostgreSQL migrations.
-- Allowlisted passwordless authentication using short-lived, single-use links.
+- Allowlisted email-and-password authentication with hashed credentials.
 - Database-backed sessions and shared authentication rate limiting.
 - Workspace membership and owner/admin/member/viewer roles.
 - Initial site, lead, and append-only audit tables.
@@ -34,7 +34,7 @@ Phases 1 and 2 are implemented in the application source:
 - Shared database-backed inquiry controls, delivery status, retention metadata, and audited mutations.
 - Safe setup behavior: the marketing site remains operational when dashboard infrastructure is absent.
 
-The Blueprint provisions the persistent database. Private dashboard access still requires the internal email allowlist and Resend magic-link configuration. Measurement, client accounts, SEO tooling, and the SEO agent are not implemented yet.
+The Blueprint provisions the persistent database. Private dashboard access requires the internal email allowlist and an initial dashboard password; Resend is optional and affects inquiry notifications only. Measurement, client accounts, SEO tooling, and the SEO agent are not implemented yet.
 
 ### Tailored Mail
 
@@ -46,8 +46,8 @@ The Blueprint provisions the persistent database. Private dashboard access still
 - React 19.3 and strict TypeScript
 - Tailwind CSS 4 plus the repository design system
 - PostgreSQL through `pg`
-- Better Auth 1.7 with the magic-link plugin
-- Resend HTTPS API for inquiry and dashboard email delivery
+- Better Auth 1.7 with email-and-password authentication
+- Resend HTTPS API for optional inquiry notification delivery
 - Lucide React for functional interface icons
 - Vitest for unit tests and Oxlint for source linting
 - Node.js 22 on Render
@@ -98,21 +98,21 @@ npm run dev
 
 Open `http://localhost:3000`. Public pages render without dashboard credentials. Inquiry capture requires `DATABASE_URL`; notification email is optional. The team sign-in page reports incomplete setup until its full authentication contract is configured.
 
-For a working local dashboard, provide a PostgreSQL database, set every dashboard variable below, run `npm run db:migrate`, and start the application. The first allowlisted identity to complete a magic-link sign-in becomes the Tailored Agents workspace owner; later allowlisted identities become administrators.
+For a working local dashboard, provide a PostgreSQL database, set every dashboard variable below, run `npm run db:migrate`, and start the application. The first allowlisted identity to sign in with `DASHBOARD_INITIAL_PASSWORD` becomes the Tailored Agents workspace owner. Public registration remains disabled.
 
 ## Environment variables
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `NEXT_PUBLIC_SITE_URL` | Yes | Canonical public origin, normally `https://tailoredagents.com`. |
-| `RESEND_API_KEY` | For notifications and sign-in | Server-only Resend API credential used by inquiry notifications and dashboard links. Public inquiries are still stored without it. |
-| `CONTACT_FROM_EMAIL` | For notifications and sign-in | Sender on a domain verified by Resend. Also serves as the dashboard sender unless overridden. |
+| `RESEND_API_KEY` | Optional | Server-only Resend API credential used by inquiry notifications. Public inquiries are still stored without it. |
+| `CONTACT_FROM_EMAIL` | For inquiry notifications | Sender on a domain verified by Resend. |
 | `CONTACT_TO_EMAIL` | For inquiry notifications | Authorized business inbox that receives public-inquiry notifications. |
 | `DATABASE_URL` | Dashboard | Server-only PostgreSQL connection string. |
 | `BETTER_AUTH_SECRET` | Dashboard | At least 32 high-entropy characters used by authentication. |
 | `BETTER_AUTH_URL` | Dashboard | Canonical authentication origin, normally `https://tailoredagents.com`. |
 | `DASHBOARD_ALLOWED_EMAILS` | Dashboard | Comma-separated internal email allowlist. |
-| `DASHBOARD_FROM_EMAIL` | Optional | Dashboard-specific verified sender; falls back to `CONTACT_FROM_EMAIL`. |
+| `DASHBOARD_INITIAL_PASSWORD` | Dashboard | At least 10 characters. Creates the first owner credential on first successful sign-in. |
 
 Never expose secrets through a `NEXT_PUBLIC_` variable. Do not commit `.env.local`, database URLs, tokens, customer records, or temporary setup evidence.
 
@@ -132,8 +132,8 @@ Do not use an expiring free database for real business data. Render's free Postg
 ## Authentication and authorization
 
 - There is no public registration.
-- Only addresses in `DASHBOARD_ALLOWED_EMAILS` receive a sign-in link or pass identity validation.
-- Magic links expire after 10 minutes, are single-use, and are stored hashed.
+- Only addresses in `DASHBOARD_ALLOWED_EMAILS` pass identity validation.
+- The first owner password is configured privately in Render and stored as a one-way hash in PostgreSQL by Better Auth.
 - Authentication rate limits use PostgreSQL so they work across web instances.
 - Sessions last up to 14 days and are stored in PostgreSQL.
 - Dashboard data access rechecks the active allowlist and workspace membership.
@@ -176,11 +176,11 @@ To activate the dashboard:
 
 1. Sync the Render Blueprint and approve creation of `tailored-agents-db` on the `0.1c-256mb` plan.
 2. Confirm the database and web service are both in Ohio and `DATABASE_URL` resolves from the database connection string.
-3. Set `DASHBOARD_ALLOWED_EMAILS` to the approved internal accounts.
-4. When the Resend account owner is available, set `RESEND_API_KEY` and a verified `CONTACT_FROM_EMAIL`, or set `DASHBOARD_FROM_EMAIL` separately. Inquiry capture works before this; magic-link sign-in does not.
+3. Set `DASHBOARD_ALLOWED_EMAILS` to the approved owner email.
+4. Set `DASHBOARD_INITIAL_PASSWORD` to a private password of at least 10 characters.
 5. Confirm Render generated `BETTER_AUTH_SECRET` and set `BETTER_AUTH_URL=https://tailoredagents.com`.
 6. Redeploy. The build runs migrations before `next build`.
-7. Visit `/sign-in`, complete the first allowlisted login, and verify `/dashboard`, activity, settings, sign-out, expired-link behavior, and denial for a non-allowlisted address.
+7. Visit `/sign-in`, use the allowlisted email and initial password, and verify `/dashboard`, activity, settings, sign-out, and denial for a non-allowlisted address. Resend can be configured later for inquiry notifications without affecting dashboard access.
 
 The web process starts with `next start -H 0.0.0.0`; Next.js reads Render's injected `PORT` automatically.
 

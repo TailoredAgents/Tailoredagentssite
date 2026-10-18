@@ -1,9 +1,7 @@
 import "server-only";
 import { betterAuth } from "better-auth";
-import { magicLink } from "better-auth/plugins";
 import { getDatabasePool, provisionInternalMembership } from "./db";
 import { isAllowedDashboardEmail, resolveDashboardConfiguration } from "./config";
-import { sendDashboardMagicLink } from "./email";
 
 function createDashboardAuth() {
   const configuration = resolveDashboardConfiguration();
@@ -32,6 +30,11 @@ function createDashboardAuth() {
       window: 60,
       max: 20,
     },
+    emailAndPassword: {
+      enabled: true,
+      minPasswordLength: 10,
+      maxPasswordLength: 128,
+    },
     user: {
       validateUserInfo: ({ user }) => {
         if (!isAllowedDashboardEmail(user.email)) {
@@ -51,16 +54,6 @@ function createDashboardAuth() {
         },
       },
     },
-    plugins: [
-      magicLink({
-        expiresIn: 60 * 10,
-        storeToken: "hashed",
-        rateLimit: { window: 60, max: 5 },
-        sendMagicLink: async ({ email, url }) => {
-          await sendDashboardMagicLink({ email, url });
-        },
-      }),
-    ],
   });
 }
 

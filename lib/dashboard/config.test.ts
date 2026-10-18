@@ -15,8 +15,7 @@ describe("dashboard configuration", () => {
       BETTER_AUTH_SECRET: "x".repeat(32),
       BETTER_AUTH_URL: "https://tailoredagents.com/",
       DASHBOARD_ALLOWED_EMAILS: "owner@tailoredagents.com",
-      DASHBOARD_FROM_EMAIL: "Tailored Agents <dashboard@tailoredagents.com>",
-      RESEND_API_KEY: "re_test",
+      DASHBOARD_INITIAL_PASSWORD: "a-secure-starting-password",
     });
 
     expect(configuration.ready).toBe(true);
@@ -34,9 +33,19 @@ describe("dashboard configuration", () => {
     expect(configuration.missing).toEqual([
       "DATABASE_URL",
       "BETTER_AUTH_SECRET",
-      "DASHBOARD_FROM_EMAIL or CONTACT_FROM_EMAIL",
-      "RESEND_API_KEY",
       "DASHBOARD_ALLOWED_EMAILS",
+      "DASHBOARD_INITIAL_PASSWORD",
     ]);
+  });
+
+  it("does not require email delivery for dashboard access", () => {
+    const configuration = resolveDashboardConfiguration({
+      DATABASE_URL: "postgresql://example.test/app",
+      BETTER_AUTH_SECRET: "x".repeat(32),
+      DASHBOARD_ALLOWED_EMAILS: "owner@tailoredagents.com",
+      DASHBOARD_INITIAL_PASSWORD: "a-secure-starting-password",
+    });
+
+    expect(configuration.ready).toBe(true);
   });
 });

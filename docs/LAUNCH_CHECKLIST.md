@@ -28,17 +28,17 @@ Use this checklist for the public website and private dashboard. The mail applic
 - [ ] Rotate the database password and authentication secret previously exposed during setup, then update only Render's secret store.
 - [ ] Set `BETTER_AUTH_URL=https://tailoredagents.com` using the final canonical hostname.
 - [ ] Set `DASHBOARD_ALLOWED_EMAILS` to the exact approved internal accounts.
-- [ ] Confirm `RESEND_API_KEY` and a verified `CONTACT_FROM_EMAIL` or `DASHBOARD_FROM_EMAIL` sender.
+- [ ] Set a private `DASHBOARD_INITIAL_PASSWORD` of at least 10 characters.
+- [ ] Configure `RESEND_API_KEY`, `CONTACT_FROM_EMAIL`, and `CONTACT_TO_EMAIL` when inquiry email notifications are ready; dashboard login does not depend on them.
 - [ ] Run `npm run db:migrate` and verify every expected filename exists once in `schema_migrations`.
 - [ ] Confirm the Tailored Agents workspace and production site seed records exist.
 - [ ] Establish and test logical backup, retention, restore, and credential-rotation procedures before relying on stored lead/client records.
 
 ## Authentication and authorization
 
-- [ ] Complete the first allowlisted magic-link login and confirm it provisions the owner membership.
-- [ ] Confirm later allowlisted accounts receive the intended membership role.
-- [ ] Confirm a non-allowlisted address receives no email and cannot create an authorized account.
-- [ ] Confirm magic links expire after 10 minutes and fail after first use.
+- [ ] Complete the first allowlisted password login and confirm it provisions the owner membership.
+- [ ] Confirm public email/password sign-up is unavailable.
+- [ ] Confirm a non-allowlisted address cannot create or access an authorized account.
 - [ ] Confirm `/dashboard`, `/dashboard/activity`, and `/dashboard/settings` redirect without a valid session.
 - [ ] Confirm removing an address from the allowlist removes dashboard data access even if an old session cookie exists.
 - [ ] Confirm sign-out invalidates the active session and returns to sign-in.
