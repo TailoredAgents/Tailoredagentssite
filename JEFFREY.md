@@ -1,12 +1,71 @@
-# Jeffrey handoff: activate Google Search Console analytics
+# Jeffrey technical handoff: production closeout and product roadmap
 
 ## Assignment
 
-Complete the production Google Search Console connection for Tailored Agents. The application code, database migration, dashboard reporting, manual sync, and Render cron job are already implemented. This assignment is configuration and verification work; do not redesign or replace the integration.
+Own the remaining technical roadmap for Tailored Agents while Austin works on public website design and marketing presentation. Begin by completing the production Google Search Console connection. Then close the Phase 2 and Phase 3 production gates before proceeding sequentially through the client Growth Hub, the human-operated SEO workspace, and the bounded SEO agent.
 
-Start from `main` at commit `d779eb1` or newer. Read this file completely before taking action.
+The Search Console application code, database migration, dashboard reporting, manual sync, and Render cron job are already implemented. Its activation is configuration and verification work; do not redesign or replace that integration.
 
-## Definition of done
+Start from `main` at commit `af2a51f` or newer. Read this file completely before taking action. Also read `README.md`, `docs/PRODUCT_PLAN.md`, `docs/LAUNCH_CHECKLIST.md`, and the applicable Next.js documentation under `node_modules/next/dist/docs/` before changing application code.
+
+## Ownership and repository boundaries
+
+Austin owns public website design, public-facing copy, brand presentation, and marketing-page iteration. Jeffrey owns backend, database, dashboard, analytics, integrations, client access, SEO tooling, agent infrastructure, and technical production validation.
+
+### Austin's primary paths
+
+- Public routes such as `app/page.tsx`, `app/websites/`, `app/seo/`, `app/automation/`, `app/engineering/`, `app/pricing/`, `app/packages/`, `app/work/`, `app/company/`, and `app/contact/`.
+- Public presentation components in `components/` except `components/dashboard/` and measurement components.
+- `app/globals.css` and public visual assets.
+- Public service, pricing, package, and business copy in `lib/services.ts`, `lib/packages.ts`, and `lib/site.ts`.
+
+### Jeffrey's primary paths
+
+- `app/dashboard/` and `components/dashboard/`.
+- Protected and operational routes under `app/api/`.
+- `lib/dashboard/`, `lib/operations/`, `lib/analytics/`, and `lib/search-console/`.
+- `db/migrations/`, operational scripts, server configuration, and technical tests.
+- Future client-portal, SEO-workspace, crawler, agent, approval, and job-processing code.
+- Technical sections of `README.md`, `docs/PRODUCT_PLAN.md`, and `docs/LAUNCH_CHECKLIST.md`.
+
+### Shared paths that require coordination
+
+Treat `app/layout.tsx`, `app/privacy/`, `app/terms/`, `app/robots.ts`, `app/sitemap.ts`, `package.json`, lockfiles, `render.yaml`, and top-level documentation as shared. Rebase or merge the latest `main` before editing them, keep changes narrow, and call out every shared-path change in the handoff.
+
+Do not restyle or rewrite Austin's public pages as part of technical work. If a backend feature requires a public-facing entry point, define the interface and ask Austin to own its final presentation.
+
+## Git workflow
+
+Do not implement the entire roadmap in one branch or one pull request.
+
+1. Pull the latest `main` before every workstream.
+2. Use a separate branch for each bounded release, for example:
+   - `jeffrey/phase-2-3-closeout`
+   - `jeffrey/phase-4-client-foundation`
+   - `jeffrey/phase-4-growth-hub`
+   - `jeffrey/phase-5-seo-workspace`
+   - `jeffrey/phase-6-seo-agent`
+3. Keep commits focused and descriptive.
+4. Run the complete relevant test gate before pushing.
+5. Push the branch and have Austin review the outcome before merging.
+6. Start the next phase only from the updated `main` after the preceding phase is accepted.
+7. Never force-push `main`, rewrite shared history, or discard Austin's changes.
+8. If Austin has changed a shared path, reconcile rather than overwrite his work.
+
+## Master execution sequence
+
+Work in this order:
+
+1. Activate Search Console using the detailed instructions in this file.
+2. Close the remaining Phase 2 operations and production-safety gates.
+3. Close the full Phase 3 measurement gate using real production evidence.
+4. Implement Phase 4 in small releases: client isolation first, client experience second, public demo last.
+5. Implement Phase 5 as a complete human-operated SEO workflow without autonomous actions.
+6. Research, evaluate, and implement Phase 6 as a bounded, approval-based SEO agent.
+
+Stop after every numbered workstream, update the product plan and launch checklist truthfully, and provide Austin with a reviewable report. Do not mark a phase complete merely because its interface exists.
+
+## Search Console activation definition of done
 
 This task is complete only when all of the following are true:
 
@@ -353,3 +412,311 @@ Do not include screenshots that show secrets. After setup, remove any temporary 
 ## Later ownership improvement
 
 When Tailored Agents obtains a dedicated Google identity, add it to both Search Console and Google Cloud IAM, verify its access independently, and reconnect the dashboard under that identity. Keep the personal Google account as a backup owner until the new business identity has been fully tested.
+
+## Phase 2 and Phase 3 production closeout
+
+After Search Console is connected, finish the operational work that remains open in `docs/LAUNCH_CHECKLIST.md`. Configuration evidence belongs in a private operational record or a sanitized report, never in Git.
+
+### Credential and infrastructure safety
+
+1. Rotate any database password or authentication secret that was exposed during initial setup. Update only Render's secret store and dependent resource configuration.
+2. Do not rotate `BETTER_AUTH_SECRET` after Google has been connected without planning a Search Console reconnection, because stored provider tokens are encrypted with a key derived from that secret.
+3. Confirm the persistent PostgreSQL service is in the intended Render region, uses private connectivity, and does not expose unrestricted public access.
+4. Establish a documented logical-backup process and perform a restore drill with non-production records.
+5. Record recovery ownership, frequency, retention, encryption, and the exact restore verification steps without committing credentials or backup contents.
+6. Ensure retention maintenance runs at least monthly. Do not create another paid Render resource without Austin's explicit approval; first propose the simplest reliable scheduling option and its cost.
+7. Confirm migrations `0001` through `0004` each appear exactly once in `schema_migrations`.
+
+### Authentication validation
+
+1. Verify the approved owner can sign in and sign out.
+2. Verify public sign-up is unavailable.
+3. Verify a non-allowlisted address cannot provision or access a dashboard account.
+4. Verify direct unauthenticated access to every protected route redirects to sign-in.
+5. Verify removing an address from the allowlist revokes data access even when an old session cookie exists.
+6. Confirm dashboard responses are not publicly cached and protected routes are excluded from search indexing and sitemaps.
+7. Review every protected read and mutation for session, workspace, role, and resource-ownership checks.
+
+Use synthetic or explicitly authorized test identities. Do not record passwords, session cookies, or private email addresses in test artifacts.
+
+### Internal operations validation
+
+1. Submit authorized test project inquiries and website-review requests.
+2. Confirm each inquiry is stored even if Resend is absent or fails.
+3. Exercise lead qualification, assignment, notes, next actions, won/lost state, and conversion.
+4. Verify a converted lead can become a client, contact, site, and project without duplicate data entry.
+5. Exercise milestones, deliverables, decisions, internal notes, search, filtering, pagination, and CSV export.
+6. Verify every important mutation creates an attributable audit event.
+7. Test anonymization and retention using non-production records.
+8. If Austin authorizes Resend setup later, configure it as a separate bounded operational task. It is not a prerequisite for dashboard access or Search Console.
+
+### First-party analytics validation
+
+1. Confirm migration `0003_first_party_analytics.sql` is applied exactly once.
+2. Generate authorized production test visits and verify page views, CTA clicks, phone clicks, form starts, and successful submissions use the documented event definitions.
+3. Confirm duplicate inquiry submissions do not double-count successful conversions.
+4. Verify UTM source, medium, campaign, and external referring-host attribution.
+5. Verify Do Not Track and Global Privacy Control prevent client-side analytics requests.
+6. Verify `/dashboard`, `/sign-in`, and other private routes do not generate public analytics events.
+7. Validate 7-day, 30-day, and 90-day reports, empty states, funnel counts, top pages, acquisition rows, and freshness labels.
+8. Confirm stored analytics events contain no raw IP address, user-agent string, full referrer URL, or form contents.
+9. Confirm the 25-month event-retention behavior with controlled test data.
+
+### Search Console validation after activation
+
+1. Confirm migration `0004_search_console.sql` is applied exactly once.
+2. Verify the initial import covers up to 90 days of finalized history.
+3. Compare a controlled date range against Google Search Console for clicks, impressions, click-through rate, average position, top queries, and top pages.
+4. Confirm the dashboard clearly displays connection health and last successful synchronization.
+5. Run **Sync now** twice and confirm the rolling import is idempotent rather than duplicating metrics.
+6. Confirm the daily Render cron refreshes the finalized trailing window.
+7. Test disconnect behavior only after Austin agrees: tokens should be cleared while retained historical metrics remain available. Reconnect and verify recovery.
+8. Confirm token encryption and ensure access tokens, refresh tokens, authorization codes, and OAuth state never appear in responses, logs, audit metadata, screenshots, or source.
+9. Test or inspect the 10-minute OAuth-state expiry, 18-month Search Console metric retention, and 24-month sync-history retention.
+10. Keep GA4 deferred unless a written use case demonstrates value not already provided by first-party events and Search Console.
+
+### Phase 2 and Phase 3 exit report
+
+Do not move real clients into the product until Austin has reviewed a sanitized report confirming:
+
+- Authentication and denial paths passed.
+- Lead-to-client operations passed.
+- Backup and restore were tested.
+- Retention behavior was tested.
+- First-party event definitions and privacy controls passed.
+- Search Console connected and returned either reconciled metrics or a legitimate zero-data result.
+- Manual and scheduled synchronization passed.
+- Remaining launch-checklist items are listed explicitly rather than silently deferred.
+
+## Phase 4: client Growth Hub and public demonstration
+
+### Goal
+
+Turn the proven internal workflow into a secure client experience and a separate sales demonstration. Client access must never be created by weakening the internal dashboard or exposing internal queries.
+
+### Phase 4A: architecture and client-isolation contract
+
+Before implementation:
+
+1. Audit the current workspace, membership, client, contact, site, project, record, analytics, and integration ownership model.
+2. Write a short architecture decision describing the client access boundary, route boundary, invitation lifecycle, session behavior, and visibility rules.
+3. Decide whether the production client experience uses `/portal` or another dedicated protected namespace. Do not place client members inside internal `/dashboard` routes by merely hiding navigation.
+4. Define an explicit matrix for owner, administrator, internal member, client member, and demo visitor permissions.
+5. Define which data can be client-visible:
+   - Approved reports
+   - Explicitly shared projects, milestones, and deliverables
+   - Approved recommendations and upcoming priorities
+   - Client-visible comments and decisions
+6. Define data that can never be client-visible:
+   - Internal notes
+   - Other clients or workspaces
+   - Provider credentials and connection internals
+   - Unapproved drafts and recommendations
+   - Security and internal audit details
+7. Define invite expiry, single-use behavior, revocation, membership suspension, account recovery, and audit requirements.
+8. Add threat cases and cross-tenant integration tests before building the full interface.
+
+### Phase 4B: client access foundation
+
+Implement the smallest complete access layer:
+
+1. Versioned migrations for invitation and client-membership data with explicit constraints and retention behavior.
+2. Server-only authorization functions that verify the session, active membership, client/site assignment, role, and target resource on every read and mutation.
+3. Invitation creation, delivery-independent invite-link handling, acceptance, expiry, revocation, and audit events.
+4. A client portal shell that is visually separate from the internal dashboard and does not expose internal navigation.
+5. Safe unavailable, unauthorized, empty, expired-invite, and suspended-access states.
+6. Integration tests for horizontal and vertical authorization failures, including guessed IDs and direct route access.
+
+Resend may eventually deliver invitations, but invitation correctness must not depend on successful email delivery. An owner should be able to copy a secure invitation through an audited workflow while email is unavailable.
+
+### Phase 4C: useful client experience
+
+Add, in bounded releases:
+
+1. Client overview and current priorities.
+2. Approved analytics and Search Console reporting scoped to the assigned site.
+3. Completed and upcoming work.
+4. Client-visible milestones, deliverables, and recommendations.
+5. Approval and comment workflows with actor, time, state, and audit history.
+6. Notification preferences without assuming a provider is always available.
+7. Accessible exports that include only client-approved and client-owned data.
+8. Clear freshness and disconnected-integration states.
+
+Do not show synthetic numbers inside an authenticated production client portal. Empty or disconnected states must be truthful.
+
+### Phase 4D: public demonstration
+
+1. Build the demo in a separate public route such as `/demo/growth-hub`.
+2. Use synthetic or deliberately sanitized fixtures stored separately from production records.
+3. Do not share private authentication, provider credentials, database queries, or server actions with the demo.
+4. Label demo data clearly.
+5. Add an accessible demo-to-contact conversion path without altering Austin's final visual direction.
+6. Prove through tests that the demo cannot query production client records.
+
+### Phase 4 exit criteria
+
+- Cross-client and cross-workspace isolation is covered by integration tests.
+- A revoked or expired invitation cannot be reused.
+- A client cannot access internal notes, unapproved work, credentials, or another client's data through UI or direct requests.
+- Approval and comment changes are attributable and audited.
+- Exports respect the same authorization rules as on-screen reads.
+- The public demo uses only its isolated synthetic or sanitized source.
+- Austin approves the client-facing scope and presentation before any real invitation is sent.
+
+## Phase 5: human-operated SEO workspace
+
+### Goal
+
+Create a complete, reviewable SEO delivery workflow that humans can operate before any AI system is allowed to recommend or act.
+
+### Phase 5A: research and architecture
+
+1. Document the real Tailored Agents SEO engagement workflow from intake through audit, prioritization, client approval, implementation, and measurement.
+2. Define the supported audit classes before choosing tools. Begin with a narrow, testable set of technical and on-page checks.
+3. Evaluate crawler and job-runtime options against Render limits, JavaScript rendering needs, robots directives, rate controls, cost, reliability, and resumability.
+4. Obtain Austin's approval before adding a paid service, proxy network, data provider, or long-running worker.
+5. Define crawl authorization rules. Never crawl a client site without an active engagement and explicit site assignment.
+6. Treat page content and connected external content as untrusted input from the beginning.
+
+### Phase 5B: crawl and evidence model
+
+Implement versioned records for:
+
+- Crawl runs, status, bounds, errors, and resumable progress.
+- Canonical page identity and page snapshots.
+- Response status, indexability, canonicalization, metadata, headings, links, structured data, and other approved signals.
+- Evidence attached to each detected issue.
+- Retention and deletion appropriate to client content.
+
+Required behavior:
+
+- Respect explicit page, request, time, and concurrency limits.
+- Identify the crawler appropriately.
+- Obey the approved robots and site-access policy.
+- Make retries idempotent and failures visible.
+- Avoid storing secrets, session-only content, or unnecessary page data.
+- Move sustained or long-running crawl work out of request-response web handlers when the workload justifies a worker or workflow service.
+
+### Phase 5C: human SEO workflow
+
+Implement:
+
+1. Technical and on-page issues with evidence, severity, owner, state, timestamps, and resolution history.
+2. Keyword targets associated with pages, locations, services, and intent.
+3. Competitor records and manually reviewed comparison evidence.
+4. A recommendation queue with impact, effort, confidence, owner, approval state, and source links.
+5. Content briefs and change drafts with revision history.
+6. Explicit relationships between Search Console metrics, first-party conversions, pages, issues, and recommendations.
+7. Client-visible approval states that integrate with Phase 4 without exposing internal drafts.
+8. Filters, exports, audit events, empty states, and data-freshness indicators.
+
+### Phase 5D: quality baseline
+
+Before Phase 6:
+
+1. Complete at least one representative SEO engagement manually inside the product using authorized or synthetic data.
+2. Create reviewed examples of true positives, false positives, severity decisions, prioritization decisions, acceptable briefs, and rejected drafts.
+3. Record the evidence a human needs to approve each recommendation class.
+4. Measure the time and failure modes of crawl and review workflows.
+5. Build a versioned evaluation dataset from approved, non-sensitive examples.
+
+### Phase 5 exit criteria
+
+- A human can perform and document the supported SEO engagement without external spreadsheets becoming the hidden system of record.
+- Every issue and recommendation can be traced to evidence.
+- Reviewers can distinguish observed facts, calculated signals, assumptions, and editorial judgment.
+- Recommendation quality can be evaluated consistently.
+- No model is publishing or changing a client site.
+
+## Phase 6: bounded SEO agent
+
+### Goal
+
+Add intelligence to the proven SEO workflow without creating opaque autonomy. The initial agent audits and drafts; it does not publish.
+
+### Phase 6A: research and written proposal
+
+Before implementation:
+
+1. Research current model providers, structured-output support, tool controls, pricing, latency, privacy terms, data-retention settings, and operational limits using primary documentation.
+2. Compare build-versus-buy options for crawling, retrieval, evaluation, and background execution.
+3. Define the smallest useful agent scope from the Phase 5 evaluation set.
+4. Produce a cost model for low, expected, and high usage.
+5. Produce a threat model covering prompt injection, poisoned content, cross-tenant leakage, tool abuse, secret exposure, unsafe output, excessive spend, and partial failure.
+6. Present the proposal and costs to Austin. Do not create paid accounts or resources without approval.
+
+Do not select a model or framework permanently from memory or popularity. Re-evaluate current primary documentation when this phase begins.
+
+### Phase 6B: agent platform foundation
+
+Implement:
+
+1. Versioned agent definitions, prompts, tool schemas, policies, and evaluation cases.
+2. Durable agent runs and step state with idempotent, resumable jobs.
+3. Per-workspace budgets, usage accounting, timeouts, and concurrency limits.
+4. Narrow tool allowlists and least-privilege integration credentials.
+5. Structured outputs validated before persistence or display.
+6. Complete input, evidence, output, approval, rejection, failure, retry, cost, and latency history.
+7. A global kill switch plus per-workspace and per-agent disable controls.
+8. A background worker or workflow boundary if jobs can outlive normal web requests.
+
+### Phase 6C: safe capability sequence
+
+Add capabilities only in this order:
+
+1. Read-only classification and audits for the explicitly supported issue classes.
+2. Prioritized recommendations grounded in stored evidence.
+3. Human-reviewed content briefs, metadata, and proposed edits.
+4. Narrowly scoped external changes only after explicit human approval, reliable previews, idempotency, and rollback procedures exist.
+5. Do not introduce automatic publishing in the initial release.
+
+Each capability must pass its evaluation gate before enabling the next one. A polished interface is not evidence of acceptable model quality.
+
+### Required defenses
+
+- Treat crawled text, metadata, linked documents, and provider responses as untrusted data, never instructions.
+- Keep system policy and tool authorization outside model-controlled content.
+- Never place provider secrets, session tokens, or unrestricted database access in model context.
+- Validate every proposed URL, resource ID, workspace ID, and mutation server-side.
+- Require human approval for every externally visible change.
+- Show citations to the stored evidence used by each recommendation.
+- Make failures, stale evidence, uncertainty, and unsupported conclusions visible.
+- Test malicious and misleading pages in the evaluation suite.
+
+### Phase 6 exit criteria
+
+- Evaluation cases demonstrate an approved precision threshold for every enabled recommendation class.
+- A reviewer can trace each output to evidence, prompt version, model version, tools, costs, and policy version.
+- Failures and retries cannot duplicate, partially publish, or cross workspace boundaries.
+- Budgets, latency, and usage are observable per run and workspace.
+- The kill switch and per-workspace disable controls are tested.
+- No action reaches a client website without an attributable human approval and an available rollback path.
+
+## Ongoing coordination with Austin
+
+Austin may continue changing public pages while this roadmap proceeds. Before each push:
+
+1. Pull or fetch the latest `main`.
+2. Inspect whether Austin changed a shared path.
+3. Preserve his public design and copy unless a technical correction is necessary.
+4. If a technical requirement affects the public interface, document the required data or behavior and let Austin make the final presentation decision.
+5. Never replace real public content with dashboard placeholders or agent-generated copy without approval.
+
+At the end of each bounded release, report:
+
+```text
+Branch and commit(s):
+Roadmap phase/workstream:
+Implemented:
+Database migrations:
+Environment or paid-resource changes requiring approval:
+Authorization and isolation tests:
+Other tests run and results:
+Production actions performed:
+Documentation/checklist updates:
+Known limitations:
+Exact review steps for Austin:
+Next recommended workstream:
+```
+
+Never include passwords, cookies, API keys, tokens, database URLs, DNS verification values, customer records, or private account addresses in that report.
