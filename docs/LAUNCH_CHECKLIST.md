@@ -30,6 +30,8 @@ Use this checklist for the public website and private dashboard. The mail applic
 - [ ] Set `DASHBOARD_ALLOWED_EMAILS` to the exact approved internal accounts.
 - [ ] Set a private `DASHBOARD_INITIAL_PASSWORD` of at least 10 characters.
 - [ ] Configure `RESEND_API_KEY`, `CONTACT_FROM_EMAIL`, and `CONTACT_TO_EMAIL` when inquiry email notifications are ready; dashboard login does not depend on them.
+- [ ] Verify `sc-domain:tailoredagents.com` in Search Console, enable the Search Console API, and configure the exact production OAuth redirect URI.
+- [ ] Add `GOOGLE_SEARCH_CONSOLE_CLIENT_ID` and `GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET` manually to the existing Render web service.
 - [ ] Run `npm run db:migrate` and verify every expected filename exists once in `schema_migrations`.
 - [ ] Confirm the Tailored Agents workspace and production site seed records exist.
 - [ ] Establish and test logical backup, retention, restore, and credential-rotation procedures before relying on stored lead/client records.
@@ -101,6 +103,13 @@ Use this checklist for the public website and private dashboard. The mail applic
 - [ ] Verify 7, 30, and 90-day reports, empty states, funnel counts, top pages, acquisition rows, and last-event freshness.
 - [ ] Confirm analytics events expire after 25 months through `npm run db:retention`.
 - [ ] Keep Search Console and GA4 marked unconnected until real authorization and successful ingestion exist.
+- [ ] Confirm migration `0004_search_console.sql` is recorded once in `schema_migrations`.
+- [ ] Confirm OAuth requests only `webmasters.readonly`, rejects expired/reused state, and selects only the exact verified Tailored Agents property.
+- [ ] Confirm stored Google access and refresh tokens are encrypted and never appear in responses, source, logs, or audit metadata.
+- [ ] Authorize Search Console and verify the initial 90-day finalized-data import, top queries, top pages, click/impression totals, CTR, position, and last-successful-sync state.
+- [ ] Trigger **Sync now**, then verify the daily Render cron refreshes the trailing finalized window without duplicate metrics.
+- [ ] Disconnect and verify tokens are cleared while retained historical metrics remain available.
+- [ ] Confirm Search Console metrics expire after 18 months, sync runs after 24 months, and OAuth state after 10 minutes.
 
 ## After each release
 

@@ -42,7 +42,7 @@ The software product grows out of those services. The immediate goal is not to l
 
 ### Not yet operational
 
-- Connected Google Search Console or GA4 reporting.
+- Production-authorized Google Search Console data; the implementation is complete but remains disconnected until the verified property and OAuth client are configured.
 - Client accounts or a client-facing Growth Hub.
 - A public interactive product demo.
 - Automated SEO auditing, recommendations, content generation, or publishing.
@@ -106,7 +106,7 @@ Exit criteria:
 
 ### Phase 1 — Backend and private dashboard foundation
 
-Status: implemented. Production sign-in activation still requires the dashboard email allowlist and initial owner password.
+Status: implemented and activated for the internal owner account.
 
 Deliverables:
 
@@ -159,7 +159,7 @@ Exit criteria:
 
 Goal: collect and explain the evidence needed for growth work.
 
-Status: in progress. Privacy-reviewed first-party instrumentation, retention, attribution, conversion definitions, freshness state, and internal acquisition/conversion reporting are implemented. Google Search Console ingestion and the decision on whether GA4 adds enough value remain open.
+Status: activation pending. Privacy-reviewed first-party instrumentation and reporting are operational. Read-only Google Search Console OAuth, encrypted credential storage, exact property matching, initial/rolling ingestion, connection health, internal reporting, and a daily Render cron are implemented; production Google authorization remains. GA4 remains intentionally optional.
 
 Deliverables:
 
@@ -287,8 +287,9 @@ Exit criteria:
 
 - `analytics_events`: implemented first-party events with session-scoped attribution and retention.
 - `daily_metrics`: deferred until observed volume or ingestion workload justifies maintained aggregates; current bounded reports query indexed events directly.
-- `integration_connections`: future encrypted provider connection metadata.
-- `sync_runs`: future ingestion state, cursor, freshness, and failure history.
+- `integration_connections`: implemented encrypted Search Console connection metadata and health state.
+- `integration_sync_runs`: implemented ingestion range, trigger, freshness, row count, and failure history.
+- `search_console_metrics`: implemented finalized daily property, query, and page performance with 18-month retention.
 
 ### SEO and agent work
 
@@ -297,7 +298,7 @@ Exit criteria:
 - `recommendations`, `content_briefs`, and `content_revisions`.
 - `agent_definitions`, `agent_runs`, `agent_steps`, and `approvals`.
 
-The first migration creates the identity, tenancy, initial lead/site, and audit foundation. The second migration adds the Phase 2 operational records, shared inquiry controls, delivery states, and retention metadata. The third migration adds the implemented first-party event stream and its 25-month retention contract. Later-phase tables should be added with their behavior and retention rules, not speculatively.
+The first migration creates the identity, tenancy, initial lead/site, and audit foundation. The second migration adds the Phase 2 operational records, shared inquiry controls, delivery states, and retention metadata. The third migration adds the first-party event stream and its 25-month retention contract. The fourth adds encrypted Search Console connections, bounded sync history, and finalized metrics with explicit retention. Later-phase tables should be added with their behavior and retention rules, not speculatively.
 
 ## Security and privacy baseline
 
@@ -342,6 +343,12 @@ Dashboard foundation:
 - `BETTER_AUTH_URL`: canonical application origin.
 - `DASHBOARD_ALLOWED_EMAILS`: comma-separated internal email allowlist.
 - `DASHBOARD_INITIAL_PASSWORD`: private password of at least 10 characters used to create the first owner credential.
+
+Search Console:
+
+- `GOOGLE_SEARCH_CONSOLE_CLIENT_ID`: server-only Web application OAuth client ID.
+- `GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET`: server-only OAuth client secret.
+- `SEARCH_CONSOLE_SYNC_SECRET`: generated high-entropy secret shared only between the web service and Render cron trigger.
 
 Future integrations must use server-only environment variables or encrypted database records. Do not introduce `NEXT_PUBLIC_` credentials.
 
@@ -392,6 +399,10 @@ The private dashboard uses an allowlisted email and password backed by Better Au
 ### October 18, 2026 — Own the initial measurement layer
 
 Phase 3 begins with a small first-party event stream instead of immediately adding another analytics vendor. Session-scoped identifiers, normalized attribution, explicit conversion events, bounded retention, and a private reporting view create useful historical data without advertising profiles or persistent analytics cookies. Search Console remains the next external source; GA4 is optional rather than assumed.
+
+### October 18, 2026 — Connect search evidence read-only
+
+The Search Console integration uses the narrow read-only scope, exact production-property matching, single-use OAuth state, encrypted offline credentials, finalized Google data, and idempotent rolling imports. A small Render cron provides one daily refresh; manual refresh uses the same bounded path. Imported query and page evidence is retained for 18 months. GA4 remains deferred because the first-party event stream already owns conversion measurement.
 
 ## Maintaining this plan
 

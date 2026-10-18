@@ -8,14 +8,18 @@ import {
   CheckCircle2,
   Clock3,
   Database,
+  ExternalLink,
   MousePointerClick,
+  RefreshCw,
   Search,
   Target,
+  Unplug,
   UsersRound,
 } from "lucide-react";
 import { getAnalyticsOverview } from "@/lib/analytics/data";
 import { parseAnalyticsRange } from "@/lib/analytics/validation";
 import { requireDashboardContext } from "@/lib/dashboard/data";
+import { getSearchConsoleOverview } from "@/lib/search-console/data";
 
 export const metadata: Metadata = { title: "Analytics" };
 
@@ -42,15 +46,50 @@ function timestamp(value: string | null) {
   }).format(new Date(value));
 }
 
+function searchPage(value: string) {
+  try {
+    const url = new URL(value);
+    return `${url.pathname}${url.search}` || "/";
+  } catch {
+    return value;
+  }
+}
+
+const integrationNotices: Record<string, { tone: string; message: string }> = {
+  connected: { tone: "success", message: "Search Console connected and its initial history was imported." },
+  synced: { tone: "success", message: "Search Console data is up to date." },
+  disconnected: { tone: "neutral", message: "Search Console was disconnected. Previously imported metrics remain available." },
+  denied: { tone: "neutral", message: "Google authorization was cancelled; no connection was changed." },
+  not_connected: { tone: "neutral", message: "Connect Google Search Console before requesting a sync." },
+  not_configured: { tone: "error", message: "Add the Google OAuth client ID and secret in Render before connecting." },
+  matching_property_not_found: { tone: "error", message: "The Google account does not have a verified tailoredagents.com Search Console property yet." },
+  missing_refresh_token: { tone: "error", message: "Google did not issue offline access. Reconnect and approve the consent prompt." },
+  invalid_state: { tone: "error", message: "The connection request expired or could not be verified. Start it again from this page." },
+  scope_missing: { tone: "error", message: "Read-only Search Console access was not granted." },
+  site_missing: { tone: "error", message: "No active production site is available for this connection." },
+  connection_error: { tone: "error", message: "Google could not be connected. Check the OAuth setup and try again." },
+  sync_error: { tone: "error", message: "The connection is saved, but the latest Search Console import failed. Try syncing again." },
+  forbidden: { tone: "error", message: "Only a workspace owner or administrator can manage integrations." },
+};
+
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string | string[] }>;
+  searchParams: Promise<{ range?: string | string[]; integration?: string | string[] }>;
 }) {
   const context = await requireDashboardContext();
-  const range = parseAnalyticsRange((await searchParams).range);
-  const analytics = await getAnalyticsOverview(context, range);
+  const parameters = await searchParams;
+  const range = parseAnalyticsRange(parameters.range);
+  const [analytics, searchConsole] = await Promise.all([
+    getAnalyticsOverview(context, range),
+    getSearchConsoleOverview(context, range),
+  ]);
+  const integrationKey = Array.isArray(parameters.integration) ? parameters.integration[0] : parameters.integration;
+  const integrationNotice = integrationKey ? integrationNotices[integrationKey] : undefined;
+  const hasSearchConsoleProperty = Boolean(searchConsole.connection?.propertyUri);
+  const canSyncSearchConsole = hasSearchConsoleProperty && searchConsole.connection?.status !== "disconnected";
   const maximumPageViews = Math.max(1, ...analytics.trend.map((day) => day.pageViews));
+  const maximumSearchImpressions = Math.max(1, ...searchConsole.trend.map((day) => day.impressions));
   const funnelBase = Math.max(1, analytics.funnel[0]?.sessions ?? 0);
 
   return (
@@ -61,6 +100,9 @@ export default async function AnalyticsPage({
       </header>
 
       <div className="dashboard-content">
+        {integrationNotice ? (
+          <section className={`analytics-notice is-${integrationNotice.tone}`} role="status">{integrationNotice.message}</section>
+        ) : null}
         <section className="dashboard-page-heading analytics-heading">
           <div>
             <span>Phase 3 · Measurement</span>
@@ -159,12 +201,60 @@ export default async function AnalyticsPage({
             <div className="dashboard-panel-heading"><div><span>Data health</span><h2>Sources and freshness</h2></div></div>
             <div className="analytics-status-list">
               <article><span className="is-active"><CheckCircle2 size={16} /></span><div><strong>First-party website events</strong><small>Last received: {timestamp(analytics.freshness.lastEventAt)}</small></div><em>Active</em></article>
-              <article><span><Search size={16} /></span><div><strong>Google Search Console</strong><small>Connection and scheduled ingestion are the next Phase 3 slice.</small></div><em>Not connected</em></article>
+              <article><span className={searchConsole.connection?.status === "active" ? "is-active" : ""}><Search size={16} /></span><div><strong>Google Search Console</strong><small>{searchConsole.connection?.lastSuccessfulSyncAt ? `Last imported: ${timestamp(searchConsole.connection.lastSuccessfulSyncAt)}` : searchConsole.configured ? "Ready to connect with read-only access." : "OAuth credentials are not configured."}</small></div><em>{searchConsole.connection?.status === "active" ? "Active" : searchConsole.connection?.status === "error" ? "Needs attention" : "Not connected"}</em></article>
               <article><span><Database size={16} /></span><div><strong>Google Analytics 4</strong><small>Optional; add only if it contributes data this system does not already own.</small></div><em>Optional</em></article>
             </div>
             <Link className="analytics-data-link" href="/privacy">Review measurement disclosure <ArrowUpRight size={13} /></Link>
           </section>
         </div>
+
+        <section className="dashboard-panel search-console-panel">
+          <div className="dashboard-panel-heading search-console-heading">
+            <div><span>Organic search</span><h2>Google Search Console</h2><small>Observed Google Search clicks and impressions; no estimated rankings or synthetic data.</small></div>
+            {canSyncSearchConsole ? (
+              <div className="search-console-actions">
+                <form action="/api/integrations/search-console/sync" method="post"><button className="button button-light" type="submit"><RefreshCw size={13} />Sync now</button></form>
+                <form action="/api/integrations/search-console/disconnect" method="post"><button className="search-console-disconnect" type="submit"><Unplug size={13} />Disconnect</button></form>
+              </div>
+            ) : searchConsole.configured && searchConsole.connection?.status === "disconnected" ? (
+              <a className="button button-dark search-console-reconnect" href="/api/integrations/search-console/connect">Reconnect <ExternalLink size={13} /></a>
+            ) : null}
+          </div>
+
+          {!searchConsole.configured ? (
+            <div className="search-console-setup"><Search size={22} /><div><strong>Google OAuth setup is required.</strong><p>Add the two Search Console OAuth credentials in Render, then return here to authorize read-only access.</p><code>{searchConsole.redirectUri}</code></div></div>
+          ) : !hasSearchConsoleProperty ? (
+            <div className="search-console-setup"><Search size={22} /><div><strong>Connect the verified tailoredagents.com property.</strong><p>The connection requests only Search Console read access and stores its refresh token encrypted.</p><a className="button button-dark" href="/api/integrations/search-console/connect">Connect Google Search Console <ExternalLink size={13} /></a></div></div>
+          ) : (
+            <>
+              <div className="search-console-context"><span>{searchConsole.connection?.propertyUri}</span><small>Finalized data through {searchConsole.totals.latestDate ? shortDate(searchConsole.totals.latestDate) : "the first successful data date"}</small></div>
+              <div className="search-console-metrics">
+                <article><small>Search clicks</small><strong>{number(searchConsole.totals.clicks)}</strong><span>Visits from Google Search</span></article>
+                <article><small>Impressions</small><strong>{number(searchConsole.totals.impressions)}</strong><span>Appearances in search results</span></article>
+                <article><small>Search CTR</small><strong>{percent(searchConsole.totals.ctr * 100)}</strong><span>Clicks divided by impressions</span></article>
+                <article><small>Average position</small><strong>{searchConsole.totals.position ? searchConsole.totals.position.toFixed(1) : "—"}</strong><span>Impression-weighted position</span></article>
+              </div>
+              <div className="search-console-trend" role="img" aria-label={`Daily Google Search impressions and clicks over the last ${analytics.days} days`}>
+                {searchConsole.trend.map((day, index) => (
+                  <div key={day.date} title={`${shortDate(day.date)}: ${day.impressions} impressions, ${day.clicks} clicks`}>
+                    <span><i style={{ "--search-height": `${Math.max(day.impressions ? 5 : 0, day.impressions / maximumSearchImpressions * 100)}%` } as CSSProperties} />{day.clicks ? <b aria-hidden="true" /> : null}</span>
+                    {(index === 0 || index === searchConsole.trend.length - 1 || analytics.days <= 7) ? <small>{shortDate(day.date)}</small> : <small aria-hidden="true">·</small>}
+                  </div>
+                ))}
+              </div>
+              <div className="search-console-grid">
+                <div className="analytics-table search-console-table">
+                  <div className="analytics-table-head"><span>Top query</span><span>Clicks</span><span>Position</span></div>
+                  {searchConsole.queries.length ? searchConsole.queries.map((query) => <div className="analytics-table-row" key={query.value}><span><strong>{query.value}</strong><small>{number(query.impressions)} impressions</small></span><b>{number(query.clicks)}</b><b>{query.position.toFixed(1)}</b></div>) : <div className="dashboard-empty"><Search size={20} /><strong>No query data yet</strong><p>New properties can take time to accumulate finalized search data.</p></div>}
+                </div>
+                <div className="analytics-table search-console-table">
+                  <div className="analytics-table-head"><span>Top search page</span><span>Clicks</span><span>Position</span></div>
+                  {searchConsole.pages.length ? searchConsole.pages.map((page) => <div className="analytics-table-row" key={page.value}><span><strong>{searchPage(page.value)}</strong><small>{number(page.impressions)} impressions</small></span><b>{number(page.clicks)}</b><b>{page.position.toFixed(1)}</b></div>) : <div className="dashboard-empty"><Database size={20} /><strong>No page data yet</strong><p>The importer will retain finalized page performance as it becomes available.</p></div>}
+                </div>
+              </div>
+            </>
+          )}
+        </section>
       </div>
     </>
   );

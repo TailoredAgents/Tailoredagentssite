@@ -39,3 +39,29 @@ services:
         sync: false
       - key: DASHBOARD_INITIAL_PASSWORD
         sync: false
+      - key: GOOGLE_SEARCH_CONSOLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET
+        sync: false
+      - key: SEARCH_CONSOLE_SYNC_SECRET
+        generateValue: true
+
+  - type: cron
+    name: tailored-agents-search-console-sync
+    runtime: node
+    plan: 0.5c-512mb
+    region: ohio
+    schedule: "17 10 * * *"
+    buildCommand: npm ci
+    startCommand: npm run search-console:sync
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_VERSION
+        value: 22.18.0
+      - key: SEARCH_CONSOLE_SYNC_URL
+        value: https://tailoredagents.com/api/cron/search-console
+      - key: SEARCH_CONSOLE_SYNC_SECRET
+        fromService:
+          name: tailored-agents-web
+          type: web
+          envVarKey: SEARCH_CONSOLE_SYNC_SECRET

@@ -398,15 +398,56 @@ a.dashboard-nav-item:hover { color: #315db8; background: #f0f4fa; }
 .analytics-status-list small { margin-top: .2rem; color: #8d98a8; font-size: .47rem; line-height: 1.45; }
 .analytics-status-list em { padding: .24rem .4rem; border-radius: 999px; color: #65758c; background: #eef1f5; font: normal .43rem var(--font-mono); }
 .analytics-data-link { display: inline-flex; align-items: center; gap: .3rem; margin: 1rem 1.15rem 1.15rem; color: #3768c7; font-size: .51rem; font-weight: 700; }
+.analytics-notice { margin-bottom: 1rem; padding: .8rem 1rem; border: 1px solid #d7e0ed; border-radius: 9px; color: #5d6c81; background: #f8fafc; font-size: .56rem; line-height: 1.5; }
+.analytics-notice.is-success { border-color: #c7e5d6; color: #286b4e; background: #eff9f4; }
+.analytics-notice.is-error { border-color: #efd0d5; color: #8c4650; background: #fff6f7; }
+.search-console-panel { overflow: hidden; margin-top: 1rem; }
+.search-console-heading { align-items: flex-start; }
+.search-console-heading > div:first-child > small { display: block; max-width: 570px; margin-top: .35rem; color: #8a96a7; font-size: .5rem; line-height: 1.5; }
+.search-console-actions { display: flex; align-items: center; gap: .45rem; }
+.search-console-actions form { margin: 0; }
+.search-console-actions .button, .search-console-setup .button, .search-console-reconnect { min-height: 35px; padding: .48rem .7rem; border-radius: 7px; font-size: .5rem; }
+.search-console-disconnect { min-height: 35px; display: inline-flex; align-items: center; gap: .35rem; padding: .45rem .55rem; border: 0; color: #8d5961; background: transparent; font: 650 .48rem var(--font-geist); cursor: pointer; }
+.search-console-setup { min-height: 170px; display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: .9rem; padding: 1.4rem 1.15rem; border-top: 1px solid #edf0f4; color: #4773c7; }
+.search-console-setup > svg { margin-top: .1rem; }
+.search-console-setup strong { display: block; color: #3b485c; font-size: .66rem; }
+.search-console-setup p { max-width: 650px; margin: .45rem 0 .8rem; color: #778497; font-size: .55rem; line-height: 1.6; }
+.search-console-setup code { display: block; width: max-content; max-width: 100%; overflow-wrap: anywhere; padding: .5rem .6rem; border-radius: 6px; color: #5f6e84; background: #f1f4f8; font: .45rem var(--font-mono); }
+.search-console-context { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .72rem 1.15rem; border-top: 1px solid #edf0f4; border-bottom: 1px solid #edf0f4; color: #5774aa; background: #f8faff; }
+.search-console-context span { font: 600 .5rem var(--font-mono); }
+.search-console-context small { color: #8b97a9; font-size: .48rem; }
+.search-console-metrics { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid #edf0f4; }
+.search-console-metrics article { min-height: 125px; padding: 1.05rem 1.15rem; border-right: 1px solid #edf0f4; }
+.search-console-metrics article:last-child { border-right: 0; }
+.search-console-metrics small, .search-console-metrics strong, .search-console-metrics span { display: block; }
+.search-console-metrics small { color: #7e8b9e; font-size: .5rem; }
+.search-console-metrics strong { margin: .85rem 0 .5rem; color: #2f3e55; font-size: 1.55rem; letter-spacing: -.045em; }
+.search-console-metrics span { color: #9aa4b2; font-size: .47rem; line-height: 1.45; }
+.search-console-trend { height: 170px; display: flex; align-items: stretch; gap: clamp(2px, .45vw, 7px); padding: 1rem 1.15rem .75rem; border-bottom: 1px solid #edf0f4; }
+.search-console-trend > div { min-width: 0; flex: 1; display: grid; grid-template-rows: 1fr 17px; gap: .35rem; }
+.search-console-trend > div > span { position: relative; display: flex; align-items: flex-end; border-radius: 4px 4px 1px 1px; background: linear-gradient(to top, #f3f6fb, #fafbfd); }
+.search-console-trend i { width: 100%; height: var(--search-height); display: block; border-radius: 3px 3px 1px 1px; background: linear-gradient(to top, #7ea5eb, #c4d6f7); }
+.search-console-trend b { position: absolute; top: .4rem; right: 50%; width: 6px; height: 6px; border: 1px solid #fff; border-radius: 50%; background: #245fc8; box-shadow: 0 0 0 2px rgba(36, 95, 200, .14); transform: translateX(50%); }
+.search-console-trend small { overflow: hidden; color: #9aa4b3; font: .4rem var(--font-mono); text-align: center; white-space: nowrap; }
+.search-console-grid { display: grid; grid-template-columns: 1fr 1fr; }
+.search-console-table:first-child { border-right: 1px solid #edf0f4; }
+.search-console-table .dashboard-empty { min-height: 210px; }
 
 @media (max-width: 1120px) {
   .analytics-grid, .analytics-lower-grid { grid-template-columns: 1fr; }
+  .search-console-metrics { grid-template-columns: 1fr 1fr; }
+  .search-console-metrics article:nth-child(2) { border-right: 0; }
+  .search-console-metrics article:nth-child(-n+2) { border-bottom: 1px solid #edf0f4; }
 }
 
 @media (max-width: 760px) {
   .analytics-heading { flex-direction: column; gap: 1.2rem; }
   .analytics-chart { height: 210px; padding-inline: .7rem; }
   .analytics-chart-column > small { font-size: .38rem; }
+  .search-console-trend { height: 145px; padding-inline: .7rem; }
+  .search-console-heading, .search-console-context { align-items: flex-start; flex-direction: column; }
+  .search-console-grid { grid-template-columns: 1fr; }
+  .search-console-table:first-child { border-right: 0; border-bottom: 1px solid #edf0f4; }
 }
 
 @media (max-width: 520px) {
@@ -414,4 +455,9 @@ a.dashboard-nav-item:hover { color: #315db8; background: #f0f4fa; }
   .analytics-funnel li > div { grid-column: 2; width: 100%; }
   .analytics-status-list article { grid-template-columns: 32px 1fr; }
   .analytics-status-list em { grid-column: 2; width: max-content; }
+  .search-console-actions { width: 100%; align-items: stretch; flex-direction: column; }
+  .search-console-actions .button, .search-console-disconnect { width: 100%; justify-content: center; }
+  .search-console-metrics { grid-template-columns: 1fr; }
+  .search-console-metrics article { min-height: 110px; border-right: 0; border-bottom: 1px solid #edf0f4; }
+  .search-console-metrics article:last-child { border-bottom: 0; }
 }

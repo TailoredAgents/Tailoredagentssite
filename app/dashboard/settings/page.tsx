@@ -1,16 +1,19 @@
 import type { Metadata } from "next";
 import { BarChart3, CheckCircle2, Database, KeyRound, Mail, ShieldCheck, UsersRound } from "lucide-react";
 import { requireDashboardContext } from "@/lib/dashboard/data";
+import { resolveSearchConsoleConfiguration } from "@/lib/search-console/config";
 
 export const metadata: Metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
   const context = await requireDashboardContext();
+  const searchConsole = resolveSearchConsoleConfiguration();
   const settings = [
     [Database, "PostgreSQL", "Connected", "Durable application and session storage"],
     [KeyRound, "Password authentication", "Active", "Hashed credentials with database-backed sessions"],
     [Mail, "Inquiry email delivery", process.env.RESEND_API_KEY ? "Active" : "Optional", "Resend notifications do not control dashboard access"],
     [BarChart3, "First-party analytics", "Active", "Session-scoped measurement without persistent tracking cookies"],
+    [BarChart3, "Search Console OAuth", searchConsole.configured ? "Ready" : "Needs credentials", "Read-only Google Search performance connection"],
     [UsersRound, "Access policy", "Allowlist only", "No public registration or client access"],
   ] as const;
 
