@@ -34,8 +34,8 @@ Phases 1 and 2 are implemented, and the first Phase 3 measurement release is act
 - Lead search, qualification, ownership, notes, next actions, conversion, and safe CSV export.
 - Client, contact, site, and project workspaces with milestones, deliverables, decisions, and notes.
 - Shared database-backed inquiry controls, delivery status, retention metadata, and audited mutations.
-- Real acquisition, conversion, content, funnel, trend, and freshness reporting from first-party events.
-- Read-only Google Search Console OAuth, encrypted offline credentials, normalized search metrics, manual refresh, and daily Render ingestion once production credentials are authorized.
+- Internal website reporting with visits, stored inquiries, separate visitor activities, trends, and freshness indicators.
+- Read-only Google Search Console OAuth, encrypted credentials, resumable daily imports, coverage records, and reporting; the readiness upgrade is awaiting production review and activation.
 - Safe setup behavior: the marketing site remains operational when dashboard infrastructure is absent.
 
 The Blueprint provisions the persistent database. Private dashboard access requires the internal email allowlist and an initial dashboard password; Resend is optional and affects inquiry notifications only. Search Console code is implemented but remains disconnected until production OAuth credentials and a verified property are authorized. GA4, client accounts, SEO tooling, the SEO agent, and a generally available standardized-agent catalog are not implemented yet; the public agent prices describe a limited founding-client rollout rather than universal availability.
@@ -158,13 +158,13 @@ The project-inquiry and free website-review forms share one protected route. Bot
 
 The route applies a honeypot, minimum completion time, request-size limit, PostgreSQL-backed rate limit, duplicate fingerprint window, unique submission identifiers, and provider idempotency. The rate-limit key is one-way hashed; raw IP addresses and inquiry contents are not intentionally written to application logs.
 
-New inquiries receive a 24-month retention date. The retention command anonymizes expired inquiries that have not become won business, removes their notes, deletes expired rate-limit records, and expires audit events after 36 months. Won/converted business records require deliberate business-record handling instead of automatic inquiry anonymization. Run `npm run db:retention` at least monthly; Render also runs it during deployments.
+New inquiries receive a 24-month retention date. The retention command anonymizes expired inquiries that have not become won business, removes their notes, deletes expired rate-limit records, and expires audit events after 36 months. Won/converted business records require deliberate business-record handling instead of automatic inquiry anonymization. The reporting worker checks retention daily; Render also runs `npm run db:retention` during deployments.
 
 ## First-party analytics
 
 Public pages record a narrow set of first-party events: page views, selected CTA clicks, phone clicks, form starts, successful inquiry submissions, and future booked-call links. Events use a random session-scoped identifier in browser session storage. The system does not set an analytics cookie or store a persistent visitor ID, raw IP address, user-agent string, full referrer URL, or form contents with analytics events.
 
-The event route accepts only same-origin, schema-validated payloads, applies database-backed rate limiting, and stores normalized paths, external referrer hosts, and UTM attribution. Do Not Track and Global Privacy Control disable client-side measurement. Events expire after 25 months through `npm run db:retention`.
+The event route applies origin checks, schema validation and database rate limiting. It rejects browser claims of successful inquiries. A saved inquiry records its optional attribution on the server, with durable recovery if attribution storage fails. DNT/GPC disable measurement in the browser and on incoming requests while allowing the inquiry itself. Events expire after 25 months. Older browser-reported submissions remain stored and are labelled unverified; no missing historical attribution is invented.
 
 `/dashboard/analytics` reports observed first-party data plus authorized Google Search Console clicks, impressions, click-through rate, average position, top queries, and top pages. Search Console remains visibly disconnected until real Google authorization succeeds; no placeholder metrics are shown. GA4 remains optional and should be connected only if it contributes useful data without duplicating the first-party system.
 
@@ -177,10 +177,14 @@ The integration requests only `webmasters.readonly`. OAuth state is random, data
 3. Create an OAuth client with application type **Web application**.
 4. Add the exact authorized redirect URI `https://tailoredagents.com/api/integrations/search-console/callback`.
 5. On the existing Render web service, manually add `GOOGLE_SEARCH_CONSOLE_CLIENT_ID` and `GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET`. Render does not add new `sync: false` variables to an existing Blueprint-managed service automatically.
-6. Sync the Blueprint so `SEARCH_CONSOLE_SYNC_SECRET` and the daily `tailored-agents-search-console-sync` cron exist. Render charges a $1 monthly minimum for a cron service.
-7. Redeploy, sign in, open `/dashboard/analytics`, and select **Connect Google Search Console**. The callback selects the exact verified Tailored Agents property and imports up to 90 days of finalized history.
+6. Reuse the existing cron service and private shared secret. Review runtime cost, correct the canonical hostname, and apply the five-minute schedule only after review; see [the release runbook](docs/SEARCH_CONSOLE_READINESS.md).
+7. After the credential-rotation check and reviewed deployment, sign in and select **Connect Google** on `/dashboard/analytics`. The callback validates the exact Domain property and saves a 90-day import request. The background worker performs the import even after the browser closes.
 
-The daily job runs at `10:17 UTC` and refreshes the most recent 10 finalized days so late Search Console corrections are replaced idempotently. **Sync now** runs the same import on demand. Disconnecting deletes the stored tokens while retaining already imported historical metrics until their retention date.
+The worker checks every five minutes and requests the daily refresh on the first check after **10:17 UTC** (normally 10:20). It imports missing dates and refreshes the latest ten days, one date at a time. Initial history ends three Pacific calendar days ago to use finalized data; Google ordinarily has a 2–3 day delay. Completed zero-activity dates are recorded. Google search-term/page limits are disclosed. **Refresh Google** queues work and repeated clicks reuse the pending job. Disconnecting cancels work and removes tokens while preserving reports.
+
+Reports support 7/30/90-day and custom ranges, preceding-period comparisons where history is sufficient, accessible chart tables, searchable/sortable/paginated detail tables, and protected CSV export. Website presets end yesterday; Google presets end at the latest imported date. Report days use Pacific Time. Visits are sessions; phone and booking activity are clicks; inquiry counts come from stored leads. Conversion rate counts distinct measured visiting sessions with a verified submission.
+
+For private account checks/provisioning, preview steps, recovery instructions, evidence and outstanding live acceptance, use [SEARCH_CONSOLE_READINESS.md](docs/SEARCH_CONSOLE_READINESS.md).
 
 ## Checks
 
@@ -204,7 +208,7 @@ npm run mail:build
 
 ## Render deployment
 
-`render.yaml` defines the Node web service, a persistent Render PostgreSQL database, their private-network connection, the health check, automatic deploy trigger, build-time migration and retention commands, and a daily Search Console sync cron. The owner approved the smallest paid database plan on October 16, 2026. The cron adds Render's $1 monthly minimum only after the updated Blueprint is synced.
+`render.yaml` defines the Node web service, a persistent Render PostgreSQL database, their private-network connection, the health check, automatic deploy trigger, build-time migration and retention commands, and the existing Search Console processing cron. The readiness branch proposes five-minute checks, subject to runtime-cost review. The owner approved the smallest paid database plan on October 16, 2026. The cron already exists; its bill has a $1 monthly minimum plus applicable active-runtime charges.
 
 To activate the dashboard:
 

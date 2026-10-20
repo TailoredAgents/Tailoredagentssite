@@ -92,7 +92,7 @@ Use this checklist for the public website and private dashboard. The mail applic
 - [ ] Verify lead qualification, notes, ownership, next actions, won/lost state, and conversion in production.
 - [ ] Verify client, contact, site, project, milestone, and project-record create/edit flows in production.
 - [ ] Test safe export, anonymization, backup, and restore with non-production records.
-- [ ] Schedule `npm run db:retention` at least monthly in addition to deployment-time maintenance.
+- [ ] Verify the existing reporting worker performs retention on its daily due check in addition to deployment-time maintenance.
 
 ## Phase 3 measurement gate
 
@@ -102,14 +102,14 @@ Use this checklist for the public website and private dashboard. The mail applic
 - [ ] Verify UTM source, medium, and campaign plus external referring host attribution with authorized test visits.
 - [ ] Verify Do Not Track and Global Privacy Control prevent client-side event requests.
 - [ ] Verify `/dashboard` and `/sign-in` activity is excluded from public analytics.
-- [ ] Verify 7, 30, and 90-day reports, empty states, funnel counts, top pages, acquisition rows, and last-event freshness.
+- [ ] Verify 7, 30, 90-day and custom reports, Pacific dates, independent visitor-activity counts, missing-data states, comparisons, detail tables and latest activity.
 - [ ] Confirm analytics events expire after 25 months through `npm run db:retention`.
 - [ ] Keep Search Console and GA4 marked unconnected until real authorization and successful ingestion exist.
 - [ ] Confirm migration `0004_search_console.sql` is recorded once in `schema_migrations`.
 - [ ] Confirm OAuth requests only `webmasters.readonly`, rejects expired/reused state, and selects only the exact verified Tailored Agents property.
 - [ ] Confirm stored Google access and refresh tokens are encrypted and never appear in responses, source, logs, or audit metadata.
 - [ ] Authorize Search Console and verify the initial 90-day finalized-data import, top queries, top pages, click/impression totals, CTR, position, and last-successful-sync state.
-- [ ] Trigger **Sync now**, then verify the daily Render cron refreshes the trailing finalized window without duplicate metrics.
+- [ ] Trigger **Refresh Google** twice, verify one pending import, then observe a genuinely scheduled daily refresh with missing-day recovery and no duplicate metrics.
 - [ ] Disconnect and verify tokens are cleared while retained historical metrics remain available.
 - [ ] Confirm Search Console metrics expire after 18 months, sync runs after 24 months, and OAuth state after 10 minutes.
 
@@ -119,3 +119,21 @@ Use this checklist for the public website and private dashboard. The mail applic
 - [ ] Review dependency advisories and rerun the full verification gate.
 - [ ] Confirm an owner for content, dependency, privacy, data-retention, case-study, and dashboard-access updates.
 - [ ] Add any material product, security, or architecture decision to the product-plan decision log.
+
+## Search Console readiness release — October 20, 2026
+
+Local verification and production acceptance are separate. See [release evidence and runbook](SEARCH_CONSOLE_READINESS.md).
+
+- [x] Migration 0005 upgrades a populated test database without losing reports or credential metadata; test dump/restore passes.
+- [x] Isolated PostgreSQL tests cover initial history, zero days, pagination, gap recovery, leases, connection changes, OAuth state, authorization, privacy and verified inquiries.
+- [x] Desktop and phone browser checks cover the report, filters, tables, exports, viewer restrictions and disconnect confirmation.
+- [ ] Austin reviews the preview, shared-form changes, migration and cron-runtime implications; merge approved branch.
+- [ ] Privately verify/complete database and authentication-secret rotation (Jeffrey answered “Not sure”).
+- [ ] Check Jeffrey’s production dashboard account; provision only if missing, using the owner-controlled command.
+- [ ] Confirm a current production backup and restore access before applying the migration.
+- [ ] Correct Render apex/www routing, check Cloudflare for conflicting redirects, preserve mail DNS and verify sign-in on apex.
+- [ ] Apply migration 0005; reuse the existing cron and review actual active-runtime cost before changing cadence.
+- [ ] Authorize Austin’s approved Google account, confirm exact Domain property and read-only access.
+- [ ] Reconcile a fixed date range with Google; verify manual refresh twice and processing after closing the browser.
+- [ ] Verify a manual worker run and the next genuinely scheduled daily refresh; record worker/data timestamps separately.
+- [ ] Verify live website, contact submission and separate mail service after deployment.

@@ -25,7 +25,7 @@ When information is uncertain, investigate the repository and authoritative prim
 
 Own the remaining technical roadmap for Tailored Agents while Austin works on public website design and marketing presentation. Begin by completing the production Google Search Console connection. Then close the Phase 2 and Phase 3 production gates before proceeding sequentially through the client Growth Hub, the human-operated SEO workspace, and the bounded SEO agent.
 
-The Search Console application code, database migration, dashboard reporting, manual sync, and Render cron job are already implemented. Its activation is configuration and verification work; do not redesign or replace that integration.
+October 20 update: Jeffrey approved a bounded Search Console readiness and reporting upgrade after the audit identified hostname and import failures. The existing integration is extended on `jeffrey/search-console-readiness`. This explicitly supersedes the earlier activation-only restriction. See `docs/SEARCH_CONSOLE_READINESS.md` for implementation evidence, the preview, deployment order and remaining live gates. Other roadmap workstreams remain outside this release.
 
 Start from the `main` commit that contains this handoff or a newer commit. Read this file completely before taking action. Also read `README.md`, `docs/PRODUCT_PLAN.md`, `docs/LAUNCH_CHECKLIST.md`, and the applicable Next.js documentation under `node_modules/next/dist/docs/` before changing application code.
 
@@ -142,8 +142,8 @@ Austin has approved use of his personal Google account for this setup. Do not us
 - Ensure two-factor authentication is enabled on the personal Google account.
 - Never give a secret value to Codex. Codex can guide the browser interaction without reading the value.
 - Never paste secrets into the repository, an issue, a commit, a screenshot, or the completion report.
-- Do not rotate `BETTER_AUTH_SECRET`. Search Console token encryption is derived from it.
-- Do not change existing DNS records. Add only the Google verification record described below.
+- Verify the outstanding credential-rotation checklist before connecting Google. Jeffrey is not sure whether Austin completed it. The approved readiness plan permits completing outstanding rotation first; coordinate privately and retain recovery material securely. Rotating `BETTER_AUTH_SECRET` after authorization invalidates stored Google credentials and requires reconnecting.
+- The approved readiness plan permits the coordinated apex/www hosting correction. Preserve all mail records and `mail.tailoredagents.com`. Google verification uses the additional TXT record below.
 - Do not create a second web service, database, Blueprint, or duplicate cron service.
 - Resend is unrelated to this task and can remain unconfigured.
 
@@ -300,18 +300,18 @@ The two Google variables are declared with `sync: false` in `render.yaml`. Rende
 7. Confirm the Blueprint created `SEARCH_CONSOLE_SYNC_SECRET` on the web service and references the same value from the cron service.
 8. Do not manually reveal, copy, or replace `SEARCH_CONSOLE_SYNC_SECRET` unless troubleshooting proves the Blueprint reference failed.
 9. Confirm the cron configuration uses:
-   - Schedule: `17 10 * * *`
+   - Schedule after cost review: `*/5 * * * *`; the first check after 10:17 UTC requests the daily refresh.
    - Command: `npm run search-console:sync`
    - URL: `https://tailoredagents.com/api/cron/search-console`
 10. Wait for the web service deployment to report **Live**.
 
-The web build runs database migrations. Migration `db/migrations/0004_search_console.sql` must deploy successfully before connecting Google.
+The web build runs database migrations. Migrations through `db/migrations/0005_reporting_readiness.sql` must deploy successfully before connecting Google. Correct Render’s primary hostname before deploying the application’s www-to-apex redirect, to avoid a redirect loop.
 
 ## Task 10: connect Google from the private dashboard
 
 1. Open <https://tailoredagents.com/sign-in> and sign in to the Tailored Agents dashboard.
 2. Open <https://tailoredagents.com/dashboard/analytics>.
-3. Select **Connect Google Search Console**.
+3. Select **Connect Google**.
 4. Choose the same personal Google account that owns `sc-domain:tailoredagents.com` and the Google Cloud project.
 5. Confirm the consent screen requests read-only Search Console access.
 6. If Google displays an unverified-app warning, proceed only after confirming:
@@ -323,16 +323,16 @@ The web build runs database migrations. Migration `db/migrations/0004_search_con
 9. Confirm the dashboard reports the connected property as `sc-domain:tailoredagents.com`.
 10. Confirm the connection does not select an unrelated Search Console property from Austin's Google account.
 
-The initial connection imports up to 90 days of finalized Search Console history. Search Console reporting can trail current activity by a few days, and a low-traffic site can legitimately have no metric rows yet.
+The initial connection queues 90 days of finalized Search Console history; it continues after the browser closes. Search Console reporting can trail current activity by a few days, and a low-traffic site can legitimately have no metric rows yet.
 
 ## Task 11: test manual and scheduled synchronization
 
 ### Dashboard test
 
-1. On `/dashboard/analytics`, select **Sync now**.
-2. Wait for the request to finish and the page to reload.
+1. On `/dashboard/analytics`, select **Refresh Google**.
+2. Confirm an import is queued and its days-checked progress advances through the background worker.
 3. Confirm the integration remains connected.
-4. Confirm **Last synced** has a recent timestamp.
+4. Confirm **Last completed import** advances when the import finishes, and worker check-in time is current.
 5. If Google has finalized data for the site, confirm the dashboard can render clicks, impressions, click-through rate, average position, queries, and pages.
 
 ### Render cron test
@@ -342,7 +342,8 @@ The initial connection imports up to 90 days of finalized Search Console history
 3. Select **Trigger Run**.
 4. Wait for the run to complete.
 5. Confirm the run status is successful and its logs do not contain a credential, token, or database URL.
-6. Refresh `/dashboard/analytics` and confirm the synchronization timestamp remains current.
+6. Refresh `/dashboard/analytics` and confirm the completed-import timestamp remains current.
+7. Verify the next genuinely scheduled daily refresh, reconcile an identical fixed range with Google, and repeat a manual refresh to prove there are no duplicate results. Do not mark the connection complete before this observation.
 
 ## Troubleshooting guide
 
@@ -500,7 +501,7 @@ Use synthetic or explicitly authorized test identities. Do not record passwords,
 2. Verify the initial import covers up to 90 days of finalized history.
 3. Compare a controlled date range against Google Search Console for clicks, impressions, click-through rate, average position, top queries, and top pages.
 4. Confirm the dashboard clearly displays connection health and last successful synchronization.
-5. Run **Sync now** twice and confirm the rolling import is idempotent rather than duplicating metrics.
+5. Run **Refresh Google** twice and confirm the rolling import is idempotent rather than duplicating metrics.
 6. Confirm the daily Render cron refreshes the finalized trailing window.
 7. Test disconnect behavior only after Austin agrees: tokens should be cleared while retained historical metrics remain available. Reconnect and verify recovery.
 8. Confirm token encryption and ensure access tokens, refresh tokens, authorization codes, and OAuth state never appear in responses, logs, audit metadata, screenshots, or source.

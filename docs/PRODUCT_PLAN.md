@@ -56,7 +56,7 @@ The immediate goal is not to launch a broad autonomous-agent platform. It is to 
 
 ### Not yet operational
 
-- Production-authorized Google Search Console data; the implementation is complete but remains disconnected until the verified property and OAuth client are configured.
+- Production-authorized Google Search Console data; the readiness upgrade is implemented on a review branch; production ownership, authorization and scheduled behavior remain unverified.
 - Client accounts or a client-facing Growth Hub.
 - A public interactive product demo.
 - A generally available standardized website-agent or operations-agent catalog; the public site describes a limited founding-client rollout without claiming that every listed capability is operational.
@@ -174,11 +174,11 @@ Exit criteria:
 
 Goal: collect and explain the evidence needed for growth work.
 
-Status: activation pending. Privacy-reviewed first-party instrumentation and reporting are operational. Read-only Google Search Console OAuth, encrypted credential storage, exact property matching, initial/rolling ingestion, connection health, internal reporting, and a daily Render cron are implemented; production Google authorization remains. GA4 remains intentionally optional.
+Status: readiness release awaiting review and production activation. The branch adds durable daily imports, complete-date coverage, recovery and leases, verified inquiry attribution, canonical-origin checks, protected exports and a redesigned reporting screen. Local PostgreSQL, browser and restore evidence is recorded in `docs/SEARCH_CONSOLE_READINESS.md`. A real Google import and the next scheduled daily refresh are still required; the phase is not complete. GA4 remains outside this release.
 
 Deliverables:
 
-- Privacy-reviewed first-party events for page views, CTA clicks, phone clicks, form starts, successful submissions, and booked-call outcomes.
+- Privacy-reviewed first-party events for page views, CTA clicks, phone clicks, form starts, server-verified successful submissions, and booking-button clicks.
 - UTM and referrer attribution with documented retention.
 - Website-specific conversion definitions.
 - Google Search Console connection and scheduled ingestion.
@@ -313,7 +313,7 @@ Exit criteria:
 - `recommendations`, `content_briefs`, and `content_revisions`.
 - `agent_definitions`, `agent_runs`, `agent_steps`, and `approvals`.
 
-The first migration creates the identity, tenancy, initial lead/site, and audit foundation. The second migration adds the Phase 2 operational records, shared inquiry controls, delivery states, and retention metadata. The third migration adds the first-party event stream and its 25-month retention contract. The fourth adds encrypted Search Console connections, bounded sync history, and finalized metrics with explicit retention. Later-phase tables should be added with their behavior and retention rules, not speculatively.
+The first migration creates the identity, tenancy, initial lead/site, and audit foundation. The second migration adds the Phase 2 operational records, shared inquiry controls, delivery states, and retention metadata. The third migration adds the first-party event stream and its 25-month retention contract. The fourth adds encrypted Search Console connections, bounded sync history, and finalized metrics with explicit retention. The fifth migration adds connection generations, resumable jobs, per-date coverage, worker health and verified inquiry attribution while preserving existing reports and encrypted credentials. Later-phase tables should be added with their behavior and retention rules, not speculatively.
 
 ## Security and privacy baseline
 
@@ -417,7 +417,7 @@ Phase 3 begins with a small first-party event stream instead of immediately addi
 
 ### October 18, 2026 — Connect search evidence read-only
 
-The Search Console integration uses the narrow read-only scope, exact production-property matching, single-use OAuth state, encrypted offline credentials, finalized Google data, and idempotent rolling imports. A small Render cron provides one daily refresh; manual refresh uses the same bounded path. Imported query and page evidence is retained for 18 months. GA4 remains deferred because the first-party event stream already owns conversion measurement.
+The Search Console integration uses the narrow read-only scope, exact production-property matching, single-use OAuth state, encrypted offline credentials, finalized Google data, and idempotent daily imports with recorded coverage and interruption recovery. The existing Render cron checks pending work every five minutes after schedule review. Its first check after 10:17 UTC queues a daily refresh; manual refresh queues the same durable work. Missing days and the latest ten completed days are checked. Imported query and page evidence is retained for 18 months. GA4 remains deferred because the first-party event stream already owns conversion measurement.
 
 ### October 18, 2026 — Expand client relationships through modular agents
 
@@ -430,3 +430,7 @@ Websites and managed SEO remain the primary acquisition offer. Suitable clients 
 - Add material architecture, security, pricing, or product-scope decisions to the decision log.
 - Do not mark a future feature complete because a visual mockup exists.
 - When implementation and this document disagree, resolve the discrepancy rather than allowing both versions to persist.
+
+### October 20, 2026 — Reporting readiness release
+
+Jeffrey approved the expanded readiness plan after the audit found a hostname mismatch and fragile imports. This supersedes the earlier activation-only restriction for this workstream. Scope remains internal reports for Tailored Agents; public design, email, CRM expansion, client portals, SEO agents, GA4 and MFA remain separate. The preview uses isolated demonstration data. Production is not declared complete until the documented live acceptance passes.
