@@ -13,6 +13,9 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
+  async redirects() {
+    return [{ source: "/:path*", has: [{ type: "host" as const, value: "www.tailoredagents.com" }], destination: "https://tailoredagents.com/:path*", permanent: true }];
+  },
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },

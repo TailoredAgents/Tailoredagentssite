@@ -5,6 +5,7 @@ import {
   storeAnalyticsEvent,
 } from "@/lib/analytics/store";
 import { analyticsEventSchema } from "@/lib/analytics/validation";
+import { privacyRequested } from "@/lib/analytics/measurement";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,6 +31,7 @@ function isSameOrigin(request: Request) {
 }
 
 export async function POST(request: NextRequest) {
+  if (privacyRequested(request.headers)) return response(204);
   if (!isSameOrigin(request)) return response(403);
   if (!request.headers.get("content-type")?.includes("application/json")) return response(415);
 
@@ -55,7 +57,7 @@ export async function POST(request: NextRequest) {
   }
 
   const event = analyticsEventSchema.safeParse(parsed);
-  if (!event.success) return response(400);
+  if (!event.success || event.data.eventName === "form_success") return response(400);
 
   try {
     await storeAnalyticsEvent(event.data);

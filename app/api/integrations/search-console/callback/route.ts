@@ -13,7 +13,9 @@ import {
   exchangeAuthorizationCode,
   listSearchConsoleProperties,
   selectMatchingProperty,
+  querySearchAnalytics,
 } from "@/lib/search-console/google";
+import { reportToday, shiftDate } from "@/lib/reporting/dates";
 import { syncSearchConsoleConnection } from "@/lib/search-console/sync";
 
 export const runtime = "nodejs";
@@ -53,6 +55,10 @@ export async function GET(request: NextRequest) {
     }
     const properties = await listSearchConsoleProperties(tokens.accessToken);
     const selectedProperty = selectMatchingProperty(properties, targetSite.url);
+    if (!selectedProperty || selectedProperty.siteUrl !== "sc-domain:tailoredagents.com") return dashboardRedirect("matching_property_not_found");
+    if (!tokens.refreshToken) return dashboardRedirect("missing_refresh_token");
+    const checkDate = shiftDate(reportToday(), -3);
+    await querySearchAnalytics({ accessToken: tokens.accessToken, propertyUri: selectedProperty.siteUrl, startDate: checkDate, endDate: checkDate });
     const saved = await saveSearchConsoleConnection({
       context,
       targetSite,
@@ -63,7 +69,7 @@ export async function GET(request: NextRequest) {
       return dashboardRedirect(saved.error ?? "connection_error");
     }
     const sync = await syncSearchConsoleConnection(saved.id, "oauth");
-    return dashboardRedirect(sync.status === "succeeded" ? "connected" : "sync_error");
+    return dashboardRedirect(sync.status === "queued" ? "connected" : "sync_error");
   } catch {
     return dashboardRedirect("connection_error");
   }

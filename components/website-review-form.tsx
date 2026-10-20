@@ -4,12 +4,13 @@ import Link from "next/link";
 import { ArrowRight, LoaderCircle } from "lucide-react";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import type { ContactErrors } from "@/lib/contact";
-import { trackAnalyticsEvent } from "@/lib/analytics/client";
+import { getMeasurementContext } from "@/lib/analytics/client";
 
 type Status = { type: "idle" | "submitting" | "success" | "error"; message?: string };
 
 export function WebsiteReviewForm() {
   const startedAt = useRef(0);
+  const submissionId = useRef<string | null>(null);
   const [status, setStatus] = useState<Status>({ type: "idle" });
   const [errors, setErrors] = useState<ContactErrors>({});
 
@@ -22,13 +23,13 @@ export function WebsiteReviewForm() {
     setErrors({});
     const formData = new FormData(form);
     const payload = Object.fromEntries(formData.entries());
-    const submissionId = `review_${crypto.randomUUID().replaceAll("-", "")}`;
+    submissionId.current ??= `review_${crypto.randomUUID().replaceAll("-", "")}`;
 
     try {
       const response = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...payload, startedAt: startedAt.current, submissionId }),
+        body: JSON.stringify({ ...payload, startedAt: startedAt.current, submissionId: submissionId.current, measurement: getMeasurementContext() }),
       });
       const result = await response.json() as { message?: string; errors?: ContactErrors };
       if (!response.ok) {
@@ -37,11 +38,9 @@ export function WebsiteReviewForm() {
         return;
       }
       form.reset();
+      submissionId.current = null;
       startedAt.current = Date.now();
       setStatus({ type: "success", message: result.message });
-      if (response.status === 201) {
-        trackAnalyticsEvent("form_success", { formType: "website-review" });
-      }
     } catch {
       setStatus({ type: "error", message: "A network error interrupted the request. Please check your connection before trying again." });
     }

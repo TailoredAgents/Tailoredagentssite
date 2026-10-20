@@ -17,7 +17,7 @@ function elementLabel(element: HTMLElement) {
 function explicitEvent(element: HTMLElement) {
   const eventName = element.dataset.analyticsEvent;
   return ["cta_click", "phone_click", "booking_click"].includes(eventName ?? "")
-    ? eventName as AnalyticsEventName
+    ? eventName as Exclude<AnalyticsEventName, "form_success">
     : null;
 }
 

@@ -98,7 +98,14 @@ function currentAttribution(): Attribution {
   return attribution;
 }
 
-export function trackAnalyticsEvent(eventName: AnalyticsEventName, details: EventDetails = {}) {
+export function getMeasurementContext() {
+  if (typeof window === "undefined" || trackingDisabled() || isApplicationPath(window.location.pathname)) return undefined;
+  const path = relativePath(window.location.href);
+  if (!path) return undefined;
+  return { sessionId: sessionId(), path, ...currentAttribution() };
+}
+
+export function trackAnalyticsEvent(eventName: Exclude<AnalyticsEventName, "form_success">, details: EventDetails = {}) {
   if (typeof window === "undefined" || trackingDisabled() || isApplicationPath(window.location.pathname)) {
     return;
   }

@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getDashboardAuth } from "./auth";
 import { isAllowedDashboardEmail, resolveDashboardConfiguration } from "./config";
-import { getDatabasePool, provisionInternalMembership } from "./db";
+import { getDatabasePool } from "./db";
 
 export type DashboardRole = "owner" | "admin" | "member" | "viewer";
 
@@ -56,13 +56,7 @@ export const getOptionalDashboardContext = cache(async (): Promise<DashboardCont
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id || !isAllowedDashboardEmail(session.user.email)) return null;
 
-  let row = await findActiveMembership(session.user.id);
-  if (!row) {
-    // Recover safely if account creation succeeded but its after-create hook was
-    // interrupted before the initial internal membership could be committed.
-    await provisionInternalMembership({ id: session.user.id });
-    row = await findActiveMembership(session.user.id);
-  }
+  const row = await findActiveMembership(session.user.id);
   if (!row) return null;
 
   return {

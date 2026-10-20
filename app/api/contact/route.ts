@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { validateContact } from "@/lib/contact";
+import { readMeasurement } from "@/lib/analytics/measurement";
+import { recordPendingInquiryMeasurements } from "@/lib/analytics/verified-inquiries";
 import {
   consumeContactRateLimit,
   publicRequestKey,
@@ -66,9 +68,14 @@ export async function POST(request: NextRequest) {
 
   let stored: Awaited<ReturnType<typeof storePublicInquiry>>;
   try {
-    stored = await storePublicInquiry({ ...data, fingerprint });
+    const measurement = readMeasurement((parsed as Record<string, unknown>)?.measurement, request.headers);
+    stored = await storePublicInquiry({ ...data, fingerprint }, measurement);
   } catch {
     return response("We could not securely record your inquiry. Please call us or try again shortly.", 503);
+  }
+
+  try { await recordPendingInquiryMeasurements(stored.leadId); } catch {
+    // The background worker retries attribution; the saved inquiry still succeeds.
   }
 
   const isReview = data.inquiryType === "website-review";

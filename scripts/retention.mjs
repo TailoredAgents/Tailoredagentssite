@@ -1,60 +1,15 @@
 import pg from "pg";
-
 const databaseUrl = process.env.DATABASE_URL?.trim();
-
 if (!databaseUrl) {
-  console.log("DATABASE_URL is not configured; skipping retention maintenance.");
+  console.log(
+    "DATABASE_URL is not configured; skipping retention maintenance.",
+  );
   process.exit(0);
 }
-
 const pool = new pg.Pool({ connectionString: databaseUrl, max: 1 });
-const client = await pool.connect();
-
 try {
-  await client.query("BEGIN");
-  const notes = await client.query(`
-    DELETE FROM lead_notes note
-    USING leads lead
-    WHERE note.lead_id = lead.id
-      AND lead.retained_until <= now()
-      AND lead.status <> 'won'
-      AND lead.anonymized_at IS NULL
-  `);
-  const leads = await client.query(`
-    UPDATE leads
-    SET status = 'archived',
-        name = 'Redacted',
-        organization = 'Redacted inquiry',
-        email = 'redacted+' || id::text || '@retained.invalid',
-        phone = NULL,
-        interest = NULL,
-        website_url = NULL,
-        description = NULL,
-        submission_id = NULL,
-        fingerprint = NULL,
-        owner_user_id = NULL,
-        next_action = NULL,
-        next_action_at = NULL,
-        outcome_summary = NULL,
-        delivery_error_code = NULL,
-        anonymized_at = now(),
-        updated_at = now()
-    WHERE retained_until <= now()
-      AND status <> 'won'
-      AND anonymized_at IS NULL
-  `);
-  const limits = await client.query("DELETE FROM request_rate_limits WHERE expires_at <= now()");
-  const audit = await client.query("DELETE FROM audit_logs WHERE retained_until <= now()");
-  const analytics = await client.query("DELETE FROM analytics_events WHERE retained_until <= now()");
-  const oauthStates = await client.query("DELETE FROM integration_oauth_states WHERE expires_at <= now()");
-  const searchMetrics = await client.query("DELETE FROM search_console_metrics WHERE retained_until <= now()");
-  const syncRuns = await client.query("DELETE FROM integration_sync_runs WHERE retained_until <= now()");
-  await client.query("COMMIT");
-  console.log(`Retention complete: ${leads.rowCount ?? 0} leads anonymized, ${notes.rowCount ?? 0} lead notes removed, ${limits.rowCount ?? 0} rate-limit records removed, ${audit.rowCount ?? 0} audit events expired, ${analytics.rowCount ?? 0} analytics events expired, ${oauthStates.rowCount ?? 0} OAuth states removed, ${searchMetrics.rowCount ?? 0} search metrics expired, ${syncRuns.rowCount ?? 0} sync runs expired.`);
-} catch (error) {
-  await client.query("ROLLBACK");
-  throw error;
+  await pool.query("SELECT perform_reporting_retention()");
+  console.log("Retention maintenance completed.");
 } finally {
-  client.release();
   await pool.end();
 }

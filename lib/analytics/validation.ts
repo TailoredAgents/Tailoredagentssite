@@ -16,7 +16,8 @@ const pathSchema = z.string()
   .min(1)
   .max(300)
   .refine((value) => value.startsWith("/") && !value.startsWith("//"), "Path must be site-relative.")
-  .refine((value) => !/[\r\n\t]/.test(value), "Path contains invalid characters.");
+  .refine((value) => !/[\r\n\t?#]/.test(value), "Path contains invalid characters.")
+  .refine((value) => !/^\/(dashboard|sign-in|api)(\/|$)/.test(value), "Private paths are not measured.");
 
 const optionalLabel = z.string().trim().min(1).max(120).optional();
 const optionalAttribution = z.string().trim().min(1).max(100).optional();

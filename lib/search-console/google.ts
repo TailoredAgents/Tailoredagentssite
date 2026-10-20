@@ -35,19 +35,53 @@ export class GoogleApiError extends Error {
     message: string,
     readonly code: string,
     readonly status: number,
+    readonly retryAfterSeconds = 0,
   ) {
     super(message);
   }
 }
 
 async function googleResponse<T>(response: Response): Promise<T> {
-  const payload = await response.json().catch(() => ({})) as T & GoogleErrorPayload;
-  if (response.ok) return payload;
+  const payload = (await response.json().catch(() => {
+    throw new GoogleApiError(
+      "Google returned unreadable data.",
+      "invalid_report",
+      502,
+    );
+  })) as T & GoogleErrorPayload;
+  if (!payload || typeof payload !== "object" || Array.isArray(payload))
+    throw new GoogleApiError(
+      "Google returned invalid data.",
+      "invalid_report",
+      502,
+    );
+  if (response.ok && !payload.error) return payload;
+  if (response.ok)
+    throw new GoogleApiError(
+      "Google returned an error instead of a report.",
+      "invalid_report",
+      502,
+    );
 
   const nested = typeof payload.error === "object" ? payload.error : undefined;
-  const code = nested?.status || (typeof payload.error === "string" ? payload.error : "google_api_error");
-  const message = nested?.message || payload.error_description || "Google rejected the request.";
-  throw new GoogleApiError(message, code, response.status);
+  const code =
+    nested?.status ||
+    (typeof payload.error === "string" ? payload.error : "google_api_error");
+  const message =
+    nested?.message ||
+    payload.error_description ||
+    "Google rejected the request.";
+  const retryAfter = response.headers.get("retry-after");
+  const seconds = retryAfter
+    ? Number(retryAfter) ||
+      Math.max(0, (Date.parse(retryAfter) - Date.now()) / 1000)
+    : 0;
+  throw new GoogleApiError(
+    message,
+    code,
+    response.status,
+    Number.isFinite(seconds) ? seconds : 0,
+  );
 }
 
 export function buildAuthorizationUrl(input: {
@@ -62,7 +96,6 @@ export function buildAuthorizationUrl(input: {
     response_type: "code",
     scope: SEARCH_CONSOLE_SCOPE,
     access_type: "offline",
-    include_granted_scopes: "true",
     prompt: "consent",
     state: input.state,
   }).toString();
@@ -94,7 +127,12 @@ export async function exchangeAuthorizationCode(input: {
     expires_in?: number;
     scope?: string;
   }>(response);
-  if (!payload.access_token) throw new GoogleApiError("Google returned no access token.", "missing_access_token", 502);
+  if (!payload.access_token)
+    throw new GoogleApiError(
+      "Google returned no access token.",
+      "missing_access_token",
+      502,
+    );
   return {
     accessToken: payload.access_token,
     refreshToken: payload.refresh_token,
@@ -125,7 +163,12 @@ export async function refreshGoogleAccessToken(input: {
     expires_in?: number;
     scope?: string;
   }>(response);
-  if (!payload.access_token) throw new GoogleApiError("Google returned no access token.", "missing_access_token", 502);
+  if (!payload.access_token)
+    throw new GoogleApiError(
+      "Google returned no access token.",
+      "missing_access_token",
+      502,
+    );
   return {
     accessToken: payload.access_token,
     expiresIn: payload.expires_in ?? 3600,
@@ -139,20 +182,29 @@ export async function listSearchConsoleProperties(accessToken: string) {
     cache: "no-store",
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
-  const payload = await googleResponse<{ siteEntry?: SearchConsoleProperty[] }>(response);
+  const payload = await googleResponse<{ siteEntry?: SearchConsoleProperty[] }>(
+    response,
+  );
   return payload.siteEntry ?? [];
 }
 
-export function selectMatchingProperty(properties: SearchConsoleProperty[], siteUrl: string) {
-  const hostname = new URL(siteUrl).hostname.toLowerCase().replace(/^www\./, "");
-  const candidates = [
-    `sc-domain:${hostname}`,
-    `https://${hostname}/`,
-    `https://www.${hostname}/`,
-  ];
-  const usable = properties.filter((property) => property.permissionLevel !== "siteUnverifiedUser");
+export function selectMatchingProperty(
+  properties: SearchConsoleProperty[],
+  siteUrl: string,
+) {
+  const hostname = new URL(siteUrl).hostname
+    .toLowerCase()
+    .replace(/^www\./, "");
+  const candidates = [`sc-domain:${hostname}`];
+  const usable = properties.filter((property) =>
+    ["siteOwner", "siteFullUser", "siteRestrictedUser"].includes(
+      property.permissionLevel,
+    ),
+  );
   for (const candidate of candidates) {
-    const match = usable.find((property) => property.siteUrl.toLowerCase() === candidate);
+    const match = usable.find(
+      (property) => property.siteUrl.toLowerCase() === candidate,
+    );
     if (match) return match;
   }
   return null;
@@ -164,6 +216,8 @@ export async function querySearchAnalytics(input: {
   startDate: string;
   endDate: string;
   dimension?: "query" | "page";
+  startRow?: number;
+  signal?: AbortSignal;
 }) {
   const dimensions = input.dimension ? ["date", input.dimension] : ["date"];
   const response = await fetch(
@@ -182,12 +236,54 @@ export async function querySearchAnalytics(input: {
         dataState: "final",
         aggregationType: input.dimension === "page" ? "auto" : "byProperty",
         rowLimit: 25_000,
-        startRow: 0,
+        startRow: input.startRow ?? 0,
       }),
       cache: "no-store",
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: input.signal
+        ? AbortSignal.any([
+            input.signal,
+            AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+          ])
+        : AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     },
   );
-  const payload = await googleResponse<{ rows?: SearchAnalyticsRow[] }>(response);
-  return payload.rows ?? [];
+  const payload = await googleResponse<{ rows?: SearchAnalyticsRow[] }>(
+    response,
+  );
+  const rows = payload.rows ?? [];
+  if (
+    !Array.isArray(rows) ||
+    rows.some(
+      (row) =>
+        !Array.isArray(row.keys) ||
+        row.keys.some((key) => typeof key !== "string") ||
+        ![row.clicks, row.impressions, row.ctr, row.position].every(
+          Number.isFinite,
+        ) ||
+        row.clicks < 0 ||
+        row.impressions < 0 ||
+        row.ctr < 0 ||
+        row.ctr > 1 ||
+        row.position < 0,
+    )
+  ) {
+    throw new GoogleApiError(
+      "Google returned an invalid report.",
+      "invalid_report",
+      502,
+    );
+  }
+  return rows;
+}
+
+export async function queryCompleteDay(
+  input: Omit<Parameters<typeof querySearchAnalytics>[0], "startRow">,
+) {
+  const rows: SearchAnalyticsRow[] = [];
+  for (let startRow = 0; startRow < 50_000; startRow += 25_000) {
+    const page = await querySearchAnalytics({ ...input, startRow });
+    rows.push(...page);
+    if (page.length < 25_000) return { rows, limited: false };
+  }
+  return { rows, limited: true };
 }

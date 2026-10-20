@@ -1,27 +1,39 @@
 import { timingSafeEqual } from "node:crypto";
 import { syncAllSearchConsoleConnections } from "@/lib/search-console/sync";
-
+import { runReportingMaintenance } from "@/lib/reporting/maintenance";
+import { getDatabasePool } from "@/lib/dashboard/db";
+import { privateJson } from "@/lib/reporting/http";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
-
-function authorized(request: Request) {
-  const expected = process.env.SEARCH_CONSOLE_SYNC_SECRET?.trim() ?? "";
-  const supplied = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
-  if (expected.length < 32 || supplied.length !== expected.length) return false;
-  return timingSafeEqual(Buffer.from(supplied), Buffer.from(expected));
-}
-
+export const maxDuration = 120;
 export async function POST(request: Request) {
-  if (!authorized(request)) return Response.json({ ok: false }, { status: 401 });
-  const outcomes = await syncAllSearchConsoleConnections();
-  return Response.json({
-    ok: outcomes.every((outcome) => outcome.status !== "failed"),
-    attempted: outcomes.length,
-    succeeded: outcomes.filter((outcome) => outcome.status === "succeeded").length,
-    failed: outcomes.filter((outcome) => outcome.status === "failed").length,
-  }, {
-    status: outcomes.some((outcome) => outcome.status === "failed") ? 503 : 200,
-    headers: { "Cache-Control": "no-store" },
-  });
+  const expected = Buffer.from(
+    process.env.SEARCH_CONSOLE_SYNC_SECRET?.trim() ?? "",
+  );
+  const supplied = Buffer.from(
+    request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "",
+  );
+  if (
+    expected.length < 32 ||
+    expected.length !== supplied.length ||
+    !timingSafeEqual(expected, supplied)
+  )
+    return privateJson({ ok: false }, 401);
+  try {
+    await runReportingMaintenance();
+    const outcomes = await syncAllSearchConsoleConnections();
+    const due = await getDatabasePool()
+      .query(`SELECT 1 FROM integration_sync_runs WHERE
+      status IN ('queued','retry_wait','running') AND next_attempt_at <= now()
+      AND (lease_expires_at IS NULL OR lease_expires_at < now()) LIMIT 1`);
+    return privateJson({
+      ok: true,
+      more: Boolean(due.rowCount),
+      checked: outcomes.length,
+      failed: outcomes.filter((outcome) => outcome.status === "failed").length,
+    });
+  } catch {
+    console.error("reporting_worker_failed");
+    return privateJson({ ok: false, error: "worker_unavailable" }, 503);
+  }
 }

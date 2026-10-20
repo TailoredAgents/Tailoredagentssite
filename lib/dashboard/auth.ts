@@ -14,12 +14,7 @@ function createDashboardAuth() {
     baseURL: configuration.baseUrl,
     secret: configuration.authSecret,
     database: getDatabasePool(),
-    trustedOrigins: [
-      configuration.baseUrl,
-      "https://tailoredagents.com",
-      "https://www.tailoredagents.com",
-      "http://localhost:3000",
-    ],
+    trustedOrigins: [configuration.baseUrl],
     session: {
       expiresIn: 60 * 60 * 24 * 14,
       updateAge: 60 * 60 * 24,

@@ -2,6 +2,7 @@ import "server-only";
 import { createHash, randomUUID } from "node:crypto";
 import { getDatabasePool, insertAuditLog } from "@/lib/dashboard/db";
 import { publicInquiryStorageSchema } from "./validation";
+import { measurementSchema, type MeasurementContext } from "@/lib/analytics/measurement";
 
 const INTERNAL_WORKSPACE_ID = "00000000-0000-4000-8000-000000000001";
 const CONTACT_RATE_WINDOW_MINUTES = 15;
@@ -45,14 +46,16 @@ export async function consumeContactRateLimit(keyHash: string) {
   return Number(result.rows[0]?.count ?? CONTACT_RATE_LIMIT + 1) > CONTACT_RATE_LIMIT;
 }
 
-export async function storePublicInquiry(input: unknown) {
+export async function storePublicInquiry(input: unknown, measurement?: MeasurementContext) {
   const parsed = publicInquiryStorageSchema.safeParse(input);
   if (!parsed.success) throw new Error("Validated inquiry could not be prepared for storage.");
   const data = parsed.data;
+  const attribution = measurementSchema.safeParse(measurement);
   const client = await getDatabasePool().connect();
 
   try {
     await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [data.submissionId]);
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [data.fingerprint]);
     const duplicate = await client.query<{ id: string }>(
       `SELECT id FROM leads
@@ -70,11 +73,12 @@ export async function storePublicInquiry(input: unknown) {
     await client.query(
       `INSERT INTO leads
         (id, workspace_id, submission_id, fingerprint, inquiry_type, source, status,
-         name, organization, email, phone, interest, website_url, description, delivery_status)
-       VALUES ($1, $2, $3, $4, $5, 'website', 'new', $6, $7, $8, $9, $10, $11, $12, 'pending')`,
+         name, organization, email, phone, interest, website_url, description, delivery_status, measurement_context, measurement_status)
+       VALUES ($1, $2, $3, $4, $5, 'website', 'new', $6, $7, $8, $9, $10, $11, $12, 'pending', $13::jsonb, $14)`,
       [leadId, INTERNAL_WORKSPACE_ID, data.submissionId, data.fingerprint,
         data.inquiryType, data.name, data.organization, data.email, data.phone ?? null,
-        data.interest ?? null, data.websiteUrl ?? null, data.description ?? null],
+        data.interest ?? null, data.websiteUrl ?? null, data.description ?? null,
+        attribution.success ? JSON.stringify(attribution.data) : null, attribution.success ? "pending" : null],
     );
     await insertAuditLog(client, {
       workspaceId: INTERNAL_WORKSPACE_ID,

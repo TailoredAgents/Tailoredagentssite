@@ -51,7 +51,8 @@ services:
     runtime: node
     plan: 0.5c-512mb
     region: ohio
-    schedule: "17 10 * * *"
+    # Review runtime cost before applying this change to the existing job.
+    schedule: "*/5 * * * *"
     buildCommand: npm ci
     startCommand: npm run search-console:sync
     autoDeployTrigger: commit
