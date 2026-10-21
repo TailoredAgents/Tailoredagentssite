@@ -2,6 +2,8 @@
 
 Release 2's first email and business SMS increments are implemented in source. Production deployment, mailbox/number approval and authorized delivery acceptance are separate steps below; this document does not record them as completed. BatchDialer remains the current campaign dialer. Calling, voicemail, recordings and transcripts remain later increments.
 
+The current email and SMS screens are separate provider workspaces. The owner's requested unified relationship Inbox remains to be built; it is the next development increment before calling. See [Unified Inbox](UNIFIED_INBOX.md) for the corrected conversation model, layout and acceptance criteria. The activation instructions below describe the existing integrations and remain usable during that work.
+
 Ownership: Jeffrey handles the email activation checklist only. The project owner handles Twilio account/number setup, registration, secrets, SMS, calling, recording, transcripts and the remaining development with Codex. The Twilio sections below are the project owner's working checklist. The email-only handoff is [new jeffrey.md](../new%20jeffrey.md).
 
 ## First email increment
