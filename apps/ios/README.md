@@ -44,6 +44,8 @@ Website changes appear through the existing deployments. Native changes require 
 
 Verified on October 21, 2026 with Xcode 26.3: the Release device build and IPA archive check passed, all 38 policy checks passed, and the live sign-in/tab-state UI test passed on the existing iOS 26.3.1 simulator. No account was signed in and no email or SMS was sent during these checks.
 
+Owner confirmation on October 21: Sideloadly reported Done, Jeffrey enabled Developer Mode, and the installed app opened and allowed sign-in on his iPhone. He reported that it was working well with no blocking problems observed. This confirms initial installation and access; it does not establish completion of every workflow below.
+
 `scripts/test.sh` compiles the shared navigation and filename policy for macOS and checks trusted origins, lookalikes, credentials in URLs, URL schemes, blob origins, sandboxed message frames, download responses, and filename traversal/length limits.
 
 The UI smoke test loads the two live **sign-in pages**, enters a synthetic `.invalid` email address without submitting it, and checks tab switching, preserved input, keyboard access to tabs, and the page menu. It sends no messages and changes no production account data. Run it against an already installed iPhone simulator:
@@ -56,4 +58,4 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild \
   -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test
 ```
 
-Physical-device acceptance still requires signing in on the owner's phone and checking: reopening signed-in tabs; reading and composing mail; saving drafts; selecting Photos/Files; downloading a PDF and another attachment; dashboard operations; external links; network loss/recovery; and successful Sideloadly refresh. Do not treat a successful compile or unauthenticated simulator smoke test as completion of these checks.
+Remaining physical-device checks: reopening signed-in tabs; reading and composing mail; saving drafts; selecting Photos/Files; downloading a PDF and another attachment; dashboard operations; external links; network loss/recovery; and successful Sideloadly refresh. Automatic refresh configuration and an actual renewal have not yet been confirmed. Do not treat the successful installation, initial sign-in, or simulator checks as completion of these workflows.

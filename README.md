@@ -53,7 +53,7 @@ The Blueprint provisions the persistent database. Production dashboard access us
 
 ### Private iPhone companion
 
-`apps/ios` contains an initial sideloadable iPhone companion with Mail and Dashboard tabs, using the existing deployments and accounts. It builds separately with Xcode and is signed/installed through Sideloadly. It requires internet access; push notifications and offline mail are outside this first version. See [the iPhone build, installation, and verification guide](apps/ios/README.md). Physical-device acceptance is separate from the build and simulator checks.
+`apps/ios` contains an initial sideloadable iPhone companion with Mail and Dashboard tabs, using the existing deployments and accounts. It builds separately with Xcode and is signed/installed through Sideloadly. Jeffrey confirmed installation and sign-in on his iPhone on October 21, with no blocking problems observed. It requires internet access; push notifications and offline mail are outside this first version. See [the iPhone build, installation, and verification guide](apps/ios/README.md) for the remaining workflow and renewal checks.
 
 ## Technology
 
