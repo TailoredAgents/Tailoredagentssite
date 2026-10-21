@@ -135,7 +135,7 @@ export const initialOperationActionState: OperationActionState = {
 };
 
 export function formValues(formData: FormData, keys: readonly string[]) {
-  return Object.fromEntries(keys.map((key) => [key, formData.get(key)]));
+  return Object.fromEntries(keys.map((key) => [key, formData.get(key) ?? undefined]));
 }
 
 export function asDatabaseDate(value: string | undefined) {

@@ -4,7 +4,13 @@ This repository contains the Tailored Agents public website, its private operati
 
 The business uses premium websites and managed local SEO as the primary client entry point, then expands suitable relationships into website intelligence, focused automation, managed operations agents, and custom software. The product direction is to connect those services through a secure Growth Hub over time. Analytics and human-reviewed SEO operations come before any autonomous SEO agent.
 
-Read [the product plan](docs/PRODUCT_PLAN.md) before making architectural or roadmap changes. It is the source of truth for the current state, delivery phases, security boundaries, deferred decisions, and eventual SEO-agent scope.
+Read [the product plan](docs/PRODUCT_PLAN.md) and [active agency OS sequence](docs/AGENCY_OS_ROADMAP.md) before making architectural or roadmap changes. It is the source of truth for the current state, delivery phases, security boundaries, deferred decisions, and eventual SEO-agent scope.
+
+## Agency operating-system expansion
+
+The owner has prioritized the internal sales CRM around researched calling lists, Devon's BatchDialer outreach, personalized Factory previews and website sales. The first source release adds Sales, My day, Calling lists and Mockups inside this existing dashboard, using canonical businesses and the existing contacts/clients/projects. It includes reviewed CSV imports, visual sales stages, list attribution, manual/imported communications, evidence-backed channel restrictions, explicit appointments/follow-ups, mockup handoffs and repeat-safe client/project conversion. Public package prices are unchanged; a promotional $800 offer is entered on its individual opportunity.
+
+Read [the active agency OS roadmap](docs/AGENCY_OS_ROADMAP.md) for implemented scope, deployment acceptance and the next releases. [Communications preparation](docs/COMMUNICATIONS_SETUP.md) covers the later narrow Mail integration and Twilio activation. This phase does not create a replacement dialer, enable live CRM email/SMS/calls, collect payments or publish agent changes. Existing website inquiries, Mail sign-in, reporting and public-site behavior are preserved.
 
 ## Current release state
 
@@ -22,7 +28,7 @@ Operational today:
 
 ### Private dashboard
 
-Phases 1 and 2 are implemented, and the first Phase 3 measurement release is active in the application source:
+The existing operations and measurement releases are active. The agency sales foundation is implemented in source, with its deployment acceptance tracked in the agency roadmap:
 
 - Versioned PostgreSQL migrations.
 - Shared Tailored Mail email-and-password sign-in for owner-approved teammates; passwords remain in the mail service.
@@ -65,8 +71,8 @@ Most marketing routes are statically rendered. Contact, health, authentication, 
 | --- | --- |
 | `app/` | Public routes, protected dashboard routes, and server route handlers. |
 | `components/` | Marketing, form, pricing, visualization, and dashboard interface components. |
-| `lib/` | Site configuration, pricing, validation, authentication, database access, and dashboard data layer. |
-| `db/migrations/` | Ordered PostgreSQL migrations applied by `npm run db:migrate`. |
+| `lib/` | Site configuration, pricing, validation, authentication, database access, and dashboard data layer. `lib/sales/` implements the agency CRM. |
+| `db/migrations/` | Ordered PostgreSQL migrations applied by `npm run db:migrate`; 0008 adds agency sales and bounded prospect retention. |
 | `docs/PRODUCT_PLAN.md` | Durable product architecture and implementation roadmap. |
 | `docs/LAUNCH_CHECKLIST.md` | Production and release verification checklist. |
 | `apps/mail/` | Independently deployed Tailored Mail Cloudflare application. |

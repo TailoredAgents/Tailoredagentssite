@@ -160,3 +160,19 @@ Local verification and production acceptance are separate. See [release evidence
 - [x] Verify saving records and milestone feedback; disable editing controls for viewers.
 - [x] Pass 74 code/database tests, 19 browser checks, lint, strict types, build and dependency audit. Check all 13 routes at widths from 320px to 1920px.
 - [x] Commit `beb1ae7` is live on Render; deployed styles, protected-route redirects, website health and Mail login verified. Deployment evidence is in `DASHBOARD_USABILITY.md`.
+
+## Agency OS sales foundation — October 21
+
+Active sequence: [agency roadmap](AGENCY_OS_ROADMAP.md). Verification results below are updated after final checks; local evidence does not stand in for production acceptance.
+
+- [x] Verify migration 0008 on populated data, new workspace constraints, retention and PostgreSQL dump/restore.
+- [x] Verify denied viewer/suspended/cross-workspace mutations and permitted staff assignments.
+- [x] Verify reviewed prospect imports, source metadata, duplicate files/identities, ambiguous matching and BatchDialer replay.
+- [x] Verify DNC/STOP storage for active, closed, ambiguous and unmatched contacts; preserve explicit evidence without inferring consent.
+- [x] Verify explicit appointments/follow-ups, outcomes, timezone conversion and no automatic overdue prospect tasks.
+- [x] Verify mockup request uniqueness, real preview readiness and existing-client/new-client project conversion.
+- [x] Verify published pricing and public pages remain unchanged, with $800 entered only on promotional opportunities.
+- [x] Verify legacy inquiry/client/contact/site/project workflows and internal reporting remain available.
+- [x] Pass 151 code/database tests, 27 browser checks (one intentional phone skip), strict types, lint, build, dependency audit and desktop/phone screenshot inspection. Evidence and local reproduction commands are in the agency roadmap.
+- [ ] Verify deployed migration/commit and owner-approved production sales workflow; record results separately.
+- [ ] Prepare Mail grants, Twilio registration/number/routing/recording decisions before Release 2; never activate from a mockup alone.

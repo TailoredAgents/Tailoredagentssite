@@ -1,5 +1,9 @@
 # Jeffrey technical handoff: production closeout and product roadmap
 
+## Active agency OS direction — October21
+
+The owner's new brief authorizes the internal CRM expansion and changes the priorities below. Follow `docs/AGENCY_OS_ROADMAP.md` for the active sequence: prospecting/sales foundation, unified communications, Factory/proposals/delivery, recurring services and bounded SEO assistance, then client Growth Hub. SEO/internal-AI architecture is planned alongside sales. Preserve BatchDialer, standalone Factory output, public pricing, Mail and current integrations. The first sales source release is implemented; see that roadmap for actual release acceptance and remaining provider actions. Older Google activation and portal-first instructions below are historical where superseded, not authority to redo completed activation or delay authorized CRM work.
+
 ## Instructions to Jeffrey's Codex IDE
 
 If Jeffrey asks you only to read or follow `JEFFREY.md`, treat this file as the full task brief and begin the workflow below. Do not require him to restate the roadmap in chat.

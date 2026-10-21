@@ -64,6 +64,11 @@ The immediate goal is not to launch a broad autonomous-agent platform. It is to 
 - A generally available standardized website-agent or operations-agent catalog; the public site describes a limited founding-client rollout without claiming that every listed capability is operational.
 - Automated SEO auditing, recommendations, content generation, or publishing.
 
+
+### October 21 agency operating-system expansion
+
+The first agency-sales release is implemented in source, extending this application's existing database and contact/client/project records. It adds reviewed calling-list imports, source attribution, a visual pipeline, staff sales queues, manual/imported communication history, deliberate appointments/follow-ups, Factory mockup handoffs and repeat-safe sales conversion. No production/provider activation is inferred from the local implementation. See `AGENCY_OS_ROADMAP.md` for actual capability, security/retention boundaries and release gates. The owner prioritized this internal sales workflow before the client Growth Hub; SEO-agent architecture is planned alongside it. Published website/SEO package prices remain separate from individual $800 promotional opportunities.
+
 ## Intended users and access
 
 ### Internal owner
@@ -104,176 +109,33 @@ The future public demo should use a dedicated route such as `/demo/growth-hub` o
 
 ## Delivery roadmap
 
-### Phase 0 — Documentation and architecture
+The owner approved an expanded internal operating system on October 21. Website sales now drives the implementation order: imported research, Devon's BatchDialer outreach, interested prospects, appointments/mockups, proposals, won sales, projects and recurring services. The [agency OS roadmap](AGENCY_OS_ROADMAP.md) defines the active release sequence and supersedes the earlier client-portal-first sequencing. Existing production evidence remains in the release-specific documents.
 
-Status: completed with the initial Phase 1 implementation.
+### Release 1 — Prospecting and sales foundation
 
-Deliverables:
+Implemented in this source release; deployment and live acceptance are recorded separately. Migration0008 extends canonical businesses, existing contacts/clients, sales opportunities, source lists, communication history, explicit appointments/follow-ups, mockups and channel preferences. New private Sales, My day, Calling lists and Mockups screens share a redesigned responsive dashboard. Reviewed CSV imports preserve scores/research and exact identity links; repeat files/results are safe, ambiguous matches are reported and DNC/STOP restrictions survive missing opportunities. Deliberate won conversion reuses existing identities and creates an existing project. Promotional $800 opportunities remain separate from published prices. No new dialer, live mailbox connection, Twilio sending, payment collection or agent runtime is implied.
 
-- Reconcile the repository documentation with the actual product state.
-- Record this master product plan and decision log.
-- Define the initial domain model, authorization boundaries, deployment model, and environment contract.
-- Separate current capability, near-term roadmap, and long-term agent work.
+Exit criteria: populated migration preservation, workspace/role denial, import replay/opt-outs, real browser prospect-to-project workflow, desktop/phone accessibility, existing reporting/auth regressions and backup/restore checks pass; actual production acceptance is recorded after deployment.
 
-Exit criteria:
+### Release 2 — Unified communications
 
-- The README explains the whole repository and current operating state.
-- This plan is linked from the README and kept current as decisions change.
-- Launch and operations checklists include both the marketing site and dashboard infrastructure.
+Narrow owner-approved Tailored Mail integration, conversation ownership and response workflow, Twilio SMS/voice activation, inbound routing, voicemail, controlled recordings and evidence-linked transcripts. Preserve BatchDialer for campaign calls. Prepare registration and policy through [communications setup](COMMUNICATIONS_SETUP.md) while the foundation is developed. Calls and messages require explicit authorized provider actions; generated drafts and saved manual notes do not send anything.
 
-### Phase 1 — Backend and private dashboard foundation
+### Release 3 — Proposals and delivery
 
-Status: implemented and activated for the internal owner account.
+Versioned scopes/proposals, acceptance, accurate payment-provider references/status, deposits, onboarding, deliverable review, scope changes and support. Factory projects stay independent, connected through their real brief, source/preview links and QA state.
 
-Deliverables:
+### Parallel SEO and internal AI architecture
 
-- PostgreSQL connection layer and versioned, repeatable migrations.
-- Shared Tailored Mail email-and-password authentication for owner-approved internal team members; legacy local password mode remains for isolated previews.
-- Secure, HTTP-only database sessions.
-- Tailored Agents internal workspace bootstrap.
-- Workspace membership and role model.
-- Initial site, lead, and append-only audit tables.
-- Server-only data-access layer that verifies authentication, current Mail approval (or legacy allowlist), membership, and role.
-- Protected `/dashboard` shell with real database-backed overview and activity data.
-- Clear unavailable/setup state when infrastructure has not been configured.
-- Render and environment documentation that does not commit secrets or silently create a paid resource.
+Define per-client/site ownership, encrypted integrations, trustworthy evidence, human-operated SEO delivery, supported audits, versioned prompts/tools/evaluations, durable jobs, cost budgets, source-linked recommendations and exact reviewed change approval. The current Search Console/reporting implementation is internal-site scoped, not already a multi-client SEO platform. Do not publish automatically or add speculative tables before implementing their behavior. Research current providers and runtime/cost limits when the corresponding release begins.
 
-Exit criteria:
+### Release 4 — Recurring services and bounded SEO assistance
 
-- Public routes build and run with or without dashboard configuration.
-- An approved team member can sign in with their Mail password, reach `/dashboard`, and sign out.
-- An unapproved or disabled identity cannot create an authorized dashboard account.
-- Direct dashboard access without a valid session redirects to sign-in.
-- The authenticated user has an active membership in the Tailored Agents workspace.
-- Data queries return only the fields needed by the interface.
-- Migrations can be run repeatedly without reapplying completed files.
-- Lint, strict type checking, unit tests, production build, and dependency audit pass.
+Track active service agreements, package inclusions, completed work, usage allowances, renewals/cancellations, recurring revenue and customer results. Keep subscriptions, earned sales and received payments distinct. Build the manual SEO evidence workflow before the bounded agent audits and drafts useful site changes for human review. Include per-client budgets, run history, pause controls and attributable approvals.
 
-### Phase 2 — Internal operations
+### Release 5 — Client Growth Hub and public demo
 
-Goal: make the dashboard useful every day before making it customer-facing.
-
-Status: implemented. Live authentication, credential rotation and a fresh production backup restoration passed on October 21. Inquiry alerts are configured for Jeffrey and Austin; one labeled production test reached each inbox exactly once. Full live lead/client/project workflow verification remains outstanding; this phase is not declared complete. See `CONNECTION_ACTIVATION.md` for the operational evidence.
-
-Deliverables:
-
-- Persist new project and website-review inquiries as leads while preserving email delivery.
-- Lead status, owner, notes, next action, and conversion outcome.
-- Client, contact, site, and project creation/editing.
-- Project milestones, deliverables, decisions, and internal notes.
-- Search, filtering, pagination, and safe exports.
-- Role-aware mutations with audit entries.
-- Database-backed abuse protection for inquiry and authentication endpoints.
-- Retention rules for inquiry content and operational logs.
-
-Exit criteria:
-
-- The team can manage a lead from submission through won/lost status.
-- A converted lead can become a client, site, and project without duplicate data entry.
-- Every important mutation identifies the actor, workspace, action, target, and time.
-
-### Phase 3 — Measurement and analytics
-
-Goal: collect and explain the evidence needed for growth work.
-
-Status: the readiness release is live on `main`. Jeffrey connected Google on October 21 and the scheduled worker completed the first 90-day import with no failures. The release includes durable daily imports, complete-date coverage, recovery and leases, verified inquiry attribution, canonical-origin checks, protected exports and a redesigned reporting screen. Local PostgreSQL, browser and restore evidence is recorded in `docs/SEARCH_CONSOLE_READINESS.md`; current activation evidence is in `docs/CONNECTION_ACTIVATION.md`. The next scheduled daily refresh and the remaining production measurement checks still require observation; the phase is not complete. GA4 remains outside this release.
-
-Deliverables:
-
-- Privacy-reviewed first-party events for page views, CTA clicks, phone clicks, form starts, server-verified successful submissions, and booking-button clicks.
-- UTM and referrer attribution with documented retention.
-- Website-specific conversion definitions.
-- Google Search Console connection and scheduled ingestion.
-- GA4 connection where it adds useful data rather than duplicating first-party events.
-- Data freshness, connection state, and last-successful-sync visibility.
-- Internal dashboards for acquisition, conversion, search visibility, and trends.
-
-Implementation note:
-
-First-party instrumentation and the Search Console connection are live. Reports use observed results, including checked dates with no Google activity; incomplete or unavailable data is labeled separately. No synthetic metrics are presented as production results.
-
-Exit criteria:
-
-- Key conversion events are reproducible and documented.
-- Reports distinguish observed data from estimates or synthetic examples.
-- Failed or stale integrations are visible and do not silently present old data as current.
-
-### Phase 4 — Client Growth Hub and public demonstration
-
-Goal: turn the proven internal workflow into a useful client experience and sales demonstration.
-
-Deliverables:
-
-- Invitation-based client access and client-scoped roles.
-- Client overview, approved reports, completed work, recommendations, and upcoming priorities.
-- Approval and comment workflows for relevant deliverables.
-- Notification preferences and accessible exports.
-- A separately implemented public demo with synthetic or sanitized data.
-- Clear demo-to-contact conversion path.
-
-Exit criteria:
-
-- Cross-workspace isolation is covered by integration tests.
-- Clients cannot see internal notes, other clients, credentials, or unapproved work.
-- The public demo cannot query private production records.
-
-### Phase 5 — SEO workspace without autonomous action
-
-Goal: standardize the inputs and reviewed outputs that an eventual agent will use.
-
-Deliverables:
-
-- Crawl inventory and page snapshots.
-- Technical and on-page issue model with evidence, severity, ownership, and lifecycle.
-- Keyword, page, location, and competitor tracking model.
-- Recommendation queue with impact, effort, confidence, and approval state.
-- Content briefs and change drafts with source links and revision history.
-- Search Console and analytics evidence attached to relevant recommendations.
-
-Exit criteria:
-
-- Humans can perform and document an SEO engagement completely within the product.
-- Recommendation quality can be reviewed consistently before any AI system is allowed to generate or act.
-
-### Phase 6 — Bounded SEO agent
-
-Goal: add intelligence to a proven workflow, not replace the workflow with opaque autonomy.
-
-Initial scope:
-
-- Crawl and classify pages.
-- Detect a defined set of technical and on-page issues.
-- Rank opportunities using explicit business and performance signals.
-- Draft recommendations, content briefs, metadata, and proposed edits.
-- Cite the source data used for each recommendation.
-- Route every proposed external change through human approval.
-
-Required controls:
-
-- Per-workspace budgets and usage limits.
-- Versioned prompts, tools, policies, and evaluation cases.
-- Idempotent jobs and resumable run state.
-- Tool allowlists and least-privilege integration credentials.
-- Structured outputs with validation before storage or execution.
-- Complete run, input, output, approval, and failure history.
-- Prompt-injection defenses for crawled and connected content.
-- No automatic publishing in the initial agent release.
-- Kill switch and per-workspace disable controls.
-
-Expansion sequence:
-
-1. Read-only audits.
-2. Prioritized recommendations.
-3. Human-reviewed content briefs and drafts.
-4. Human-approved changes through narrowly scoped integrations.
-5. Only consider limited automatic actions after measured reliability and rollback procedures exist.
-
-Exit criteria:
-
-- Evaluation cases demonstrate acceptable precision for every supported recommendation class.
-- A reviewer can trace every output to its evidence and agent version.
-- Failures are visible, retry-safe, and cannot publish partial work.
-- Cost and latency are observable per run and workspace.
+Add invitation-based, independently protected client access after internal workflows/isolation pass. Clients see only shared work, approved reports, comments/approvals and scoped exports. The public demo uses an isolated synthetic source and cannot query private records. Preserve internal notes, mail visibility, provider credentials and unapproved drafts.
 
 ## Initial domain model
 
@@ -447,3 +309,7 @@ Jeffrey chose `https://www.tailoredagents.com` as the canonical website address 
 ### October 21, 2026 — Share Mail credentials with the dashboard
 
 Jeffrey requested the same sign-in credentials for both apps. Mail remains the password authority, with owner-controlled dashboard approval and separate website roles. Additive Mail migration 0036 and website migration 0007 store approval and revocable identity grants. Existing roles, reports and Google credentials are preserved. The website checks grants on each protected request, and password resets/account disabling revoke access. Each site keeps its own cookie; this release does not provide automatic cross-site sign-in or MFA. Google setup is now being completed by Jeffrey with his selected personal account. Real Google authorization, imports and the next daily refresh remain required.
+
+### October21,2026 — Prioritize the agency's website-sales workflow
+
+The owner's new operating-system brief supersedes the earlier portal-first sequence and handoff restrictions for this workstream. Extend the existing application, reuse business/contact/client identities, preserve BatchDialer and the separate Factory, and build prospecting/sales first, communications next, then delivery/recurring services. Plan the bounded SEO/AI architecture in parallel. Human approval controls important decisions and external actions. The detailed active sequence is `AGENCY_OS_ROADMAP.md`.

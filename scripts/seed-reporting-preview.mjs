@@ -4,6 +4,7 @@ import { hashPassword } from "better-auth/crypto";
 import { readFile, readdir } from "node:fs/promises";
 const url = new URL(process.env.TEST_DATABASE_URL ?? "");
 if (
+  !["postgres:", "postgresql:"].includes(url.protocol) || url.search || url.hash ||
   !["127.0.0.1", "localhost"].includes(url.hostname) ||
   url.pathname !== "/ta_reporting_browser_test"
 )
@@ -50,7 +51,7 @@ try {
     }
   }
   await pool.query(
-    'TRUNCATE integration_connections,analytics_events,leads,request_rate_limits,"rateLimit","user" CASCADE',
+    'TRUNCATE crm_channel_preferences,crm_lists,crm_businesses,integration_connections,analytics_events,leads,request_rate_limits,"rateLimit","user" CASCADE',
   );
   await pool.query(
     `INSERT INTO sites(id,workspace_id,name,url,environment,status) VALUES($1,$2,'Tailored Agents','https://www.tailoredagents.com','production','active') ON CONFLICT(id) DO NOTHING`,

@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { linkInquiry, convertOpportunity, SalesInputError } from "@/lib/sales/service";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { PoolClient } from "pg";
@@ -63,6 +64,17 @@ function missing(): OperationActionState {
 
 function success(message: string): OperationActionState {
   return { status: "success", message };
+}
+
+async function linkClientBusiness(client: PoolClient, workspaceId: string, clientId: string) {
+  const result = await client.query<{id:string}>(`INSERT INTO crm_businesses(id,workspace_id,name,client_id)
+    SELECT COALESCE(business_id,id),workspace_id,name,id FROM clients WHERE id=$1 AND workspace_id=$2
+    ON CONFLICT(id) DO UPDATE SET name=EXCLUDED.name,updated_at=now() RETURNING id`,[clientId,workspaceId]);
+  const businessId=result.rows[0]?.id;
+  if (!businessId) throw new Error("client_unavailable");
+  await client.query("UPDATE clients SET business_id=$1 WHERE id=$2 AND workspace_id=$3",[businessId,clientId,workspaceId]);
+  await client.query("UPDATE contacts SET business_id=$1 WHERE client_id=$2 AND workspace_id=$3 AND business_id IS NULL",[businessId,clientId,workspaceId]);
+  return businessId;
 }
 
 export async function updateLeadAction(
@@ -164,105 +176,16 @@ export async function convertLeadAction(
   if (!parsed.success) return validationState(parsed.error);
   const input = parsed.data;
   let clientId = "";
-
   try {
-    const converted = await withTransaction(async (client) => {
-      const leadResult = await client.query<{
-        name: string; email: string; phone: string | null; website_url: string | null; client_id: string | null;
-      }>(
-        "SELECT name, email, phone, website_url, client_id FROM leads WHERE id = $1 AND workspace_id = $2 FOR UPDATE",
-        [input.leadId, context.workspace.id],
-      );
-      const lead = leadResult.rows[0];
-      if (!lead || lead.client_id) return "unavailable" as const;
-
-      let existingSite: { id: string; client_id: string | null } | undefined;
-      if (input.createSite && lead.website_url) {
-        const existingSiteResult = await client.query<{ id: string; client_id: string | null }>(
-          "SELECT id, client_id FROM sites WHERE workspace_id = $1 AND url = $2 FOR UPDATE",
-          [context.workspace.id, lead.website_url],
-        );
-        existingSite = existingSiteResult.rows[0];
-        if (existingSite?.client_id) return "site_conflict" as const;
-      }
-
-      clientId = randomUUID();
-      await client.query(
-        "INSERT INTO clients (id, workspace_id, lead_id, name, status) VALUES ($1, $2, $3, $4, 'active')",
-        [clientId, context.workspace.id, input.leadId, input.clientName],
-      );
-      const contactId = randomUUID();
-      await client.query(
-        `INSERT INTO contacts (id, workspace_id, client_id, name, email, phone, is_primary)
-         VALUES ($1, $2, $3, $4, $5, $6, true)`,
-        [contactId, context.workspace.id, clientId, lead.name, lead.email, lead.phone],
-      );
-
-      let siteId: string | null = null;
-      let siteAction: "site.created" | "site.client_linked" | null = null;
-      if (input.createSite && lead.website_url) {
-        if (existingSite) {
-          siteId = existingSite.id;
-          siteAction = "site.client_linked";
-          await client.query(
-            "UPDATE sites SET client_id = $1, updated_at = now() WHERE id = $2 AND workspace_id = $3",
-            [clientId, siteId, context.workspace.id],
-          );
-        } else {
-          siteId = randomUUID();
-          siteAction = "site.created";
-          await client.query(
-            `INSERT INTO sites (id, workspace_id, client_id, name, url, environment, status)
-             VALUES ($1, $2, $3, $4, $5, 'production', 'active')`,
-            [siteId, context.workspace.id, clientId, input.clientName, lead.website_url],
-          );
-        }
-      }
-
-      const projectId = randomUUID();
-      await client.query(
-        `INSERT INTO projects
-          (id, workspace_id, client_id, lead_id, site_id, owner_user_id, name, status, summary, started_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 'planned', $8, now())`,
-        [projectId, context.workspace.id, clientId, input.leadId, siteId, context.user.id, input.projectName, input.projectSummary ?? null],
-      );
-      await client.query(
-        `UPDATE leads
-         SET status = 'won', client_id = $1, converted_at = now(),
-             outcome_summary = COALESCE(outcome_summary, 'Converted to an active client.'),
-             next_action = NULL, next_action_at = NULL, updated_at = now()
-         WHERE id = $2 AND workspace_id = $3`,
-        [clientId, input.leadId, context.workspace.id],
-      );
-      for (const event of [
-        { action: "lead.converted", type: "lead", id: input.leadId },
-        { action: "client.created", type: "client", id: clientId },
-        { action: "contact.created", type: "contact", id: contactId },
-        { action: "project.created", type: "project", id: projectId },
-        ...(siteId && siteAction ? [{ action: siteAction, type: "site", id: siteId }] : []),
-      ]) {
-        await insertAuditLog(client, {
-          workspaceId: context.workspace.id,
-          actorUserId: context.user.id,
-          action: event.action,
-          targetType: event.type,
-          targetId: event.id,
-        });
-      }
-      return "converted" as const;
-    });
-    if (converted === "site_conflict") {
-      return { status: "error", message: "That website is already assigned to another client. Resolve the site record before converting this lead." };
-    }
-    if (converted !== "converted") return { status: "error", message: "This lead has already been converted or is no longer available." };
-  } catch {
-    return genericFailure;
+    const existing = await getDatabasePool().query("SELECT client_id FROM leads WHERE id=$1 AND workspace_id=$2", [input.leadId, context.workspace.id]);
+    if (!existing.rows[0] || existing.rows[0].client_id) return { status: "error", message: "This lead is already converted or no longer available." };
+    const opportunityId = await linkInquiry(context, input.leadId);
+    const result = await convertOpportunity(context, { opportunityId, clientName:input.clientName, projectName: input.projectName, projectSummary: input.projectSummary, createSite: input.createSite });
+    clientId = result.clientId;
+  } catch (error) {
+    return error instanceof SalesInputError ? { status: "error", message: error.message } : genericFailure;
   }
-
-  revalidatePath("/dashboard");
-  revalidatePath("/dashboard/leads");
-  revalidatePath("/dashboard/clients");
-  revalidatePath("/dashboard/projects");
+  for (const path of ["/dashboard", "/dashboard/leads", "/dashboard/sales", "/dashboard/clients", "/dashboard/projects"]) revalidatePath(path);
   redirect(`/dashboard/clients/${clientId}`);
 }
 
@@ -290,6 +213,7 @@ export async function saveClientAction(
           [clientId, context.workspace.id, input.name, input.status, input.notes ?? null],
         );
       }
+      await linkClientBusiness(client, context.workspace.id, clientId);
       await insertAuditLog(client, {
         workspaceId: context.workspace.id,
         actorUserId: context.user.id,
@@ -328,6 +252,7 @@ export async function saveContactAction(
     const created = await withTransaction(async (client) => {
       const owner = await client.query("SELECT 1 FROM clients WHERE id = $1 AND workspace_id = $2", [input.clientId, context.workspace.id]);
       if (!owner.rowCount) return false;
+      const businessId = await linkClientBusiness(client, context.workspace.id, input.clientId);
       const contactId = input.contactId ?? randomUUID();
       if (input.contactId) {
         const existing = await client.query(
@@ -348,9 +273,9 @@ export async function saveContactAction(
         if (!updated.rowCount) return false;
       } else {
         await client.query(
-          `INSERT INTO contacts (id, workspace_id, client_id, name, email, phone, title, is_primary)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [contactId, context.workspace.id, input.clientId, input.name, input.email ?? null, input.phone ?? null, input.title ?? null, input.isPrimary],
+          `INSERT INTO contacts (id, workspace_id, client_id, business_id, name, email, phone, title, is_primary)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [contactId, context.workspace.id, input.clientId, businessId, input.name, input.email ?? null, input.phone ?? null, input.title ?? null, input.isPrimary],
         );
       }
       await insertAuditLog(client, {
@@ -460,6 +385,14 @@ export async function saveProjectAction(
           [projectId, context.workspace.id],
         );
         if (!existingProject.rowCount) return false;
+        const completedSale = await client.query(
+          `SELECT 1 FROM crm_opportunities
+           WHERE project_id = $1 AND workspace_id = $2 AND stage = 'won'
+             AND client_id IS DISTINCT FROM $3
+           LIMIT 1`,
+          [projectId, context.workspace.id, input.clientId],
+        );
+        if (completedSale.rowCount) return "sales_client_conflict" as const;
       }
       if (input.ownerUserId) {
         const owner = await client.query("SELECT 1 FROM workspace_memberships WHERE user_id = $1 AND workspace_id = $2 AND status = 'active'", [input.ownerUserId, context.workspace.id]);
@@ -522,6 +455,10 @@ export async function saveProjectAction(
       }
       return true;
     });
+    if (saved === "sales_client_conflict") return {
+      status: "error",
+      message: "This project is linked to a completed sale. Keep it with that client to preserve the sales history.",
+    };
     if (!saved) return missing();
   } catch {
     return genericFailure;

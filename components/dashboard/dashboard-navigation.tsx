@@ -5,33 +5,54 @@ import { usePathname } from "next/navigation";
 import { useRef, useState } from "react";
 import {
   Activity,
+  ArrowUpRight,
   BarChart3,
   Building2,
+  CalendarCheck2,
+  Columns3,
   Gauge,
   Globe2,
   FolderKanban,
+  ListFilter,
   LogOut,
   Menu,
   X,
   Mail,
   Settings,
   UsersRound,
+  PanelsTopLeft,
 } from "lucide-react";
 import { dashboardAuthClient } from "@/lib/dashboard/auth-client";
 import type { DashboardContext } from "@/lib/dashboard/data";
 
-const navigation = [
-  { label: "Overview", href: "/dashboard", icon: Gauge },
-  { label: "Leads", href: "/dashboard/leads", icon: UsersRound },
-  { label: "Clients", href: "/dashboard/clients", icon: Building2 },
-  { label: "Projects", href: "/dashboard/projects", icon: FolderKanban },
-  { label: "Sites", href: "/dashboard/sites", icon: Globe2 },
-  { label: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
-] as const;
-
-const supportNavigation = [
-  { label: "Activity", href: "/dashboard/activity", icon: Activity },
-  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+const navigationGroups = [
+  {
+    label: "Daily work",
+    items: [
+      { label: "Overview", href: "/dashboard", icon: Gauge },
+      { label: "My day", href: "/dashboard/sales/today", icon: CalendarCheck2 },
+      { label: "Sales", href: "/dashboard/sales", icon: Columns3 },
+      { label: "Mockups", href: "/dashboard/sales/mockups", icon: PanelsTopLeft },
+      { label: "Calling lists", href: "/dashboard/sales/imports", icon: ListFilter },
+    ],
+  },
+  {
+    label: "Relationships & delivery",
+    items: [
+      { label: "Leads", href: "/dashboard/leads", icon: UsersRound },
+      { label: "Clients", href: "/dashboard/clients", icon: Building2 },
+      { label: "Projects", href: "/dashboard/projects", icon: FolderKanban },
+      { label: "Sites", href: "/dashboard/sites", icon: Globe2 },
+    ],
+  },
+  {
+    label: "Workspace",
+    items: [
+      { label: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
+      { label: "Activity", href: "/dashboard/activity", icon: Activity },
+      { label: "Settings", href: "/dashboard/settings", icon: Settings },
+    ],
+  },
 ] as const;
 
 export function DashboardNavigation({ context }: { context: DashboardContext }) {
@@ -61,6 +82,11 @@ export function DashboardNavigation({ context }: { context: DashboardContext }) 
   }
 
   function isCurrent(href: string) {
+    if (href === "/dashboard/sales") {
+      return pathname === href || (
+        pathname.startsWith(`${href}/`) && !["today", "mockups", "imports"].includes(pathname.split("/")[3] ?? "")
+      );
+    }
     return href === "/dashboard" ? pathname === href : pathname.startsWith(href);
   }
 
@@ -71,45 +97,33 @@ export function DashboardNavigation({ context }: { context: DashboardContext }) 
       <div className="dashboard-sidebar-brand">
         <Link href="/" className="dashboard-brand" aria-label="Tailored Agents website">
           <span className="brand-mark" aria-hidden="true" />
-          <span>TAILORED AGENTS</span>
+          <span>Tailored Agents<small>Business workspace</small></span>
         </Link>
-        <button ref={menuButton} type="button" className="dashboard-menu-toggle" aria-expanded={menuOpen} aria-controls="dashboard-navigation" onClick={() => setMenuOpen(!menuOpen)}>
-          {menuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />} {menuOpen ? "Close menu" : "Menu"}
+        <button ref={menuButton} type="button" className="dashboard-menu-toggle" aria-label={menuOpen ? "Close menu" : "Menu"} aria-expanded={menuOpen} aria-controls="dashboard-navigation" onClick={() => setMenuOpen(!menuOpen)}>
+          {menuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}<span className="dashboard-menu-label">{menuOpen ? "Close menu" : "Menu"}</span>
         </button>
       </div>
 
       <div className="dashboard-workspace">
-        <span>Workspace</span>
         <div className="dashboard-workspace-current">
           <i>TA</i>
-          <strong>{context.workspace.name}</strong>
+          <div><strong>{context.workspace.name}</strong><small>Team workspace</small></div>
         </div>
       </div>
 
       <nav id="dashboard-navigation" className={`dashboard-nav ${menuOpen ? "is-open" : ""}`} aria-label="Dashboard navigation">
-        <span className="dashboard-nav-label">Workspace</span>
-        {navigation.map((item) => {
-          const Icon = item.icon;
-          return (
-            <Link className={`dashboard-nav-item ${isCurrent(item.href) ? "is-current" : ""}`} aria-current={isCurrent(item.href) ? "page" : undefined} onClick={() => setMenuOpen(false)} href={item.href} key={item.label}>
-              <Icon size={17} aria-hidden="true" />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-        <span className="dashboard-nav-label dashboard-nav-label-support">System</span>
-        {supportNavigation.map((item) => {
-          const Icon = item.icon;
-          return (
-            <Link className={`dashboard-nav-item ${isCurrent(item.href) ? "is-current" : ""}`} aria-current={isCurrent(item.href) ? "page" : undefined} onClick={() => setMenuOpen(false)} href={item.href} key={item.label}>
-              <Icon size={17} aria-hidden="true" />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
+        {navigationGroups.map((group) => <div className="dashboard-nav-group" key={group.label}>
+          <span className="dashboard-nav-label">{group.label}</span>
+          <div className="dashboard-nav-links">{group.items.map((item) => {
+            const Icon = item.icon;
+            return <Link className={`dashboard-nav-item ${isCurrent(item.href) ? "is-current" : ""}`} aria-current={isCurrent(item.href) ? "page" : undefined} onClick={() => setMenuOpen(false)} href={item.href} key={item.label}>
+              <Icon size={18} aria-hidden="true" /><span>{item.label}</span>
+            </Link>;
+          })}</div>
+        </div>)}
       </nav>
 
-      <a className="dashboard-mail-link" href="https://mail.tailoredagents.com" target="_blank" rel="noreferrer"><Mail size={18} aria-hidden="true" />Open email<span className="sr-only"> (new tab)</span></a>
+      <a className="dashboard-mail-link" href="https://mail.tailoredagents.com" target="_blank" rel="noreferrer"><Mail size={18} aria-hidden="true" /><span>Open email<span className="sr-only"> (new tab)</span></span><ArrowUpRight size={16} aria-hidden="true" /></a>
       <div className="dashboard-user">
         <span className="dashboard-avatar">{initials}</span>
         <span className="dashboard-user-copy"><strong>{context.user.name}</strong><small>{context.role}</small></span>
