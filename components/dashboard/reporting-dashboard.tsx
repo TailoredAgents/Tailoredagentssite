@@ -845,9 +845,9 @@ export function ReportingDashboard({
                     : "Connect your Google account"}
               </h2>
               <p>
-                Use Austin’s approved Google account with access to the{" "}
-                <strong>tailoredagents.com Domain property</strong>. Access is
-                read-only.
+                Use the Google account you used to verify ownership of the{" "}
+                <strong>tailoredagents.com Domain property</strong>. This
+                connection can read search reports; it cannot change your website.
               </p>
               <p>
                 Initial history: 90 completed days. The first scheduled check
