@@ -1,6 +1,6 @@
 # Communications setup and activation
 
-Release 2's first email increment is implemented in source. Production deployment, mailbox approval and authorized delivery acceptance are separate steps below; this document does not record them as completed. BatchDialer remains the current campaign dialer. Twilio SMS, calling, voicemail, recordings and transcripts remain later increments.
+Release 2's first email and business SMS increments are implemented in source. Production deployment, mailbox/number approval and authorized delivery acceptance are separate steps below; this document does not record them as completed. BatchDialer remains the current campaign dialer. Calling, voicemail, recordings and transcripts remain later increments.
 
 Ownership: Jeffrey handles the email activation checklist only. The project owner handles Twilio account/number setup, registration, secrets, SMS, calling, recording, transcripts and the remaining development with Codex. The Twilio sections below are the project owner's working checklist. The email-only handoff is [new jeffrey.md](../new%20jeffrey.md).
 
@@ -48,16 +48,80 @@ For production acceptance, use explicitly authorized test correspondents and rec
 
 Record the deployed website commit, Mail deployment, migration versions, approved accounts and acceptance results without placing secrets or real customer message content in source or screenshots.
 
-## Prepare Twilio alongside email activation
+## Business SMS increment
 
-1. Choose the Tailored Agents business number and its purpose (sales/support), the accountable account owner, business details and approved sender identity. Keep this business's numbers and registrations distinct from Wholesale's Stonegate configuration. Review cost before purchase, port or service changes.
+The SMS channel in `/dashboard/inbox?channel=sms` adds the business-number conversation list, text compose/reply, private drafts, open/waiting/done states, assignment, manual business/inquiry links, internal notes and personal read receipts. `/dashboard/settings#sms` lets an owner or administrator verify the configured existing number, grant each teammate read or read/send access, and pause number sending. Connecting the verified number grants only the administrator performing that explicit action; other teammates require individual grants. A workspace viewer cannot send or change shared records even if a number grant permits sending.
+
+The project owner supplied **+1 (678) 541-7725** as the existing SMS/voice-capable Twilio business number. Reuse that number after read-only account ownership and SMS-capability verification. Number ownership, registration state and production delivery have not been independently verified by this implementation. No number purchase, port, registration submission or provider setting change is part of saving this source.
+
+This increment sends plain-text SMS of up to 1,600 characters to one recipient at a time. A long text can be billed as several SMS segments. Incoming MMS records the text and media count; media URLs are never fetched or displayed as downloadable attachments. Staff notes and saved drafts send nothing. The conversation reader shows the latest 200 messages and notes. Message bodies and notes expire after 24 months; private drafts expire after 90 days. Compact provider IDs and outbound-intent keys remain to prevent an old request from creating another message.
+
+The server allows at most **30 new outbound attempts per actor per hour** and **100 new outbound attempts per business number per hour**. Reserving a new attempt consumes this allowance even if delivery is later rejected or uncertain. Repeated requests for the same intent and status checks do not consume another send allowance or create another provider message. These limits count attempts, not billable SMS segments; verify actual provider usage separately.
+
+The first outbound text to a number requires permission confirmation and evidence unless an allowed SMS preference is already recorded. A researched public phone number is not evidence of permission. `STOP`, `STOPALL`, `UNSUBSCRIBE`, `CANCEL`, `END` and `QUIT` create a workspace-wide SMS block for the normalized phone number. Twilio opt-out error `21610` also records a block. A new compose or confirmation checkbox cannot override it. `START`/`UNSTOP` requests are recorded for review and do not automatically clear the local block. The application returns empty TwiML and sends no automatic confirmation or AI reply; preserve the account's existing provider opt-out behavior. See [Twilio opt-out handling](https://www.twilio.com/docs/messaging/tutorials/advanced-opt-out).
+
+## Activate the existing Twilio number
+
+The project owner handles these steps with Codex. Jeffrey's handoff remains email-only.
+
+1. Apply the website's ordered PostgreSQL migrations through **0011_sms_inbox.sql** before serving the SMS routes. The migration adds number bindings, explicit grants, conversations, message metadata/content, drafts, notes, read receipts and durable send intents. It grants no existing teammate automatic SMS access.
+2. In the existing Twilio account, confirm the exact account/subaccount owning **+16785417725**, the number's SMS capability, account/trial restrictions and the relevant messaging registration. Do not purchase a replacement or reuse Wholesale's Stonegate account. For a US local application sender, verify the Tailored Agents brand/campaign and opt-in use case with [Twilio's A2P 10DLC guidance](https://www.twilio.com/docs/messaging/compliance/a2p-10dlc). A successful read-only capability check does not establish registration approval or deliverability.
+3. Create or select a dedicated server API key with access to the required account's IncomingPhoneNumbers and Messages resources. Prefer a suitable restricted key where supported; otherwise use a dedicated standard key. REST calls use the key SID/secret, while webhook signatures use that account's Auth Token. Twilio recommends [API-key authentication for applications](https://www.twilio.com/docs/usage/requests-to-twilio). Store the following only in the Render **web service** environment; do not put them in public variables, source, chat or screenshots:
+
+   ```dotenv
+   TWILIO_ACCOUNT_SID=<owning AC account SID>
+   TWILIO_AUTH_TOKEN=<that account's Auth Token>
+   TWILIO_API_KEY_SID=<dedicated SK key SID>
+   TWILIO_API_KEY_SECRET=<dedicated key secret>
+   TWILIO_PHONE_NUMBER=+16785417725
+   TWILIO_SMS_ENABLED=false
+   BETTER_AUTH_URL=https://www.tailoredagents.com
+   ```
+
+   Preserve the existing Mail, website authentication, Google and inquiry notification settings. Use separate test credentials/resources for test environments; local HTTP callback origins are allowed only for loopback outside production. Auth Tokens and API key secrets are not interchangeable. Rotate a compromised key independently; keep valid account signing credentials so incoming opt-outs and previous delivery updates can still be processed while REST keys are replaced.
+4. Deploy the verified website while outbound sending remains `false`. Open **Settings → Business SMS**, connect the configured number, and confirm the API returned the same account/number with SMS capability. This is a read-only provider lookup plus a local workspace binding; it does not change Twilio routing or buy a number. Confirm the actual existing Devon, Jeffrey and Austin dashboard memberships and grant the approved number's read/send access deliberately. Do not infer account emails from names or grant every workspace teammate access.
+5. After checking existing number routing, configure the number's **incoming messaging** webhook as HTTP `POST` to:
+
+   ```text
+   https://www.tailoredagents.com/api/integrations/twilio/sms/incoming
+   ```
+
+   This step changes incoming SMS routing for that number. Preserve existing voice/call URLs, voice applications, Studio flows and BatchDialer settings; document and retain any previous messaging URL before replacing it. No voice route or recording setup is created by this increment. An individual outgoing message includes its own signed delivery callback:
+
+   ```text
+   https://www.tailoredagents.com/api/integrations/twilio/sms/status?attempt=<actual send attempt UUID>
+   ```
+
+   Do not paste the template with a placeholder into a general callback setting. The application generates the exact URL for each reserved send. Both routes validate the SDK signature using `BETTER_AUTH_URL`, including the attempt query and every bounded form field; forwarded Host/protocol headers are not trusted. Duplicate form keys, wrong accounts and non-SMS channels are rejected. Status events with partial participant fields must still bind to the original intent and verified provider message. See [Twilio's webhook security guidance](https://www.twilio.com/docs/usage/webhooks/webhooks-security).
+6. With an explicitly authorized test correspondent, verify incoming text and an opt-out while outbound is paused. Then confirm registration/account readiness, recipient permission and approved test costs before setting **TWILIO_SMS_ENABLED=true**. The number must also be active locally and the sender's grant must allow sending. Perform only the approved small acceptance exchange below. Restore the switch to `false` or pause the number if anything remains unresolved.
+
+## SMS acceptance and uncertain sends
+
+Automated PostgreSQL tests and browser checks use guarded disposable local databases, synthetic numbers and the SDK's mocked transport boundary. They do not contact a Twilio account or prove live number readiness.
+
+For controlled production acceptance, record the deployed commit/migration and the approved account, number and teammates without saving secrets or customer messages in source:
+
+- An authorized incoming text appears once in the correct workspace/number conversation. A repeated signed event adds no duplicate; another number/workspace and unsigned payload cannot expose or create a conversation. Incoming messages still arrive when sending is paused.
+- The permitted sender can send one authorized text, which the test recipient actually receives. Twilio's queued/accepted state means the provider accepted work; only its delivered state confirms its delivery report, and no SMS status establishes that a person read it. Check account billing/segment usage after the exchange.
+- Saving a draft or internal note sends nothing. Verify personal draft/read state, conversation assignment, explicit CRM links, desktop/phone layout and the latest-200-history limit.
+- A viewer, unapproved person and read-only number grant cannot send. Revoke a test grant and confirm the next request hides messages and local collaboration data. A paused number/server switch prevents new outgoing sends while still accepting signed incoming/status events.
+- An authorized `STOP` exchange blocks further SMS from both the conversation and new compose. A subsequent `START` request does not silently remove the local restriction. Test carefully because provider opt-outs affect real routing and confirmations; record the controlled test state before resolving a restriction.
+- Repeating the same request ID never creates another provider message. The Twilio SDK disables automatic creation retries and uses a 15-second timeout. A timeout/network/5xx result may have occurred after acceptance: retain that intent and use **Check SMS status**. When a SID is known the check performs a read; when no SID was returned it waits for a signed callback or authorized provider investigation. It never submits another POST or invents an idempotency guarantee.
+
+If the callback cannot bind safely, or the original create outcome remains unknown, inspect the Twilio console using the account/number, recipient and approximate timestamp before any manual resolution. Do not delete the intent, change its key or create a replacement message merely to retry. Correct missing credentials/routing and allow signed callbacks to reconcile the existing send.
+
+For rollback, leave the additive schema and intent keys in place, disable `TWILIO_SMS_ENABLED` and pause the local number. Keep valid signed webhook handling available for opt-outs and already-sent messages. If reverting to a build without SMS routes, restore the prior messaging webhook deliberately so incoming messages are not dropped. Existing email and voice routing are separate.
+
+## Prepare calling after SMS activation
+
+1. Reuse the verified Tailored Agents number and confirm its sales/support purpose, accountable account owner, business details and approved caller identity. Keep this business's numbers and registrations distinct from Wholesale's Stonegate configuration. Review costs and existing routing before service changes.
 2. For US local-number application SMS, prepare the Tailored Agents brand/use-case registration, exact opt-in flow, sample messages, privacy/terms URLs and opt-out handling. Do not infer that a researched public phone number is messaging consent. See [Twilio A2P 10DLC](https://www.twilio.com/docs/messaging/compliance/a2p-10dlc).
 3. Specify team routing, Devon's BatchDialer workflow, staff fallback numbers, business hours, voicemail greeting and missed-call responsibility. Begin with a single simple business line; browser calling is a later increment.
 4. Decide approved call-recording disclosure/consent, which staff can play/download recordings, retention and deletion ownership. Confirm the policy for the jurisdictions actually served before recording activation. See [Twilio recording guidance](https://www.twilio.com/docs/voice/twiml/record).
 5. Preserve explicit mailbox sharing above as future SMS/call context is added. Matching a contact address does not authorize sharing private Mail content with a client or another workspace.
 6. Prepare environment variables in the appropriate provider's secret store; never copy API keys, passwords, private credentials, production email content or recordings into source, chat, CSVs or screenshots. Staging uses distinct accounts/resources where supported.
 
-## Required contract for later providers
+## Provider contract and later increments
 
 - Keep providers behind server-only adapters. PostgreSQL stores canonical contacts, conversations, provider IDs, delivery state and durable work; provider events are not authority to cross workspace boundaries.
 - Verify webhook signatures using the provider SDK and the exact public request URL/body, including the reverse-proxy contract. Bound bytes and processing time before parsing. See [Twilio request validation](https://www.twilio.com/docs/usage/security).

@@ -11,6 +11,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Twilio uses native Node HTTP clients and server-side credential handling.
+  serverExternalPackages: ["twilio"],
   poweredByHeader: false,
   compress: true,
   async redirects() {

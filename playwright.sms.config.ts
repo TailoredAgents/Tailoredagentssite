@@ -1,0 +1,26 @@
+import { defineConfig, devices } from "@playwright/test";
+import { resolve } from "node:path";
+const origin = "http://127.0.0.1:3140";
+const databaseUrl = process.env.SMS_TEST_DATABASE_URL || "postgresql://ta_test@127.0.0.1:55433/ta_sms_browser_test";
+const parsed = new URL(databaseUrl);
+if (!["127.0.0.1", "localhost"].includes(parsed.hostname) || parsed.pathname !== "/ta_sms_browser_test" || parsed.search || parsed.hash)
+  throw new Error("SMS browser tests require the isolated local ta_sms_browser_test database.");
+export default defineConfig({
+  testDir: "./tests/sms", workers: 1, fullyParallel: false, timeout: 60000,
+  use: { baseURL: origin, trace: "retain-on-failure" },
+  projects: [
+    { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 1000 } } },
+    { name: "phone", use: { ...devices["iPhone 13"], defaultBrowserType: "chromium" } },
+  ],
+  webServer: [
+    { command: "node scripts/sms-test-provider.mjs", url: "http://127.0.0.1:3141/health", reuseExistingServer: false, env: { SMS_TEST_DATABASE_URL: databaseUrl } },
+    { command: "npm exec next dev -- --hostname 127.0.0.1 --port 3140", url: `${origin}/api/health`, reuseExistingServer: false, timeout: 120000,
+      env: { DATABASE_URL: databaseUrl, BETTER_AUTH_URL: origin, NEXT_PUBLIC_SITE_URL: origin,
+        NODE_OPTIONS: `--require ${JSON.stringify(resolve("scripts/sms-test-preload.cjs"))}`,
+        BETTER_AUTH_SECRET: "sms-browser-local-session-secret-1234567890", DASHBOARD_AUTH_MODE: "password",
+        DASHBOARD_ALLOWED_EMAILS: "owner@example.test,viewer@example.test,readonly@example.test,unapproved@example.test", DASHBOARD_INITIAL_PASSWORD: "sms-browser-bootstrap-only",
+        CRM_MAIL_SECRET: "", TWILIO_ACCOUNT_SID: `AC${"1".repeat(32)}`, TWILIO_AUTH_TOKEN: "a".repeat(32),
+        TWILIO_API_KEY_SID: `SK${"2".repeat(32)}`, TWILIO_API_KEY_SECRET: "b".repeat(32),
+        TWILIO_PHONE_NUMBER: "+16785550100", TWILIO_SMS_ENABLED: "true", RESEND_API_KEY: "", CONTACT_FROM_EMAIL: "", CONTACT_TO_EMAIL: "" } },
+  ],
+});

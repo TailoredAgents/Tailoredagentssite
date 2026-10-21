@@ -4,13 +4,13 @@ Updated October 21, 2026. This is the active implementation sequence authorized 
 
 ## Current development resume point
 
-We paused after completing the first shared-email Inbox increment. The next development phase is **Twilio SMS in the CRM Inbox**. Jeffrey's handoff covers only email-specific Cloudflare/Render configuration, Mail deployment, Sales address approvals and email acceptance. The project owner handles Twilio and all remaining development with Codex. Cloudflare/Render sign-in is not required to build and test the next increment locally.
+The shared-email and first SMS Inbox increments are implemented. The project owner supplied the existing SMS/voice-capable number **+16785417725**; live Twilio credentials, number/account verification, registration and delivery acceptance remain separate activation work with the owner. The next feature development is **calling and voicemail**. Jeffrey's handoff covers only email-specific Cloudflare/Render configuration, Mail deployment, Sales address approvals and email acceptance. The project owner handles Twilio and all remaining development with Codex.
 
-The current repository has manual SMS/call activity logs and contact restrictions, but no operational Twilio adapter, SMS message store, callbacks or calling integration. Marketing illustrations do not establish those capabilities.
+The repository now includes the Twilio SMS adapter, explicit number grants, SMS message store, signed inbound/status callbacks and the Inbox SMS channel. Calling, voicemail, recordings and transcription are not implemented. Marketing illustrations do not establish those later capabilities.
 
 Our development queue is:
 
-1. **SMS Inbox foundation:** number-scoped conversations/messages linked deliberately to existing CRM businesses/contacts, explicit compose/reply, durable outbound attempts, inbound/status callbacks, delivery states, permissions and opt-out enforcement. Implement and test with synthetic transport while provider activation proceeds separately; verify the current official Twilio contract before writing the integration.
+1. **SMS activation:** use the implemented number-scoped Inbox, provider adapter and callback handlers. Follow the owner activation checklist in `COMMUNICATIONS_SETUP.md`, keeping outbound sending off until the existing account/number, registration, grants and authorized test exchange are confirmed. Local implementation and synthetic verification do not prove live delivery.
 2. **Calling and voicemail:** persistent phone controls, outbound browser calls, incoming routing/forwarding, business hours, missed calls and voicemail linked to CRM records.
 3. **Recordings, transcripts and assistance:** approved recording controls, protected playback/deletion and retention; then transcription, summaries and editable follow-up suggestions.
 4. **Remaining Inbox and design work:** outgoing email attachments, watchers, richer needs-reply/follow-up views and further visual refinement of real staff workflows. The shared shell and first email Inbox redesign are already implemented.
@@ -74,7 +74,7 @@ Implemented in source and deployed to the website as recorded below; separate Ma
 
 ### Remaining communications increments
 
-1. **Twilio SMS:** prepare the account/number and registration alongside email activation using `COMMUNICATIONS_SETUP.md`. After controlled acceptance, add direct-number messaging, incoming replies, delivery callbacks and opt-outs. SMS/MMS provider work is not implemented by the email increment.
+1. **Twilio SMS activation:** source implementation is complete for text compose/reply, inbound messages, delivery callbacks and opt-outs. Confirm the existing number/account, registration, credentials, number grants and live delivery using `COMMUNICATIONS_SETUP.md`. MMS file transfer remains later work; incoming messages record only text and media count.
 2. **Calling and voicemail:** add direct CRM calling, inbound routing/forwarding, hours, staff fallback, missed calls, voicemail and a persistent phone panel. BatchDialer continues Devon's campaign calling.
 3. **Recordings and transcripts:** activate recordings only with an approved disclosure/consent process, restricted playback/download, visible readiness, retention/deletion and provider failure handling. Transcription and structured summaries run in bounded background jobs, link timestamped evidence and propose editable follow-ups.
 
@@ -89,6 +89,18 @@ The Inbox checks include attachments and revoked download access, private drafts
 Live setup and authenticated provider acceptance remain assigned to the developer with Cloudflare/Render access. The complete handoff is [new jeffrey.md](../new%20jeffrey.md); source verification does not establish live mailbox access or delivery.
 
 Website revision `f8569fe2b9e1d9acbaf20cdf0ef92a92a7e5f376` auto-deployed successfully on October 21 at 22:47:38 UTC (6:47 p.m. EDT), GitHub deployment `7239112044`, [Render deployment dep-dbck1b0u01pc73bduusg](https://dashboard.render.com/web/srv-db6hod8473hc739q2uo0/deploys/dep-dbck1b0u01pc73bduusg). Public health/pricing/sign-in and Mail login return 200; anonymous Inbox and attachment requests redirect to sign-in. This verifies website deployment and its unauthenticated boundary. Mail has not been deployed by this push, and no production CRM secret, mailbox grant or customer message was created here.
+
+### SMS increment
+
+`/dashboard/inbox?channel=sms` adds number-scoped conversations, text compose/reply, private drafts, internal notes, per-person reads, assignment/status and deliberate business/inquiry links. Settings verifies ownership/SMS capability of the configured existing number through a read-only Twilio lookup. Connecting grants only the connecting administrator; further read/send grants are explicit. Number pause and the server sending switch block outgoing requests while signed incoming opt-outs/status updates continue.
+
+Every outgoing request reserves a durable intent before one provider create call. Repeating or checking that request never creates another provider message. Unknown outcomes retain the original intent; known SIDs can be checked with a provider read, and signed callbacks reconcile missing confirmations. No Twilio create-idempotency guarantee is assumed. First outbound permission evidence, existing restrictions, inbound STOP and provider opt-out errors are enforced. New attempts are capped at 30 per hour per actor and 100 per hour per number. Message bodies/notes expire after 24 months and private drafts after 90 days; content-free intent/provider metadata remains for reconciliation and replay protection.
+
+The owner supplied **(678) 541-7725**, normalized to **+16785417725**, and confirmed SMS/voice capability. Account ownership, registration and actual production delivery have not been independently verified. No live Twilio credentials, number changes, customer texts, calls or recording settings were created during implementation. The setup checklist belongs to the project owner; Jeffrey's email handoff remains separate.
+
+Local verification on October 21 passes **246 code/PostgreSQL tests** across 25 files, including 25 SMS database cases and 36 Twilio transport/signature/route cases. Browser checks pass for 14 SMS desktop/phone workflows, all 10 email workflows, and 33 existing reporting/sales/operations workflows (one intentional phone skip). SMS coverage includes configured-number ownership checks, read/send grant updates and revocation, pause/resume, internal notes/private drafts, explicit sending, delivery callbacks, STOP restrictions, unknown-send status checks across refresh with one create request, accessibility and 320–1440px layouts. Reviewed synthetic previews: [desktop SMS](previews/sms-desktop.png) and [phone SMS](previews/sms-phone.png).
+
+Lint, strict types, production build, dependency audit and clean-install lockfile validation pass. The populated PostgreSQL migration/dump/restore check now also preserves SMS number grants, private drafts, business links and unknown outbound receipts. Expired bodies are hidden from previews/detail/search before maintenance. Synthetic provider fixtures intercept the SDK transport only in a guarded local test process; production has no test endpoint override. These results establish source behavior, not live SMS readiness or delivery.
 
 ## Release 3 — Proposals, onboarding and delivery
 
@@ -151,6 +163,7 @@ $env:TEST_MAIL_AUTH_DATABASE_URL = 'postgresql://ta_test@127.0.0.1:55433/ta_mail
 $env:TEST_SALES_DATABASE_URL = 'postgresql://ta_test@127.0.0.1:55433/ta_sales_test'
 $env:TEST_SALES_SCHEMA_DATABASE_URL = 'postgresql://ta_test@127.0.0.1:55433/ta_sales_schema_test'
 $env:TEST_INBOX_DATABASE_URL = 'postgresql://ta_test@127.0.0.1:55433/ta_inbox_test'
+$env:TEST_SMS_DATABASE_URL = 'postgresql://ta_test@127.0.0.1:55433/ta_sms_test'
 npm test
 npm run lint
 npm run typecheck
@@ -167,6 +180,10 @@ npm run test:browser -- --reporter=line
 # Separate Mail-mode Inbox suite with synthetic local Mail on 3130/3131.
 $env:INBOX_TEST_DATABASE_URL = 'postgresql://ta_test@127.0.0.1:55433/ta_inbox_browser_test'
 npm run test:inbox:browser -- --reporter=line
+
+# Separate SMS suite: synthetic SDK transport on 3140/3141, no real messages.
+$env:SMS_TEST_DATABASE_URL = 'postgresql://ta_test@127.0.0.1:55433/ta_sms_browser_test'
+npm run test:sms:browser -- --reporter=line
 ```
 
 For an interactive synthetic workspace, run `npm run reporting:preview` with those final two `REPORTING_TEST_*` variables. This intentionally reseeds the disposable browser database. Open `http://127.0.0.1:3120/dashboard/sales` and sign in as `owner@example.test` or `viewer@example.test`, password `Reporting-test-password-2026`. These fixture credentials grant no production access. Import a small synthetic CSV through Calling lists to exercise the workflow; production uses the existing Mail login and approved dashboard grants.

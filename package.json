@@ -19,6 +19,7 @@
     "dashboard:provision": "node scripts/provision-dashboard-user.mjs",
     "test:browser": "playwright test",
     "test:inbox:browser": "playwright test --config playwright.inbox.config.ts",
+    "test:sms:browser": "playwright test --config playwright.sms.config.ts",
     "test:integration": "vitest run lib/reporting/database.integration.test.ts",
     "reporting:preview": "node scripts/start-reporting-preview.mjs",
     "test:recovery": "node scripts/test-reporting-recovery.mjs"
@@ -36,6 +37,7 @@
     "react-dom": "19.3.0",
     "server-only": "^0.0.1",
     "tailwindcss": "^4.1.14",
+    "twilio": "^6.2.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {

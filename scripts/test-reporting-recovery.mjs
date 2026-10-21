@@ -69,6 +69,15 @@ try {
       .filter((file) => file.endsWith(".sql") && file >= "0005")
       .sort())
       await pool.query(await readFile("db/migrations/" + file, "utf8"));
+    // Synthetic SMS collaboration and uncertain-send state must survive restore.
+    await pool.query(`INSERT INTO "user"(id,name,email,"emailVerified") VALUES('recovery-sms-user','Recovery fixture','sms-recovery@example.test',true)`);
+    await pool.query(`INSERT INTO workspace_memberships(id,workspace_id,user_id,role,status) VALUES('00000000-0000-4000-8000-000000000900',$1,'recovery-sms-user','owner','active')`, [workspace]);
+    await pool.query(`INSERT INTO sms_numbers(id,workspace_id,account_sid,provider_sid,phone,connected_by_user_id) VALUES('00000000-0000-4000-8000-000000000901',$1,$2,$3,'+16785550100','recovery-sms-user')`, [workspace, 'AC'+'1'.repeat(32), 'PN'+'2'.repeat(32)]);
+    await pool.query(`INSERT INTO sms_number_grants(workspace_id,number_id,user_id,can_send) VALUES($1,'00000000-0000-4000-8000-000000000901','recovery-sms-user',true)`, [workspace]);
+    await pool.query(`INSERT INTO sms_conversations(id,workspace_id,number_id,remote_phone,business_id) VALUES('00000000-0000-4000-8000-000000000902',$1,'00000000-0000-4000-8000-000000000901','+16785550101','00000000-0000-4000-8000-000000000081')`, [workspace]);
+    await pool.query(`INSERT INTO sms_messages(id,workspace_id,conversation_id,direction,body,status,actor_user_id) VALUES('00000000-0000-4000-8000-000000000903',$1,'00000000-0000-4000-8000-000000000902','outbound','Synthetic uncertain message','unknown','recovery-sms-user')`, [workspace]);
+    await pool.query(`INSERT INTO sms_outbound_intents(request_id,workspace_id,number_id,message_id,actor_user_id,request_hash,state) VALUES('00000000-0000-4000-8000-000000000904',$1,'00000000-0000-4000-8000-000000000901','00000000-0000-4000-8000-000000000903','recovery-sms-user',$2,'unknown')`, [workspace,'b'.repeat(64)]);
+    await pool.query(`INSERT INTO sms_drafts(id,workspace_id,number_id,author_user_id,thread_key,recipient,body) VALUES('00000000-0000-4000-8000-000000000905',$1,'00000000-0000-4000-8000-000000000901','recovery-sms-user','','+16785550101','Synthetic private draft')`, [workspace]);
     assert.equal(
       (await pool.query("SELECT url FROM sites WHERE id=$1", [site])).rows[0]
         .url,
@@ -220,9 +229,15 @@ try {
     assert.equal(linked.business_id, "00000000-0000-4000-8000-000000000081");
     assert.equal(linked.client_id, "00000000-0000-4000-8000-000000000081");
     assert.equal(linked.contact_business, linked.business_id);
+    const sms = (await restored.query(`SELECT i.state,i.request_hash,m.body,g.can_send,d.body AS draft FROM sms_outbound_intents i JOIN sms_messages m ON m.id=i.message_id AND m.workspace_id=i.workspace_id JOIN sms_number_grants g ON g.number_id=i.number_id AND g.workspace_id=i.workspace_id AND g.user_id=i.actor_user_id JOIN sms_drafts d ON d.number_id=i.number_id AND d.author_user_id=i.actor_user_id WHERE i.request_id='00000000-0000-4000-8000-000000000904'`)).rows[0];
+    assert.equal(sms.state, 'unknown');
+    assert.equal(sms.request_hash, 'b'.repeat(64));
+    assert.equal(sms.body, 'Synthetic uncertain message');
+    assert.equal(sms.can_send, true);
+    assert.equal(sms.draft, 'Synthetic private draft');
     await restored.query("SELECT perform_reporting_retention()");
     console.log(
-      "PASS: existing reports, credential metadata and linked client/contact identities survive all migrations and PostgreSQL dump/restore; retention remains callable.",
+      "PASS: reports, credential metadata, client/contact links, SMS grants/drafts and uncertain-send receipts survive migration and PostgreSQL dump/restore; retention remains callable.",
     );
   } finally {
     await restored.end();

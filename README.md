@@ -203,6 +203,8 @@ For private account checks/provisioning, preview steps, recovery instructions, e
 
 The shared Sales Inbox release adds `/dashboard/inbox` and a separately deployed, address-scoped Mail bridge. For email-only live setup, approved teammate access and verification, follow [new jeffrey.md](new%20jeffrey.md) and [the communications runbook](docs/COMMUNICATIONS_SETUP.md). The isolated email browser suite is `npm run test:inbox:browser`; it uses synthetic Mail on loopback and requires the disposable `ta_inbox_browser_test` PostgreSQL database.
 
+The SMS channel at `/dashboard/inbox?channel=sms` adds text conversations and a separate owner-managed Twilio connection in Settings. The project owner handles Twilio activation using [the communications runbook](docs/COMMUNICATIONS_SETUP.md); email activation remains Jeffrey's assignment. `npm run test:sms:browser` uses the exact disposable `ta_sms_browser_test` database and intercepts the SDK transport only inside the guarded test process. It sends no real texts. Production sending defaults off until configuration, verified number access and recipient permission are ready.
+
 Run the complete website gate after dependency, schema, authentication, route, or design changes:
 
 ```powershell

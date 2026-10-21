@@ -10,12 +10,17 @@ import { requireDashboardContext } from "@/lib/dashboard/data";
 import { markInboxReadAction } from "@/lib/inbox/actions";
 import { listInboxWorkspace } from "@/lib/inbox/data";
 import type { InboxFilters } from "@/lib/inbox/types";
+import type { SmsFilters } from "@/lib/sms/types";
+import { InboxChannelSwitch } from "@/components/sms/channel-switch";
+import { SmsWorkspacePage } from "@/components/sms/workspace";
+import "./sms.css";
 
 export const metadata: Metadata = { title: "Team inbox" };
 
-export default async function InboxPage({ searchParams }: { searchParams: Promise<InboxFilters & { compose?: string | string[] }> }) {
+export default async function InboxPage({ searchParams }: { searchParams: Promise<InboxFilters & SmsFilters & { channel?: string | string[] }> }) {
   const context = await requireDashboardContext();
   const params = await searchParams;
+  if ((Array.isArray(params.channel) ? params.channel[0] : params.channel) === "sms") return <SmsWorkspacePage filters={params} />;
   const data = await listInboxWorkspace(context, params);
   const composing = (Array.isArray(params.compose) ? params.compose[0] : params.compose) === "1";
   const readOnly = context.role === "viewer";
@@ -26,6 +31,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
   return <>
     <header className="dashboard-topbar"><div><span>Tailored Agents / Relationships</span><strong>Inbox</strong></div><span className="dashboard-secure"><LockKeyhole size={14} aria-hidden="true" />Private workspace</span></header>
     <div className="inbox-page-heading"><div><span className="inbox-eyebrow">Good conversations become great relationships</span><h1>Team inbox</h1><p>Shared email, clear ownership, and the customer context behind every conversation.</p></div><div>{ready ? <Link className="inbox-button" href={inboxHref(base, { thread: selected?.conversation.id, compose: composing ? "1" : undefined })}><RefreshCw size={16} aria-hidden="true" />Refresh</Link> : null}{ready && !readOnly ? <Link className="inbox-button inbox-button-primary" href={inboxHref({ mailbox: data.mailbox?.id }, { compose: "1" })}><PenSquare size={16} aria-hidden="true" />New email</Link> : null}</div></div>
+    <InboxChannelSwitch active="email" />
     <div className="inbox-page-body">
       {!ready ? <InboxConnectionNotice connection={data.connection} /> : data.mailbox ? <>
         <div className="inbox-mailbox-bar"><form method="get" aria-label="Choose email mailbox"><Mail size={17} aria-hidden="true" /><label><span className="sr-only">Mailbox</span><select name="mailbox" aria-label="Mailbox" defaultValue={data.mailbox.id}>{data.mailboxes.map((mailbox) => <option key={mailbox.id} value={mailbox.id}>{mailbox.name} · {mailbox.email}</option>)}</select></label><button className="inbox-button" type="submit">Open</button></form><span className="inbox-connected"><i />Connected to Tailored Mail</span></div>
