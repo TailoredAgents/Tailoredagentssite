@@ -47,8 +47,9 @@ The immediate goal is not to launch a broad autonomous-agent platform. It is to 
 - A production Next.js 16.4 marketing website deployed on Render.
 - Public pages for websites, SEO, automation, engineering, packages, pricing, work, company, and contact.
 - Transparent starting prices and an interactive website/SEO package calculator.
-- Project inquiry and free website-review forms stored in PostgreSQL, with Resend notifications when configured.
+- Project inquiry and free website-review forms stored in PostgreSQL, with live Resend notifications to Jeffrey and Austin.
 - First-party page, acquisition, intent, form, and conversion events with an internal analytics dashboard.
+- Read-only Google Search Console reporting, authorized October 21 with the first 90-day import completed by the automatic worker. Final acceptance still includes observing the next scheduled daily refresh.
 - A Blueprint-managed persistent PostgreSQL database and private internal operations dashboard.
 - Lead qualification and conversion plus client, contact, site, project, milestone, and project-record workflows.
 - Shared Mail/dashboard credentials for owner-approved teammates; Jeffrey confirmed live sign-in on October 21.
@@ -58,7 +59,6 @@ The immediate goal is not to launch a broad autonomous-agent platform. It is to 
 
 ### Not yet operational
 
-- Production-authorized Google Search Console data; the readiness upgrade is implemented and Jeffrey has authorized its merge to `main`; production ownership, authorization and scheduled behavior remain unverified.
 - Client accounts or a client-facing Growth Hub.
 - A public interactive product demo.
 - A generally available standardized website-agent or operations-agent catalog; the public site describes a limited founding-client rollout without claiming that every listed capability is operational.
@@ -153,7 +153,7 @@ Exit criteria:
 
 Goal: make the dashboard useful every day before making it customer-facing.
 
-Status: implemented in this release. Production use remains gated on credential rotation, backup/restore preparation, and live authentication and workflow verification.
+Status: implemented. Live authentication, credential rotation and a fresh production backup restoration passed on October 21. Inquiry alerts are configured for Jeffrey and Austin; one labeled production test reached each inbox exactly once. Full live lead/client/project workflow verification remains outstanding; this phase is not declared complete. See `CONNECTION_ACTIVATION.md` for the operational evidence.
 
 Deliverables:
 
@@ -176,7 +176,7 @@ Exit criteria:
 
 Goal: collect and explain the evidence needed for growth work.
 
-Status: Jeffrey authorized the readiness release to merge into `main`; production Google activation remains pending. The release adds durable daily imports, complete-date coverage, recovery and leases, verified inquiry attribution, canonical-origin checks, protected exports and a redesigned reporting screen. Local PostgreSQL, browser and restore evidence is recorded in `docs/SEARCH_CONSOLE_READINESS.md`. A real Google import and the next scheduled daily refresh are still required; the phase is not complete. GA4 remains outside this release.
+Status: the readiness release is live on `main`. Jeffrey connected Google on October 21 and the scheduled worker completed the first 90-day import with no failures. The release includes durable daily imports, complete-date coverage, recovery and leases, verified inquiry attribution, canonical-origin checks, protected exports and a redesigned reporting screen. Local PostgreSQL, browser and restore evidence is recorded in `docs/SEARCH_CONSOLE_READINESS.md`; current activation evidence is in `docs/CONNECTION_ACTIVATION.md`. The next scheduled daily refresh and the remaining production measurement checks still require observation; the phase is not complete. GA4 remains outside this release.
 
 Deliverables:
 
@@ -190,7 +190,7 @@ Deliverables:
 
 Implementation note:
 
-Instrumentation is live first so reporting can accumulate history. The dashboard labels external integrations as unconnected rather than filling their views with synthetic data.
+First-party instrumentation and the Search Console connection are live. Reports use observed results, including checked dates with no Google activity; incomplete or unavailable data is labeled separately. No synthetic metrics are presented as production results.
 
 Exit criteria:
 

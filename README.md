@@ -16,7 +16,7 @@ Operational today:
 - Service, package, pricing, work, industry, company, legal, and contact routes.
 - Transparent starting prices and a website/SEO package calculator.
 - A founding-client pricing direction for standardized website and operations agents, clearly separated from custom implementation work and unfinished product capabilities.
-- Durable project-inquiry and free website-review capture in PostgreSQL, with Resend notification delivery when configured.
+- Durable project-inquiry and free website-review capture in PostgreSQL, with live Resend notifications to Jeffrey and Austin. One labeled test inquiry reached both inboxes exactly once on October 21.
 - Privacy-conscious first-party measurement for public page views, acquisition, next-step clicks, and inquiry conversions.
 - Conceptual Growth Hub and analytics visuals labeled as illustrative.
 
@@ -36,10 +36,10 @@ Phases 1 and 2 are implemented, and the first Phase 3 measurement release is act
 - Client, contact, site, and project workspaces with milestones, deliverables, decisions, and notes.
 - Shared database-backed inquiry controls, delivery status, retention metadata, and audited mutations.
 - Internal website reporting with visits, stored inquiries, separate visitor activities, trends, and freshness indicators.
-- Read-only Google Search Console OAuth, encrypted credentials, resumable daily imports, coverage records, and reporting; the readiness upgrade is deployed, with real Google authorization and import verification still pending.
+- Read-only Google Search Console connection, encrypted credentials, resumable daily imports, coverage records, and reporting. Jeffrey connected Google on October 21; the automatic worker completed the initial 90-day import without failures. See [activation evidence and remaining checks](docs/CONNECTION_ACTIVATION.md).
 - Safe setup behavior: the marketing site remains operational when dashboard infrastructure is absent.
 
-The Blueprint provisions the persistent database. Production dashboard access uses the existing Mail account and password, with approval controlled by the mail owner. Resend is optional for website inquiry notifications. Google client settings have been installed, but Search Console remains disconnected until the verified owner authorizes access from the dashboard. GA4, client accounts, SEO tooling, the SEO agent, and a generally available standardized-agent catalog are not implemented yet; the public agent prices describe a limited founding-client rollout rather than universal availability.
+The Blueprint provisions the persistent database. Production dashboard access uses the existing Mail account and password, with approval controlled by the mail owner. Resend notifications and the Google Search Console connection are active in production. The next daily refresh remains a separate acceptance check. GA4, client accounts, SEO tooling, the SEO agent, and a generally available standardized-agent catalog are not implemented yet; the public agent prices describe a limited founding-client rollout rather than universal availability.
 
 ### Tailored Mail
 
@@ -173,7 +173,7 @@ Public pages record a narrow set of first-party events: page views, selected CTA
 
 The event route applies origin checks, schema validation and database rate limiting. It rejects browser claims of successful inquiries. A saved inquiry records its optional attribution on the server, with durable recovery if attribution storage fails. DNT/GPC disable measurement in the browser and on incoming requests while allowing the inquiry itself. Events expire after 25 months. Older browser-reported submissions remain stored and are labelled unverified; no missing historical attribution is invented.
 
-`/dashboard/analytics` reports observed first-party data plus authorized Google Search Console clicks, impressions, click-through rate, average position, top queries, and top pages. Search Console remains visibly disconnected until real Google authorization succeeds; no placeholder metrics are shown. GA4 remains optional and should be connected only if it contributes useful data without duplicating the first-party system.
+`/dashboard/analytics` reports observed first-party data plus authorized Google Search Console clicks, impressions, click-through rate, average position, top queries, and top pages. Production Search Console is connected; the screen distinguishes checked zero-activity dates from missing or disconnected data, without placeholder metrics. GA4 remains optional and should be connected only if it contributes useful data without duplicating the first-party system.
 
 ## Google Search Console activation
 

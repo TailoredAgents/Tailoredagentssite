@@ -1,6 +1,6 @@
 # Search Console readiness release
 
-Jeffrey authorized merging this release into `main` and removing the feature branch on October 20, 2026. Future development stays on `main` unless he requests otherwise. Google activation still requires the live checks below; a merge is not proof of activation.
+Jeffrey authorized merging this release into `main` and removing the feature branch on October 20, 2026. Future development stays on `main` unless he requests otherwise. Google was authorized on October 21 and the scheduled worker completed the first 90-day import. Current production evidence and remaining acceptance checks are recorded in [CONNECTION_ACTIVATION.md](CONNECTION_ACTIVATION.md).
 
 ## Work tracker
 
@@ -12,7 +12,10 @@ Jeffrey authorized merging this release into `main` and removing the feature bra
 - [x] Reviewable preview, documentation and focused commits prepared for review.
 - [x] Reporting release deployed with migration 0005.
 - [x] October 21 www configuration, migration 0006 and live scheduled-worker verification.
-- [ ] Google authorization, reconciled import, browser-independent processing and scheduled daily refresh.
+- [x] Google authorization and initial 90-day import completed by the genuinely scheduled 17:45 UTC worker on October 21.
+- [x] Jeffrey closed the dashboard after requesting refresh; a manual worker request completed ten date updates with no failures.
+- [x] Reconciled July 21–October 18 with Google's property-total API: valid zero-activity result, complete coverage and no mismatches. A fresh production backup restored connection metadata, completed jobs and coverage successfully.
+- [ ] Observe the next scheduled daily refresh; current evidence is tracked in `CONNECTION_ACTIVATION.md`.
 
 ## Confirmed baseline, October 20, 2026
 
@@ -29,7 +32,7 @@ Confirm private operational evidence of credential rotation and tested backups b
 
 Use the existing web service, database and cron service. Review actual runtime cost before changing the cron cadence. No additional paid resource is part of this release. Preserve the separate mail application and its DNS records.
 
-October 21 choice: canonical https://www.tailoredagents.com (replaces the original apex choice), full internal reporting redesign, initial 90 days of Google history, live connection and verification included. Dashboard access for Jeffrey still needs checking. Jeffrey subsequently chose to complete Google setup himself with his selected personal Google account.
+October 21 choice: canonical https://www.tailoredagents.com (replaces the original apex choice), full internal reporting redesign, initial 90 days of Google history, live connection and verification included. Jeffrey confirmed dashboard access with his Mail password and completed Google authorization himself with his selected personal Google account.
 
 ## What is implemented in this release
 
@@ -103,8 +106,8 @@ The address must already be in `DASHBOARD_ALLOWED_EMAILS`. The command requires 
 ## Production deployment order and cost review
 
 1. Work directly on `main`. The existing Render web service and cron auto-deploy it. Share the preview, shared-file changes, migrations and this runbook for coordination. Do not start another roadmap workstream.
-2. Privately check whether the exposed database credential and `BETTER_AUTH_SECRET` were rotated. Jeffrey answered **“Not sure”**; this is unverified. Complete outstanding rotation before Google authorization, update dependent secret stores, and verify sign-in. Keep required backup encryption material in the approved private secret store. A later authentication-secret change requires Google reconnection.
-3. Verify current production backup availability and the ability to restore into a separate database privately. The local restore drill proves the migrations, not Render account-level backup availability. The current database connector is blocked by the private allowlist; do not make the database public to bypass this.
+2. The exposed database credential and `BETTER_AUTH_SECRET` were rotated on October 21 before Google authorization. The new deployment passed verification and the original database login was revoked. Keep required backup encryption material in the approved private secret store. A later authentication-secret change requires Google reconnection.
+3. Render recovery availability was confirmed and a fresh production logical backup was restored successfully into an isolated local PostgreSQL 18 container on October 21. Temporary restored data was removed. The private database allowlist remains closed; do not make the database public to facilitate tooling.
 4. Keep Render's existing **apex-to-www** routing. Merge only `NEXT_PUBLIC_SITE_URL=https://www.tailoredagents.com` and `BETTER_AUTH_URL=https://www.tailoredagents.com` into the existing web service's environment, preserving all secrets. Set the existing cron's `SEARCH_CONSOLE_SYNC_URL=https://www.tailoredagents.com/api/cron/search-console`. Rebuild after changing the public origin, because public metadata is generated during the build. Preserve mail DNS and the email subdomain.
 5. Verify www HTTPS, `/sign-in`, `/api/health`, canonical links, sitemap, public pages and apex redirects preserving paths/query strings. Check Jeffrey's own website login and reporting access. Google requires the exact www callback on its existing OAuth client; the Domain property remains `sc-domain:tailoredagents.com`.
 6. Verify the existing web service deployed `main` and migrations 0001–0006 are recorded once. Migration 0005 is already deployed; 0006 only changes the internal site's URL. Do not undo tables or overwrite stored credentials. The build performs migrations and retention before building.
@@ -113,9 +116,9 @@ The address must already be in `DASHBOARD_ALLOWED_EMAILS`. The command requires 
 
 **Runtime estimate, not a billing quote:** five-minute checks produce 8,640 runs in a 30-day month. At 2 seconds per idle run that is 4.8 active hours/month; at 10 seconds it is 24 hours, plus import time. Measure actual startup and request runtime in Render; local timings do not predict billed startup. Charge is `max($1 monthly minimum, active seconds × the current instance rate)`. The job processes at most roughly 210 seconds plus one bounded request per invocation, then saves remaining work for the next check. Do not assume more frequent checks are free. The current per-second rate could not be verified through the available account tools; verify it in Render before changing the live schedule. [Render cron billing](https://render.com/docs/cronjobs).
 
-## Google connection and live acceptance — still pending
+## Google connection and live acceptance
 
-Jeffrey has taken over setup using his selected personal Google account. He reported ownership verification and publishing completion; the Web client JSON was validated and its client settings installed directly into Render without displaying secret values. Confirm **Audience → In production** separately from branding publication before authorization. Enter credentials only on Google/Render pages. Follow the account/project/API/External-audience instructions in `JEFFREY.md`; the app must be **In production**, because Testing-mode offline authorization normally expires after seven days. Request only `webmasters.readonly` and use the exact callback:
+Jeffrey completed authorization using his selected personal Google account on October 21. The Web client JSON was validated and its client settings installed directly into Render without displaying secret values. Confirm **Audience → In production** separately from branding publication to protect continued offline access. Enter credentials only on Google/Render pages. Follow the account/project/API/External-audience instructions in `JEFFREY.md`; Testing-mode offline authorization normally expires after seven days. Request only `webmasters.readonly` and use the exact callback:
 
 `https://www.tailoredagents.com/api/integrations/search-console/callback`
 
@@ -154,13 +157,13 @@ Jeffrey chose www, replacing the earlier apex-only plan. Commit `78cc5fd` is dep
 - The genuinely scheduled **12:15 UTC** cron run started at 12:15:05 and finished successfully at 12:15:27. Its worker response was **0 date updates, 0 stopped imports**. This verifies the URL, matching job authentication and successful idle processing. It does not establish a real Google import or a completed daily Google-data refresh.
 - Local checks: **63 automated tests**, including **22 PostgreSQL integration tests**; **10 desktop/phone browser tests**; lint; strict types; production build; dependency audit with **0 vulnerabilities**; and a populated-database upgrade through migration 0006 followed by PostgreSQL dump/restore all passed. The tests include www management requests, the exact OAuth callback, preserved paths/queries, prevention of redirect loops, and rejection of redirects by the private worker command.
 
-### Remaining live acceptance
+### Follow-up to the www rollout
 
-1. Verify Jeffrey and Austin can each sign in with their own approved dashboard account and see the expected reports and controls. Use Mail → Manage team to approve a teammate; in mail mode, website accounts are linked or created on first sign-in.
-2. Confirm the previously flagged database password and website authentication secret were rotated, and confirm current production backups and private restore access. The local restore drill passed; the production connector cannot inspect the private database. Do not open its network allowlist for this task.
-3. In the existing Google OAuth client, allow exactly `https://www.tailoredagents.com/api/integrations/search-console/callback`. Verify the Search Console API, the exact Domain property, the approved Google owner and read-only permission; then authorize from the dashboard. The exact callback was verified in the downloaded Google Web client and its settings installed in Render on October 21. The real user authorization and import remain pending. Google requires the return address to match its registered callback. [Google OAuth documentation](https://developers.google.com/identity/protocols/oauth2/web-server).
-4. Import the actual 90 days; compare a fixed range with Google's report; refresh twice; close the browser while processing; verify recovery and the next scheduled daily data refresh. A successful idle worker check is separate evidence from these Google-data checks.
-5. Submit a clearly identified real inquiry and verify one saved inquiry, correct reporting/attribution, privacy behavior and notification delivery. Local controlled tests cover these behaviors; no live notification was sent during this rollout.
+1. Jeffrey confirmed live sign-in and Google management access. Austin's own sign-in remains a teammate check; use Mail → Manage team to approve access if needed. In mail mode, website accounts are linked or created on first sign-in.
+2. The database credential and website authentication secret were rotated later on October 21, and a fresh production backup passed private restoration. The production network allowlist remains closed.
+3. The exact callback was verified in the downloaded Google Web client and its settings installed in Render. Jeffrey authorized Google later on October 21 and the automatic worker completed the initial import. Google requires the return address to match its registered callback. [Google OAuth documentation](https://developers.google.com/identity/protocols/oauth2/web-server).
+4. Current import, fixed-range reconciliation, repeated refresh and browser-independent processing evidence is tracked in `CONNECTION_ACTIVATION.md`. The next genuinely scheduled daily data refresh remains distinct from the successful initial import and idle worker checks.
+5. The later labeled live inquiry was saved once and reached both team inboxes exactly once. Global Privacy Control disabled measurement for that submission; the separate live attribution checks remain open. No older inquiry was resent.
 6. Review actual active-runtime charges for the existing five-minute cron. Its schedule and plan were already in place before this change. The observed run elapsed about 23 seconds including startup and shutdown; one run is not a monthly billing estimate.
 
 For rollback, use a compatible application build that keeps www as the canonical origin and understands migration 0005. Keep both migrations and stored reports. Do not reenable the old www-to-apex redirect or restore an apex worker URL. Pause the existing job if operational recovery requires it, then repeat the live checks after restoring service.
@@ -193,4 +196,4 @@ The live website displays the shared-password instructions, is fully configured,
 
 Final validation: **73 website tests** (including **29 PostgreSQL integration tests**), **382 Mail backend tests**, **10 reporting browser tests**, **10 Mail browser tests**, lint, strict type checks, both production builds, and both complete dependency audits pass; both audits report zero known vulnerabilities. The populated migration upgrade and PostgreSQL dump/restore passed through migration 0007. Staging-to-website authentication, report access, member restrictions and sign-out were exercised using a temporary account in desktop/phone browsers; its remote Mail and local website records were then removed. No production passwords or inbox contents were accessed.
 
-Next user check: sign in at `https://www.tailoredagents.com/sign-in` with `jeffrey@tailoredagents.com` and the existing Mail password. Approve Austin through Mail → Manage team if desired. Then finish the pending Google authorization and live acceptance above; deployment of shared sign-in does not establish a Google import or scheduled data refresh.
+Jeffrey subsequently confirmed sign-in and completed Google authorization; the automatic initial import and manual refresh passed. Approve Austin through Mail → Manage team if needed. Follow `CONNECTION_ACTIVATION.md` for the current evidence and remaining observations; deployment of shared sign-in alone is not evidence of a Google import or scheduled daily refresh.

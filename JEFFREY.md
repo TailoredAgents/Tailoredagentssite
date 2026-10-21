@@ -23,7 +23,7 @@ When information is uncertain, investigate the repository and authoritative prim
 
 ## Assignment
 
-October 21 dashboard update: Jeffrey confirmed live sign-in with his Mail credentials and requested a complete internal-dashboard readability pass. The release covers all tabs and record views, accessible desktop/phone layouts, accurate connection descriptions, view-only controls, save feedback and an actionable overview. See `docs/DASHBOARD_USABILITY.md` for tests, screenshots and deployment evidence. Google authorization and import verification remain separate unfinished work; this release does not advance the client portal or SEO-agent roadmap.
+October 21 dashboard update: Jeffrey confirmed live sign-in with his Mail credentials and the internal-dashboard readability release is live. See `docs/DASHBOARD_USABILITY.md` for tests, screenshots and deployment evidence. He subsequently requested activation of inquiry alerts and Google Search Console. Alerts now reach both approved team inboxes, the setup credentials were rotated, a production backup was restored privately, and the scheduled worker completed Google's initial 90-day import. See `docs/CONNECTION_ACTIVATION.md` for current evidence and remaining live checks, including the next daily refresh. This work does not advance the client portal or SEO-agent roadmap.
 
 Own the remaining technical roadmap for Tailored Agents while Austin works on public website design and marketing presentation. Begin by completing the production Google Search Console connection. Then close the Phase 2 and Phase 3 production gates before proceeding sequentially through the client Growth Hub, the human-operated SEO workspace, and the bounded SEO agent.
 

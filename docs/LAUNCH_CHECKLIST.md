@@ -17,7 +17,7 @@ Use this checklist for the public website and private dashboard. The mail applic
 - [ ] Confirm GitHub repository ownership, branch protection, and authorized collaborators.
 - [ ] Confirm the authorized Tailored Agents business email address.
 - [ ] Replace the temporary personal phone number with the final Woodstock-area business number through `lib/site.ts`.
-- [ ] Verify the Resend sending domain and configure inquiry delivery variables.
+- [x] Verified the Resend sending domain through actual delivery and configured alerts to both approved team inboxes on October 21.
 - [ ] Confirm the legal/privacy contact and required governing jurisdiction.
 - [ ] Review public StonegateOS capability language with the system owner.
 
@@ -25,16 +25,16 @@ Use this checklist for the public website and private dashboard. The mail applic
 
 - [x] Select a persistent PostgreSQL plan deliberately; the owner approved `0.1c-256mb` on October 16, 2026.
 - [ ] Sync the Blueprint and confirm `tailored-agents-db` is created in Ohio with public access disabled.
-- [ ] Confirm Render injects the database's private connection string into `DATABASE_URL`.
-- [ ] Confirm `BETTER_AUTH_SECRET` is generated, private, and at least 32 high-entropy characters.
-- [ ] Rotate the database password and authentication secret previously exposed during setup, then update only Render's secret store.
+- [x] Confirmed the private database connection string in Render; rotated its managed credential on October 21.
+- [x] Replaced `BETTER_AUTH_SECRET` with a private high-entropy secret on October 21.
+- [x] Rotated both exposed setup credentials in Render and revoked the original database login after verification.
 - [x] Set `BETTER_AUTH_URL=https://www.tailoredagents.com` using the final canonical hostname (October 21).
-- [ ] Set `DASHBOARD_ALLOWED_EMAILS` to the exact approved internal accounts.
-- [ ] Set a private `DASHBOARD_INITIAL_PASSWORD` of at least 10 characters.
-- [ ] Configure `RESEND_API_KEY`, `CONTACT_FROM_EMAIL`, and `CONTACT_TO_EMAIL` when inquiry email notifications are ready; dashboard login does not depend on them.
-- [ ] Verify `sc-domain:tailoredagents.com` in Search Console, enable the Search Console API, and configure the exact production OAuth redirect URI.
-- [ ] Add `GOOGLE_SEARCH_CONSOLE_CLIENT_ID` and `GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET` manually to the existing Render web service.
-- [ ] Run `npm run db:migrate` and verify every expected filename exists once in `schema_migrations`.
+- [ ] For deliberate legacy password-mode recovery only, set `DASHBOARD_ALLOWED_EMAILS` to the exact approved accounts. Production uses Mail approval instead.
+- [ ] For deliberate legacy password-mode recovery only, set a private `DASHBOARD_INITIAL_PASSWORD` of at least 10 characters. Production uses existing Mail passwords.
+- [x] Configured the restricted sending key and inquiry sender/recipients; actual delivery to both team inboxes passed October 21.
+- [x] Confirmed the exact Domain property with owner permission, the working Search Console API, and the exact www callback through live authorization and import on October 21.
+- [x] Installed and validated the Google Web client's settings privately in the existing Render web service.
+- [x] Verified migrations 0001–0007 in the fresh production backup restored October 21.
 - [ ] Confirm the Tailored Agents workspace and production site seed records exist.
 - [ ] Establish and test logical backup, retention, restore, and credential-rotation procedures before relying on stored lead/client records.
 
@@ -104,12 +104,13 @@ Use this checklist for the public website and private dashboard. The mail applic
 - [ ] Verify `/dashboard` and `/sign-in` activity is excluded from public analytics.
 - [ ] Verify 7, 30, 90-day and custom reports, Pacific dates, independent visitor-activity counts, missing-data states, comparisons, detail tables and latest activity.
 - [ ] Confirm analytics events expire after 25 months through `npm run db:retention`.
-- [ ] Keep Search Console and GA4 marked unconnected until real authorization and successful ingestion exist.
+- [x] Search Console now reflects real authorization and ingestion, including checked dates with no activity. GA4 remains outside this release.
 - [ ] Confirm migration `0004_search_console.sql` is recorded once in `schema_migrations`.
 - [ ] Confirm OAuth requests only `webmasters.readonly`, rejects expired/reused state, and selects only the exact verified Tailored Agents property.
-- [ ] Confirm stored Google access and refresh tokens are encrypted and never appear in responses, source, logs, or audit metadata.
-- [ ] Authorize Search Console and verify the initial 90-day finalized-data import, top queries, top pages, click/impression totals, CTR, position, and last-successful-sync state.
-- [ ] Trigger **Refresh Google** twice, verify one pending import, then observe a genuinely scheduled daily refresh with missing-day recovery and no duplicate metrics.
+- [x] Confirmed encrypted Google refresh credentials in the restored production backup; verification emitted only safe aggregates. Tokens are excluded from responses, source, logs and audit metadata.
+- [x] Authorized Search Console and verified the initial 90-day finalized-data import and last-successful-sync state. Google returned no activity; property totals reconcile exactly. Nonzero query/page/CTR/position behavior is covered by controlled tests and awaits real activity for live reconciliation.
+- [x] Jeffrey requested **Refresh Google** twice and closed the browser; one manual job completed ten dates without duplicate records.
+- [ ] Observe the next genuinely scheduled daily refresh with the new covered date and no duplicate metrics.
 - [ ] Disconnect and verify tokens are cleared while retained historical metrics remain available.
 - [ ] Confirm Search Console metrics expire after 18 months, sync runs after 24 months, and OAuth state after 10 minutes.
 
@@ -128,18 +129,18 @@ Local verification and production acceptance are separate. See [release evidence
 - [x] Isolated PostgreSQL tests cover initial history, zero days, pagination, gap recovery, leases, connection changes, OAuth state, authorization, privacy and verified inquiries.
 - [x] Desktop and phone browser checks cover the report, filters, tables, exports, viewer restrictions and disconnect confirmation.
 - [x] Jeffrey authorized merging the release to `main` and removing the feature branch; future development stays on `main`. Preview, shared-form changes and migration details are documented for coordination.
-- [ ] Privately verify/complete database and authentication-secret rotation (Jeffrey answered “Not sure”).
+- [x] Replaced the database credential and authentication secret on October 21; verified the new deployment and retired the original database login. Evidence is in `CONNECTION_ACTIVATION.md`.
 - [x] Jeffrey confirmed live dashboard sign-in with his Mail credentials on October 21. Approve additional teammates through Mail → Manage team as needed.
-- [ ] Confirm a current production backup and restore access before applying the migration.
+- [x] Confirmed provider recovery availability and restored a fresh production logical export in an isolated local container on October 21. Temporary restored data was removed; evidence is in `CONNECTION_ACTIVATION.md`.
 - [x] Align website/authentication/worker settings with www, preserve apex-to-www routing, and verify all 16 canonical pages and the public sign-in page. Mail DNS is unchanged; individual account sign-in remains a separate check.
 - [x] Migration 0005 applied in production; the existing cron is configured for five-minute checks.
 - [x] Deploy migration 0006 and observe the scheduled 12:15 UTC worker check succeed at www on October 21.
 - [ ] Review actual active-runtime charges for the existing five-minute cron.
-- [ ] Authorize the personal Google account Jeffrey selected, confirm the exact Domain property and read-only access.
-- [ ] Reconcile a fixed date range with Google; verify manual refresh twice and processing after closing the browser.
+- [x] Jeffrey authorized Google; verified exact Domain property, owner permission and only read-only access in the restored production connection.
+- [x] Reconciled July 21–October 18 property totals with Google's API (valid zero-activity result); two refresh attempts produced one successful job after browser closure.
 - [ ] Verify a manual worker run and the next genuinely scheduled daily refresh; record worker/data timestamps separately.
 - [x] Verify live website and separate mail-login availability after the www deployment.
-- [ ] Verify one successful live contact submission and its reporting/notification results.
+- [x] Verified one labeled live contact submission, duplicate suppression and one complete alert in each of Jeffrey’s and Austin’s Mail inboxes. Measurement was disabled through Global Privacy Control; attributed live reporting remains a separate check.
 
 
 ## Shared Mail/dashboard sign-in — October 21
@@ -149,7 +150,7 @@ Local verification and production acceptance are separate. See [release evidence
 - [x] Exercise the real staging identity service with a temporary account and the built website.
 - [x] Deploy Mail migration 0036 and website migration 0007, with matching private production service secrets. Website deployment `dep-dbcec30n74is7389b480` went live October 21 at 16:20:55 UTC.
 - [x] Jeffrey confirmed his own live Mail/dashboard sign-in and access on October 21. Austin’s approval remains owner-controlled through Manage team.
-- [ ] Complete the remaining Google authorization/import and production operational checks above.
+- [x] Google authorization and initial/manual imports completed October 21; the remaining daily-refresh and production operational checks are listed above.
 
 
 ## Dashboard readability and workflow checks — October 21
