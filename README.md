@@ -51,6 +51,10 @@ The Blueprint provisions the persistent database. Production dashboard access us
 
 `apps/mail` is a separate Cloudflare Workers application with its own deployment, database, storage, queues, tests, and operational documentation. Pushing the Render website does not deploy the mail application. See [the mail README](apps/mail/README.md) before changing or deploying it.
 
+### Private iPhone companion
+
+`apps/ios` contains an initial sideloadable iPhone companion with Mail and Dashboard tabs, using the existing deployments and accounts. It builds separately with Xcode and is signed/installed through Sideloadly. It requires internet access; push notifications and offline mail are outside this first version. See [the iPhone build, installation, and verification guide](apps/ios/README.md). Physical-device acceptance is separate from the build and simulator checks.
+
 ## Technology
 
 - Next.js 16.4 App Router and Turbopack
@@ -76,6 +80,7 @@ Most marketing routes are statically rendered. Contact, health, authentication, 
 | `docs/PRODUCT_PLAN.md` | Durable product architecture and implementation roadmap. |
 | `docs/LAUNCH_CHECKLIST.md` | Production and release verification checklist. |
 | `apps/mail/` | Independently deployed Tailored Mail Cloudflare application. |
+| `apps/ios/` | Private iPhone companion, Xcode project, Sideloadly packaging, and native checks. |
 
 ## Public pricing
 
