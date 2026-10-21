@@ -86,7 +86,7 @@ From the repository root, `npm run mail:check`, `npm run mail:test` and `npm run
 
 ## Connect staging before production
 
-The staging resources below already exist in the intended Cloudflare account. The owner confirmed the Workers Paid upgrade on October 14, 2026; the connected API cannot independently read billing. Resend's usage API reports an active paid subscription with a 50,000-email monthly allowance. No Resend billing change was made. The staging R2 bucket has public access disabled, migrations 0001–0034 are applied, and the signed Resend webhook is connected. All five Resend DNS records for the test domain are verified. Protected owner setup and the second test account have been exercised remotely, and the staging `SETUP_SECRET` was removed. The following steps are also the reference procedure for a new environment; do not recreate existing resources.
+The staging resources below already exist in the intended Cloudflare account. The owner confirmed the Workers Paid upgrade on October 14, 2026; the connected API cannot independently read billing. Resend's usage API reports an active paid subscription with a 50,000-email monthly allowance. No Resend billing change was made. The staging R2 bucket has public access disabled, migrations 0001–0036 are applied, and the signed Resend webhook is connected. All five Resend DNS records for the test domain are verified. Protected owner setup and the second test account have been exercised remotely, and the staging `SETUP_SECRET` was removed. The following steps are also the reference procedure for a new environment; do not recreate existing resources.
 
 1. Sign in with `npx wrangler login`. Verify the account with `npx wrangler whoami`. Confirm the actual Workers and Resend subscriptions in their dashboards before any billing change. The requested 30-day D1 recovery requires the paid Workers plan; free-plan recovery is shorter.
 2. Use the `staging` resources in `wrangler.jsonc`. Create its D1 database, private R2 bucket, incoming queue, and dead-letter queue in the intended account. For example:
@@ -126,7 +126,7 @@ References: [Resend receiving](https://resend.com/docs/dashboard/receiving/intro
 
 - Address: https://mail.tailoredagents.com
 - Worker: `tailored-mail-production`; scheduled maintenance every five minutes.
-- D1: `tailored-mail-production`, with migrations 0001–0034 applied.
+- D1: `tailored-mail-production`, with migrations 0001–0036 applied.
 - R2: `tailored-mail-production-files`, with public URLs and public custom domains disabled.
 - Queues: `tailored-mail-production-jobs` and `tailored-mail-production-failed`.
 - Resend: `tailoredagents.com`, sending and receiving enabled; all provider DNS records verified.
@@ -228,3 +228,10 @@ Evidence is kept privately in `~/.config/tailored-mail/production-attachment-fix
 - [x] Run all local mail and website checks before the production deployment.
 
 No MFA, CRM, calendars, AI, external-agent access, public account registration or native email-client connections are enabled in this release. Logs use generic operation names and IDs, not message bodies or passwords.
+
+
+## October 21 shared sign-in validation
+
+Mail migration 0036 is applied in staging and production. The production Worker version is `7a543289-1bbb-47b5-8684-5d94e8278256`; staging is `05dd3664-ec9b-4af9-a501-a4e987ea5369`. The production owner is approved, and other teammates require the owner's action in Manage team. A temporary staging account successfully authenticated to the website; it and its sessions were removed afterward. Production Mail remains reachable, and the private identity endpoint rejects missing service credentials and nonexistent grants.
+
+All **382 backend tests**, **10 browser tests**, type/Svelte checks and the production build pass. Browser checks include owner-only dashboard approval, persisted changes on reload, phone layout, and continued inbox access after dashboard approval is removed. Vite was updated to 8.1.6 to address the upstream [development-tool advisories](https://github.com/advisories/GHSA-r825-w8mm-5pxw); the complete dependency audit now reports zero known vulnerabilities. No mail delivery, DNS, billing or queue settings were changed.

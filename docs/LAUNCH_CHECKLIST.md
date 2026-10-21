@@ -147,6 +147,6 @@ Local verification and production acceptance are separate. See [release evidence
 - [x] Implement owner approval, existing-role preservation and separate revocable dashboard grants without copying passwords.
 - [x] Test actual Better Auth cookies against isolated PostgreSQL and Mail reset/disable/revocation behavior against isolated SQLite.
 - [x] Exercise the real staging identity service with a temporary account and the built website.
-- [ ] Deploy Mail migration 0036 and website migration 0007, with matching private production service secrets.
+- [x] Deploy Mail migration 0036 and website migration 0007, with matching private production service secrets. Website deployment `dep-dbcec30n74is7389b480` went live October 21 at 16:20:55 UTC.
 - [ ] Jeffrey verifies his own existing Mail password on the live dashboard; approve Austin through Manage team as needed.
 - [ ] Complete the remaining Google authorization/import and production operational checks above.
