@@ -117,7 +117,7 @@ For a working local dashboard using separate disposable credentials, keep `DASHB
 | `NEXT_PUBLIC_SITE_URL` | Yes | Canonical public origin, normally `https://www.tailoredagents.com`. |
 | `RESEND_API_KEY` | Optional | Server-only Resend API credential used by inquiry notifications. Public inquiries are still stored without it. |
 | `CONTACT_FROM_EMAIL` | For inquiry notifications | Sender on a domain verified by Resend. |
-| `CONTACT_TO_EMAIL` | For inquiry notifications | Authorized business inbox that receives public-inquiry notifications. |
+| `CONTACT_TO_EMAIL` | For inquiry notifications | One authorized business inbox or a comma-separated list of up to 10 team addresses. Duplicate addresses receive only one copy. |
 | `DATABASE_URL` | Dashboard | Server-only PostgreSQL connection string. |
 | `BETTER_AUTH_SECRET` | Dashboard | At least 32 high-entropy characters used by authentication. |
 | `BETTER_AUTH_URL` | Dashboard | Canonical authentication origin, normally `https://www.tailoredagents.com`. |

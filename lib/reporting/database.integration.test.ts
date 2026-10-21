@@ -757,6 +757,35 @@ describe.skipIf(!databaseUrl)(
       ).toBe(1);
       vi.stubEnv("RESEND_API_KEY", "");
     });
+    it("sends one saved inquiry to both configured teammates and does not send again on retry", async () => {
+      vi.stubEnv("RESEND_API_KEY", "fake-key");
+      vi.stubEnv("CONTACT_FROM_EMAIL", "Website <alerts@example.test>");
+      vi.stubEnv("CONTACT_TO_EMAIL", "first@example.test, second@example.test, FIRST@example.test");
+      const send = vi.fn().mockResolvedValue(Response.json({ id: "fake-provider-message" }));
+      vi.stubGlobal("fetch", send);
+      try {
+        const body = { ...inquiry(), startedAt: Date.now() - 5000, to: "visitor-chosen@example.test" };
+        expect((await contact(request("/api/contact", body))).status).toBe(201);
+        expect((await contact(request("/api/contact", body))).status).toBe(200);
+        expect(send).toHaveBeenCalledTimes(1);
+        const [url, options] = send.mock.calls[0];
+        expect(url).toBe("https://api.resend.com/emails");
+        expect(JSON.parse(options.body)).toMatchObject({ to: ["first@example.test", "second@example.test"], reply_to: body.email });
+        expect(options.headers["Idempotency-Key"]).toBe(body.submissionId);
+        expect((await pool.query("SELECT delivery_status FROM leads")).rows).toEqual([{ delivery_status: "sent" }]);
+      } finally { vi.stubEnv("RESEND_API_KEY", ""); }
+    });
+    it("keeps an inquiry stored when the recipient configuration is invalid", async () => {
+      vi.stubEnv("RESEND_API_KEY", "fake-key");
+      vi.stubEnv("CONTACT_FROM_EMAIL", "alerts@example.test");
+      vi.stubEnv("CONTACT_TO_EMAIL", "first@example.test, not-an-email");
+      const send = vi.fn(); vi.stubGlobal("fetch", send);
+      try {
+        expect((await contact(request("/api/contact", { ...inquiry(), startedAt: Date.now() - 5000 }))).status).toBe(201);
+        expect(send).not.toHaveBeenCalled();
+        expect((await pool.query("SELECT delivery_status FROM leads")).rows).toEqual([{ delivery_status: "not_configured" }]);
+      } finally { vi.stubEnv("RESEND_API_KEY", ""); }
+    });
     it("accepts management requests from www and rejects the redirecting apex", async () => {
       await connection();
       vi.stubEnv("BETTER_AUTH_URL", "https://www.tailoredagents.com");

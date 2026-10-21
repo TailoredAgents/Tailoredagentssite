@@ -31,7 +31,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         <div className="dashboard-record-grid">
           <div className="dashboard-record-main">
             <section className="dashboard-panel dashboard-detail-card">
-              <div className="dashboard-panel-heading"><div><span>Inquiry</span><h2>Original context</h2></div><small className={`delivery-${lead.deliveryStatus}`}>Notification {statusLabel(lead.deliveryStatus)}</small></div>
+              <div className="dashboard-panel-heading"><div><span>Inquiry</span><h2>Original context</h2></div><small className={`delivery-${lead.deliveryStatus}`}>{lead.deliveryStatus === "not_configured" ? "Email alerts were not enabled when received" : `Email alert: ${statusLabel(lead.deliveryStatus)}`}</small></div>
               <dl className="dashboard-detail-list">
                 <div><dt><UserRound size={14} />Contact</dt><dd>{lead.name}</dd></div>
                 <div><dt><Mail size={14} />Email</dt><dd><a href={`mailto:${lead.email}`}>{lead.email}</a></dd></div>

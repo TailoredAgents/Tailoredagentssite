@@ -4,6 +4,7 @@ import { BarChart3, CheckCircle2, Database, KeyRound, Mail, ShieldCheck, UsersRo
 import { requireDashboardContext } from "@/lib/dashboard/data";
 import { resolveDashboardConfiguration } from "@/lib/dashboard/config";
 import { getSearchConsoleConnection } from "@/lib/search-console/connection";
+import { getInquiryNotificationConfiguration } from "@/lib/inquiry-notifications";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -12,12 +13,12 @@ export default async function SettingsPage() {
   const mailLogin = resolveDashboardConfiguration().authMode === "mail";
   const google = await getSearchConsoleConnection(context).catch(() => null);
   const googleStatus = !google ? "Unable to check" : !google.configured ? "Setup needed" : google.connection?.status === "active" ? "Connected" : google.connection?.status === "error" ? "Needs attention" : "Not connected";
-  const notificationsConfigured = Boolean(process.env.RESEND_API_KEY?.trim() && process.env.CONTACT_FROM_EMAIL?.trim() && process.env.CONTACT_TO_EMAIL?.trim());
+  const notifications = getInquiryNotificationConfiguration();
   const settings = [
     { icon: KeyRound, label: "Your sign-in", value: mailLogin ? "Shared with Mail" : "Website password", detail: mailLogin ? "Use your email inbox password here. Change it in Mail settings; password resets sign you out of both apps." : "This environment uses a separate website password.", healthy: true },
     { icon: UsersRound, label: "Team access", value: "Approval required", detail: mailLogin ? "The mail owner approves teammates in Mail → Manage team. Dashboard roles control what each person can do." : "Only approved internal team accounts can sign in.", healthy: true },
     { icon: BarChart3, label: "Google Search Console", value: googleStatus, detail: "See how people find your website in Google. Open Analytics to connect, review updates, or fix a connection.", healthy: googleStatus === "Connected" },
-    { icon: Mail, label: "Inquiry notifications", value: notificationsConfigured ? "Configured" : "Not configured", detail: "New inquiries are saved in Leads even if an email notification cannot be sent.", healthy: notificationsConfigured },
+    { icon: Mail, label: "Inquiry notifications", value: notifications ? "Configured" : "Not configured", detail: notifications ? `New inquiry alerts go to ${notifications.to.join(" and ")}. Every inquiry is also saved in Leads.` : "Email alerts need setup. New inquiries are still saved in Leads.", healthy: Boolean(notifications) },
     { icon: BarChart3, label: "Website activity", value: "Enabled", detail: "Visits and inquiry activity are measured when the visitor's privacy settings allow it.", healthy: true },
     { icon: Database, label: "Workspace storage", value: "Available", detail: "Your clients, projects, inquiries, and saved reports are stored here.", healthy: true },
   ];

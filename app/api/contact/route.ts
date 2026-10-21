@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { validateContact } from "@/lib/contact";
+import { getInquiryNotificationConfiguration } from "@/lib/inquiry-notifications";
 import { readMeasurement } from "@/lib/analytics/measurement";
 import { recordPendingInquiryMeasurements } from "@/lib/analytics/verified-inquiries";
 import {
@@ -84,10 +85,8 @@ export async function POST(request: NextRequest) {
     : "Thank you. Your project inquiry has been received.";
   if (stored.duplicate) return response(receivedMessage, 200, { duplicate: true });
 
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.CONTACT_FROM_EMAIL;
-  const to = process.env.CONTACT_TO_EMAIL;
-  if (!apiKey || !from || !to) {
+  const notification = getInquiryNotificationConfiguration();
+  if (!notification) {
     await updateDeliveryStatus(stored.leadId, { status: "not_configured" });
     return response(receivedMessage, 201, { notification: "pending" });
   }
@@ -111,13 +110,13 @@ export async function POST(request: NextRequest) {
     const email = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${notification.apiKey}`,
         "Content-Type": "application/json",
         "Idempotency-Key": data.submissionId,
       },
       body: JSON.stringify({
-        from,
-        to: [to],
+        from: notification.from,
+        to: notification.to,
         reply_to: data.email,
         subject: isReview ? `Free website review — ${data.organization}` : `Project inquiry — ${data.organization}`,
         text,
