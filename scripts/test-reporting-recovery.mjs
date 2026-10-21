@@ -44,8 +44,13 @@ try {
       `INSERT INTO integration_sync_runs(id,workspace_id,integration_id,provider,trigger,status) VALUES('00000000-0000-4000-8000-000000000005',$1,$2,'google_search_console','manual','running')`,
       [workspace, connection],
     );
-    await pool.query(
-      await readFile("db/migrations/0005_reporting_readiness.sql", "utf8"),
+    for (const file of (await readdir("db/migrations"))
+      .filter((file) => file.endsWith(".sql") && file >= "0005")
+      .sort())
+      await pool.query(await readFile("db/migrations/" + file, "utf8"));
+    assert.equal(
+      (await pool.query("SELECT url FROM sites WHERE id=$1", [site])).rows[0].url,
+      "https://www.tailoredagents.com",
     );
     assert.equal(
       (await pool.query("SELECT clicks FROM search_console_metrics")).rows[0]
@@ -93,6 +98,10 @@ try {
     max: 1,
   });
   try {
+    assert.equal(
+      (await restored.query("SELECT url FROM sites WHERE id=$1", [site])).rows[0].url,
+      "https://www.tailoredagents.com",
+    );
     assert.equal(
       (await restored.query("SELECT clicks FROM search_console_metrics"))
         .rows[0].clicks,

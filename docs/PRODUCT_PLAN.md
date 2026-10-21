@@ -434,3 +434,7 @@ Websites and managed SEO remain the primary acquisition offer. Suitable clients 
 ### October 20, 2026 — Reporting readiness release
 
 Jeffrey approved the expanded readiness plan after the audit found a hostname mismatch and fragile imports. This supersedes the earlier activation-only restriction for this workstream. Scope remains internal reports for Tailored Agents; public design, email, CRM expansion, client portals, SEO agents, GA4 and MFA remain separate. The preview uses isolated demonstration data. Production is not declared complete until the documented live acceptance passes.
+
+### October 21, 2026 — website address
+
+Jeffrey chose `https://www.tailoredagents.com` as the canonical website address and requested completion and testing directly on `main`. Keep Render’s existing apex-to-www direction. Align website metadata, login, Google callback and the existing background job with www; retain the Google Domain property `sc-domain:tailoredagents.com` and preserve historical reports and mail configuration. See `SEARCH_CONSOLE_READINESS.md` for verified deployment evidence and remaining Google activation checks.

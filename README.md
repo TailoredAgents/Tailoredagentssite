@@ -113,13 +113,13 @@ For a working local dashboard, provide a PostgreSQL database, set every dashboar
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `NEXT_PUBLIC_SITE_URL` | Yes | Canonical public origin, normally `https://tailoredagents.com`. |
+| `NEXT_PUBLIC_SITE_URL` | Yes | Canonical public origin, normally `https://www.tailoredagents.com`. |
 | `RESEND_API_KEY` | Optional | Server-only Resend API credential used by inquiry notifications. Public inquiries are still stored without it. |
 | `CONTACT_FROM_EMAIL` | For inquiry notifications | Sender on a domain verified by Resend. |
 | `CONTACT_TO_EMAIL` | For inquiry notifications | Authorized business inbox that receives public-inquiry notifications. |
 | `DATABASE_URL` | Dashboard | Server-only PostgreSQL connection string. |
 | `BETTER_AUTH_SECRET` | Dashboard | At least 32 high-entropy characters used by authentication. |
-| `BETTER_AUTH_URL` | Dashboard | Canonical authentication origin, normally `https://tailoredagents.com`. |
+| `BETTER_AUTH_URL` | Dashboard | Canonical authentication origin, normally `https://www.tailoredagents.com`. |
 | `DASHBOARD_ALLOWED_EMAILS` | Dashboard | Comma-separated internal email allowlist. |
 | `DASHBOARD_INITIAL_PASSWORD` | Dashboard | At least 10 characters. Creates the first owner credential on first successful sign-in. |
 | `GOOGLE_SEARCH_CONSOLE_CLIENT_ID` | Search Console | Server-only Google Web application OAuth client ID. |
@@ -175,9 +175,9 @@ The integration requests only `webmasters.readonly`. OAuth state is random, data
 1. In Google Search Console, create and verify the Domain property `sc-domain:tailoredagents.com`. DNS verification is preferred because it covers the apex and `www` hostnames.
 2. In Google Cloud, enable the Google Search Console API and configure the OAuth consent screen for the Google account that owns the property.
 3. Create an OAuth client with application type **Web application**.
-4. Add the exact authorized redirect URI `https://tailoredagents.com/api/integrations/search-console/callback`.
+4. Add the exact authorized redirect URI `https://www.tailoredagents.com/api/integrations/search-console/callback`.
 5. On the existing Render web service, manually add `GOOGLE_SEARCH_CONSOLE_CLIENT_ID` and `GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET`. Render does not add new `sync: false` variables to an existing Blueprint-managed service automatically.
-6. Reuse the existing cron service and private shared secret. Review runtime cost, correct the canonical hostname, and apply the five-minute schedule only after review; see [the release runbook](docs/SEARCH_CONSOLE_READINESS.md).
+6. Reuse the existing five-minute cron and private shared secret. Its URL must be `https://www.tailoredagents.com/api/cron/search-console`; verify successful checks and review actual runtime cost. See [the release runbook](docs/SEARCH_CONSOLE_READINESS.md).
 7. After the credential-rotation check and reviewed deployment, sign in and select **Connect Google** on `/dashboard/analytics`. The callback validates the exact Domain property and saves a 90-day import request. The background worker performs the import even after the browser closes.
 
 The worker checks every five minutes and requests the daily refresh on the first check after **10:17 UTC** (normally 10:20). It imports missing dates and refreshes the latest ten days, one date at a time. Initial history ends three Pacific calendar days ago to use finalized data; Google ordinarily has a 2–3 day delay. Completed zero-activity dates are recorded. Google search-term/page limits are disclosed. **Refresh Google** queues work and repeated clicks reuse the pending job. Disconnecting cancels work and removes tokens while preserving reports.
@@ -216,7 +216,7 @@ To activate the dashboard:
 2. Confirm the database and web service are both in Ohio and `DATABASE_URL` resolves from the database connection string.
 3. Set `DASHBOARD_ALLOWED_EMAILS` to the approved owner email.
 4. Set `DASHBOARD_INITIAL_PASSWORD` to a private password of at least 10 characters.
-5. Confirm Render generated `BETTER_AUTH_SECRET` and set `BETTER_AUTH_URL=https://tailoredagents.com`.
+5. Confirm Render generated `BETTER_AUTH_SECRET` and set `BETTER_AUTH_URL=https://www.tailoredagents.com`.
 6. Redeploy. The build runs migrations before `next build`.
 7. Visit `/sign-in`, use the allowlisted email and initial password, and verify `/dashboard`, activity, settings, sign-out, and denial for a non-allowlisted address. Resend can be configured later for inquiry notifications without affecting dashboard access.
 
@@ -224,7 +224,7 @@ The web process starts with `next start -H 0.0.0.0`; Next.js reads Render's inje
 
 ## Domain and HTTPS
 
-The canonical metadata uses the apex domain. Keep one canonical hostname and redirect the other. Apply only the DNS records Render displays, wait for its managed TLS certificate, and verify HTTPS redirects plus HSTS, CSP, frame, MIME, referrer, and permissions headers.
+The canonical website address is `https://www.tailoredagents.com`, as Jeffrey requested on October 21. Render redirects the apex to www; the application uses the same direction. Set both public and authentication origins to www, and call the worker directly at www. The Google Domain property remains `sc-domain:tailoredagents.com`. Apply only the DNS records Render displays, wait for its managed TLS certificate, and verify HTTPS redirects plus HSTS, CSP, frame, MIME, referrer, and permissions headers.
 
 Do not add another proxy or CDN until certificate, forwarding-header, authentication callback, and redirect behavior have been tested end to end.
 

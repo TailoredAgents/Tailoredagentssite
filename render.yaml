@@ -20,7 +20,7 @@ services:
       - key: NODE_VERSION
         value: 22.18.0
       - key: NEXT_PUBLIC_SITE_URL
-        value: https://tailoredagents.com
+        value: https://www.tailoredagents.com
       - key: RESEND_API_KEY
         sync: false
       - key: CONTACT_FROM_EMAIL
@@ -34,7 +34,7 @@ services:
       - key: BETTER_AUTH_SECRET
         generateValue: true
       - key: BETTER_AUTH_URL
-        value: https://tailoredagents.com
+        value: https://www.tailoredagents.com
       - key: DASHBOARD_ALLOWED_EMAILS
         sync: false
       - key: DASHBOARD_INITIAL_PASSWORD
@@ -60,7 +60,7 @@ services:
       - key: NODE_VERSION
         value: 22.18.0
       - key: SEARCH_CONSOLE_SYNC_URL
-        value: https://tailoredagents.com/api/cron/search-console
+        value: https://www.tailoredagents.com/api/cron/search-console
       - key: SEARCH_CONSOLE_SYNC_SECRET
         fromService:
           name: tailored-agents-web

@@ -6,17 +6,18 @@ describe("Search Console configuration", () => {
     const configuration = resolveSearchConsoleConfiguration({
       GOOGLE_SEARCH_CONSOLE_CLIENT_ID: "client-id",
       GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET: "client-secret",
-      BETTER_AUTH_URL: "https://tailoredagents.com/",
+      BETTER_AUTH_URL: "https://www.tailoredagents.com/",
+      NEXT_PUBLIC_SITE_URL: "https://www.tailoredagents.com",
     });
     expect(configuration.configured).toBe(true);
     expect(configuration.redirectUri).toBe(
-      "https://tailoredagents.com/api/integrations/search-console/callback",
+      "https://www.tailoredagents.com/api/integrations/search-console/callback",
     );
   });
 
   it("reports missing credentials without exposing values", () => {
     const configuration = resolveSearchConsoleConfiguration({
-      NEXT_PUBLIC_SITE_URL: "https://tailoredagents.com",
+      NEXT_PUBLIC_SITE_URL: "https://www.tailoredagents.com",
     });
     expect(configuration.configured).toBe(false);
     expect(configuration.missing).toEqual([
@@ -32,14 +33,14 @@ describe("Search Console configuration", () => {
     expect(
       resolveSearchConsoleConfiguration({
         ...configured,
-        BETTER_AUTH_URL: "https://www.tailoredagents.com",
+        BETTER_AUTH_URL: "https://tailoredagents.com",
       }).configured,
     ).toBe(false);
     expect(
       resolveSearchConsoleConfiguration({
         ...configured,
-        BETTER_AUTH_URL: "https://tailoredagents.com",
-        NEXT_PUBLIC_SITE_URL: "https://www.tailoredagents.com",
+        BETTER_AUTH_URL: "https://www.tailoredagents.com",
+        NEXT_PUBLIC_SITE_URL: "https://tailoredagents.com",
       }).configured,
     ).toBe(false);
     expect(

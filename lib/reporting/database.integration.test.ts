@@ -85,7 +85,7 @@ function fakeGoogle(
 async function connection() {
   return saveSearchConsoleConnection({
     context,
-    targetSite: { id: site, url: "https://tailoredagents.com" },
+    targetSite: { id: site, url: "https://www.tailoredagents.com" },
     tokens: {
       accessToken: "fake-access",
       refreshToken: "fake-refresh",
@@ -192,7 +192,7 @@ describe.skipIf(!databaseUrl)(
         `UPDATE schema_migrations SET applied_at='2025-01-01T00:00:00Z'`,
       );
       await pool.query(
-        `INSERT INTO sites(id,workspace_id,name,url,environment,status) VALUES($1,$2,'Tailored Agents','https://tailoredagents.com','production','active') ON CONFLICT (id) DO NOTHING`,
+        `INSERT INTO sites(id,workspace_id,name,url,environment,status) VALUES($1,$2,'Tailored Agents','https://www.tailoredagents.com','production','active') ON CONFLICT (id) DO NOTHING`,
         [site, workspace],
       );
       session.context = context;
@@ -302,7 +302,7 @@ describe.skipIf(!databaseUrl)(
     it("saves full long URLs, atomically preserves old reports on request failure, and resumes", async () => {
       const saved = await connection();
       await onlyDates(saved.id, [end]);
-      const long = "https://tailoredagents.com/" + "a".repeat(6000);
+      const long = "https://www.tailoredagents.com/" + "a".repeat(6000);
       fakeGoogle((body) =>
         Response.json({
           rows: [
@@ -425,7 +425,7 @@ describe.skipIf(!databaseUrl)(
       ).rows[0];
       const input = {
         context,
-        targetSite: { id: site, url: "https://tailoredagents.com" },
+        targetSite: { id: site, url: "https://www.tailoredagents.com" },
         tokens: {
           accessToken: "other-account",
           expiresIn: 3600,
@@ -444,7 +444,7 @@ describe.skipIf(!databaseUrl)(
           await saveSearchConsoleConnection({
             ...input,
             selectedProperty: {
-              siteUrl: "https://tailoredagents.com/",
+              siteUrl: "https://www.tailoredagents.com/",
               permissionLevel: "siteOwner",
             },
           })
@@ -461,11 +461,11 @@ describe.skipIf(!databaseUrl)(
         selectMatchingProperty(
           [
             {
-              siteUrl: "https://tailoredagents.com/",
+              siteUrl: "https://www.tailoredagents.com/",
               permissionLevel: "siteOwner",
             },
           ],
-          "https://tailoredagents.com",
+          "https://www.tailoredagents.com",
         ),
       ).toBeNull();
     });
@@ -735,6 +735,25 @@ describe.skipIf(!databaseUrl)(
           .rows[0].n,
       ).toBe(1);
       vi.stubEnv("RESEND_API_KEY", "");
+    });
+    it("accepts management requests from www and rejects the redirecting apex", async () => {
+      await connection();
+      vi.stubEnv("BETTER_AUTH_URL", "https://www.tailoredagents.com");
+      vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://www.tailoredagents.com");
+      try {
+        const send = (origin: string) => manual(new NextRequest(
+          "https://www.tailoredagents.com/api/integrations/search-console/sync",
+          { method: "POST", headers: { origin, accept: "application/json" } },
+        ));
+        expect((await send("https://tailoredagents.com")).status).toBe(403);
+        expect((await send("https://www.tailoredagents.com")).status).toBe(202);
+        const status = await getReportingStatus(context);
+        expect(status.configured).toBe(true);
+        expect(status.redirectUri).toBe("https://www.tailoredagents.com/api/integrations/search-console/callback");
+      } finally {
+        vi.stubEnv("BETTER_AUTH_URL", "http://localhost:3000");
+        vi.stubEnv("NEXT_PUBLIC_SITE_URL", "http://localhost:3000");
+      }
     });
     it("reports worker health, protects scheduled requests, and runs daily maintenance", async () => {
       expect(

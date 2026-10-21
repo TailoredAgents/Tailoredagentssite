@@ -44,8 +44,9 @@ export function resolveSearchConsoleConfiguration(
     )
       missing.push("CANONICAL_ORIGIN_MISMATCH");
     if (
-      url.hostname.endsWith("tailoredagents.com") &&
-      baseUrl !== "https://tailoredagents.com"
+      (url.hostname === "tailoredagents.com" ||
+        url.hostname.endsWith(".tailoredagents.com")) &&
+      baseUrl !== "https://www.tailoredagents.com"
     )
       missing.push("CANONICAL_ORIGIN");
   } catch {

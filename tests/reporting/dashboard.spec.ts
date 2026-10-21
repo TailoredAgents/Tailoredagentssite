@@ -125,7 +125,7 @@ test("anonymous requests and viewer management fail closed", async ({
     (await page.request.get("/api/dashboard/reports/export")).status(),
   ).toBe(200);
 });
-test("www remains reachable before the hosting cutover is enabled", async ({
+test("apex redirects to www with the full path and query, while www responds directly", async ({
   request,
 }) => {
   const response = await request.get("/api/health?source=test", {
@@ -134,7 +134,29 @@ test("www remains reachable before the hosting cutover is enabled", async ({
   });
   expect(response.status()).toBe(200);
   expect(response.headers().location).toBeUndefined();
+  const apex = await request.get("/contact?source=report-test", {
+    headers: { host: "tailoredagents.com" },
+    maxRedirects: 0,
+  });
+  expect(apex.status()).toBe(308);
+  expect(apex.headers().location).toBe(
+    "https://www.tailoredagents.com/contact?source=report-test",
+  );
   expect((await request.get("/api/health")).status()).toBe(200);
+});
+test("public canonical links, sitemap and robots use www", async ({ request, page }) => {
+  const sitemap = await (await request.get("/sitemap.xml")).text();
+  const urls = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)].map((match) => match[1]);
+  expect(urls.length).toBeGreaterThan(10);
+  for (const url of urls) {
+    expect(new URL(url).origin).toBe("https://www.tailoredagents.com");
+  }
+  const robots = await (await request.get("/robots.txt")).text();
+  expect(robots).toContain("Sitemap: https://www.tailoredagents.com/sitemap.xml");
+  await page.goto("/contact");
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://www.tailoredagents.com/contact");
+  await page.goto("/");
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://www.tailoredagents.com");
 });
 test("disconnect explains saved reports and can be cancelled", async ({
   page,

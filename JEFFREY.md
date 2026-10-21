@@ -114,19 +114,19 @@ Use these exact values:
 
 | Setting | Value |
 | --- | --- |
-| Website | `https://tailoredagents.com` |
+| Website | `https://www.tailoredagents.com` |
 | Search Console property | `sc-domain:tailoredagents.com` |
 | Google Cloud project name | `Tailored Agents Production` |
 | OAuth audience | `External` |
 | OAuth client type | `Web application` |
 | OAuth client name | `Tailored Agents Website` |
 | OAuth scope | `https://www.googleapis.com/auth/webmasters.readonly` |
-| Authorized redirect URI | `https://tailoredagents.com/api/integrations/search-console/callback` |
+| Authorized redirect URI | `https://www.tailoredagents.com/api/integrations/search-console/callback` |
 | Web service | `tailored-agents-web` |
 | Cron service | `tailored-agents-search-console-sync` |
-| Dashboard analytics | `https://tailoredagents.com/dashboard/analytics` |
+| Dashboard analytics | `https://www.tailoredagents.com/dashboard/analytics` |
 
-The redirect URI must use HTTPS, must not contain `www`, and must not have a trailing slash.
+The redirect URI must use HTTPS, must contain `www`, and must not have a trailing slash. Jeffrey chose www on October 21, 2026; this replaces the earlier apex-only decision. Update the existing Google OAuth client to allow this exact www callback before connecting.
 
 ## Access and security rules
 
@@ -138,7 +138,7 @@ Austin has approved use of his personal Google account for this setup. Do not us
 - Never give a secret value to Codex. Codex can guide the browser interaction without reading the value.
 - Never paste secrets into the repository, an issue, a commit, a screenshot, or the completion report.
 - Verify the outstanding credential-rotation checklist before connecting Google. Jeffrey is not sure whether Austin completed it. The approved readiness plan permits completing outstanding rotation first; coordinate privately and retain recovery material securely. Rotating `BETTER_AUTH_SECRET` after authorization invalidates stored Google credentials and requires reconnecting.
-- The approved readiness plan permits the coordinated apex/www hosting correction. Preserve all mail records and `mail.tailoredagents.com`. Google verification uses the additional TXT record below.
+- Keep the existing Render apex-to-www direction. Jeffrey chose www as the canonical website hostname on October 21. Preserve all mail records and `mail.tailoredagents.com`. Google verification uses the additional TXT record below.
 - Do not create a second web service, database, Blueprint, or duplicate cron service.
 - Resend is unrelated to this task and can remain unconfigured.
 
@@ -209,9 +209,9 @@ Do not enable the Google Indexing API as a substitute. It is a different API and
 4. Complete the initial setup.
 5. Open **Google Auth Platform -> Branding** and provide:
    - App name: `Tailored Agents`
-   - Home page: `https://tailoredagents.com`
-   - Privacy policy: `https://tailoredagents.com/privacy`
-   - Terms of service: `https://tailoredagents.com/terms`
+   - Home page: `https://www.tailoredagents.com`
+   - Privacy policy: `https://www.tailoredagents.com/privacy`
+   - Terms of service: `https://www.tailoredagents.com/terms`
    - Authorized domain: `tailoredagents.com`
    - Developer contact email: Austin's approved personal Google account
 6. An app logo is optional and should be skipped unless an approved Tailored Agents asset is readily available.
@@ -253,7 +253,7 @@ Do not leave this External app in Testing. Because the integration requests offl
 6. Under **Authorized redirect URIs**, add exactly:
 
    ```text
-   https://tailoredagents.com/api/integrations/search-console/callback
+   https://www.tailoredagents.com/api/integrations/search-console/callback
    ```
 
 7. Remove any accidental variation containing `www`, HTTP, a trailing slash, or a different path.
@@ -278,8 +278,8 @@ Do not leave this External app in Testing. Because the integration requests offl
 8. Confirm these non-secret values remain correct:
 
    ```text
-   BETTER_AUTH_URL=https://tailoredagents.com
-   NEXT_PUBLIC_SITE_URL=https://tailoredagents.com
+   BETTER_AUTH_URL=https://www.tailoredagents.com
+   NEXT_PUBLIC_SITE_URL=https://www.tailoredagents.com
    ```
 
 The two Google variables are declared with `sync: false` in `render.yaml`. Render ignores newly added `sync: false` variables during updates to an existing Blueprint, so entering them manually is required.
@@ -297,15 +297,15 @@ The two Google variables are declared with `sync: false` in `render.yaml`. Rende
 9. Confirm the cron configuration uses:
    - Schedule after cost review: `*/5 * * * *`; the first check after 10:17 UTC requests the daily refresh.
    - Command: `npm run search-console:sync`
-   - URL: `https://tailoredagents.com/api/cron/search-console`
+   - URL: `https://www.tailoredagents.com/api/cron/search-console`
 10. Wait for the web service deployment to report **Live**.
 
-The web build runs database migrations. Migrations through `db/migrations/0005_reporting_readiness.sql` must deploy successfully before connecting Google. The application redirect is off by default. Correct Render’s primary hostname, then set `ENABLE_APEX_REDIRECT=true` on the existing web service and rebuild to enable the www-to-apex redirect without a loop. Until then, dashboard login continues to accept the existing www origin; Google activation still requires the apex correction.
+The web build runs database migrations. Migrations through `db/migrations/0006_www_canonical_site.sql` must deploy successfully before connecting Google. The www migration updates only the existing internal website's address, preserving its ID, credentials and reports. Both application and Render routing send apex visitors to www. The old `ENABLE_APEX_REDIRECT` setting is obsolete and ignored. Keep authentication, public metadata, the OAuth callback and the worker URL on www.
 
 ## Task 10: connect Google from the private dashboard
 
-1. Open <https://tailoredagents.com/sign-in> and sign in to the Tailored Agents dashboard.
-2. Open <https://tailoredagents.com/dashboard/analytics>.
+1. Open <https://www.tailoredagents.com/sign-in> and sign in to the Tailored Agents dashboard.
+2. Open <https://www.tailoredagents.com/dashboard/analytics>.
 3. Select **Connect Google**.
 4. Choose the same personal Google account that owns `sc-domain:tailoredagents.com` and the Google Cloud project.
 5. Confirm the consent screen requests read-only Search Console access.
@@ -345,7 +345,7 @@ The initial connection queues 90 days of finalized Search Console history; it co
 ### `redirect_uri_mismatch`
 
 - Open the Web application client in Google Auth Platform.
-- Confirm the redirect URI is exactly `https://tailoredagents.com/api/integrations/search-console/callback`.
+- Confirm the redirect URI is exactly `https://www.tailoredagents.com/api/integrations/search-console/callback`.
 - Remove `www`, HTTP, a trailing slash, or whitespace.
 
 ### Dashboard says setup is unavailable

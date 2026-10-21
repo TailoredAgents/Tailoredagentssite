@@ -28,7 +28,7 @@ Use this checklist for the public website and private dashboard. The mail applic
 - [ ] Confirm Render injects the database's private connection string into `DATABASE_URL`.
 - [ ] Confirm `BETTER_AUTH_SECRET` is generated, private, and at least 32 high-entropy characters.
 - [ ] Rotate the database password and authentication secret previously exposed during setup, then update only Render's secret store.
-- [ ] Set `BETTER_AUTH_URL=https://tailoredagents.com` using the final canonical hostname.
+- [ ] Set `BETTER_AUTH_URL=https://www.tailoredagents.com` using the final canonical hostname.
 - [ ] Set `DASHBOARD_ALLOWED_EMAILS` to the exact approved internal accounts.
 - [ ] Set a private `DASHBOARD_INITIAL_PASSWORD` of at least 10 characters.
 - [ ] Configure `RESEND_API_KEY`, `CONTACT_FROM_EMAIL`, and `CONTACT_TO_EMAIL` when inquiry email notifications are ready; dashboard login does not depend on them.
@@ -131,8 +131,9 @@ Local verification and production acceptance are separate. See [release evidence
 - [ ] Privately verify/complete database and authentication-secret rotation (Jeffrey answered “Not sure”).
 - [ ] Check Jeffrey’s production dashboard account; provision only if missing, using the owner-controlled command.
 - [ ] Confirm a current production backup and restore access before applying the migration.
-- [ ] Correct Render apex/www routing, check Cloudflare for conflicting redirects, then set `ENABLE_APEX_REDIRECT=true` and rebuild. Preserve mail DNS and verify sign-in on apex. Leave the flag off until hosting is corrected.
-- [ ] Apply migration 0005; reuse the existing cron and review actual active-runtime cost before changing cadence.
+- [ ] Align website/authentication/worker settings with the chosen www address, preserve apex-to-www routing, and verify canonical links and sign-in. The obsolete apex redirect flag is ignored. Preserve mail DNS.
+- [x] Migration 0005 applied in production; the existing cron is configured for five-minute checks.
+- [ ] Deploy migration 0006, verify successful worker checks at www, and review actual active-runtime cost.
 - [ ] Authorize Austin’s approved Google account, confirm exact Domain property and read-only access.
 - [ ] Reconcile a fixed date range with Google; verify manual refresh twice and processing after closing the browser.
 - [ ] Verify a manual worker run and the next genuinely scheduled daily refresh; record worker/data timestamps separately.

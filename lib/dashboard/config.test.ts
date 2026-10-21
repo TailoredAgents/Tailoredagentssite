@@ -2,17 +2,12 @@ import { describe, expect, it } from "vitest";
 import { parseAllowedEmails, resolveDashboardConfiguration } from "./config";
 
 describe("dashboard configuration", () => {
-  it("preserves www sign-in during the hosting transition, then trusts only the canonical origin", () => {
+  it("trusts the chosen www origin without trusting the redirecting apex", () => {
     expect(resolveDashboardConfiguration({
-      BETTER_AUTH_URL: "https://tailoredagents.com",
+      BETTER_AUTH_URL: "https://www.tailoredagents.com",
     }).trustedOrigins).toEqual([
-      "https://tailoredagents.com",
       "https://www.tailoredagents.com",
     ]);
-    expect(resolveDashboardConfiguration({
-      BETTER_AUTH_URL: "https://tailoredagents.com",
-      ENABLE_APEX_REDIRECT: "true",
-    }).trustedOrigins).toEqual(["https://tailoredagents.com"]);
   });
 
   it("does not add production origins to local or unrelated deployments", () => {
@@ -32,20 +27,20 @@ describe("dashboard configuration", () => {
     const configuration = resolveDashboardConfiguration({
       DATABASE_URL: "postgresql://example.test/app",
       BETTER_AUTH_SECRET: "x".repeat(32),
-      BETTER_AUTH_URL: "https://tailoredagents.com/",
+      BETTER_AUTH_URL: "https://www.tailoredagents.com/",
       DASHBOARD_ALLOWED_EMAILS: "owner@tailoredagents.com",
       DASHBOARD_INITIAL_PASSWORD: "a-secure-starting-password",
     });
 
     expect(configuration.ready).toBe(true);
-    expect(configuration.baseUrl).toBe("https://tailoredagents.com");
+    expect(configuration.baseUrl).toBe("https://www.tailoredagents.com");
     expect(configuration.missing).toEqual([]);
   });
 
   it("reports incomplete setup without exposing any values", () => {
     const configuration = resolveDashboardConfiguration({
       BETTER_AUTH_SECRET: "too-short",
-      NEXT_PUBLIC_SITE_URL: "https://tailoredagents.com",
+      NEXT_PUBLIC_SITE_URL: "https://www.tailoredagents.com",
     });
 
     expect(configuration.ready).toBe(false);

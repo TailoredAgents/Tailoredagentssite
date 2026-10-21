@@ -539,7 +539,7 @@ export function ReportingDashboard({
           </h1>
           <p>
             Traffic, search visibility, and real inquiries for{" "}
-            <strong>tailoredagents.com</strong>.
+            <strong>www.tailoredagents.com</strong>.
           </p>
         </div>
         <div className="report-actions">

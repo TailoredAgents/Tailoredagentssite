@@ -16,7 +16,7 @@ describe("Google Search Console OAuth helpers", () => {
   it("requests offline, read-only access with a state value", () => {
     const url = new URL(buildAuthorizationUrl({
       clientId: "client-id",
-      redirectUri: "https://tailoredagents.com/api/integrations/search-console/callback",
+      redirectUri: "https://www.tailoredagents.com/api/integrations/search-console/callback",
       state: "secure-state",
     }));
     expect(url.origin).toBe("https://accounts.google.com");
@@ -24,20 +24,21 @@ describe("Google Search Console OAuth helpers", () => {
     expect(url.searchParams.get("prompt")).toBe("consent");
     expect(url.searchParams.get("scope")).toBe("https://www.googleapis.com/auth/webmasters.readonly");
     expect(url.searchParams.get("state")).toBe("secure-state");
+    expect(url.searchParams.get("redirect_uri")).toBe("https://www.tailoredagents.com/api/integrations/search-console/callback");
   });
 
   it("prefers the verified domain property for the production hostname", () => {
     const selected = selectMatchingProperty([
       { siteUrl: "https://www.tailoredagents.com/", permissionLevel: "siteFullUser" },
       { siteUrl: "sc-domain:tailoredagents.com", permissionLevel: "siteOwner" },
-    ], "https://tailoredagents.com");
+    ], "https://www.tailoredagents.com");
     expect(selected?.siteUrl).toBe("sc-domain:tailoredagents.com");
   });
 
   it("rejects unverified matches", () => {
     expect(selectMatchingProperty([
       { siteUrl: "sc-domain:tailoredagents.com", permissionLevel: "siteUnverifiedUser" },
-    ], "https://tailoredagents.com")).toBeNull();
+    ], "https://www.tailoredagents.com")).toBeNull();
   });
 
   it("requests finalized daily query rows with a bounded result set", async () => {

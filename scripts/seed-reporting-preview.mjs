@@ -53,7 +53,7 @@ try {
     'TRUNCATE integration_connections,analytics_events,leads,request_rate_limits,"user" CASCADE',
   );
   await pool.query(
-    `INSERT INTO sites(id,workspace_id,name,url,environment,status) VALUES($1,$2,'Tailored Agents','https://tailoredagents.com','production','active') ON CONFLICT(id) DO NOTHING`,
+    `INSERT INTO sites(id,workspace_id,name,url,environment,status) VALUES($1,$2,'Tailored Agents','https://www.tailoredagents.com','production','active') ON CONFLICT(id) DO NOTHING`,
     [site, workspace],
   );
   const hash = await hashPassword("Reporting-test-password-2026");
@@ -108,9 +108,9 @@ try {
     [
       "page",
       [
-        "https://tailoredagents.com/",
-        "https://tailoredagents.com/services",
-        "https://tailoredagents.com/free-review",
+        "https://www.tailoredagents.com/",
+        "https://www.tailoredagents.com/services",
+        "https://www.tailoredagents.com/free-review",
       ],
     ],
   ]) {

@@ -4,20 +4,28 @@ import nextConfig from "../../next.config";
 afterEach(() => vi.unstubAllEnvs());
 
 describe("canonical hostname deployment", () => {
-  it("does not create a redirect loop with Render's existing apex-to-www routing", async () => {
+  it("uses Render's existing apex-to-www direction without a rollout flag", async () => {
     vi.stubEnv("ENABLE_APEX_REDIRECT", undefined);
-    expect(await nextConfig.redirects!()).toEqual([]);
+    const redirects = await nextConfig.redirects!();
+    expect(redirects).toEqual([
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "tailoredagents.com" }],
+        destination: "https://www.tailoredagents.com/:path*",
+        permanent: true,
+      },
+    ]);
     vi.stubEnv("ENABLE_APEX_REDIRECT", "false");
-    expect(await nextConfig.redirects!()).toEqual([]);
+    expect(await nextConfig.redirects!()).toEqual(redirects);
   });
 
-  it("enables the path-preserving www redirect only after the hosting cutover", async () => {
+  it("ignores the obsolete rollout flag so it cannot reintroduce a www-to-apex loop", async () => {
     vi.stubEnv("ENABLE_APEX_REDIRECT", "true");
     expect(await nextConfig.redirects!()).toEqual([
       {
         source: "/:path*",
-        has: [{ type: "host", value: "www.tailoredagents.com" }],
-        destination: "https://tailoredagents.com/:path*",
+        has: [{ type: "host", value: "tailoredagents.com" }],
+        destination: "https://www.tailoredagents.com/:path*",
         permanent: true,
       },
     ]);
