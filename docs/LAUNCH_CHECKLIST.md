@@ -174,5 +174,6 @@ Active sequence: [agency roadmap](AGENCY_OS_ROADMAP.md). Verification results be
 - [x] Verify published pricing and public pages remain unchanged, with $800 entered only on promotional opportunities.
 - [x] Verify legacy inquiry/client/contact/site/project workflows and internal reporting remain available.
 - [x] Pass 151 code/database tests, 27 browser checks (one intentional phone skip), strict types, lint, build, dependency audit and desktop/phone screenshot inspection. Evidence and local reproduction commands are in the agency roadmap.
-- [ ] Verify deployed migration/commit and owner-approved production sales workflow; record results separately.
+- [x] Verify Render deployment of code commit `18bd092` and the new route's sign-in boundary on www and the Render origin. Deployment `dep-dbcj6h0u01pc73bcqtrg` succeeded October 21 at 21:50:28 UTC. The configured build includes migrations and retention; direct production-data acceptance remains below. Evidence is in the agency roadmap.
+- [ ] Accept the first real production calling-list import, Devon assignment, mockup handoff and client/project conversion using the approved Mail account.
 - [ ] Prepare Mail grants, Twilio registration/number/routing/recording decisions before Release 2; never activate from a mockup alone.

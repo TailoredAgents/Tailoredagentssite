@@ -12,7 +12,7 @@ Public prices remain in `lib/services.ts` and `lib/packages.ts`. The introductor
 
 ## Release 1 — Prospecting and sales foundation
 
-Implemented locally in this release; deployment and production workflow acceptance must be recorded separately.
+Implemented and deployed in this release. Deployment evidence is recorded below; the first owner-accepted production sales workflow remains a separate gate.
 
 - A redesigned internal shell and shared controls with desktop/mobile navigation.
 - `/dashboard/sales`: real PostgreSQL pipeline and table, stage/owner/list/search filters, pagination, separate cold prospects and interested opportunities, and explicitly entered offer values.
@@ -92,6 +92,12 @@ Local verification on October 21, 2026 uses disposable synthetic PostgreSQL 18 d
 - The final browser run passes 27 checks, with one existing desktop-width-only check intentionally skipped on phone. It exercises import -> appointment -> mockup -> won -> existing project on desktop and phone, BatchDialer replay/opt-outs, viewer controls, existing operations/reporting, accessible text and viewport containment. New sales routes pass at 320, 390, 768 and 1440 pixels; the existing dashboard sweep also reaches 1920 pixels. Axe A/AA checks pass for all six sales views at desktop and phone widths.
 - Reviewed synthetic screenshots: [desktop pipeline](previews/agency-sales-pipeline-desktop.png), [desktop active record](previews/agency-sales-record-desktop.png), [phone pipeline](previews/agency-sales-pipeline-phone.png), [phone record](previews/agency-sales-record-phone.png). Preview fixture records are deliberately separate from production.
 - Public marketing routes, package/pricing modules, Mail code and existing provider configuration are unchanged. No real prospects were imported and no customer messages, calls, recordings or paid resources were created.
+
+### Production deployment
+
+Code commit `18bd0925f8e6bfb3df7d06cbbbf69951ad942550` was pushed to `main`. GitHub deployment `7238132426` reports Render success at **5:50 p.m. EDT on October 21** (21:50:28 UTC), deployment `dep-dbcj6h0u01pc73bcqtrg`. See [Render deployment](https://dashboard.render.com/web/srv-db6hod8473hc739q2uo0/deploys/dep-dbcj6h0u01pc73bcqtrg).
+
+The Render build is configured to run the existing ordered migrations and retention command before the production build. The public health/pricing/sign-in endpoints and separate Mail login respond successfully. All four new sales workspace routes redirect anonymous visitors to sign-in; Sales also does so on the Render origin. This verifies deployment and the unauthenticated boundary; it is not an authenticated production import or acceptance using real business records. Sign in with the existing approved Tailored Mail account at [Sales](https://www.tailoredagents.com/dashboard/sales). The first real calling-list import, Devon's assignment, mockup handoff and client conversion remain owner workflow acceptance items. No production Mail inbox, call or customer record was used for local verification.
 
 ### Repeat the local release gate
 
