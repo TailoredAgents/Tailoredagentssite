@@ -48,3 +48,10 @@ To reproduce locally, use the disposable PostgreSQL databases documented in `SEA
 Push the verified commit on `main`; the existing Render service deploys automatically. Verify the exact commit is live, website/health responses, anonymous redirects for protected pages, and Mail availability. Jeffrey confirmed his own shared Mail/dashboard sign-in works before this design update.
 
 There are no migrations in this release. If a display regression appears, redeploy the prior compatible website release through Render. Keep the current database and Mail service intact. Do not reset the database or roll back the shared-sign-in migrations. Record the resulting deployment in this document after verification.
+
+### Live deployment evidence
+
+- Commit `beb1ae78456780b62ac9cbafe9aae905bc4c1889` is live on the existing Render website service. Deployment `dep-dbcf78gu01pc73bn35s0` finished October 21 at 17:18:54 UTC.
+- The deployed dashboard CSS returns 200 and contains the new phone menu, view-only banner and task-list styles.
+- After deployment, website, sign-in and health return 200; all eight dashboard tabs redirect anonymous requests to sign-in with private/no-store responses; report export returns 401. Mail login returns 200. The apex redirect preserves the path and query on www.
+- Authenticated design and record-change checks used the built application with isolated test accounts. Jeffrey’s production data and personal session were not used for automated tests.

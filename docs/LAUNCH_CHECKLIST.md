@@ -158,4 +158,4 @@ Local verification and production acceptance are separate. See [release evidence
 - [x] Replace Overview roadmap placeholders with workspace-scoped inquiries, follow-ups, deadlines and activity.
 - [x] Verify saving records and milestone feedback; disable editing controls for viewers.
 - [x] Pass 74 code/database tests, 19 browser checks, lint, strict types, build and dependency audit. Check all 13 routes at widths from 320px to 1920px.
-- [ ] Verify the new design commit is live on Render; retain deployment evidence in `DASHBOARD_USABILITY.md`.
+- [x] Commit `beb1ae7` is live on Render; deployed styles, protected-route redirects, website health and Mail login verified. Deployment evidence is in `DASHBOARD_USABILITY.md`.
