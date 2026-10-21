@@ -206,6 +206,27 @@ describe.skipIf(!databaseUrl)(
       vi.unstubAllEnvs();
     });
 
+    it("overview shows only open work in the current workspace and due within seven days", async () => {
+      const { getDashboardOverview } = await vi.importActual<typeof import("@/lib/dashboard/data")>("@/lib/dashboard/data");
+      const other = randomUUID(), client = randomUUID();
+      await pool.query("INSERT INTO workspaces(id,name,slug,kind,status) VALUES($1,'Other team',$2,'client','active')", [other, other]);
+      try {
+        for (const [owner, status, days] of [[workspace, "new", -1], [workspace, "qualified", 3], [workspace, "proposal", 15], [workspace, "won", -1], [workspace, "lost", -1], [workspace, "archived", -1], [other, "new", -1]] as const) {
+          await pool.query("INSERT INTO leads(id,workspace_id,name,organization,email,status,next_action_at) VALUES(gen_random_uuid(),$1,'Contact',$2,'contact@example.test',$3,now()+make_interval(days=>$4))", [owner, owner === other ? "Other team's private lead" : status, status, days]);
+        }
+        await pool.query("INSERT INTO clients(id,workspace_id,name) VALUES($1,$2,'Client')", [client, workspace]);
+        for (const [status, days] of [["active", -1], ["planned", 3], ["active", 15], ["completed", -1]] as const) {
+          await pool.query("INSERT INTO projects(id,workspace_id,client_id,name,status,due_at) VALUES(gen_random_uuid(),$1,$2,$3,$4,now()+make_interval(days=>$5))", [workspace, client, `${status} ${days}`, status, days]);
+        }
+        const result = await getDashboardOverview(context);
+        expect(result.counts.leads).toBe(3);
+        expect(result.recentLeads.map(row => row.organization).sort()).toEqual(["new", "proposal", "qualified"]);
+        expect(result.followUps.map(row => row.organization)).toEqual(["new", "qualified"]);
+        expect(result.upcomingProjects.map(row => row.name)).toEqual(["active -1", "planned 3"]);
+        expect(result.counts.projects).toBe(3);
+      } finally { await pool.query("DELETE FROM workspaces WHERE id=$1", [other]); }
+    });
+
     it("queues one initial 90-day job, recent first, even with simultaneous clicks", async () => {
       const saved = await connection();
       const results = await Promise.all(

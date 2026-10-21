@@ -14,6 +14,7 @@ export function OperationForm({
   pendingLabel = "Saving",
   className = "dashboard-operation-form",
   resetOnSuccess = false,
+  disabled = false,
 }: {
   action: (state: OperationActionState, formData: FormData) => Promise<OperationActionState>;
   children: React.ReactNode;
@@ -21,6 +22,7 @@ export function OperationForm({
   pendingLabel?: string;
   className?: string;
   resetOnSuccess?: boolean;
+  disabled?: boolean;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, pending] = useActionState(action, initialOperationActionState);
@@ -30,11 +32,11 @@ export function OperationForm({
   }, [resetOnSuccess, state.status]);
 
   return (
-    <form ref={formRef} action={formAction} className={className}>
-      {children}
+    <form ref={formRef} action={formAction} className={className} aria-label={submitLabel} aria-busy={pending}>
+      <fieldset className="dashboard-operation-fields" disabled={disabled || pending}>{children}</fieldset>
       <div className="dashboard-form-footer">
-        <p className={`dashboard-form-message is-${state.status}`} aria-live="polite">{state.message}</p>
-        <button type="submit" disabled={pending}>
+        <p className={`dashboard-form-message is-${state.status}`} role={state.status === "error" ? "alert" : "status"}>{state.message}</p>
+        <button type="submit" disabled={disabled || pending}>
           {pending ? <LoaderCircle className="signin-spinner" size={15} /> : null}
           {pending ? pendingLabel : submitLabel}
         </button>

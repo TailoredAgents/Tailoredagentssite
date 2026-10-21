@@ -129,7 +129,7 @@ Local verification and production acceptance are separate. See [release evidence
 - [x] Desktop and phone browser checks cover the report, filters, tables, exports, viewer restrictions and disconnect confirmation.
 - [x] Jeffrey authorized merging the release to `main` and removing the feature branch; future development stays on `main`. Preview, shared-form changes and migration details are documented for coordination.
 - [ ] Privately verify/complete database and authentication-secret rotation (Jeffrey answered “Not sure”).
-- [ ] Check Jeffrey’s dashboard sign-in using his existing Mail credentials; approve teammates through Mail → Manage team.
+- [x] Jeffrey confirmed live dashboard sign-in with his Mail credentials on October 21. Approve additional teammates through Mail → Manage team as needed.
 - [ ] Confirm a current production backup and restore access before applying the migration.
 - [x] Align website/authentication/worker settings with www, preserve apex-to-www routing, and verify all 16 canonical pages and the public sign-in page. Mail DNS is unchanged; individual account sign-in remains a separate check.
 - [x] Migration 0005 applied in production; the existing cron is configured for five-minute checks.
@@ -148,5 +148,14 @@ Local verification and production acceptance are separate. See [release evidence
 - [x] Test actual Better Auth cookies against isolated PostgreSQL and Mail reset/disable/revocation behavior against isolated SQLite.
 - [x] Exercise the real staging identity service with a temporary account and the built website.
 - [x] Deploy Mail migration 0036 and website migration 0007, with matching private production service secrets. Website deployment `dep-dbcec30n74is7389b480` went live October 21 at 16:20:55 UTC.
-- [ ] Jeffrey verifies his own existing Mail password on the live dashboard; approve Austin through Manage team as needed.
+- [x] Jeffrey confirmed his own live Mail/dashboard sign-in and access on October 21. Austin’s approval remains owner-controlled through Manage team.
 - [ ] Complete the remaining Google authorization/import and production operational checks above.
+
+
+## Dashboard readability and workflow checks — October 21
+
+- [x] Standardize readable text, contrast, controls and responsive navigation across all eight tabs and five record screens.
+- [x] Replace Overview roadmap placeholders with workspace-scoped inquiries, follow-ups, deadlines and activity.
+- [x] Verify saving records and milestone feedback; disable editing controls for viewers.
+- [x] Pass 74 code/database tests, 19 browser checks, lint, strict types, build and dependency audit. Check all 13 routes at widths from 320px to 1920px.
+- [ ] Verify the new design commit is live on Render; retain deployment evidence in `DASHBOARD_USABILITY.md`.

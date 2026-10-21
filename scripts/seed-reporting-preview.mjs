@@ -50,7 +50,7 @@ try {
     }
   }
   await pool.query(
-    'TRUNCATE integration_connections,analytics_events,leads,request_rate_limits,"user" CASCADE',
+    'TRUNCATE integration_connections,analytics_events,leads,request_rate_limits,"rateLimit","user" CASCADE',
   );
   await pool.query(
     `INSERT INTO sites(id,workspace_id,name,url,environment,status) VALUES($1,$2,'Tailored Agents','https://www.tailoredagents.com','production','active') ON CONFLICT(id) DO NOTHING`,
@@ -165,6 +165,17 @@ try {
     `INSERT INTO integration_sync_runs(id,workspace_id,integration_id,provider,trigger,status,total_days,completed_days,finished_at) VALUES($1,$2,$3,'google_search_console','oauth','succeeded',90,90,now()-interval '20 minutes')`,
     [randomUUID(), workspace, integration],
   );
+  // Synthetic operations records exercise every dashboard detail view. Local DB only.
+  const client = "00000000-0000-4000-8000-000000000311";
+  await pool.query(`INSERT INTO clients(id,workspace_id,name,notes) VALUES($1,$2,'Northstar Heating & Air','Sample client for dashboard usability checks.')`, [client, workspace]);
+  await pool.query(`INSERT INTO contacts(id,workspace_id,client_id,name,email,phone,title,is_primary) VALUES('00000000-0000-4000-8000-000000000312',$1,$2,'Hannah Parker','hannah.parker@northstar-example.test','+1 555 010 4242','Office manager',true)`, [workspace, client]);
+  await pool.query(`INSERT INTO sites(id,workspace_id,client_id,name,url,environment,status) VALUES('00000000-0000-4000-8000-000000000313',$1,$2,'Northstar service website','https://northstar-example.test/our-services/heating-and-air-conditioning','production','active')`, [workspace, client]);
+  await pool.query(`INSERT INTO projects(id,workspace_id,client_id,site_id,owner_user_id,name,summary,status,due_at) VALUES('00000000-0000-4000-8000-000000000314',$1,$2,'00000000-0000-4000-8000-000000000313','preview-owner','Website launch and local search setup','Improve service pages, prepare the new site, and review launch details with the client.','active',now()+interval '3 days')`, [workspace, client]);
+  await pool.query(`INSERT INTO project_milestones(id,project_id,title,status,due_at) VALUES('00000000-0000-4000-8000-000000000315','00000000-0000-4000-8000-000000000314','Review the service-page designs','in_progress',now()+interval '2 days')`);
+  await pool.query(`INSERT INTO project_records(id,project_id,author_user_id,kind,title,body) VALUES('00000000-0000-4000-8000-000000000316','00000000-0000-4000-8000-000000000314','preview-owner','decision','Launch priorities','Start with heating and air conditioning pages. Include clear contact details and a simple inquiry form.')`);
+  await pool.query(`INSERT INTO leads(id,workspace_id,name,organization,email,phone,description,interest,status,owner_user_id,next_action,next_action_at,delivery_status) VALUES('00000000-0000-4000-8000-000000000317',$1,'Morgan Taylor','Summit Home Services','morgan.taylor@summit-home-services-example.test','+1 555 010 6464','We need a clearer website that helps customers find our services and contact our office.','Website and local SEO','qualified','preview-owner','Review the website and arrange a discovery call',now()-interval '1 day','not_configured')`, [workspace]);
+  await pool.query(`INSERT INTO lead_notes(id,workspace_id,lead_id,author_user_id,body) VALUES(gen_random_uuid(),$1,'00000000-0000-4000-8000-000000000317','preview-owner','The owner would like to discuss a fall launch. Confirm the service area on the next call.')`, [workspace]);
+  await pool.query(`INSERT INTO audit_logs(id,workspace_id,actor_user_id,action,target_type,target_id) VALUES(gen_random_uuid(),$1,'preview-owner','project.created','project','00000000-0000-4000-8000-000000000314')`, [workspace]);
   console.log("Local preview seeded with demonstration data only.");
 } finally {
   await pool.end();

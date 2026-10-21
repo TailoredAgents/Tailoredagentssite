@@ -91,9 +91,9 @@ type CountRow = { count: string };
 
 export async function getDashboardOverview(context: DashboardContext) {
   const pool = getDatabasePool();
-  const [leadCount, clientCount, projectCount, siteCount, activityCount, recentActivity] = await Promise.all([
+  const [leadCount, clientCount, projectCount, siteCount, activityCount, recentActivity, recentLeads, followUps, upcomingProjects] = await Promise.all([
     pool.query<CountRow>(
-      "SELECT count(*)::text AS count FROM leads WHERE workspace_id = $1 AND status <> 'archived'",
+      "SELECT count(*)::text AS count FROM leads WHERE workspace_id = $1 AND status NOT IN ('won', 'lost', 'archived')",
       [context.workspace.id],
     ),
     pool.query<CountRow>(
@@ -132,6 +132,15 @@ export async function getDashboardOverview(context: DashboardContext) {
        LIMIT 6`,
       [context.workspace.id],
     ),
+    pool.query<{ id: string; organization: string; name: string; created_at: Date }>(
+      `SELECT id,organization,name,created_at FROM leads WHERE workspace_id=$1 AND status NOT IN ('won','lost','archived') ORDER BY created_at DESC LIMIT 5`, [context.workspace.id],
+    ),
+    pool.query<{ id: string; organization: string; next_action: string | null; next_action_at: Date }>(
+      `SELECT id,organization,next_action,next_action_at FROM leads WHERE workspace_id=$1 AND status NOT IN ('won','lost','archived') AND next_action_at <= now()+interval '7 days' ORDER BY next_action_at ASC LIMIT 5`, [context.workspace.id],
+    ),
+    pool.query<{ id: string; name: string; due_at: Date }>(
+      `SELECT id,name,due_at FROM projects WHERE workspace_id=$1 AND status IN ('planned','active','on_hold') AND due_at <= now()+interval '7 days' ORDER BY due_at ASC LIMIT 5`, [context.workspace.id],
+    ),
   ]);
 
   return {
@@ -149,6 +158,9 @@ export async function getDashboardOverview(context: DashboardContext) {
       actorName: row.actor_name || "System",
       createdAt: row.created_at.toISOString(),
     })),
+    recentLeads: recentLeads.rows.map(row => ({ id: row.id, organization: row.organization, name: row.name, createdAt: row.created_at.toISOString() })),
+    followUps: followUps.rows.map(row => ({ id: row.id, organization: row.organization, nextAction: row.next_action || "Follow up", dueAt: row.next_action_at.toISOString() })),
+    upcomingProjects: upcomingProjects.rows.map(row => ({ id: row.id, name: row.name, dueAt: row.due_at.toISOString() })),
   };
 }
 

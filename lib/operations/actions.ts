@@ -571,32 +571,37 @@ export async function addMilestoneAction(
   }
 }
 
-export async function updateMilestoneStatusAction(formData: FormData) {
+export async function updateMilestoneStatusAction(_previous: OperationActionState, formData: FormData): Promise<OperationActionState> {
   const context = await mutationContext();
-  if (!context) return;
+  if (!context) return denied();
   const parsed = milestoneStatusSchema.safeParse(formValues(formData, ["projectId", "milestoneId", "status"]));
-  if (!parsed.success) return;
+  if (!parsed.success) return validationState(parsed.error);
   const input = parsed.data;
-  await withTransaction(async (client) => {
-    const result = await client.query(
-      `UPDATE project_milestones milestone
-       SET status = $1, completed_at = CASE WHEN $1 = 'completed' THEN now() ELSE NULL END, updated_at = now()
-       FROM projects project
-       WHERE milestone.id = $2 AND milestone.project_id = project.id
-         AND project.id = $3 AND project.workspace_id = $4`,
-      [input.status, input.milestoneId, input.projectId, context.workspace.id],
-    );
-    if (!result.rowCount) return;
-    await insertAuditLog(client, {
-      workspaceId: context.workspace.id,
-      actorUserId: context.user.id,
-      action: "project.milestone_updated",
-      targetType: "project_milestone",
-      targetId: input.milestoneId,
-      metadata: { projectId: input.projectId, status: input.status },
+  try {
+    const changed = await withTransaction(async (client) => {
+      const result = await client.query(
+        `UPDATE project_milestones milestone
+         SET status = $1, completed_at = CASE WHEN $1 = 'completed' THEN now() ELSE NULL END, updated_at = now()
+         FROM projects project
+         WHERE milestone.id = $2 AND milestone.project_id = project.id
+           AND project.id = $3 AND project.workspace_id = $4`,
+        [input.status, input.milestoneId, input.projectId, context.workspace.id],
+      );
+      if (!result.rowCount) return false;
+      await insertAuditLog(client, {
+        workspaceId: context.workspace.id,
+        actorUserId: context.user.id,
+        action: "project.milestone_updated",
+        targetType: "project_milestone",
+        targetId: input.milestoneId,
+        metadata: { projectId: input.projectId, status: input.status },
+      });
+      return true;
     });
-  });
-  revalidatePath(`/dashboard/projects/${input.projectId}`);
+    if (!changed) return missing();
+    revalidatePath(`/dashboard/projects/${input.projectId}`);
+    return success("Milestone updated.");
+  } catch { return genericFailure; }
 }
 
 export async function addProjectRecordAction(

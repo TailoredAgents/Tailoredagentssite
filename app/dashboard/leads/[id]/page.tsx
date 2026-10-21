@@ -44,7 +44,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
 
             <section className="dashboard-panel">
               <div className="dashboard-panel-heading"><div><span>History</span><h2>Internal notes</h2></div></div>
-              <OperationForm action={addLeadNoteAction} submitLabel="Add note" resetOnSuccess>
+              <OperationForm disabled={!mutable} action={addLeadNoteAction} submitLabel="Add note" resetOnSuccess>
                 <fieldset disabled={!mutable} className="dashboard-form-grid">
                   <input type="hidden" name="leadId" value={lead.id} />
                   <label className="dashboard-field dashboard-field-full"><span>New note</span><textarea name="body" required minLength={2} maxLength={4000} placeholder="Call outcome, qualification context, or follow-up details" /></label>
@@ -59,7 +59,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           <aside className="dashboard-record-aside">
             <section className="dashboard-panel">
               <div className="dashboard-panel-heading"><div><span>Pipeline</span><h2>Lead management</h2></div></div>
-              <OperationForm action={updateLeadAction} submitLabel="Save lead">
+              <OperationForm disabled={!mutable} action={updateLeadAction} submitLabel="Save lead">
                 <fieldset disabled={!mutable} className="dashboard-form-grid">
                   <input type="hidden" name="leadId" value={lead.id} />
                   <label className="dashboard-field"><span>Status</span><select name="status" defaultValue={lead.status}>{leadStatuses.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}</select></label>
@@ -76,7 +76,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
             ) : (
               <section className="dashboard-panel">
                 <div className="dashboard-panel-heading"><div><span>Conversion</span><h2>Create the operating records</h2></div></div>
-                <OperationForm action={convertLeadAction} submitLabel="Convert lead" pendingLabel="Converting">
+                <OperationForm disabled={!mutable} action={convertLeadAction} submitLabel="Convert lead" pendingLabel="Converting">
                   <fieldset disabled={!mutable} className="dashboard-form-grid">
                     <input type="hidden" name="leadId" value={lead.id} />
                     <label className="dashboard-field dashboard-field-full"><span>Client name</span><input name="clientName" defaultValue={lead.organization} required minLength={2} maxLength={160} /></label>

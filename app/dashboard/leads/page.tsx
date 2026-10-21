@@ -23,12 +23,12 @@ export default async function LeadsPage({
       <div className="dashboard-content">
         <section className="dashboard-page-heading dashboard-page-heading-compact">
           <div><span>Inquiry pipeline</span><h1>Leads</h1><p>Every accepted website inquiry is retained here whether or not notification email is configured.</p></div>
-          <a className="dashboard-secondary-button" href="/dashboard/leads/export"><Download size={15} />Export CSV</a>
+          <a className="dashboard-secondary-button" href="/dashboard/leads/export"><Download size={15} />Export all leads</a>
         </section>
 
         <form className="dashboard-filter-bar" method="get">
-          <label><Search size={15} /><input name="q" defaultValue={leads.q} placeholder="Search name, company, or email" /></label>
-          <label><Filter size={15} /><select name="status" defaultValue={leads.status}><option value="all">All statuses</option>{leadStatuses.map((status) => <option value={status} key={status}>{statusLabel(status)}</option>)}</select></label>
+          <label><Search size={15} /><input type="search" aria-label="Search leads" name="q" defaultValue={leads.q} placeholder="Search name, company, or email" /></label>
+          <label><Filter size={15} /><select aria-label="Filter leads by status" name="status" defaultValue={leads.status}><option value="all">All statuses</option>{leadStatuses.map((status) => <option value={status} key={status}>{statusLabel(status)}</option>)}</select></label>
           <button type="submit">Apply filters</button>
           {(leads.q || leads.status !== "all") ? <Link href="/dashboard/leads">Clear</Link> : null}
         </form>
@@ -39,11 +39,11 @@ export default async function LeadsPage({
             <div className="dashboard-data-head"><span>Lead</span><span>Interest</span><span>Status</span><span>Owner / next action</span><span>Received</span></div>
             {leads.items.length ? leads.items.map((lead) => (
               <Link className="dashboard-data-row" href={`/dashboard/leads/${lead.id}`} key={lead.id}>
-                <span><strong>{lead.organization}</strong><small>{lead.name} · {lead.email}</small></span>
-                <span><strong>{lead.inquiryType === "website-review" ? "Website review" : lead.interest || "Project inquiry"}</strong><small className={`delivery-${lead.deliveryStatus}`}>Notification: {statusLabel(lead.deliveryStatus)}</small></span>
-                <span><em className={`dashboard-status status-${lead.status}`}>{statusLabel(lead.status)}</em></span>
-                <span><strong>{lead.ownerName || "Unassigned"}</strong><small>{lead.nextAction || "No next action"}{lead.nextActionAt ? ` · ${formatOperationalDate(lead.nextActionAt, { dateOnly: true })}` : ""}</small></span>
-                <time dateTime={lead.createdAt}>{formatOperationalDate(lead.createdAt)}</time>
+                <span data-label="Lead"><strong>{lead.organization}</strong><small>{lead.name} · {lead.email}</small></span>
+                <span data-label="Interest"><strong>{lead.inquiryType === "website-review" ? "Website review" : lead.interest || "Project inquiry"}</strong><small className={`delivery-${lead.deliveryStatus}`}>Notification: {statusLabel(lead.deliveryStatus)}</small></span>
+                <span data-label="Status"><em className={`dashboard-status status-${lead.status}`}>{statusLabel(lead.status)}</em></span>
+                <span data-label="Owner / next action"><strong>{lead.ownerName || "Unassigned"}</strong><small>{lead.nextAction || "No next action"}{lead.nextActionAt ? ` · ${formatOperationalDate(lead.nextActionAt, { dateOnly: true })}` : ""}</small></span>
+                <time data-label="Received" dateTime={lead.createdAt}>{formatOperationalDate(lead.createdAt)}</time>
               </Link>
             )) : <div className="dashboard-empty"><UsersRound size={21} /><strong>No leads match this view</strong><p>New website inquiries will appear here immediately, even before email delivery is connected.</p></div>}
           </div>

@@ -31,6 +31,7 @@ Phases 1 and 2 are implemented, and the first Phase 3 measurement release is act
 - Initial site, lead, and append-only audit tables.
 - Server-only authorization and narrow dashboard data-transfer objects.
 - Protected dashboard routes for operations, activity, settings, and real website analytics.
+- Readable desktop and phone layouts across every dashboard tab, with an overview of open inquiries, due follow-ups and project deadlines. See [dashboard usability and verification](docs/DASHBOARD_USABILITY.md).
 - Lead search, qualification, ownership, notes, next actions, conversion, and safe CSV export.
 - Client, contact, site, and project workspaces with milestones, deliverables, decisions, and notes.
 - Shared database-backed inquiry controls, delivery status, retention metadata, and audited mutations.

@@ -2,18 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRef, useState } from "react";
 import {
   Activity,
   BarChart3,
   Building2,
-  ChevronDown,
   Gauge,
   Globe2,
   FolderKanban,
   LogOut,
-  Search,
+  Menu,
+  X,
+  Mail,
   Settings,
-  Sparkles,
   UsersRound,
 } from "lucide-react";
 import { dashboardAuthClient } from "@/lib/dashboard/auth-client";
@@ -26,7 +27,6 @@ const navigation = [
   { label: "Projects", href: "/dashboard/projects", icon: FolderKanban },
   { label: "Sites", href: "/dashboard/sites", icon: Globe2 },
   { label: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
-  { label: "SEO workspace", icon: Search, phase: "Phase 5" },
 ] as const;
 
 const supportNavigation = [
@@ -36,6 +36,10 @@ const supportNavigation = [
 
 export function DashboardNavigation({ context }: { context: DashboardContext }) {
   const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
   const initials = context.user.name
     .split(/\s+/)
     .filter(Boolean)
@@ -44,8 +48,16 @@ export function DashboardNavigation({ context }: { context: DashboardContext }) 
     .join("") || "TA";
 
   async function signOut() {
-    await dashboardAuthClient.signOut();
-    window.location.assign("/sign-in");
+    setSigningOut(true);
+    setSignOutError(false);
+    try {
+      const result = await dashboardAuthClient.signOut();
+      if (result.error) throw new Error("Sign-out unavailable");
+      window.location.assign("/sign-in");
+    } catch {
+      setSignOutError(true);
+      setSigningOut(false);
+    }
   }
 
   function isCurrent(href: string) {
@@ -53,39 +65,33 @@ export function DashboardNavigation({ context }: { context: DashboardContext }) 
   }
 
   return (
-    <aside className="dashboard-sidebar">
+    <aside className="dashboard-sidebar" onKeyDown={(event) => {
+      if (event.key === "Escape" && menuOpen) { setMenuOpen(false); menuButton.current?.focus(); }
+    }}>
       <div className="dashboard-sidebar-brand">
         <Link href="/" className="dashboard-brand" aria-label="Tailored Agents website">
           <span className="brand-mark" aria-hidden="true" />
           <span>TAILORED AGENTS</span>
         </Link>
-        <span className="dashboard-environment">Internal</span>
+        <button ref={menuButton} type="button" className="dashboard-menu-toggle" aria-expanded={menuOpen} aria-controls="dashboard-navigation" onClick={() => setMenuOpen(!menuOpen)}>
+          {menuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />} {menuOpen ? "Close menu" : "Menu"}
+        </button>
       </div>
 
       <div className="dashboard-workspace">
         <span>Workspace</span>
-        <button type="button" aria-label={`${context.workspace.name} workspace selected`}>
+        <div className="dashboard-workspace-current">
           <i>TA</i>
           <strong>{context.workspace.name}</strong>
-          <ChevronDown size={14} aria-hidden="true" />
-        </button>
+        </div>
       </div>
 
-      <nav className="dashboard-nav" aria-label="Dashboard navigation">
+      <nav id="dashboard-navigation" className={`dashboard-nav ${menuOpen ? "is-open" : ""}`} aria-label="Dashboard navigation">
         <span className="dashboard-nav-label">Workspace</span>
         {navigation.map((item) => {
           const Icon = item.icon;
-          if (!("href" in item)) {
-            return (
-              <span className="dashboard-nav-item is-planned" key={item.label} aria-disabled="true">
-                <Icon size={17} aria-hidden="true" />
-                <span>{item.label}</span>
-                <small>{item.phase}</small>
-              </span>
-            );
-          }
           return (
-            <Link className={`dashboard-nav-item ${isCurrent(item.href) ? "is-current" : ""}`} href={item.href} key={item.label}>
+            <Link className={`dashboard-nav-item ${isCurrent(item.href) ? "is-current" : ""}`} aria-current={isCurrent(item.href) ? "page" : undefined} onClick={() => setMenuOpen(false)} href={item.href} key={item.label}>
               <Icon size={17} aria-hidden="true" />
               <span>{item.label}</span>
             </Link>
@@ -95,7 +101,7 @@ export function DashboardNavigation({ context }: { context: DashboardContext }) 
         {supportNavigation.map((item) => {
           const Icon = item.icon;
           return (
-            <Link className={`dashboard-nav-item ${isCurrent(item.href) ? "is-current" : ""}`} href={item.href} key={item.label}>
+            <Link className={`dashboard-nav-item ${isCurrent(item.href) ? "is-current" : ""}`} aria-current={isCurrent(item.href) ? "page" : undefined} onClick={() => setMenuOpen(false)} href={item.href} key={item.label}>
               <Icon size={17} aria-hidden="true" />
               <span>{item.label}</span>
             </Link>
@@ -103,16 +109,13 @@ export function DashboardNavigation({ context }: { context: DashboardContext }) 
         })}
       </nav>
 
-      <div className="dashboard-agent-note">
-        <Sparkles size={16} aria-hidden="true" />
-        <span><strong>SEO agent comes later</strong><small>Data and operating workflows first.</small></span>
-      </div>
-
+      <a className="dashboard-mail-link" href="https://mail.tailoredagents.com" target="_blank" rel="noreferrer"><Mail size={18} aria-hidden="true" />Open email<span className="sr-only"> (new tab)</span></a>
       <div className="dashboard-user">
         <span className="dashboard-avatar">{initials}</span>
         <span className="dashboard-user-copy"><strong>{context.user.name}</strong><small>{context.role}</small></span>
-        <button type="button" onClick={signOut} aria-label="Sign out"><LogOut size={16} /></button>
+        <button type="button" onClick={signOut} disabled={signingOut} aria-label={signingOut ? "Signing out" : "Sign out"} title="Sign out"><LogOut size={20} /></button>
       </div>
+      {signOutError ? <p className="dashboard-form-message is-error" role="alert">Could not sign out. Please try again.</p> : null}
     </aside>
   );
 }

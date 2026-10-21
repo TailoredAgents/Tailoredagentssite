@@ -17,7 +17,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="dashboard-shell">
       <DashboardNavigation context={context} />
-      <div className="dashboard-main">{children}</div>
+      <div className="dashboard-main">
+        {context.role === "viewer" ? <p className="dashboard-readonly" role="status">You have view-only access. You can read reports and records. Ask an owner or administrator if you need to make changes.</p> : null}
+        {children}
+      </div>
     </div>
   );
 }

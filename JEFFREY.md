@@ -23,6 +23,8 @@ When information is uncertain, investigate the repository and authoritative prim
 
 ## Assignment
 
+October 21 dashboard update: Jeffrey confirmed live sign-in with his Mail credentials and requested a complete internal-dashboard readability pass. The release covers all tabs and record views, accessible desktop/phone layouts, accurate connection descriptions, view-only controls, save feedback and an actionable overview. See `docs/DASHBOARD_USABILITY.md` for tests, screenshots and deployment evidence. Google authorization and import verification remain separate unfinished work; this release does not advance the client portal or SEO-agent roadmap.
+
 Own the remaining technical roadmap for Tailored Agents while Austin works on public website design and marketing presentation. Begin by completing the production Google Search Console connection. Then close the Phase 2 and Phase 3 production gates before proceeding sequentially through the client Growth Hub, the human-operated SEO workspace, and the bounded SEO agent.
 
 October 20 update: Jeffrey approved a bounded Search Console readiness and reporting upgrade after the audit identified hostname and import failures. The existing integration is extended in this release. Jeffrey subsequently directed that all completed work be merged into `main`, the feature branch removed, and future development stay on `main`. This explicitly supersedes the earlier activation-only restriction. See `docs/SEARCH_CONSOLE_READINESS.md` for implementation evidence, the preview, deployment order and remaining live gates. Other roadmap workstreams remain outside this release.

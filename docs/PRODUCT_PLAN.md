@@ -1,6 +1,6 @@
 # Tailored Agents product plan
 
-Last updated: October 18, 2026
+Last updated: October 21, 2026
 
 This document is the durable product and implementation plan for the Tailored Agents website, internal dashboard, future client Growth Hub, analytics platform, SEO workspace, and eventual SEO agent. It records the intended sequence, boundaries, data model, security posture, and completion criteria so future work does not drift from the business goals.
 
@@ -51,6 +51,8 @@ The immediate goal is not to launch a broad autonomous-agent platform. It is to 
 - First-party page, acquisition, intent, form, and conversion events with an internal analytics dashboard.
 - A Blueprint-managed persistent PostgreSQL database and private internal operations dashboard.
 - Lead qualification and conversion plus client, contact, site, project, milestone, and project-record workflows.
+- Shared Mail/dashboard credentials for owner-approved teammates; Jeffrey confirmed live sign-in on October 21.
+- Readable, responsive internal dashboard screens and a daily-work overview showing open inquiries, follow-ups and project deadlines. Release evidence is in `DASHBOARD_USABILITY.md`.
 - A separate Tailored Mail application under `apps/mail`, deployed independently to Cloudflare Workers.
 - Conceptual Growth Hub and analytics visuals that are explicitly presented as illustrative.
 

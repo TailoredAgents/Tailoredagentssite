@@ -642,37 +642,6 @@
   white-space: nowrap;
   border: 0;
 }
-/* Only this reporting route adjusts shared navigation readability. */
-.dashboard-shell:has(.reporting) .dashboard-nav-item {
-  font-size: 14px;
-  min-height: 44px;
-  color: #4e6079;
-}
-.dashboard-shell:has(.reporting) .dashboard-nav-item.is-current {
-  color: #2459cf;
-}
-.dashboard-shell:has(.reporting) .dashboard-brand {
-  font-size: 14px;
-  letter-spacing: 0;
-}
-.dashboard-shell:has(.reporting) .dashboard-workspace button strong,
-.dashboard-shell:has(.reporting) .dashboard-user-copy strong {
-  font-size: 14px;
-}
-.dashboard-shell:has(.reporting) .dashboard-environment,
-.dashboard-shell:has(.reporting) .dashboard-nav-label,
-.dashboard-shell:has(.reporting) .dashboard-workspace > span,
-.dashboard-shell:has(.reporting) .dashboard-nav-item small,
-.dashboard-shell:has(.reporting) .dashboard-user-copy small {
-  font-size: 14px;
-  color: #546780;
-}
-.dashboard-shell:has(.reporting) .dashboard-agent-note {
-  display: none;
-}
-.dashboard-shell:has(.reporting) .dashboard-user {
-  margin-top: auto;
-}
 @media (max-width: 1200px) {
   .report-heading {
     flex-direction: column;
