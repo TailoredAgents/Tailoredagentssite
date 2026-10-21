@@ -126,12 +126,12 @@ Status: implemented and activated for the internal owner account.
 Deliverables:
 
 - PostgreSQL connection layer and versioned, repeatable migrations.
-- Email-and-password authentication for explicitly allowlisted internal email addresses.
+- Shared Tailored Mail email-and-password authentication for owner-approved internal team members; legacy local password mode remains for isolated previews.
 - Secure, HTTP-only database sessions.
 - Tailored Agents internal workspace bootstrap.
 - Workspace membership and role model.
 - Initial site, lead, and append-only audit tables.
-- Server-only data-access layer that verifies authentication, allowlist status, membership, and role.
+- Server-only data-access layer that verifies authentication, current Mail approval (or legacy allowlist), membership, and role.
 - Protected `/dashboard` shell with real database-backed overview and activity data.
 - Clear unavailable/setup state when infrastructure has not been configured.
 - Render and environment documentation that does not commit secrets or silently create a paid resource.
@@ -139,8 +139,8 @@ Deliverables:
 Exit criteria:
 
 - Public routes build and run with or without dashboard configuration.
-- An allowlisted team member can request a single-use link, sign in, reach `/dashboard`, and sign out.
-- A non-allowlisted identity cannot create an authorized dashboard account.
+- An approved team member can sign in with their Mail password, reach `/dashboard`, and sign out.
+- An unapproved or disabled identity cannot create an authorized dashboard account.
 - Direct dashboard access without a valid session redirects to sign-in.
 - The authenticated user has an active membership in the Tailored Agents workspace.
 - Data queries return only the fields needed by the interface.
@@ -317,10 +317,10 @@ The first migration creates the identity, tenancy, initial lead/site, and audit 
 
 ## Security and privacy baseline
 
-- Authentication is invitation/allowlist based; there is no public account registration.
-- Passwords are hashed by Better Auth, public registration is unavailable, and identity remains restricted to allowlisted addresses.
+- Authentication is owner-approved; there is no public account registration.
+- In production mail mode, Mail verifies its existing scrypt password hashes through a private authenticated connection. Website sessions store a separate encrypted identity grant, never a password copy. Legacy password mode uses Better Auth hashes only for its separately provisioned credentials.
 - Sessions are stored in PostgreSQL and delivered through secure HTTP-only cookies.
-- Dashboard access is denied unless the current email is still allowlisted and the user has an active workspace membership.
+- Dashboard access rechecks the live Mail grant and active workspace membership on every protected request. Password resets, disabled accounts and removed dashboard approval revoke grants; an identity-service outage fails closed. In legacy mode the allowlist is rechecked.
 - Authorization must be repeated in every protected data-access function and mutation.
 - The browser never receives database URLs, Resend keys, auth secrets, provider tokens, or full database rows.
 - First-party analytics uses a session-scoped random identifier, honors DNT/GPC, and does not persist raw IP addresses, user-agent strings, form contents, or full referrer URLs with events.
@@ -356,8 +356,10 @@ Dashboard foundation:
 - `DATABASE_URL`: server-only PostgreSQL connection string.
 - `BETTER_AUTH_SECRET`: at least 32 high-entropy characters.
 - `BETTER_AUTH_URL`: canonical application origin.
-- `DASHBOARD_ALLOWED_EMAILS`: comma-separated internal email allowlist.
-- `DASHBOARD_INITIAL_PASSWORD`: private password of at least 10 characters used to create the first owner credential.
+- `DASHBOARD_AUTH_MODE`: `mail` in production; `password` for isolated previews or deliberate legacy recovery.
+- `MAIL_AUTH_URL` / `MAIL_AUTH_SECRET`: trusted Mail identity endpoint and matching private Worker `DASHBOARD_AUTH_SECRET`.
+- `DASHBOARD_ALLOWED_EMAILS`: internal allowlist, required only in password mode.
+- `DASHBOARD_INITIAL_PASSWORD`: initial owner credential, required only in password mode.
 
 Search Console:
 
@@ -438,3 +440,8 @@ Jeffrey approved the expanded readiness plan after the audit found a hostname mi
 ### October 21, 2026 — website address
 
 Jeffrey chose `https://www.tailoredagents.com` as the canonical website address and requested completion and testing directly on `main`. Keep Render’s existing apex-to-www direction. Align website metadata, login, Google callback and the existing background job with www; retain the Google Domain property `sc-domain:tailoredagents.com` and preserve historical reports and mail configuration. Deployed on October 21; all 16 public canonical pages and the next five-minute scheduled idle worker check passed. Local checks include 63 automated tests, 10 browser tests and a database restoration drill. Actual Google authorization/import, individual account access, production credential/backup verification and a live inquiry remain open. See `SEARCH_CONSOLE_READINESS.md` for evidence and remaining checks.
+
+
+### October 21, 2026 — Share Mail credentials with the dashboard
+
+Jeffrey requested the same sign-in credentials for both apps. Mail remains the password authority, with owner-controlled dashboard approval and separate website roles. Additive Mail migration 0036 and website migration 0007 store approval and revocable identity grants. Existing roles, reports and Google credentials are preserved. The website checks grants on each protected request, and password resets/account disabling revoke access. Each site keeps its own cookie; this release does not provide automatic cross-site sign-in or MFA. Google setup is now being completed by Jeffrey with his selected personal account. Real Google authorization, imports and the next daily refresh remain required.

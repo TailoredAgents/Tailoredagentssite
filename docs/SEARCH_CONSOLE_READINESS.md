@@ -29,7 +29,7 @@ Confirm private operational evidence of credential rotation and tested backups b
 
 Use the existing web service, database and cron service. Review actual runtime cost before changing the cron cadence. No additional paid resource is part of this release. Preserve the separate mail application and its DNS records.
 
-October 21 choice: canonical https://www.tailoredagents.com (replaces the original apex choice), full internal reporting redesign, initial 90 days of Google history, live connection and verification included. Dashboard access for Jeffrey still needs checking. Austin's approved personal Google account remains the designated Google owner.
+October 21 choice: canonical https://www.tailoredagents.com (replaces the original apex choice), full internal reporting redesign, initial 90 days of Google history, live connection and verification included. Dashboard access for Jeffrey still needs checking. Jeffrey subsequently chose to complete Google setup himself with his selected personal Google account.
 
 ## What is implemented in this release
 
@@ -86,9 +86,9 @@ Verified locally on October 21:
 
 Public form markup and appearance are unchanged. `components/contact-form.tsx` and `components/website-review-form.tsx` retain submission IDs on retries and send optional measurement context. The event tracker no longer sends browser-claimed success. `app/api/contact/route.ts` records optional attribution after saving an inquiry. These changes need Austin's coordination because the files are shared.
 
-`next.config.ts` sends apex requests to www while preserving paths and queries, matching Render's existing direction. `ENABLE_APEX_REDIRECT` is obsolete and ignored. Authentication trusts the configured www origin; Google management requests use the same origin. The sitemap, canonical metadata and reporting worker use www. Migration 0006 updates the existing site's URL without rewriting historical Google page addresses or credentials. Membership lookup no longer silently recreates a removed membership. The separate `apps/mail` application and its dependencies are unchanged.
+`next.config.ts` sends apex requests to www while preserving paths and queries, matching Render's existing direction. `ENABLE_APEX_REDIRECT` is obsolete and ignored. Authentication trusts the configured www origin; Google management requests use the same origin. The sitemap, canonical metadata and reporting worker use www. Migration 0006 updates the existing site's URL without rewriting historical Google page addresses or credentials. Membership lookup no longer silently recreates a removed membership. The reporting release left Mail unchanged. Jeffrey subsequently requested shared sign-in; the separate changes and deployment order are recorded below.
 
-## Owner-controlled website account provisioning
+## Legacy website account provisioning (password mode only)
 
 Use the Render web service's private shell with its existing secret environment. These commands are for an authorized operator. Do not run them through a public endpoint, open PostgreSQL to the internet, pass passwords as command arguments, or paste secrets into chat.
 
@@ -98,7 +98,7 @@ npm run dashboard:provision -- --check --email jeffrey@tailoredagents.com
 npm run dashboard:provision -- --email jeffrey@tailoredagents.com --name Jeffrey --role admin
 ```
 
-The address must already be in `DASHBOARD_ALLOWED_EMAILS`. The command requires an existing active owner, prompts privately for a new password, uses the installed Better Auth password hashing, creates an individual credential/membership and an audit record. It refuses to overwrite an existing account or assign the owner role. `--password-stdin` is reserved for a secure operator pipeline. The website account is separate from the mail account. Verify the new person's own sign-in and report access before proceeding.
+The address must already be in `DASHBOARD_ALLOWED_EMAILS`. The command requires an existing active owner, prompts privately for a new password, uses the installed Better Auth password hashing, creates an individual credential/membership and an audit record. It refuses to overwrite an existing account or assign the owner role. `--password-stdin` is reserved for a secure operator pipeline. This command applies only to the legacy password mode. In production mail mode, approve the person through Mail → Manage team instead; their website identity is linked on first sign-in. Verify their own sign-in and report access before proceeding.
 
 ## Production deployment order and cost review
 
@@ -115,7 +115,7 @@ The address must already be in `DASHBOARD_ALLOWED_EMAILS`. The command requires 
 
 ## Google connection and live acceptance — still pending
 
-Jeffrey confirmed that he and Austin **can arrange** use of Austin's approved personal Google account. Enter credentials only on Google/Render pages. Follow the account/project/API/External-audience instructions in `JEFFREY.md`; the app must be **In production**, because Testing-mode offline authorization normally expires after seven days. Request only `webmasters.readonly` and use the exact callback:
+Jeffrey has taken over setup using his selected personal Google account. He reported ownership verification and publishing completion; the Web client JSON was validated and its client settings installed directly into Render without displaying secret values. Confirm **Audience → In production** separately from branding publication before authorization. Enter credentials only on Google/Render pages. Follow the account/project/API/External-audience instructions in `JEFFREY.md`; the app must be **In production**, because Testing-mode offline authorization normally expires after seven days. Request only `webmasters.readonly` and use the exact callback:
 
 `https://www.tailoredagents.com/api/integrations/search-console/callback`
 
@@ -156,11 +156,30 @@ Jeffrey chose www, replacing the earlier apex-only plan. Commit `78cc5fd` is dep
 
 ### Remaining live acceptance
 
-1. Verify Jeffrey and Austin can each sign in with their own approved dashboard account and see the expected reports and controls. Use the existing private provisioning command only if an approved account is missing.
+1. Verify Jeffrey and Austin can each sign in with their own approved dashboard account and see the expected reports and controls. Use Mail → Manage team to approve a teammate; in mail mode, website accounts are linked or created on first sign-in.
 2. Confirm the previously flagged database password and website authentication secret were rotated, and confirm current production backups and private restore access. The local restore drill passed; the production connector cannot inspect the private database. Do not open its network allowlist for this task.
-3. In the existing Google OAuth client, allow exactly `https://www.tailoredagents.com/api/integrations/search-console/callback`. Verify the Search Console API, the exact Domain property, the approved Google owner and read-only permission; then authorize from the dashboard. The app's callback code is updated, but Google's account settings were not accessible to verify or change. Google requires the return address to match its registered callback. [Google OAuth documentation](https://developers.google.com/identity/protocols/oauth2/web-server).
+3. In the existing Google OAuth client, allow exactly `https://www.tailoredagents.com/api/integrations/search-console/callback`. Verify the Search Console API, the exact Domain property, the approved Google owner and read-only permission; then authorize from the dashboard. The exact callback was verified in the downloaded Google Web client and its settings installed in Render on October 21. The real user authorization and import remain pending. Google requires the return address to match its registered callback. [Google OAuth documentation](https://developers.google.com/identity/protocols/oauth2/web-server).
 4. Import the actual 90 days; compare a fixed range with Google's report; refresh twice; close the browser while processing; verify recovery and the next scheduled daily data refresh. A successful idle worker check is separate evidence from these Google-data checks.
 5. Submit a clearly identified real inquiry and verify one saved inquiry, correct reporting/attribution, privacy behavior and notification delivery. Local controlled tests cover these behaviors; no live notification was sent during this rollout.
 6. Review actual active-runtime charges for the existing five-minute cron. Its schedule and plan were already in place before this change. The observed run elapsed about 23 seconds including startup and shutdown; one run is not a monthly billing estimate.
 
 For rollback, use a compatible application build that keeps www as the canonical origin and understands migration 0005. Keep both migrations and stored reports. Do not reenable the old www-to-apex redirect or restore an apex worker URL. Pause the existing job if operational recovery requires it, then repeat the live checks after restoring service.
+
+
+## October 21 shared Mail sign-in
+
+Jeffrey requested the same email address and password for Mail and the dashboard. Production uses `DASHBOARD_AUTH_MODE=mail`; a mailbox alone does not grant dashboard access. The mail owner is approved automatically, and can allow/remove other teammates through **Mail → Manage team**. Existing workspace roles are preserved; new teammates receive `member`, and a new owner identity receives `admin`. Removed/suspended memberships remain blocked.
+
+The website validates the existing mail password over an authenticated, fixed HTTPS endpoint. A separate dashboard grant is encrypted in PostgreSQL and checked on each protected request. It cannot open an inbox. Password changes/resets, disabled accounts, removed approval and sign-out revoke access; temporary passwords must be changed in Mail first. Mail outages deny protected access with no fallback to an old website password. The two sites keep separate browser cookies: matching credentials do not mean automatic cross-site sign-in.
+
+Deployment order:
+
+1. Apply additive Mail migration `0036_dashboard_login.sql`; it approves only existing mail owners.
+2. Install a fresh private `DASHBOARD_AUTH_SECRET` in the production Mail Worker and deploy Mail. Staging must use a different secret and database.
+3. Deploy the website code, applying PostgreSQL migration `0007_mail_dashboard_login.sql`. This adds identity/session mappings without altering existing accounts, passwords, roles, reports or Google credentials.
+4. Merge `DASHBOARD_AUTH_MODE=mail`, the exact production `MAIL_AUTH_URL`, and the matching `MAIL_AUTH_SECRET` into the existing Render web environment. An environment update triggers a deployment. Do not replace unrelated environment variables. Cron needs none of these new values.
+5. Verify public availability, private endpoint denial without its secret, blocked public registration/legacy login, and the owner's real sign-in. No DNS, billing, delivery, inbox storage or cron schedule changes are required.
+
+Local checks use a second isolated PostgreSQL database named exactly `ta_mail_login_test`. Add `TEST_MAIL_AUTH_DATABASE_URL=postgresql://ta_test@127.0.0.1:55432/ta_mail_login_test` to the website test command to run the real Better Auth cookie, role, revocation and privacy tests. The mail suite checks password resets racing sign-in, disabled accounts, grant expiry, separate inbox sessions, request bounds and attempt limits. A temporary staging account also exercised the real Cloudflare identity endpoint from the built website in desktop and phone browsers. No production password or inbox content was needed. The temporary staging account is removed after validation.
+
+Rollback: retain both additive migrations and all stored data. A prior Mail version is compatible with the added columns/tables but cannot serve dashboard grants; pause shared sign-in or restore the matching Mail version first. To deliberately restore legacy website login, an authorized operator must set `DASHBOARD_AUTH_MODE=password` and verify the approved allowlist and existing separate website credentials. Existing Mail-only users have no copied legacy password. Never enable public signup, copy Mail password hashes into PostgreSQL, or silently fall back when Mail is unavailable. Restoring a database can revive old sessions: revoke restored Mail sessions and website sessions before reopening access. Preserve encrypted connection recovery material; rotating `BETTER_AUTH_SECRET` requires users to sign in again and Google to reconnect.

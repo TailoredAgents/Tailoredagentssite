@@ -2,6 +2,27 @@ import {test,expect,type Page} from '@playwright/test';
 async function signIn(page:Page,email='local-owner@tailoredagents.com'){
  await page.goto('/login');await page.getByLabel('Email address').fill(email);await page.getByLabel('Password',{exact:true}).fill('Local browser test password');await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page).toHaveURL(/\/inbox/);
 }
+test('only the owner can approve dashboard access and removing it leaves the inbox available',async({page,browser})=>{
+ await signIn(page);
+ const otherContext=await browser.newContext(),other=await otherContext.newPage();
+ await signIn(other,'local-teammate@tailoredagents.com');
+ const {users}=await (await page.request.get('/api/admin/users')).json();
+ const teammate=users.find((user:any)=>user.email==='local-teammate@tailoredagents.com');
+ const url='/api/admin/users/'+teammate.id,headers={Origin:'http://localhost:8787'};
+ expect((await other.request.patch(url,{headers,data:{dashboardAccess:true}})).status()).toBe(403);
+ expect((await page.request.patch(url,{headers,data:{dashboardAccess:false}})).status()).toBe(200);
+ await page.goto('/admin');
+ const row=page.locator('.ta-team-row').filter({hasText:teammate.email});
+ await row.getByRole('button',{name:'Allow dashboard access',exact:true}).click();
+ await expect(row.getByText('Website dashboard: Approved',{exact:true})).toBeVisible();
+ await page.reload();await expect(row.getByText('Website dashboard: Approved',{exact:true})).toBeVisible();
+ await page.setViewportSize({width:390,height:844});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
+ await row.getByRole('button',{name:'Remove dashboard access',exact:true}).click();
+ await expect(row.getByText('Website dashboard: Not approved',{exact:true})).toBeVisible();
+ expect((await other.request.get('/api/mail')).status()).toBe(200);
+ await otherContext.close();
+});
 test('private messages, drafts, attachments, search and owner screens reject another account',async({page,browser})=>{
  await signIn(page);const origin='http://localhost:8787';
  const draft=await page.request.post('/api/drafts',{headers:{Origin:origin},data:{id:'browser-private-draft',to:'friend@example.net',subject:'Private test draft',text:'private-needle',attachments:[{filename:'private.txt',type:'text/plain',content:'cHJpdmF0ZQ=='}]}});expect(draft.status()).toBe(200);

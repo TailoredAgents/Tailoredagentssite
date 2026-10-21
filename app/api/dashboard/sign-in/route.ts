@@ -5,6 +5,7 @@ import {
   resolveDashboardConfiguration,
 } from "@/lib/dashboard/config";
 import { getDatabasePool } from "@/lib/dashboard/db";
+import { readSmallJson } from "@/lib/dashboard/mail-identity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,10 +38,19 @@ export async function POST(request: Request) {
   if (!configuration.ready || !auth) {
     return response("Dashboard authentication is not configured.", 503);
   }
+  if (request.headers.get("origin") !== configuration.baseUrl) return response("Please sign in from this website.", 403);
+  if (configuration.authMode === "mail") {
+    try {
+      const body = await readSmallJson(request.body, 4096);
+      return auth.handler(new Request(new URL("/api/auth/sign-in/team", configuration.baseUrl), {
+        method: "POST", headers: request.headers, body: JSON.stringify(body),
+      }));
+    } catch { return response("Unable to sign in. Please try again.", 400); }
+  }
 
   let credentials: z.infer<typeof credentialsSchema>;
   try {
-    const result = credentialsSchema.safeParse(await request.json());
+    const result = credentialsSchema.safeParse(await readSmallJson(request.body, 4096));
     if (!result.success) return response("Invalid email or password.", 401);
     credentials = {
       email: result.data.email.trim().toLowerCase(),

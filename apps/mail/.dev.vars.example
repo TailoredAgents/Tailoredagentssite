@@ -1,3 +1,6 @@
 RESEND_API_KEY=
 RESEND_WEBHOOK_SECRET=
 SETUP_SECRET=
+# Private website identity connection. Use a different secret in each environment.
+# The matching website setting is MAIL_AUTH_SECRET. Never expose it to a browser.
+DASHBOARD_AUTH_SECRET=

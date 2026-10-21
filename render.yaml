@@ -35,6 +35,14 @@ services:
         generateValue: true
       - key: BETTER_AUTH_URL
         value: https://www.tailoredagents.com
+      # Configure mail mode only after deploying Mail migration 0036 and its
+      # DASHBOARD_AUTH_SECRET. Website migration 0007 is applied by the build.
+      - key: DASHBOARD_AUTH_MODE
+        sync: false
+      - key: MAIL_AUTH_URL
+        value: https://mail.tailoredagents.com/api/dashboard-auth
+      - key: MAIL_AUTH_SECRET
+        sync: false
       - key: DASHBOARD_ALLOWED_EMAILS
         sync: false
       - key: DASHBOARD_INITIAL_PASSWORD

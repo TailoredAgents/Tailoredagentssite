@@ -2,6 +2,7 @@ import "server-only";
 import { betterAuth } from "better-auth";
 import { getDatabasePool, provisionInternalMembership } from "./db";
 import { isAllowedDashboardEmail, resolveDashboardConfiguration } from "./config";
+import { mailAuthPlugin } from "./mail-auth-plugin";
 
 function createDashboardAuth() {
   const configuration = resolveDashboardConfiguration();
@@ -14,6 +15,7 @@ function createDashboardAuth() {
     baseURL: configuration.baseUrl,
     secret: configuration.authSecret,
     database: getDatabasePool(),
+    plugins: [mailAuthPlugin()],
     trustedOrigins: configuration.trustedOrigins,
     session: {
       expiresIn: 60 * 60 * 24 * 14,
@@ -26,7 +28,7 @@ function createDashboardAuth() {
       max: 20,
     },
     emailAndPassword: {
-      enabled: true,
+      enabled: configuration.authMode === "password",
       minPasswordLength: 10,
       maxPasswordLength: 128,
     },

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getDashboardAuth } from "./auth";
 import { isAllowedDashboardEmail, resolveDashboardConfiguration } from "./config";
 import { getDatabasePool } from "./db";
+import { verifyMailDashboardSession } from "./mail-identity";
 
 export type DashboardRole = "owner" | "admin" | "member" | "viewer";
 
@@ -54,7 +55,10 @@ export const getOptionalDashboardContext = cache(async (): Promise<DashboardCont
   if (!auth) return null;
 
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user?.id || !isAllowedDashboardEmail(session.user.email)) return null;
+  if (!session?.user?.id) return null;
+  if (resolveDashboardConfiguration().authMode === "mail") {
+    if (!await verifyMailDashboardSession(session.session.id, session.user.id, session.user.email)) return null;
+  } else if (!isAllowedDashboardEmail(session.user.email)) return null;
 
   const row = await findActiveMembership(session.user.id);
   if (!row) return null;

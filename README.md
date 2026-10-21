@@ -25,7 +25,7 @@ Operational today:
 Phases 1 and 2 are implemented, and the first Phase 3 measurement release is active in the application source:
 
 - Versioned PostgreSQL migrations.
-- Allowlisted email-and-password authentication with hashed credentials.
+- Shared Tailored Mail email-and-password sign-in for owner-approved teammates; passwords remain in the mail service.
 - Database-backed sessions and shared authentication rate limiting.
 - Workspace membership and owner/admin/member/viewer roles.
 - Initial site, lead, and append-only audit tables.
@@ -35,10 +35,10 @@ Phases 1 and 2 are implemented, and the first Phase 3 measurement release is act
 - Client, contact, site, and project workspaces with milestones, deliverables, decisions, and notes.
 - Shared database-backed inquiry controls, delivery status, retention metadata, and audited mutations.
 - Internal website reporting with visits, stored inquiries, separate visitor activities, trends, and freshness indicators.
-- Read-only Google Search Console OAuth, encrypted credentials, resumable daily imports, coverage records, and reporting; the readiness upgrade is awaiting production review and activation.
+- Read-only Google Search Console OAuth, encrypted credentials, resumable daily imports, coverage records, and reporting; the readiness upgrade is deployed, with real Google authorization and import verification still pending.
 - Safe setup behavior: the marketing site remains operational when dashboard infrastructure is absent.
 
-The Blueprint provisions the persistent database. Private dashboard access requires the internal email allowlist and an initial dashboard password; Resend is optional and affects inquiry notifications only. Search Console code is implemented but remains disconnected until production OAuth credentials and a verified property are authorized. GA4, client accounts, SEO tooling, the SEO agent, and a generally available standardized-agent catalog are not implemented yet; the public agent prices describe a limited founding-client rollout rather than universal availability.
+The Blueprint provisions the persistent database. Production dashboard access uses the existing Mail account and password, with approval controlled by the mail owner. Resend is optional for website inquiry notifications. Google client settings have been installed, but Search Console remains disconnected until the verified owner authorizes access from the dashboard. GA4, client accounts, SEO tooling, the SEO agent, and a generally available standardized-agent catalog are not implemented yet; the public agent prices describe a limited founding-client rollout rather than universal availability.
 
 ### Tailored Mail
 
@@ -107,7 +107,7 @@ npm run dev
 
 Open `http://localhost:3000`. Public pages render without dashboard credentials. Inquiry capture requires `DATABASE_URL`; notification email is optional. The team sign-in page reports incomplete setup until its full authentication contract is configured.
 
-For a working local dashboard, provide a PostgreSQL database, set every dashboard variable below, run `npm run db:migrate`, and start the application. The first allowlisted identity to sign in with `DASHBOARD_INITIAL_PASSWORD` becomes the Tailored Agents workspace owner. Public registration remains disabled.
+For a working local dashboard using separate disposable credentials, keep `DASHBOARD_AUTH_MODE=password`, provide PostgreSQL and the legacy dashboard variables below, run `npm run db:migrate`, and start the application. The first allowlisted identity to sign in with `DASHBOARD_INITIAL_PASSWORD` becomes the Tailored Agents workspace owner. Public registration remains disabled.
 
 ## Environment variables
 
@@ -120,8 +120,11 @@ For a working local dashboard, provide a PostgreSQL database, set every dashboar
 | `DATABASE_URL` | Dashboard | Server-only PostgreSQL connection string. |
 | `BETTER_AUTH_SECRET` | Dashboard | At least 32 high-entropy characters used by authentication. |
 | `BETTER_AUTH_URL` | Dashboard | Canonical authentication origin, normally `https://www.tailoredagents.com`. |
-| `DASHBOARD_ALLOWED_EMAILS` | Dashboard | Comma-separated internal email allowlist. |
-| `DASHBOARD_INITIAL_PASSWORD` | Dashboard | At least 10 characters. Creates the first owner credential on first successful sign-in. |
+| `DASHBOARD_AUTH_MODE` | Dashboard | `mail` in production; `password` (default) for legacy/local preview accounts. |
+| `MAIL_AUTH_URL` | Mail mode | Exact private identity endpoint, `https://mail.tailoredagents.com/api/dashboard-auth`. |
+| `MAIL_AUTH_SECRET` | Mail mode | Random secret of at least 32 characters, matching Mail’s `DASHBOARD_AUTH_SECRET`. |
+| `DASHBOARD_ALLOWED_EMAILS` | Password mode only | Comma-separated internal email allowlist. |
+| `DASHBOARD_INITIAL_PASSWORD` | Password mode only | At least 10 characters. Creates the first owner credential on first successful sign-in. |
 | `GOOGLE_SEARCH_CONSOLE_CLIENT_ID` | Search Console | Server-only Google Web application OAuth client ID. |
 | `GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET` | Search Console | Server-only Google OAuth client secret. |
 | `SEARCH_CONSOLE_SYNC_SECRET` | Scheduled sync | At least 32 high-entropy characters; generated by the Render Blueprint and shared only with the cron trigger. |
@@ -144,11 +147,14 @@ Do not use an expiring free database for real business data. Render's free Postg
 ## Authentication and authorization
 
 - There is no public registration.
-- Only addresses in `DASHBOARD_ALLOWED_EMAILS` pass identity validation.
-- The first owner password is configured privately in Render and stored as a one-way hash in PostgreSQL by Better Auth.
+- In production mail mode, use the same primary email address and password as Tailored Mail. The owner approves dashboard access in Mail → Manage team. Temporary passwords must be changed in Mail first.
+- Mail verifies its existing scrypt password hash through a private authenticated server connection. The website stores no new password copy. Dashboard grants cannot open an inbox.
+- Existing workspace roles are preserved. Newly approved teammates receive member access; the mail owner receives admin access if no membership exists. Suspended or removed memberships are not restored by login.
+- Password changes, resets, account disabling and removal of dashboard approval revoke dashboard access. Each protected request checks the active Mail grant and membership; a Mail outage fails closed.
+- Legacy password mode remains available for isolated local previews and deliberate operator recovery. It uses the internal allowlist and Better Auth password hashes; it is never an automatic fallback.
 - Authentication rate limits use PostgreSQL so they work across web instances.
 - Sessions last up to 14 days and are stored in PostgreSQL.
-- Dashboard data access rechecks the active allowlist and workspace membership.
+- Mail and website use separate secure cookies. You sign in to each website with the same credentials; this is not automatic cross-site sign-in. Signing out of the dashboard leaves the inbox signed in.
 - Protected reads and future mutations must authorize at the data layer; hiding interface elements is never sufficient.
 - The public demo planned for a later phase must use a separate read-only implementation and sanitized data.
 

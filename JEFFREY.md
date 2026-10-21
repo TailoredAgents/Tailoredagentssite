@@ -97,7 +97,7 @@ Stop after every numbered workstream, update the product plan and launch checkli
 This task is complete only when all of the following are true:
 
 - The Domain property `sc-domain:tailoredagents.com` is verified in Google Search Console.
-- A dedicated Google Cloud project named `Tailored Agents Production` exists under Austin's approved personal Google account.
+- A dedicated Google Cloud project named `Tailored Agents Production` exists under the personal Google account Jeffrey selected for this setup.
 - The Google Search Console API is enabled in that project.
 - Google Auth is configured for an External audience and requests only the Search Console read-only scope.
 - A Web application OAuth client has the exact production callback URI.
@@ -130,10 +130,10 @@ The redirect URI must use HTTPS, must contain `www`, and must not have a trailin
 
 ## Access and security rules
 
-Austin has approved use of his personal Google account for this setup. Do not use an account owned by his other business.
+October 21 update: Jeffrey is completing setup himself using his selected personal Google account. This replaces the earlier Austin-only assignment. Use the same verified owner for Search Console and the Google Cloud project; do not switch to an unrelated account.
 
-- Do not ask Austin to send a Google, DNS, Render, or dashboard password through chat.
-- Austin should enter account credentials and two-factor codes himself, or provide access through an approved signed-in session.
+- Do not ask anyone to send a Google, DNS, Render, or dashboard password through chat.
+- Jeffrey should enter account credentials and two-factor codes himself, or provide access through an approved signed-in session.
 - Ensure two-factor authentication is enabled on the personal Google account.
 - Never give a secret value to Codex. Codex can guide the browser interaction without reading the value.
 - Never paste secrets into the repository, an issue, a commit, a screenshot, or the completion report.
@@ -148,7 +148,7 @@ Austin has approved use of his personal Google account for this setup. Do not us
 2. Confirm commit `d779eb1` or a newer commit is present.
 3. Confirm the worktree is clean.
 4. Arrange authorized access to:
-   - Austin's personal Google account.
+   - Jeffrey's selected personal Google account.
    - The DNS manager for `tailoredagents.com`.
    - The Tailored Agents Render workspace.
    - The private Tailored Agents dashboard.
@@ -156,7 +156,7 @@ Austin has approved use of his personal Google account for this setup. Do not us
 
 ## Task 1: verify the Search Console Domain property
 
-1. Sign in to <https://search.google.com/search-console/> with Austin's approved personal Google account.
+1. Sign in to <https://search.google.com/search-console/> with the personal Google account Jeffrey selected for this setup.
 2. Open the property selector in the upper-left.
 3. If `sc-domain:tailoredagents.com` already exists, open it and confirm the account is an owner. Do not create a duplicate.
 4. Otherwise, select **+ Add property**.
@@ -173,7 +173,7 @@ Austin has approved use of his personal Google account for this setup. Do not us
 11. If verification fails, wait for DNS propagation and retry. Do not add multiple copies of the same record.
 12. After verification, leave the TXT record in DNS permanently.
 
-Expected result: the selected property is displayed as `sc-domain:tailoredagents.com`, and Austin's approved personal Google account is an owner.
+Expected result: the selected property is displayed as `sc-domain:tailoredagents.com`, and the personal Google account Jeffrey selected for this setup is an owner.
 
 ## Task 2: create or select the production Google Cloud project
 
@@ -203,9 +203,9 @@ Do not enable the Google Indexing API as a substitute. It is a different API and
 2. If the platform displays **Get Started**, select it.
 3. Configure the initial fields:
    - App name: `Tailored Agents`
-   - User support email: Austin's approved personal Google account, unless Google accepts an authorized Tailored Agents support address
+   - User support email: the personal Google account Jeffrey selected for this setup, unless Google accepts an authorized Tailored Agents support address
    - Audience: `External`
-   - Developer contact email: Austin's approved personal Google account
+   - Developer contact email: the personal Google account Jeffrey selected for this setup
 4. Complete the initial setup.
 5. Open **Google Auth Platform -> Branding** and provide:
    - App name: `Tailored Agents`
@@ -213,7 +213,7 @@ Do not enable the Google Indexing API as a substitute. It is a different API and
    - Privacy policy: `https://www.tailoredagents.com/privacy`
    - Terms of service: `https://www.tailoredagents.com/terms`
    - Authorized domain: `tailoredagents.com`
-   - Developer contact email: Austin's approved personal Google account
+   - Developer contact email: the personal Google account Jeffrey selected for this setup
 6. An app logo is optional and should be skipped unless an approved Tailored Agents asset is readily available.
 7. Save the Branding configuration.
 
@@ -233,7 +233,7 @@ Do not enable the Google Indexing API as a substitute. It is a different API and
 ## Task 6: configure the audience
 
 1. Open **Google Auth Platform -> Audience**.
-2. While the app is in Testing, add Austin's same personal Google account under **Test users**.
+2. While the app is in Testing, add the same personal Google account Jeffrey selected under **Test users**.
 3. Save the change.
 4. After the OAuth client in Task 7 is configured, return here and select **Publish App** or **Move to Production**.
 5. Confirm the status reads **In production**.
@@ -256,7 +256,7 @@ Do not leave this External app in Testing. Because the integration requests offl
    https://www.tailoredagents.com/api/integrations/search-console/callback
    ```
 
-7. Remove any accidental variation containing `www`, HTTP, a trailing slash, or a different path.
+7. Remove any accidental variation missing `www`, using HTTP, adding a trailing slash, or using a different path.
 8. Create or save the client.
 9. Securely transfer the displayed client ID and client secret directly into Render in Task 8. Do not place either value in Codex or the repository. The client ID is less sensitive than the secret, but treat both as configuration data.
 
@@ -304,7 +304,7 @@ The web build runs database migrations. Migrations through `db/migrations/0006_w
 
 ## Task 10: connect Google from the private dashboard
 
-1. Open <https://www.tailoredagents.com/sign-in> and sign in to the Tailored Agents dashboard.
+1. Open <https://www.tailoredagents.com/sign-in> and use your Tailored Mail email address and password. The mail owner can approve teammates in Mail → Manage team; complete any temporary-password change in Mail first.
 2. Open <https://www.tailoredagents.com/dashboard/analytics>.
 3. Select **Connect Google**.
 4. Choose the same personal Google account that owns `sc-domain:tailoredagents.com` and the Google Cloud project.
@@ -316,7 +316,7 @@ The web build runs database migrations. Migrations through `db/migrations/0006_w
 7. For the expected warning, select **Advanced**, then **Go to Tailored Agents**, and approve the request.
 8. Google should redirect back to the production analytics dashboard.
 9. Confirm the dashboard reports the connected property as `sc-domain:tailoredagents.com`.
-10. Confirm the connection does not select an unrelated Search Console property from Austin's Google account.
+10. Confirm the connection does not select an unrelated Search Console property from the selected Google account.
 
 The initial connection queues 90 days of finalized Search Console history; it continues after the browser closes. Search Console reporting can trail current activity by a few days, and a low-traffic site can legitimately have no metric rows yet.
 

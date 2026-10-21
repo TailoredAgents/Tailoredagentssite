@@ -36,14 +36,14 @@ export default async function SignInPage({
           <span className="signin-kicker"><LockKeyhole size={13} />Private workspace</span>
           <h1>One clear place to run the work behind the <em>growth.</em></h1>
           <p>The Tailored Agents dashboard brings client operations, website health, measurement, and future growth tools into a secure internal workspace.</p>
-          <div className="signin-trust"><ShieldCheck size={17} /><span><strong>Team-only access</strong><small>Email allowlisting and database-backed sessions keep this workspace private.</small></span></div>
+          <div className="signin-trust"><ShieldCheck size={17} /><span><strong>Team-only access</strong><small>Only approved team members can enter this private workspace.</small></span></div>
         </div>
 
         <div className="signin-card">
           <div className="signin-card-heading">
             <span>Team access</span>
             <h2>Sign in to the dashboard</h2>
-            <p>Use an approved Tailored Agents email address and your dashboard password.</p>
+            <p>{configuration.authMode === "mail" ? "Use the same email address and password you use for Tailored Agents Mail." : "Use an approved Tailored Agents email address and your dashboard password."}</p>
           </div>
 
           {!configuration.ready ? (
@@ -52,7 +52,7 @@ export default async function SignInPage({
               <p>The public website is available, but private access will remain closed until its database and security configuration are connected.</p>
             </div>
           ) : (
-            <SignInForm enabled />
+            <SignInForm enabled mailLogin={configuration.authMode === "mail"} />
           )}
 
           {status === "unauthorized" ? <p className="signin-notice">A new sign-in is required, or this account does not currently have workspace access.</p> : null}

@@ -14,6 +14,7 @@ type UserRow = {
 	email: string;
 	name: string;
 	is_admin: number;
+	dashboard_access?: number;
 	must_change_password: number;
 	disabled_at: string | null;
 	created_at: string;
@@ -25,6 +26,7 @@ function mapUser(row: UserRow): User {
 		email: row.email,
 		name: row.name,
 		is_admin: row.is_admin === 1,
+		dashboard_access: row.dashboard_access === 1,
 		must_change_password: row.must_change_password === 1,
 		disabled_at: row.disabled_at,
 		created_at: row.created_at
@@ -39,7 +41,7 @@ export async function countUsers(db: D1Database): Promise<number> {
 export async function getUserByEmail(db: D1Database, email: string): Promise<(User & { password_hash: string }) | null> {
 	const row = await db
 		.prepare(
-			'SELECT id, email, name, password_hash, is_admin, must_change_password, disabled_at, created_at FROM users WHERE email = ?'
+			'SELECT id, email, name, password_hash, is_admin, dashboard_access, must_change_password, disabled_at, created_at FROM users WHERE email = ?'
 		)
 		.bind(email.toLowerCase())
 		.first<UserRow & { password_hash: string }>();
@@ -50,7 +52,7 @@ export async function getUserByEmail(db: D1Database, email: string): Promise<(Us
 export async function getUserById(db: D1Database, id: string): Promise<User | null> {
 	const row = await db
 		.prepare(
-			'SELECT id, email, name, is_admin, must_change_password, disabled_at, created_at FROM users WHERE id = ?'
+			'SELECT id, email, name, is_admin, dashboard_access, must_change_password, disabled_at, created_at FROM users WHERE id = ?'
 		)
 		.bind(id)
 		.first<UserRow>();
@@ -61,7 +63,7 @@ export async function getUserById(db: D1Database, id: string): Promise<User | nu
 export async function listUsers(db: D1Database): Promise<User[]> {
 	const { results } = await db
 		.prepare(
-			'SELECT id, email, name, is_admin, must_change_password, disabled_at, created_at FROM users ORDER BY created_at ASC'
+			'SELECT id, email, name, is_admin, dashboard_access, must_change_password, disabled_at, created_at FROM users ORDER BY created_at ASC'
 		)
 		.all<UserRow>();
 
@@ -97,8 +99,8 @@ export async function createUser(
 	await db
 		.prepare(
 			`INSERT INTO users
-			 (id, email, name, password_hash, is_admin, must_change_password)
-			 VALUES (?, ?, ?, ?, ?, ?)`
+			 (id, email, name, password_hash, is_admin, must_change_password, dashboard_access)
+			 VALUES (?, ?, ?, ?, ?, ?, ?)`
 		)
 		.bind(
 			id,
@@ -106,7 +108,8 @@ export async function createUser(
 			input.name.trim(),
 			password_hash,
 			input.isAdmin ? 1 : 0,
-			input.mustChangePassword ? 1 : 0
+			input.mustChangePassword ? 1 : 0,
+			input.isAdmin ? 1 : 0
 		)
 		.run();
 
@@ -649,7 +652,7 @@ export async function getAuthenticatedSession(
 	const row = await db
 		.prepare(
 			`SELECT s.id AS session_id, s.device_platform, s.last_seen_at,
-			        u.id, u.email, u.name, u.is_admin, u.must_change_password, u.disabled_at, u.created_at
+			        u.id, u.email, u.name, u.is_admin, u.dashboard_access, u.must_change_password, u.disabled_at, u.created_at
 			 FROM sessions s
 			 JOIN users u ON u.id = s.user_id
 			 WHERE s.token_hash = ? AND u.disabled_at IS NULL AND datetime(s.expires_at) > datetime('now')`

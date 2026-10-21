@@ -11,6 +11,8 @@ declare global {
 			env: {
                 MAIL_JOBS: import("@cloudflare/workers-types").Queue<{id:string}>;
 				SETUP_SECRET?: string;
+				/** Private website-to-mail identity bridge; never sent to a browser. */
+				DASHBOARD_AUTH_SECRET?: string;
 				MAIL_DOMAIN: string;
 				DB: D1Database;
 				ATTACHMENTS: R2Bucket;

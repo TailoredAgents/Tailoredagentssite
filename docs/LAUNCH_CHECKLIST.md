@@ -40,11 +40,11 @@ Use this checklist for the public website and private dashboard. The mail applic
 
 ## Authentication and authorization
 
-- [ ] Complete the first allowlisted password login and confirm it provisions the owner membership.
+- [ ] Complete the mail owner’s dashboard login and confirm the expected owner/admin membership.
 - [ ] Confirm public email/password sign-up is unavailable.
-- [ ] Confirm a non-allowlisted address cannot create or access an authorized account.
+- [ ] Confirm an unapproved or disabled Mail account cannot access the dashboard.
 - [ ] Confirm `/dashboard`, `/dashboard/activity`, and `/dashboard/settings` redirect without a valid session.
-- [ ] Confirm removing an address from the allowlist removes dashboard data access even if an old session cookie exists.
+- [ ] Confirm removing Mail dashboard approval, resetting a password or disabling an account removes dashboard data access even with an old cookie.
 - [ ] Confirm sign-out invalidates the active session and returns to sign-in.
 - [ ] Confirm protected responses are not cached publicly and dashboard routes are excluded from indexing/sitemaps.
 - [ ] Review every new protected read and mutation for session, workspace, role, and resource-ownership checks.
@@ -67,7 +67,7 @@ Use this checklist for the public website and private dashboard. The mail applic
 - [ ] Verify no horizontal overflow, clipping, collision, or inaccessible off-screen content.
 - [ ] Test public mobile navigation, workflow tabs, pricing controls, forms, dashboard navigation, and sign-out with keyboard and touch.
 - [ ] Check heading hierarchy, landmarks, accessible names, focus visibility, contrast, error messages, and reduced motion.
-- [ ] Verify sign-in never reveals whether a submitted address is allowlisted.
+- [ ] Verify an incorrect password does not reveal whether an account exists; approval guidance appears only after password verification.
 - [ ] Run Lighthouse or an equivalent tool for Performance, Accessibility, Best Practices, and SEO on public routes.
 - [ ] Inspect browser console and network activity for errors, leaked values, unexpected third-party requests, or mixed content.
 
@@ -129,14 +129,24 @@ Local verification and production acceptance are separate. See [release evidence
 - [x] Desktop and phone browser checks cover the report, filters, tables, exports, viewer restrictions and disconnect confirmation.
 - [x] Jeffrey authorized merging the release to `main` and removing the feature branch; future development stays on `main`. Preview, shared-form changes and migration details are documented for coordination.
 - [ ] Privately verify/complete database and authentication-secret rotation (Jeffrey answered “Not sure”).
-- [ ] Check Jeffrey’s production dashboard account; provision only if missing, using the owner-controlled command.
+- [ ] Check Jeffrey’s dashboard sign-in using his existing Mail credentials; approve teammates through Mail → Manage team.
 - [ ] Confirm a current production backup and restore access before applying the migration.
 - [x] Align website/authentication/worker settings with www, preserve apex-to-www routing, and verify all 16 canonical pages and the public sign-in page. Mail DNS is unchanged; individual account sign-in remains a separate check.
 - [x] Migration 0005 applied in production; the existing cron is configured for five-minute checks.
 - [x] Deploy migration 0006 and observe the scheduled 12:15 UTC worker check succeed at www on October 21.
 - [ ] Review actual active-runtime charges for the existing five-minute cron.
-- [ ] Authorize Austin’s approved Google account, confirm exact Domain property and read-only access.
+- [ ] Authorize the personal Google account Jeffrey selected, confirm the exact Domain property and read-only access.
 - [ ] Reconcile a fixed date range with Google; verify manual refresh twice and processing after closing the browser.
 - [ ] Verify a manual worker run and the next genuinely scheduled daily refresh; record worker/data timestamps separately.
 - [x] Verify live website and separate mail-login availability after the www deployment.
 - [ ] Verify one successful live contact submission and its reporting/notification results.
+
+
+## Shared Mail/dashboard sign-in — October 21
+
+- [x] Implement owner approval, existing-role preservation and separate revocable dashboard grants without copying passwords.
+- [x] Test actual Better Auth cookies against isolated PostgreSQL and Mail reset/disable/revocation behavior against isolated SQLite.
+- [x] Exercise the real staging identity service with a temporary account and the built website.
+- [ ] Deploy Mail migration 0036 and website migration 0007, with matching private production service secrets.
+- [ ] Jeffrey verifies his own existing Mail password on the live dashboard; approve Austin through Manage team as needed.
+- [ ] Complete the remaining Google authorization/import and production operational checks above.

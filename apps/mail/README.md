@@ -43,6 +43,16 @@ Resend can provide a separate delivery record for each envelope recipient. The a
 
 **Mail status** shows stalled work, missing downloads, unconfirmed outgoing messages, storage access, and the last successful check for missed incoming messages. Retry failed incoming jobs there after fixing the connection. An uncertain send is never automatically resent after its 23-hour safety window. Check its content, recipients and timing in Resend before taking any manual action; do not reset or delete its send identifier to force a retry.
 
+## Using your mail password for the website dashboard
+
+The website supports the same primary email address and password you use here. Open https://www.tailoredagents.com/sign-in. Complete a temporary-password change in Mail first. You still sign in separately on each site, but only need to remember one password.
+
+The owner already has dashboard approval. To approve another person, open **Manage team** and choose **Allow dashboard access** next to their account. **Remove dashboard access** signs them out of the dashboard while leaving their inbox available. Approval gives a new teammate member access; existing dashboard roles are preserved. The website continues to deny suspended/removed workspace memberships. Password changes, resets and account disabling revoke both kinds of session. Signing out of just the dashboard does not sign out of the inbox.
+
+The private `/api/dashboard-auth` endpoint accepts only authenticated server requests with a random secret of at least 32 characters. Apply migration `0036_dashboard_login.sql`, install `DASHBOARD_AUTH_SECRET` in the Worker, and deploy before enabling `DASHBOARD_AUTH_MODE=mail` on the website. Its `MAIL_AUTH_SECRET` must match; its `MAIL_AUTH_URL` must be the production endpoint. Staging has its own secret and database. Never put this secret in public environment variables or browser code. The website stores a separate encrypted grant, not a copy of the password, and that grant cannot authenticate an inbox request.
+
+Keep both apps' additive migrations during rollback. Deploying an older Mail build temporarily disables shared dashboard sign-in; restore a compatible build or deliberately enable the website's legacy password mode with verified separate credentials. A restore can revive sessions: revoke restored Mail and website sessions before allowing access. See [the website runbook](../../docs/SEARCH_CONSOLE_READINESS.md#october-21-shared-mail-sign-in) for deployment, testing and rollback details.
+
 ## Local development
 
 Use Node 24 LTS (or a supported Node version at least 22.12). This machine has Node 24 at `/usr/local/bin/node`; its default Homebrew Node 20 is too old. From this directory:
