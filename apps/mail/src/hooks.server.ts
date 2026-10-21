@@ -10,9 +10,9 @@ const error = (message: string, status: number) => Response.json({ error: messag
 export const handle: Handle = async ({ event, resolve }) => {
   const { pathname } = event.url;
   if (disabled.some(p => pathname === p || pathname.startsWith(p + '/')) || pathname.endsWith('/draft-reply')) return error('Not found', 404);
-  // This one private endpoint authenticates the website server itself. It
-  // validates its service secret and bounds the body before reading any data.
-  if (pathname === '/api/dashboard-auth') return resolve(event);
+  // These exact private endpoints authenticate the website server themselves.
+  // Each validates its distinct service secret and bounds the request body.
+  if (pathname === '/api/dashboard-auth' || pathname === '/api/crm-mail') return resolve(event);
   const webhook = pathname === '/api/webhooks/resend';
   if (!webhook && !['GET', 'HEAD', 'OPTIONS'].includes(event.request.method)) {
     if (event.request.headers.get('origin') !== event.url.origin) return error('Please use this site to make changes.', 403);

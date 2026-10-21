@@ -70,7 +70,16 @@ export async function receiveEmail(env: MailEnv, providerId: string, assignedUse
     const id = receipt?.email_id ?? 'received-' + await sha256Hex(identity + ':' + route.user_id);
     await env.DB.batch([...new Set([identity,providerId])].map(key=>env.DB.prepare('INSERT OR IGNORE INTO mail_deliveries(provider_id,user_id,email_id) VALUES (?,?,?)').bind(key,route.user_id,id)));
     const current = await env.DB.prepare('SELECT id,import_state,provider_id FROM emails WHERE id=?').bind(id).first<{id:string;import_state:string;provider_id:string}>();
-    if (current?.import_state === 'complete') continue;
+    const recordAddressDeliveries=async()=>{
+      // Manual assignment picks a fallback identity; it is not proof of an
+      // envelope delivery to that address and must not expand CRM sharing.
+      if (!assignedUserId) {
+        const deliveries=routes.filter(r=>r.user_id===route.user_id).map(r=>env.DB.prepare(
+          'INSERT OR IGNORE INTO email_address_deliveries(email_id,address_id) VALUES (?,?)').bind(id,r.id));
+        if (deliveries.length) await env.DB.batch(deliveries);
+      }
+    };
+    if (current?.import_state === 'complete') { await recordAddressDeliveries();continue; }
     const contentKey = `messages/${route.user_id}/${id}.json`;
     await saveContent(env.ATTACHMENTS,contentKey,{text:email.text,html:email.html});
     if (!current) {
@@ -80,6 +89,7 @@ export async function receiveEmail(env: MailEnv, providerId: string, assignedUse
         messageId:normalizeMessageId(email.message_id),inReplyTo:email.headers?.['in-reply-to'],references:email.headers?.references,
         domainId:route.domain_id,addressId:route.id,providerId,replyToEmailId:ownSent?.id,subjectMatch:false });
     }
+    await recordAddressDeliveries();
     // 'pending' is written before attachments. A retry resumes the same recipient copy.
     await env.DB.prepare("UPDATE emails SET content_key=?,reply_to_addr=?,created_at=datetime(?),import_state='pending',status_detail='Some files are still downloading. Please check again shortly.' WHERE id=?")
       .bind(contentKey,email.reply_to?.join(', ') || email.headers?.['reply-to'] || null,email.created_at,id).run();

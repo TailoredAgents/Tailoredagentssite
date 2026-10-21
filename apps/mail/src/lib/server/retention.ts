@@ -1,6 +1,7 @@
 import type { MailEnv } from './receive';
 import { deleteEmailsPermanently } from './mail-store';
 export async function purgeExpiredMail(env: MailEnv): Promise<void> {
+  await env.DB.prepare("DELETE FROM crm_mail_audit WHERE created_at<datetime('now','-90 days')").run();
   const expired = await env.DB.prepare("SELECT id,user_id FROM emails WHERE deleted_at<datetime('now','-30 days') AND NOT EXISTS(SELECT 1 FROM send_attempts a WHERE a.email_id=emails.id AND a.status='sending') LIMIT 100").all<{id:string;user_id:string}>();
   for (const row of expired.results) await deleteEmailsPermanently(env.DB,env.ATTACHMENTS,row.user_id,[row.id]);
   const objects = await env.DB.prepare("SELECT storage_key FROM retained_objects WHERE purge_after<datetime('now') LIMIT 100").all<{storage_key:string}>();

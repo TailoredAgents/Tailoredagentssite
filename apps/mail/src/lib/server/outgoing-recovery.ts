@@ -4,6 +4,7 @@ import { readOutboundAttachments } from './attachments';
 import { sendOutboundEmail, type OutboundMailInput } from './send-mail';
 import { normalizeMessageId } from './send-mail';
 import { createResendClient } from './resend';
+import { requireCrmMailboxGrant } from './crm-mail-grants';
 
 export function mayRetrySend(firstCall: string | null, now = Date.now()): boolean {
   return !firstCall || now-Date.parse(firstCall.replace(' ','T') + (firstCall.endsWith('Z') ? '' : 'Z')) < 23*3600_000;
@@ -23,6 +24,9 @@ export async function recoverOutgoing(env: MailEnv): Promise<void> {
       let providerId = row.provider_id;
       let messageId: string | null = null;
       if (!providerId) {
+        const crm=await env.DB.prepare('SELECT actor_id,mailbox_address_id FROM crm_mail_send_authorizations WHERE attempt_id=?')
+          .bind(row.id).first<{actor_id:string;mailbox_address_id:string}>();
+        if (crm) await requireCrmMailboxGrant(env.DB,crm.actor_id,crm.mailbox_address_id,true);
         const object = await env.ATTACHMENTS.get(row.payload_key);
         if (!object) throw new Error('Saved send request unavailable');
         const payload = await object.json<OutboundMailInput>();

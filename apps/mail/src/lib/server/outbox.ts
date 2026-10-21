@@ -59,6 +59,10 @@ export type ComposeInput = {
 	idempotencyKey?: string | null;
 	/** Set when an API key or OAuth token is sending, never for a browser session. */
 	apiPolicy?: ApiSendPolicy;
+	/** Server-only authorization recheck immediately before delivery. */
+	beforeDelivery?: () => Promise<void>;
+	/** Server-only CRM origin, saved before any recoverable provider payload. */
+	crmAuthorization?: { actorId: string; mailboxAddressId: string };
 };
 
 export function assertTotalAttachmentBytes(totalBytes: number): void {
@@ -287,6 +291,8 @@ export async function sendAndStore(
   const fingerprint = await composeFingerprint(from,{...input,text,html:html ?? undefined,attachments});
   const attempt = await claimSendAttempt(env.DB,user.id,input.idempotencyKey,fingerprint);
   if (attempt.kind === 'replay') return {emailId:attempt.emailId,providerId:attempt.providerId,from};
+  if (input.crmAuthorization) await env.DB.prepare(`INSERT OR IGNORE INTO crm_mail_send_authorizations(attempt_id,actor_id,mailbox_address_id)
+    VALUES(?,?,?)`).bind(attempt.id,input.crmAuthorization.actorId,input.crmAuthorization.mailboxAddressId).run();
   const emailId = 'sent-' + await sha256Hex(attempt.id+':'+fingerprint);
   const contentKey = `messages/${user.id}/${emailId}.json`;
   const payloadKey = `outgoing/${attempt.id}/${fingerprint}.json`;
@@ -305,6 +311,7 @@ export async function sendAndStore(
       inReplyTo:input.inReplyTo,references:input.references,headers:{'Message-ID':`<${messageId}>`},idempotencyKey:`${attempt.id}:${fingerprint}`};
     await env.ATTACHMENTS.put(payloadKey,JSON.stringify(payload));
     await env.DB.prepare("UPDATE send_attempts SET email_id=?,payload_key=?,first_provider_call_at=NULL WHERE id=?").bind(emailId,payloadKey,attempt.id).run();
+    await input.beforeDelivery?.();
     // Start the safety window BEFORE calling Resend. Recovery reuses the exact saved request.
     await env.DB.prepare("UPDATE send_attempts SET first_provider_call_at=datetime('now') WHERE id=?").bind(attempt.id).run();
     providerCalled = true;

@@ -55,6 +55,50 @@ Keep both apps' additive migrations during rollback. Deploying an older Mail bui
 
 ## Local development
 
+### Website CRM shared inbox
+
+Migration `0037_crm_mail.sql` adds explicit address sharing for the CRM. In
+**Manage team → Website CRM inbox access**, the owner chooses one email
+address and a teammate with dashboard approval, then grants read access or
+read/send access. No accounts receive implicit access, including the owner.
+Share `sales@tailoredagents.com` with the selected sales team; sharing that
+address does not share the owner's other aliases or private inbox messages.
+Revoking an approval applies to subsequent reads, downloads and sends
+immediately. Pending CRM sends cannot be replayed by recovery after revocation.
+
+The private `POST /api/crm-mail` endpoint needs a separate random
+`CRM_MAIL_SECRET` of at least 32 characters, different from
+`DASHBOARD_AUTH_SECRET`. The website stores its matching value only in its
+server environment. The endpoint also requires the signed-in user's live
+dashboard grant and checks the owner-approved address permission on every
+operation. Apply the migration and deploy Mail before enabling the website's
+matching CRM connection. Installing the secret alone never shares a mailbox.
+
+Messages are selected by proven envelope address or exact sending identity,
+not by a search of the visible To header. Future alias deliveries record all
+proven routes, including deduplicated BCC deliveries. Historical deliveries
+whose alias cannot be proven are excluded conservatively; their complete
+mailbox remains available in Mail. Messages and attachments from a different
+alias inside the same Mail conversation are excluded from CRM previews,
+search, reading, replies and downloads. Manual unassigned-mail reassignment
+does not prove a delivery to the shared address.
+
+The first increment supports Inbox/Sent/Archive, search, paginated threads,
+safe plain-text reading, private attachment downloads and explicit new email
+or reply. Opening a thread does not mutate Mail's read flag. New CRM messages
+accept one recipient, text up to 12,000 characters and a UUID idempotency key.
+Replies require the last reviewed scoped message ID; the server derives the
+recipient, subject and reference headers. Outgoing files, CC/BCC, rich text
+and mailbox operations remain available in Mail. The existing durable outbox,
+signatures, provider idempotency and uncertain-delivery recovery are reused;
+the public API/MCP sending switch stays disabled.
+
+CRM approval/send audit records contain actor/address/message IDs rather than
+message contents or recipient lists, and expire after 90 days.
+
+The new bridge and approval tests use isolated SQLite, synthetic accounts and
+a mock provider; they never send real mail or enable production approvals.
+
 Use Node 24 LTS (or a supported Node version at least 22.12). This machine has Node 24 at `/usr/local/bin/node`; its default Homebrew Node 20 is too old. From this directory:
 
 ```sh

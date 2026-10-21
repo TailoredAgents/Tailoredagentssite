@@ -13,6 +13,8 @@ declare global {
 				SETUP_SECRET?: string;
 				/** Private website-to-mail identity bridge; never sent to a browser. */
 				DASHBOARD_AUTH_SECRET?: string;
+				/** Separate private CRM mail capability; never reuse the identity secret. */
+				CRM_MAIL_SECRET?: string;
 				MAIL_DOMAIN: string;
 				DB: D1Database;
 				ATTACHMENTS: R2Bucket;

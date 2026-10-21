@@ -7,11 +7,12 @@ const files=readdirSync(directory).filter(n=>n.endsWith('.sqlite')&&n!=='metadat
 if(files.length!==1)throw new Error('Run the local migrations first; expected one local test database.');
 const db=new DatabaseSync(directory+'/'+files[0]);
 const hash=await hashPassword('Local browser test password');
-for(const [id,name] of [['local-owner','Alex Morgan'],['local-teammate','Taylor Chen']]){
- db.prepare("INSERT INTO users(id,email,name,password_hash,is_admin,must_change_password) VALUES (?,?,?,?,?,0) ON CONFLICT(id) DO UPDATE SET password_hash=excluded.password_hash,disabled_at=NULL,must_change_password=0").run(id,id+'@tailoredagents.com',name,hash,id==='local-owner'?1:0);
+for(const [id,name] of [['local-owner','Alex Morgan'],['local-teammate','Taylor Chen'],['local-crm-owner','Casey Rivera']]){
+ const isAdmin=id!=='local-teammate'?1:0;
+ db.prepare("INSERT INTO users(id,email,name,password_hash,is_admin,must_change_password,dashboard_access) VALUES (?,?,?,?,?,0,?) ON CONFLICT(id) DO UPDATE SET password_hash=excluded.password_hash,disabled_at=NULL,must_change_password=0,dashboard_access=CASE WHEN users.is_admin=1 THEN 1 ELSE users.dashboard_access END").run(id,id+'@tailoredagents.com',name,hash,isAdmin,isAdmin);
 }
 db.prepare("INSERT OR IGNORE INTO domains(id,name,status,sending_enabled,receiving_enabled) VALUES ('local-domain','tailoredagents.com','verified',1,1)").run();
-for(const id of ['local-owner','local-teammate'])db.prepare("INSERT OR IGNORE INTO addresses(id,user_id,domain_id,address,is_default) VALUES (?,?,'local-domain',?,1)").run(id+'-address',id,id+'@tailoredagents.com');
+for(const id of ['local-owner','local-teammate','local-crm-owner'])db.prepare("INSERT OR IGNORE INTO addresses(id,user_id,domain_id,address,is_default) VALUES (?,?,'local-domain',?,1)").run(id+'-address',id,id+'@tailoredagents.com');
 for(const [i,name,subject,text] of [[1,'Jamie Park','Your workspace is ready','Welcome to Tailored Agents Mail. Your team now has a focused place to communicate.'],[2,'Morgan Lee','Proposal for Friday’s meeting','Hi Alex, the updated proposal is ready for your review. Could we meet on Friday?'],[3,'Taylor Chen','A quick introduction','Looking forward to working together. Let me know if there is anything I can help with.']] as const){
  db.prepare("INSERT OR IGNORE INTO emails(id,user_id,direction,from_addr,from_name,to_addr,subject,body_text,thread_id,domain_id,address_id,category,import_state) VALUES (?,?,'inbound',?,?,?,?,?,?,'local-domain','local-owner-address','primary','complete')").run('local-message-'+i,'local-owner','sender'+i+'@example.net',name,'local-owner@tailoredagents.com',subject,text,'local-message-'+i);
 }
