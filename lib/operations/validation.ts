@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizePhone } from "@/lib/sales/import";
 
 const identifier = z.string().uuid("The selected record is invalid.");
 const optionalIdentifier = z.preprocess(
@@ -28,6 +29,39 @@ export const siteStatuses = ["active", "paused", "archived"] as const;
 export const projectStatuses = ["planned", "active", "on_hold", "completed", "cancelled", "archived"] as const;
 export const milestoneStatuses = ["pending", "in_progress", "blocked", "completed"] as const;
 export const recordKinds = ["deliverable", "decision", "note"] as const;
+
+export const createLeadSchema = z.object({
+  submissionId: identifier,
+  organization: z.string().trim().min(2, "Enter a business name.").max(140),
+  name: optionalText(100),
+  email: optionalEmail,
+  phone: optionalText(40).transform((value, context) => {
+    if (!value) return undefined;
+    const phone = normalizePhone(value);
+    if (!phone) {
+      context.addIssue({ code: "custom", message: "Enter a US phone number or an international number starting with +." });
+      return z.NEVER;
+    }
+    // Keep dial extensions and the operator's formatting in the original lead.
+    // CRM identity matching uses the separate canonical phone normalizer.
+    return value;
+  }),
+  websiteUrl: z.preprocess((value) => {
+    if (typeof value !== "string" || !value.trim()) return undefined;
+    const url = value.trim();
+    return /^[a-z][a-z0-9+.-]*:/i.test(url) ? url : `https://${url}`;
+  }, z.string().url("Enter a valid website address.").max(2_000)
+    .refine((value) => /^https?:\/\//i.test(value), "Use an http or https website address.")
+    .transform((value) => new URL(value).href)
+    .pipe(z.string().max(2_000))
+    .optional()),
+  interest: optionalText(160),
+  description: optionalText(3_000),
+}).superRefine((value, context) => {
+  if (!value.email && !value.phone) context.addIssue({
+    code: "custom", path: ["phone"], message: "Add a phone number or email address so the team can follow up.",
+  });
+});
 
 export const updateLeadSchema = z.object({
   leadId: identifier,

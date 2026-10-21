@@ -12,6 +12,8 @@ import {
 } from "vitest";
 import type { DashboardContext } from "@/lib/dashboard/data";
 import { getDatabasePool } from "@/lib/dashboard/db";
+import { createManualLead } from "@/lib/operations/manual-leads";
+import { exportLeads, getLead, listLeads } from "@/lib/operations/data";
 import {
   convertLeadAction,
   saveClientAction,
@@ -251,6 +253,245 @@ describe.skipIf(!databaseUrl)(
       delete (globalThis as { tailoredAgentsDatabasePool?: Pool })
         .tailoredAgentsDatabasePool;
       vi.unstubAllEnvs();
+    });
+
+    it("creates a phone-only manual lead without invented email, public delivery, or website analytics", async () => {
+      const { leadId } = await createManualLead(member, {
+        submissionId: randomUUID(),
+        organization: "  Call-in landscaping prospect  ",
+        phone: "(212) 555-0186",
+        interest: "Website redesign",
+        description:
+          "Referral from an existing customer. Call back after 3 pm.",
+      });
+      const saved = await getLead(owner, leadId);
+      expect(saved).toMatchObject({
+        id: leadId,
+        organization: "Call-in landscaping prospect",
+        email: null,
+        source: "manual",
+        status: "new",
+        ownerUserId: memberId,
+        deliveryStatus: "not_configured",
+        interest: "Website redesign",
+        description:
+          "Referral from an existing customer. Call back after 3 pm.",
+      });
+      expect(saved?.phone).toBeTruthy();
+      const privateState = (
+        await pool.query(
+          "SELECT measurement_context,measurement_status,measurement_recorded_at,delivered_at FROM leads WHERE id=$1",
+          [leadId],
+        )
+      ).rows[0];
+      expect(privateState).toEqual({
+        measurement_context: null,
+        measurement_status: null,
+        measurement_recorded_at: null,
+        delivered_at: null,
+      });
+      const search = await listLeads(owner, { q: "0186" });
+      expect(search.items.map((lead) => lead.id)).toEqual([leadId]);
+      expect(search.items[0].email).toBeNull();
+      expect(await exportLeads(owner)).toEqual([
+        expect.objectContaining({
+          organization: saved!.organization,
+          email: null,
+          phone: saved!.phone,
+        }),
+      ]);
+      expect(await getLead(otherOwner, leadId)).toBeNull();
+      const audit = (
+        await pool.query(
+          "SELECT action,actor_user_id,target_type,target_id FROM audit_logs WHERE action='lead.created'",
+        )
+      ).rows;
+      expect(audit).toEqual([
+        {
+          action: "lead.created",
+          actor_user_id: memberId,
+          target_type: "lead",
+          target_id: leadId,
+        },
+      ]);
+      expect(await count("crm_businesses")).toBe(0);
+      expect(await count("crm_opportunities")).toBe(0);
+    });
+
+    it("normalizes a manual lead email and bare website while retaining optional contact context", async () => {
+      const { leadId } = await createManualLead(owner, {
+        submissionId: randomUUID(),
+        organization: "Email referral fixture",
+        name: "  Casey Referral  ",
+        email: " CASEY@Example.test ",
+        websiteUrl: "referral.example.test/services",
+      });
+      expect(await getLead(owner, leadId)).toMatchObject({
+        name: "Casey Referral",
+        organization: "Email referral fixture",
+        email: "casey@example.test",
+        phone: null,
+        websiteUrl: "https://referral.example.test/services",
+        ownerUserId: ownerId,
+      });
+      expect((await listLeads(owner, { q: "casey@example.test" })).total).toBe(
+        1,
+      );
+    });
+
+    it("preserves manual phone extensions while finding and linking the canonical base number", async () => {
+      const phone = "212-555-0187 ext 204";
+      const { leadId } = await createManualLead(owner, {
+        submissionId: randomUUID(),
+        organization: "Extension contact fixture",
+        phone,
+      });
+      expect(await getLead(owner, leadId)).toMatchObject({
+        phone,
+        email: null,
+      });
+      expect(await exportLeads(owner)).toEqual([
+        expect.objectContaining({
+          organization: "Extension contact fixture",
+          phone,
+          email: null,
+        }),
+      ]);
+      expect(
+        (await listLeads(owner, { q: "2125550187" })).items.map(
+          (lead) => lead.id,
+        ),
+      ).toEqual([leadId]);
+      const opportunityId = await linkInquiry(owner, leadId);
+      const linked = await record(opportunityId);
+      expect(linked.contact?.phone).toBe("+12125550187");
+      expect(linked.business.phone).toBe("+12125550187");
+      expect(await getLead(owner, leadId)).toMatchObject({ phone });
+    });
+
+    it("checks stored membership before accepting a manual lead even with a spoofed role", async () => {
+      const input = {
+        submissionId: randomUUID(),
+        organization: "Unauthorized manual fixture",
+        phone: "2125550187",
+      };
+      await expect(
+        createManualLead({ ...viewer, role: "owner" }, input),
+      ).rejects.toThrow();
+      await pool.query(
+        "UPDATE workspace_memberships SET status='suspended' WHERE workspace_id=$1 AND user_id=$2",
+        [workspaceId, memberId],
+      );
+      await expect(
+        createManualLead({ ...member, role: "owner" }, input),
+      ).rejects.toThrow();
+      await expect(
+        createManualLead(context(ownerId, "owner", otherWorkspaceId), input),
+      ).rejects.toThrow();
+      expect(
+        (await pool.query("SELECT count(*)::int AS count FROM leads")).rows[0]
+          .count,
+      ).toBe(0);
+      expect(
+        (
+          await pool.query(
+            "SELECT count(*)::int AS count FROM audit_logs WHERE action='lead.created'",
+          )
+        ).rows[0].count,
+      ).toBe(0);
+    });
+
+    it("replays concurrent manual submissions once while isolating request IDs by actor and workspace", async () => {
+      const input = {
+        submissionId: randomUUID(),
+        organization: "Repeat-safe manual fixture",
+        email: "repeat@example.test",
+      };
+      const [first, replay] = await Promise.all([
+        createManualLead(owner, input),
+        createManualLead(owner, input),
+      ]);
+      expect(replay.leadId).toBe(first.leadId);
+      expect((await pool.query("SELECT id FROM leads")).rows).toHaveLength(1);
+      expect(
+        (
+          await pool.query(
+            "SELECT id FROM audit_logs WHERE action='lead.created'",
+          )
+        ).rows,
+      ).toHaveLength(1);
+      const otherActor = await createManualLead(member, input);
+      const otherWorkspace = await createManualLead(otherOwner, input);
+      expect(
+        new Set([first.leadId, otherActor.leadId, otherWorkspace.leadId]).size,
+      ).toBe(3);
+      expect((await listLeads(owner, {})).total).toBe(2);
+      expect(
+        (await listLeads(otherOwner, {})).items.map((lead) => lead.id),
+      ).toEqual([otherWorkspace.leadId]);
+      expect(
+        (
+          await pool.query(
+            "SELECT id FROM audit_logs WHERE action='lead.created'",
+          )
+        ).rows,
+      ).toHaveLength(3);
+    });
+
+    it("rejects missing contact methods and unsafe website addresses without storing a lead", async () => {
+      const input = {
+        submissionId: randomUUID(),
+        organization: "Invalid manual fixture",
+      };
+      await expect(createManualLead(owner, input)).rejects.toThrow();
+      await expect(
+        createManualLead(owner, { ...input, email: "invalid-address" }),
+      ).rejects.toThrow();
+      await expect(
+        createManualLead(owner, {
+          ...input,
+          phone: "2125550188",
+          websiteUrl: "javascript:alert(1)",
+        }),
+      ).rejects.toThrow();
+      expect((await pool.query("SELECT id FROM leads")).rows).toHaveLength(0);
+    });
+
+    it("links and converts a phone-only manual lead into its original client and project", async () => {
+      const { leadId } = await createManualLead(member, {
+        submissionId: randomUUID(),
+        organization: "Phone-only website sale fixture",
+        name: "Jordan Phone",
+        phone: "+12125550189",
+        description: "Interested after an in-person introduction.",
+      });
+      const opportunityId = await linkInquiry(member, leadId);
+      expect(await linkInquiry(owner, leadId)).toBe(opportunityId);
+      const linked = await record(opportunityId);
+      expect(linked).toMatchObject({ source: "manual", leadId });
+      expect(linked.business.email).toBeNull();
+      expect(linked.contact?.email).toBeNull();
+      const sale = await convertOpportunity(owner, {
+        opportunityId,
+        projectName: "Phone referral website delivery",
+      });
+      expect(await getLead(owner, leadId)).toMatchObject({
+        status: "won",
+        source: "manual",
+        email: null,
+        clientId: sale.clientId,
+      });
+      expect(await count("clients")).toBe(1);
+      expect(await count("contacts")).toBe(1);
+      expect(await count("projects")).toBe(1);
+      expect(
+        (await pool.query("SELECT email,phone,client_id FROM contacts"))
+          .rows[0],
+      ).toEqual({
+        email: null,
+        phone: "+12125550189",
+        client_id: sale.clientId,
+      });
     });
 
     it("reuses canonical businesses and contacts while keeping separate sales and offer prices", async () => {

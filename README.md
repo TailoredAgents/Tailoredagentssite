@@ -38,7 +38,7 @@ The existing operations and measurement releases are active. The agency sales fo
 - Server-only authorization and narrow dashboard data-transfer objects.
 - Protected dashboard routes for operations, activity, settings, and real website analytics.
 - Readable desktop and phone layouts across every dashboard tab, with an overview of open inquiries, due follow-ups and project deadlines. See [dashboard usability and verification](docs/DASHBOARD_USABILITY.md).
-- Lead search, qualification, ownership, notes, next actions, conversion, and safe CSV export.
+- Manual lead entry with a business name and phone or email, plus optional contact, website, service and notes; lead search, qualification, ownership, next actions, conversion, and safe CSV export.
 - Client, contact, site, and project workspaces with milestones, deliverables, decisions, and notes.
 - Shared database-backed inquiry controls, delivery status, retention metadata, and audited mutations.
 - Internal website reporting with visits, stored inquiries, separate visitor activities, trends, and freshness indicators.

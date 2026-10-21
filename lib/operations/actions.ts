@@ -7,6 +7,9 @@ import { redirect } from "next/navigation";
 import type { PoolClient } from "pg";
 import { requireDashboardContext } from "@/lib/dashboard/data";
 import { getDatabasePool, insertAuditLog } from "@/lib/dashboard/db";
+import { ZodError } from "zod";
+import { SalesAccessError } from "@/lib/sales/data";
+import { createManualLead } from "./manual-leads";
 import {
   asDatabaseDate,
   clientSchema,
@@ -75,6 +78,27 @@ async function linkClientBusiness(client: PoolClient, workspaceId: string, clien
   await client.query("UPDATE clients SET business_id=$1 WHERE id=$2 AND workspace_id=$3",[businessId,clientId,workspaceId]);
   await client.query("UPDATE contacts SET business_id=$1 WHERE client_id=$2 AND workspace_id=$3 AND business_id IS NULL",[businessId,clientId,workspaceId]);
   return businessId;
+}
+
+export async function createLeadAction(
+  _previous: OperationActionState,
+  formData: FormData,
+): Promise<OperationActionState> {
+  const context = await mutationContext();
+  if (!context) return denied();
+  let leadId: string;
+  try {
+    const created = await createManualLead(context, formValues(formData, [
+      "submissionId", "organization", "name", "phone", "email", "websiteUrl", "interest", "description",
+    ]));
+    leadId = created.leadId;
+  } catch (error) {
+    if (error instanceof ZodError) return validationState(error);
+    if (error instanceof SalesAccessError) return { status: "error", message: error.message };
+    return genericFailure;
+  }
+  for (const path of ["/dashboard", "/dashboard/leads", "/dashboard/sales"]) revalidatePath(path);
+  redirect(`/dashboard/leads/${leadId}`);
 }
 
 export async function updateLeadAction(

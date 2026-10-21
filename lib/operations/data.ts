@@ -59,7 +59,7 @@ export async function listLeads(
   }
   if (q) {
     values.push(`%${q}%`);
-    conditions.push(`(lead.name ILIKE $${values.length} OR lead.organization ILIKE $${values.length} OR lead.email ILIKE $${values.length})`);
+    conditions.push(`(lead.name ILIKE $${values.length} OR lead.organization ILIKE $${values.length} OR lead.email ILIKE $${values.length} OR lead.phone ILIKE $${values.length} OR crm_normalized_phone(lead.phone) ILIKE $${values.length})`);
   }
 
   const where = conditions.join(" AND ");
@@ -69,7 +69,9 @@ export async function listLeads(
       id: string;
       name: string;
       organization: string;
-      email: string;
+      email: string | null;
+      phone: string | null;
+      source: string;
       inquiry_type: string;
       status: string;
       interest: string | null;
@@ -79,7 +81,7 @@ export async function listLeads(
       owner_name: string | null;
       created_at: Date;
     }>(
-      `SELECT lead.id, lead.name, lead.organization, lead.email, lead.inquiry_type,
+      `SELECT lead.id, lead.name, lead.organization, lead.email, lead.phone, lead.source, lead.inquiry_type,
               lead.status, lead.interest, lead.delivery_status, lead.next_action,
               lead.next_action_at, owner.name AS owner_name, lead.created_at
        FROM leads lead
@@ -102,6 +104,8 @@ export async function listLeads(
       name: row.name,
       organization: row.organization,
       email: row.email,
+      phone: row.phone,
+      source: row.source,
       inquiryType: row.inquiry_type,
       status: row.status,
       interest: row.interest,
@@ -129,7 +133,7 @@ export async function getLead(context: DashboardContext, leadId: string) {
     status: string;
     name: string;
     organization: string;
-    email: string;
+    email: string | null;
     phone: string | null;
     interest: string | null;
     website_url: string | null;
@@ -206,7 +210,7 @@ export async function exportLeads(context: DashboardContext) {
   const result = await getDatabasePool().query<{
     organization: string;
     name: string;
-    email: string;
+    email: string | null;
     phone: string | null;
     inquiry_type: string;
     interest: string | null;

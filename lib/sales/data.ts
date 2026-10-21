@@ -144,9 +144,10 @@ export async function getSalesWorkspace(
       id: string;
       name: string;
       organization: string;
+      source: string;
       created_at: Date;
     }>(
-      `SELECT l.id,l.name,l.organization,l.created_at FROM leads l WHERE l.workspace_id=$1 AND l.status NOT IN ('won','lost','archived') AND l.anonymized_at IS NULL AND NOT EXISTS(SELECT 1 FROM crm_opportunities o WHERE o.lead_id=l.id AND o.workspace_id=l.workspace_id) ORDER BY l.created_at DESC LIMIT 10`,
+      `SELECT l.id,l.name,l.organization,l.source,l.created_at FROM leads l WHERE l.workspace_id=$1 AND l.status NOT IN ('won','lost','archived') AND l.anonymized_at IS NULL AND NOT EXISTS(SELECT 1 FROM crm_opportunities o WHERE o.lead_id=l.id AND o.workspace_id=l.workspace_id) ORDER BY l.created_at DESC LIMIT 10`,
       [context.workspace.id],
     ),
   ]);
@@ -197,6 +198,7 @@ export async function getSalesWorkspace(
       id: r.id,
       name: r.name,
       organization: r.organization,
+      source: r.source,
       createdAt: r.created_at.toISOString(),
     })),
   };

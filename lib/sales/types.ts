@@ -174,6 +174,7 @@ export type SalesWorkspace = {
     id: string;
     name: string;
     organization: string;
+    source: string;
     createdAt: string;
   }[];
 };

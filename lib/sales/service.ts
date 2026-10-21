@@ -708,7 +708,8 @@ export async function linkInquiry(context: DashboardContext, leadId: string) {
       id: string;
       organization: string;
       name: string;
-      email: string;
+      email: string | null;
+      source: string;
       phone: string | null;
       website_url: string | null;
       description: string | null;
@@ -717,7 +718,7 @@ export async function linkInquiry(context: DashboardContext, leadId: string) {
       business_id: string | null;
       owner_user_id: string | null;
     }>(
-      "SELECT id,organization,name,email,phone,website_url,description,status,client_id,business_id,owner_user_id FROM leads WHERE id=$1 AND workspace_id=$2 AND anonymized_at IS NULL FOR UPDATE",
+      "SELECT id,organization,name,email,phone,website_url,description,status,client_id,business_id,owner_user_id,source FROM leads WHERE id=$1 AND workspace_id=$2 AND anonymized_at IS NULL FOR UPDATE",
       [leadId, context.workspace.id],
     );
     const l = r.rows[0];
@@ -735,7 +736,7 @@ export async function linkInquiry(context: DashboardContext, leadId: string) {
       business = (
         await ensureBusiness(db, context, {
           businessName: l.organization,
-          email: l.email,
+          email: l.email ?? undefined,
           phone: l.phone ?? undefined,
           websiteUrl: l.website_url ?? undefined,
           notes: l.description ?? undefined,
@@ -743,18 +744,18 @@ export async function linkInquiry(context: DashboardContext, leadId: string) {
       ).business;
     const contactId = await ensureContact(db, context, business, {
         contactName: l.name,
-        email: l.email,
+        email: l.email ?? undefined,
         phone: l.phone ?? undefined,
       }),
       id = await insertOpportunity(db, context, business, contactId, {
-        title: `Website inquiry — ${l.organization}`,
+        title: `${l.source === "manual" ? "Lead" : "Website inquiry"} — ${l.organization}`,
         stage:
           l.status === "won"
             ? "won"
             : l.status === "lost"
               ? "lost"
               : "interested",
-        source: "website",
+        source: l.source,
         leadId,
         ownerUserId: l.owner_user_id ?? undefined,
       });
@@ -778,7 +779,7 @@ export async function linkInquiry(context: DashboardContext, leadId: string) {
       {
         kind: "note",
         source: "system",
-        body: l.description ?? "Website inquiry linked to the sales workspace.",
+        body: l.description ?? "Lead linked to the sales workspace.",
       },
     );
     return id;

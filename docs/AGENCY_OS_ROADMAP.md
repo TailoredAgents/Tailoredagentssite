@@ -30,6 +30,7 @@ Release exit: migration 0008 upgrades populated data; viewer/tenant/assignment d
 
 ## Data architecture
 
+- Staff can add a lead directly from `/dashboard/leads` using **Add lead**. Business name and either phone or email are required; contact name, website, service and notes are optional. New entries start in `new`, assigned to the signed-in teammate, and open their saved lead record. Manual source is preserved through the sales/client workflow and excluded from website-inquiry analytics. Migration 0009 permits a genuinely unknown email to remain NULL; public inquiry validation still requires email. Original phone formatting/extensions are retained, while matching uses the normalized base number. A retry of the same form cannot create another record. Viewer access remains read-only.
 - `crm_businesses` is the durable company identity. Exact normalized phone, email and domain checks reuse unambiguous businesses. Names alone never merge companies. Shared or conflicting identities need human review; automatic fuzzy merging is outside this release.
 - Existing `contacts` can belong to a prospect business before a client exists. Their IDs survive conversion. Existing clients gain a business reference through the additive migration and established save workflows.
 - `crm_opportunities` represents an individual potential sale. A business can have multiple opportunities without duplicating its customer record. Stage, ownership, entered value and promotional classification belong here.
@@ -100,6 +101,8 @@ Code commit `18bd0925f8e6bfb3df7d06cbbbf69951ad942550` was pushed to `main`. Git
 The Render build is configured to run the existing ordered migrations and retention command before the production build. The public health/pricing/sign-in endpoints and separate Mail login respond successfully. All four new sales workspace routes redirect anonymous visitors to sign-in; Sales also does so on the Render origin. This verifies deployment and the unauthenticated boundary; it is not an authenticated production import or acceptance using real business records. Sign in with the existing approved Tailored Mail account at [Sales](https://www.tailoredagents.com/dashboard/sales). The first real calling-list import, Devon's assignment, mockup handoff and client conversion remain owner workflow acceptance items. No production Mail inbox, call or customer record was used for local verification.
 
 ### Repeat the local release gate
+
+Manual lead entry follow-up: 158 code/database tests pass, including seven new persistence, authorization, retry, phone-extension and conversion cases. Six focused desktop/phone browser checks pass for actual entry, validation retention, source labels, phone search, viewer restrictions, accessibility and 320px layouts. Existing reporting, sales and operations browser regressions pass (27 checks, one intentional phone skip). Migration 0009 also passes the populated PostgreSQL upgrade/dump/restore check; lint and the production build pass. No production lead or customer message was created during testing.
 
 Use isolated databases with the exact names below. The schema suite resets its own test schema; service fixtures and the browser seeder remove synthetic test records. Never point these tools at business data.
 
