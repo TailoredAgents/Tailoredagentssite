@@ -14,7 +14,7 @@ function createDashboardAuth() {
     baseURL: configuration.baseUrl,
     secret: configuration.authSecret,
     database: getDatabasePool(),
-    trustedOrigins: [configuration.baseUrl],
+    trustedOrigins: configuration.trustedOrigins,
     session: {
       expiresIn: 60 * 60 * 24 * 14,
       updateAge: 60 * 60 * 24,

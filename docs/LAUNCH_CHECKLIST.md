@@ -127,11 +127,11 @@ Local verification and production acceptance are separate. See [release evidence
 - [x] Migration 0005 upgrades a populated test database without losing reports or credential metadata; test dump/restore passes.
 - [x] Isolated PostgreSQL tests cover initial history, zero days, pagination, gap recovery, leases, connection changes, OAuth state, authorization, privacy and verified inquiries.
 - [x] Desktop and phone browser checks cover the report, filters, tables, exports, viewer restrictions and disconnect confirmation.
-- [ ] Austin reviews the preview, shared-form changes, migration and cron-runtime implications; merge approved branch.
+- [x] Jeffrey authorized merging the release to `main` and removing the feature branch; future development stays on `main`. Preview, shared-form changes and migration details are documented for coordination.
 - [ ] Privately verify/complete database and authentication-secret rotation (Jeffrey answered “Not sure”).
 - [ ] Check Jeffrey’s production dashboard account; provision only if missing, using the owner-controlled command.
 - [ ] Confirm a current production backup and restore access before applying the migration.
-- [ ] Correct Render apex/www routing, check Cloudflare for conflicting redirects, preserve mail DNS and verify sign-in on apex.
+- [ ] Correct Render apex/www routing, check Cloudflare for conflicting redirects, then set `ENABLE_APEX_REDIRECT=true` and rebuild. Preserve mail DNS and verify sign-in on apex. Leave the flag off until hosting is corrected.
 - [ ] Apply migration 0005; reuse the existing cron and review actual active-runtime cost before changing cadence.
 - [ ] Authorize Austin’s approved Google account, confirm exact Domain property and read-only access.
 - [ ] Reconcile a fixed date range with Google; verify manual refresh twice and processing after closing the browser.

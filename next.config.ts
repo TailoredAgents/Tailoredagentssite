@@ -14,6 +14,9 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
   async redirects() {
+    // Enable only after Render stops redirecting apex requests to www.
+    // Redirects are compiled at build time, so changing this requires a rebuild.
+    if (process.env.ENABLE_APEX_REDIRECT !== "true") return [];
     return [{ source: "/:path*", has: [{ type: "host" as const, value: "www.tailoredagents.com" }], destination: "https://tailoredagents.com/:path*", permanent: true }];
   },
   async headers() {

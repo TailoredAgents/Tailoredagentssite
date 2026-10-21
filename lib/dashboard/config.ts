@@ -3,6 +3,7 @@ type DashboardEnvironment = Partial<Record<
   | "BETTER_AUTH_SECRET"
   | "BETTER_AUTH_URL"
   | "NEXT_PUBLIC_SITE_URL"
+  | "ENABLE_APEX_REDIRECT"
   | "DASHBOARD_ALLOWED_EMAILS"
   | "DASHBOARD_INITIAL_PASSWORD",
   string | undefined
@@ -14,6 +15,7 @@ export type DashboardConfiguration = {
   databaseUrl: string;
   authSecret: string;
   baseUrl: string;
+  trustedOrigins: string[];
   initialPassword: string;
   allowedEmails: ReadonlySet<string>;
 };
@@ -52,6 +54,12 @@ export function resolveDashboardConfiguration(
     databaseUrl,
     authSecret,
     baseUrl,
+    // Keep the existing www login working until the hosting cutover is complete.
+    trustedOrigins:
+      baseUrl === "https://tailoredagents.com" &&
+      environment.ENABLE_APEX_REDIRECT !== "true"
+        ? [baseUrl, "https://www.tailoredagents.com"]
+        : [baseUrl],
     initialPassword,
     allowedEmails,
   };

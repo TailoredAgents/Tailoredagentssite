@@ -208,7 +208,7 @@ npm run mail:build
 
 ## Render deployment
 
-`render.yaml` defines the Node web service, a persistent Render PostgreSQL database, their private-network connection, the health check, automatic deploy trigger, build-time migration and retention commands, and the existing Search Console processing cron. The readiness branch proposes five-minute checks, subject to runtime-cost review. The owner approved the smallest paid database plan on October 16, 2026. The cron already exists; its bill has a $1 monthly minimum plus applicable active-runtime charges.
+`render.yaml` defines the Node web service, a persistent Render PostgreSQL database, their private-network connection, the health check, automatic deploy trigger, build-time migration and retention commands, and the existing Search Console processing cron. The readiness release proposes five-minute checks, subject to runtime-cost review. The owner approved the smallest paid database plan on October 16, 2026. The cron already exists; its bill has a $1 monthly minimum plus applicable active-runtime charges.
 
 To activate the dashboard:
 

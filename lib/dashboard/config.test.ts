@@ -2,6 +2,25 @@ import { describe, expect, it } from "vitest";
 import { parseAllowedEmails, resolveDashboardConfiguration } from "./config";
 
 describe("dashboard configuration", () => {
+  it("preserves www sign-in during the hosting transition, then trusts only the canonical origin", () => {
+    expect(resolveDashboardConfiguration({
+      BETTER_AUTH_URL: "https://tailoredagents.com",
+    }).trustedOrigins).toEqual([
+      "https://tailoredagents.com",
+      "https://www.tailoredagents.com",
+    ]);
+    expect(resolveDashboardConfiguration({
+      BETTER_AUTH_URL: "https://tailoredagents.com",
+      ENABLE_APEX_REDIRECT: "true",
+    }).trustedOrigins).toEqual(["https://tailoredagents.com"]);
+  });
+
+  it("does not add production origins to local or unrelated deployments", () => {
+    for (const baseUrl of ["http://localhost:3000", "https://preview.example.test"]) {
+      expect(resolveDashboardConfiguration({ BETTER_AUTH_URL: baseUrl }).trustedOrigins)
+        .toEqual([baseUrl]);
+    }
+  });
   it("normalizes and filters the internal email allowlist", () => {
     expect([...parseAllowedEmails(" OWNER@example.com,invalid,team@example.com ")]).toEqual([
       "owner@example.com",

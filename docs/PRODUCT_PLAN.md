@@ -56,7 +56,7 @@ The immediate goal is not to launch a broad autonomous-agent platform. It is to 
 
 ### Not yet operational
 
-- Production-authorized Google Search Console data; the readiness upgrade is implemented on a review branch; production ownership, authorization and scheduled behavior remain unverified.
+- Production-authorized Google Search Console data; the readiness upgrade is implemented and Jeffrey has authorized its merge to `main`; production ownership, authorization and scheduled behavior remain unverified.
 - Client accounts or a client-facing Growth Hub.
 - A public interactive product demo.
 - A generally available standardized website-agent or operations-agent catalog; the public site describes a limited founding-client rollout without claiming that every listed capability is operational.
@@ -174,7 +174,7 @@ Exit criteria:
 
 Goal: collect and explain the evidence needed for growth work.
 
-Status: readiness release awaiting review and production activation. The branch adds durable daily imports, complete-date coverage, recovery and leases, verified inquiry attribution, canonical-origin checks, protected exports and a redesigned reporting screen. Local PostgreSQL, browser and restore evidence is recorded in `docs/SEARCH_CONSOLE_READINESS.md`. A real Google import and the next scheduled daily refresh are still required; the phase is not complete. GA4 remains outside this release.
+Status: Jeffrey authorized the readiness release to merge into `main`; production Google activation remains pending. The release adds durable daily imports, complete-date coverage, recovery and leases, verified inquiry attribution, canonical-origin checks, protected exports and a redesigned reporting screen. Local PostgreSQL, browser and restore evidence is recorded in `docs/SEARCH_CONSOLE_READINESS.md`. A real Google import and the next scheduled daily refresh are still required; the phase is not complete. GA4 remains outside this release.
 
 Deliverables:
 

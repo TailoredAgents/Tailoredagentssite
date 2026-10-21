@@ -1,6 +1,6 @@
 # Search Console readiness release
 
-Branch: `jeffrey/search-console-readiness`. Production activation requires Austin's review and merge, followed by the live checks below. Source implementation is not proof of activation.
+Jeffrey authorized merging this release into `main` and removing the feature branch on October 20, 2026. Future development stays on `main` unless he requests otherwise. Google activation still requires the live checks below; a merge is not proof of activation.
 
 ## Work tracker
 
@@ -30,7 +30,7 @@ Use the existing web service, database and cron service. Review actual runtime c
 
 User choices: canonical https://tailoredagents.com, full internal reporting redesign, initial 90 days of Google history, live connection and verification included. Dashboard access for Jeffrey still needs checking. Austin's approved personal Google account remains the designated Google owner.
 
-## What is implemented on this branch
+## What is implemented in this release
 
 - The existing OAuth routes and encrypted credential storage remain the foundation. New connections require the exact Domain property, read-only scope, a new refresh token, and a successful read before replacing a working connection. Active membership and ownership of the production site are checked on reads, management and exports.
 - Migration 0005 adds connection versions, durable jobs, expiring leases, completed-date coverage (including zero days), worker/retention health, and an inquiry-attribution outbox. Existing metrics, credentials and operational records survive. Long URLs and queries are preserved; a compact hash index replaces the oversized text index. A hash collision fails the date transaction rather than combining distinct values.
@@ -74,8 +74,8 @@ The local-only preview is at `http://127.0.0.1:3100/dashboard/analytics`. Its de
 Verified locally on October 20:
 
 - Lint and strict type checks pass.
-- **54 automated tests pass**, including **21 PostgreSQL integration tests**. Running tests without `TEST_DATABASE_URL` intentionally skips the database suite and is not the full release gate.
-- **8 browser tests pass** across desktop Chromium and a phone viewport, including real password sign-in, private routes, viewer restrictions, tables, filters, export, canonical redirects and disconnect confirmation.
+- **58 automated tests pass**, including **21 PostgreSQL integration tests**. Running tests without `TEST_DATABASE_URL` intentionally skips the database suite and is not the full release gate.
+- **8 browser tests pass** across desktop Chromium and a phone viewport, including real password sign-in, private routes, viewer restrictions, tables, filters, export, safe hostname handling and disconnect confirmation.
 - Automated WCAG A/AA checks on the reporting screen found no violations in those desktop/phone runs. Chart tables and keyboard access were also exercised. These checks do not replace broad assistive-technology testing.
 - Production build passes; dependency audit reports **0 vulnerabilities**.
 - Populated migration upgrade and PostgreSQL dump/restore pass.
@@ -85,7 +85,7 @@ Verified locally on October 20:
 
 Public form markup and appearance are unchanged. `components/contact-form.tsx` and `components/website-review-form.tsx` retain submission IDs on retries and send optional measurement context. The event tracker no longer sends browser-claimed success. `app/api/contact/route.ts` records optional attribution after saving an inquiry. These changes need Austin's coordination because the files are shared.
 
-`next.config.ts` adds www-to-apex redirects preserving paths and queries. `lib/dashboard/auth.ts` limits trusted origins to the configured canonical origin. Membership lookup no longer silently recreates a removed membership. The separate `apps/mail` application and its dependencies are unchanged.
+`next.config.ts` provides www-to-apex redirects preserving paths and queries, gated by `ENABLE_APEX_REDIRECT=true`. Leave it unset or false while Render redirects apex to www. After fixing hosting, set it true and rebuild; Next.js compiles redirects at build time. During this transition, dashboard login accepts the existing www origin only when the configured origin is the production apex. With the flag enabled, it accepts only the configured canonical origin. Local and unrelated deployments never gain production trusted origins. Google operations still require the configured canonical origin. Membership lookup no longer silently recreates a removed membership. The separate `apps/mail` application and its dependencies are unchanged.
 
 ## Owner-controlled website account provisioning
 
@@ -101,12 +101,12 @@ The address must already be in `DASHBOARD_ALLOWED_EMAILS`. The command requires 
 
 ## Production deployment order and cost review
 
-1. Austin reviews and accepts this branch, the preview, shared-file changes, migration and this runbook. Keep the current job paused while making the hosting/migration change. Do not start another roadmap workstream.
+1. Jeffrey authorized the merge to `main`; no separate branch review is required. The existing Render service auto-deploys `main`. Keep `ENABLE_APEX_REDIRECT` unset or false until the hosting correction is complete. Share the preview, shared-file changes, migration and this runbook for coordination. Do not start another roadmap workstream.
 2. Privately check whether the exposed database credential and `BETTER_AUTH_SECRET` were rotated. Jeffrey answered **“Not sure”**; this is unverified. Complete outstanding rotation before Google authorization, update dependent secret stores, and verify sign-in. Keep required backup encryption material in the approved private secret store, never this repository. A later authentication-secret change requires Google reconnection.
 3. Verify current production backup availability and the ability to restore into a separate database privately. The local restore drill proves the migration, not Render account-level backup availability. Production SQL access was unavailable through the current connector because the database has a private allowlist; do not make it public to bypass this.
-4. In Render, correct the existing web service so **tailoredagents.com is primary**, with www redirecting to it. Render's automatic pairing currently redirects apex to www. Check Cloudflare rules for conflicting redirects. Make this correction **before** deploying the application's www-to-apex redirect or a loop will occur. Preserve all mail DNS and the email subdomain. [Render custom-domain behavior](https://render.com/docs/custom-domains).
+4. In Render, correct the existing web service so **tailoredagents.com is primary**, with www redirecting to it. Render's automatic pairing currently redirects apex to www. Check Cloudflare rules for conflicting redirects. Make this correction **before** setting `ENABLE_APEX_REDIRECT=true` and rebuilding the web service, or a loop will occur. The default-off flag lets the release deploy safely before this correction. Preserve all mail DNS and the email subdomain. [Render custom-domain behavior](https://render.com/docs/custom-domains).
 5. Verify apex HTTPS, `/sign-in`, `/api/health`, public pages, and redirects preserving paths/query strings. Keep auth/public origins, callback and scheduled URL on apex. Existing www sessions may require fresh sign-in.
-6. Merge only after approval, then deploy the existing web service and migration 0005. Do not undo tables or overwrite stored credentials during migration. The existing build performs migrations and retention before building. Verify migrations 0001–0005 are recorded once.
+6. Verify the existing web service deployed `main` and applied migration 0005. Do not undo tables or overwrite stored credentials during migration. The existing build performs migrations and retention before building. Verify migrations 0001–0005 are recorded once.
 7. Review the **existing** `0.5c-512mb` cron's current rate and estimated runtime, then apply `*/5 * * * *` to that service. No new paid service is required. Confirm its private secret still matches the web service and URL is exactly `https://tailoredagents.com/api/cron/search-console`.
 8. Resume the job and verify successful idle processing, heartbeat and daily retention. Check Jeffrey's individual website account as above before Google authorization.
 
@@ -137,4 +137,4 @@ Record non-secret evidence for each item before declaring activation complete:
 5. On the restored candidate, cancel old in-flight jobs and invalidate leases/versions before reconnecting or resuming. Confirm the same property and account permissions. The normal missing-date planner can recover dates still available from Google; older unrecoverable gaps stay visible.
 6. Only after verification, point the reviewed application at the restored candidate, verify sign-in/report access, and resume the existing cron. Re-run live acceptance and observe the next scheduled daily refresh. Do not drop additive schema changes as rollback.
 
-Read-only live availability check on October 20: apex health still redirects to www (301); www health and contact page return 200; mail redirects to its login (303). No production configuration, mail records, migrations or scheduled cadence were changed in this implementation session. These availability checks do not replace the post-deployment submission and Google acceptance tests.
+Read-only live availability check on October 20: apex health still redirects to www (301); www health and contact page return 200; mail redirects to its login (303). This was the pre-merge baseline. The subsequent user-authorized merge triggers the existing Render deployment and its migration command; it does not itself complete the hosting correction or Google acceptance checks. These availability checks do not replace the post-deployment submission and Google acceptance tests.

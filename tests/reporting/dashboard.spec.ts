@@ -125,17 +125,15 @@ test("anonymous requests and viewer management fail closed", async ({
     (await page.request.get("/api/dashboard/reports/export")).status(),
   ).toBe(200);
 });
-test("www redirects to apex with the full page and query", async ({
+test("www remains reachable before the hosting cutover is enabled", async ({
   request,
 }) => {
-  const response = await request.get("/services?source=test", {
+  const response = await request.get("/api/health?source=test", {
     headers: { host: "www.tailoredagents.com" },
     maxRedirects: 0,
   });
-  expect(response.status()).toBe(308);
-  expect(response.headers().location).toBe(
-    "https://tailoredagents.com/services?source=test",
-  );
+  expect(response.status()).toBe(200);
+  expect(response.headers().location).toBeUndefined();
   expect((await request.get("/api/health")).status()).toBe(200);
 });
 test("disconnect explains saved reports and can be cancelled", async ({

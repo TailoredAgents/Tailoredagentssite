@@ -8,16 +8,16 @@ If Jeffrey asks you only to read or follow `JEFFREY.md`, treat this file as the 
 2. Read `AGENTS.md`, `README.md`, `docs/PRODUCT_PLAN.md`, and `docs/LAUNCH_CHECKLIST.md` completely.
 3. Inspect the repository, current branch, recent commits, working tree, existing infrastructure declarations, migrations, tests, and documentation. Preserve all existing work and never discard unrelated changes.
 4. Identify the first incomplete workstream in **Master execution sequence** using repository state and verified production evidence. Do not redo work that is already proven complete.
-5. Create or switch to the appropriate `jeffrey/...` branch before making repository changes. Never implement roadmap work directly on `main`.
+5. Work directly on `main`, as Jeffrey requested on October 20, 2026. Do not create a feature branch unless he explicitly requests one.
 6. Create and maintain a concrete working plan for the active workstream. Work autonomously through every safe code, documentation, test, and diagnostic step in scope.
 7. For Google, DNS, Render, email-provider, payment, or other external-account actions, guide Jeffrey one step at a time and inspect the resulting non-secret state when tooling permits. Never request that a password, two-factor code, API secret, token, database URL, or DNS verification value be pasted into chat.
 8. Pause only when a human must enter credentials, approve a new cost, make a business decision, or authorize a materially broader action. State exactly what Jeffrey must do and how you will verify it afterward.
 9. Follow the applicable instructions in `node_modules/next/dist/docs/` before changing Next.js code. Use versioned database migrations and the repository's existing security and data-access patterns.
 10. Complete the release gate appropriate to the change. At minimum, code releases require lint, strict type checking, tests, a production build, dependency audit, migration verification when applicable, and focused authorization tests.
-11. Update `README.md`, `docs/PRODUCT_PLAN.md`, and `docs/LAUNCH_CHECKLIST.md` in the same branch whenever capability or phase status changes. Describe only what is genuinely operational.
+11. Update `README.md`, `docs/PRODUCT_PLAN.md`, and `docs/LAUNCH_CHECKLIST.md` in the same release whenever capability or phase status changes. Describe only what is genuinely operational.
 12. Review the final diff for secret leakage, unrelated edits, unsafe migrations, authorization gaps, misleading product claims, and conflicts with Austin's public design work.
-13. Commit and push completed repository work to the active `jeffrey/...` branch. Do not create an empty commit for external configuration that produced no repository change.
-14. Deliver the required non-secret completion report and stop at the workstream's review gate. Do not begin the next major workstream until Austin accepts the preceding one and the accepted branch is merged into `main`.
+13. Commit and push completed, verified repository work directly to `main`. Do not create an empty commit for external configuration that produced no repository change.
+14. Deliver the required non-secret completion report. Jeffrey has authorized merging the Search Console readiness release into `main` without a separate pull-request review. Keep later roadmap workstreams outside this release until requested.
 
 When information is uncertain, investigate the repository and authoritative primary documentation rather than guessing. The objective is to complete the Tailored Agents vision safely and sequentially, not merely to generate code or interfaces.
 
@@ -25,7 +25,7 @@ When information is uncertain, investigate the repository and authoritative prim
 
 Own the remaining technical roadmap for Tailored Agents while Austin works on public website design and marketing presentation. Begin by completing the production Google Search Console connection. Then close the Phase 2 and Phase 3 production gates before proceeding sequentially through the client Growth Hub, the human-operated SEO workspace, and the bounded SEO agent.
 
-October 20 update: Jeffrey approved a bounded Search Console readiness and reporting upgrade after the audit identified hostname and import failures. The existing integration is extended on `jeffrey/search-console-readiness`. This explicitly supersedes the earlier activation-only restriction. See `docs/SEARCH_CONSOLE_READINESS.md` for implementation evidence, the preview, deployment order and remaining live gates. Other roadmap workstreams remain outside this release.
+October 20 update: Jeffrey approved a bounded Search Console readiness and reporting upgrade after the audit identified hostname and import failures. The existing integration is extended in this release. Jeffrey subsequently directed that all completed work be merged into `main`, the feature branch removed, and future development stay on `main`. This explicitly supersedes the earlier activation-only restriction. See `docs/SEARCH_CONSOLE_READINESS.md` for implementation evidence, the preview, deployment order and remaining live gates. Other roadmap workstreams remain outside this release.
 
 Start from the `main` commit that contains this handoff or a newer commit. Read this file completely before taking action. Also read `README.md`, `docs/PRODUCT_PLAN.md`, `docs/LAUNCH_CHECKLIST.md`, and the applicable Next.js documentation under `node_modules/next/dist/docs/` before changing application code.
 
@@ -68,19 +68,14 @@ Do not restyle or rewrite Austin's public pages as part of technical work. If a 
 
 ## Git workflow
 
-Do not implement the entire roadmap in one branch or one pull request.
+Jeffrey's October 20, 2026 instruction replaces the earlier feature-branch and pre-merge review requirements.
 
-1. Pull the latest `main` before every workstream.
-2. Use a separate branch for each bounded release, for example:
-   - `jeffrey/phase-2-3-closeout`
-   - `jeffrey/phase-4-client-foundation`
-   - `jeffrey/phase-4-growth-hub`
-   - `jeffrey/phase-5-seo-workspace`
-   - `jeffrey/phase-6-seo-agent`
-3. Keep commits focused and descriptive.
-4. Run the complete relevant test gate before pushing.
-5. Push the branch and have Austin review the outcome before merging.
-6. Start the next phase only from the updated `main` after the preceding phase is accepted.
+1. Fetch and fast-forward the latest `main` before every workstream when the working tree permits it.
+2. Work directly on `main`; do not create feature branches unless Jeffrey explicitly asks.
+3. Keep releases bounded and commits focused and descriptive.
+4. Run the relevant test gate, then commit and push to `main`.
+5. Provide a clear completion report, including any remaining live setup or verification.
+6. Do not start an unrelated roadmap phase without an instruction to do so.
 7. Never force-push `main`, rewrite shared history, or discard Austin's changes.
 8. If Austin has changed a shared path, reconcile rather than overwrite his work.
 
@@ -305,7 +300,7 @@ The two Google variables are declared with `sync: false` in `render.yaml`. Rende
    - URL: `https://tailoredagents.com/api/cron/search-console`
 10. Wait for the web service deployment to report **Live**.
 
-The web build runs database migrations. Migrations through `db/migrations/0005_reporting_readiness.sql` must deploy successfully before connecting Google. Correct Render’s primary hostname before deploying the application’s www-to-apex redirect, to avoid a redirect loop.
+The web build runs database migrations. Migrations through `db/migrations/0005_reporting_readiness.sql` must deploy successfully before connecting Google. The application redirect is off by default. Correct Render’s primary hostname, then set `ENABLE_APEX_REDIRECT=true` on the existing web service and rebuild to enable the www-to-apex redirect without a loop. Until then, dashboard login continues to accept the existing www origin; Google activation still requires the apex correction.
 
 ## Task 10: connect Google from the private dashboard
 
