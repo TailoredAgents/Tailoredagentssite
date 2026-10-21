@@ -201,7 +201,7 @@ For private account checks/provisioning, preview steps, recovery instructions, e
 
 ## Checks
 
-The shared Sales Inbox release adds `/dashboard/inbox` and a separately deployed, address-scoped Mail bridge. For live setup, approved teammate access and verification, follow [new jeffrey.md](new%20jeffrey.md) and [the communications runbook](docs/COMMUNICATIONS_SETUP.md). The isolated email browser suite is `npm run test:inbox:browser`; it uses synthetic Mail on loopback and requires the disposable `ta_inbox_browser_test` PostgreSQL database.
+The shared Sales Inbox release adds `/dashboard/inbox` and a separately deployed, address-scoped Mail bridge. For email-only live setup, approved teammate access and verification, follow [new jeffrey.md](new%20jeffrey.md) and [the communications runbook](docs/COMMUNICATIONS_SETUP.md). The isolated email browser suite is `npm run test:inbox:browser`; it uses synthetic Mail on loopback and requires the disposable `ta_inbox_browser_test` PostgreSQL database.
 
 Run the complete website gate after dependency, schema, authentication, route, or design changes:
 

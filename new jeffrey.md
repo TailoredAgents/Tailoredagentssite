@@ -1,12 +1,12 @@
 # New Jeffrey — shared Sales Inbox handoff
 
-Prepared October 21, 2026 for the developer who manages Cloudflare and Render.
+Prepared October 21, 2026 for Jeffrey: email activation only.
 
-## What Jeffrey requested
+## What this handoff covers
 
 Connect **sales@tailoredagents.com** to the internal website CRM. **Devon, Jeffrey and Austin** should have read and reply access. Confirm their actual existing Mail login accounts; their names are not permission to guess email addresses or share the inbox with everyone.
 
-This handoff covers the first email increment. Twilio SMS, calling, voicemail, call recordings and transcripts come afterward. No new phone number or paid provider service has been purchased.
+This handoff covers the first email increment. The project owner handles Twilio and the remaining development with Codex. Jeffrey's scope is the email-specific Cloudflare/Render configuration, Mail deployment, Sales address approvals and email acceptance below.
 
 ## Implemented in this release
 
@@ -89,17 +89,9 @@ Use synthetic messages and explicitly authorized test correspondents; avoid test
 - [ ] Verify desktop and phone layouts. Revoke one approved test account and confirm its next request loses message and collaboration access, then restore only the intended grant.
 - [ ] For an uncertain send, retain the original message and use **Check send status**. Confirm one provider message for the repeated attempt. Do not make a new send key or manually resubmit through another client until Mail's state is resolved.
 
-## Upcoming development context
+## Scope after email acceptance
 
-Feature implementation continues in the Codex development work described in [the roadmap](docs/AGENCY_OS_ROADMAP.md). This section gives context for future provider setup; it does not transfer the remaining feature development to Jeffrey. Jeffrey's part is live account/number/registration configuration, secrets, deployments and acceptance. Local SMS development can proceed while email activation is being completed.
-
-1. **Twilio SMS:** confirm the business number/account owner, registration/use case, consent/opt-out flow and budget with Jeffrey. Add server-side adapter, verified callbacks, inbound threading, delivery events and restrictions. BatchDialer remains Devon's campaign dialer.
-2. **Calling:** browser calls, inbound routing/forwarding, business hours, missed-call responsibility and voicemail.
-3. **Recordings and transcripts:** settle disclosure/consent, access and retention before activation; then protected recording playback/deletion, bounded transcription jobs and reviewed summaries/follow-ups.
-4. **Inbox refinements:** outgoing attachments, watchers, richer needs-reply workflows and deliberate client sharing. No automatic sharing based only on matching an email address.
-5. Continue the existing agency roadmap for proposals/onboarding, recurring services/billing and client SEO/AI assistance.
-
-Do not buy/port a number, submit registration, enable recording or create a paid service solely because it appears in this handoff. Confirm the concrete selection, budget and policy with Jeffrey first.
+Twilio account/number setup, SMS, calling, voicemail, recordings, transcripts and the remaining agency development stay with the project owner and Codex. The active queue is in [the roadmap](docs/AGENCY_OS_ROADMAP.md). Jeffrey's assignment is the email activation and acceptance checklist above.
 
 ## Developer references and repeatable local checks
 

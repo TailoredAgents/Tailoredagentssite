@@ -1,5 +1,9 @@
 # Jeffrey technical handoff: production closeout and product roadmap
 
+## Current ownership — October 21 clarification
+
+Jeffrey's current assignment is **email activation only**, using [new jeffrey.md](new%20jeffrey.md). The project owner handles Twilio setup, SMS, calling, recordings, transcripts and the remaining agency development with Codex. Earlier broad technical assignments and execution instructions below are historical where they conflict with this scope. They do not assign the remaining roadmap or Twilio account configuration to Jeffrey. Follow [the active roadmap](docs/AGENCY_OS_ROADMAP.md) for the development resume point.
+
 ## Active agency OS direction — October21
 
 The owner's new brief authorizes the internal CRM expansion and changes the priorities below. Follow `docs/AGENCY_OS_ROADMAP.md` for the active sequence: prospecting/sales foundation, unified communications, Factory/proposals/delivery, recurring services and bounded SEO assistance, then client Growth Hub. SEO/internal-AI architecture is planned alongside sales. Preserve BatchDialer, standalone Factory output, public pricing, Mail and current integrations. The first sales source release is implemented; see that roadmap for actual release acceptance and remaining provider actions. Older Google activation and portal-first instructions below are historical where superseded, not authority to redo completed activation or delay authorized CRM work.

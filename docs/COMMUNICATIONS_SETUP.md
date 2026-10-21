@@ -2,6 +2,8 @@
 
 Release 2's first email increment is implemented in source. Production deployment, mailbox approval and authorized delivery acceptance are separate steps below; this document does not record them as completed. BatchDialer remains the current campaign dialer. Twilio SMS, calling, voicemail, recordings and transcripts remain later increments.
 
+Ownership: Jeffrey handles the email activation checklist only. The project owner handles Twilio account/number setup, registration, secrets, SMS, calling, recording, transcripts and the remaining development with Codex. The Twilio sections below are the project owner's working checklist. The email-only handoff is [new jeffrey.md](../new%20jeffrey.md).
+
 ## First email increment
 
 `/dashboard/inbox` reads approved Tailored Mail addresses through a separate server-only API. It includes folder/search pagination, plain-text compose/reply, conversation assignment and open/waiting/done states, explicit business/lead links, internal notes, private drafts, per-person read receipts and protected incoming attachment downloads. Replies use Mail's verified original message for recipients and subject. Outgoing attachments, watchers and automatic client sharing are not part of this increment.

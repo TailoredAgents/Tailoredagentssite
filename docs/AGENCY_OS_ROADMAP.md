@@ -4,7 +4,7 @@ Updated October 21, 2026. This is the active implementation sequence authorized 
 
 ## Current development resume point
 
-We paused after completing the first shared-email Inbox increment. The next development phase is **Twilio SMS in the CRM Inbox**. Jeffrey's handoff covers live environment access, provider setup, deployment and acceptance; implementation continues here. Cloudflare/Render sign-in is not required to build and test the next increment locally.
+We paused after completing the first shared-email Inbox increment. The next development phase is **Twilio SMS in the CRM Inbox**. Jeffrey's handoff covers only email-specific Cloudflare/Render configuration, Mail deployment, Sales address approvals and email acceptance. The project owner handles Twilio and all remaining development with Codex. Cloudflare/Render sign-in is not required to build and test the next increment locally.
 
 The current repository has manual SMS/call activity logs and contact restrictions, but no operational Twilio adapter, SMS message store, callbacks or calling integration. Marketing illustrations do not establish those capabilities.
 
@@ -16,7 +16,7 @@ Our development queue is:
 4. **Remaining Inbox and design work:** outgoing email attachments, watchers, richer needs-reply/follow-up views and further visual refinement of real staff workflows. The shared shell and first email Inbox redesign are already implemented.
 5. **Agency delivery and recurring services:** proposals/scopes, onboarding, billing/payment events, hosting/maintenance/SEO agreements and renewals, following the releases below. Client SEO and internal AI architecture continue in parallel; their operational agents and client portal remain later implementation.
 
-Jeffrey supplies or configures the live accounts, approved business number, registrations, secrets and deployment access needed for each provider. We continue feature code, migrations, local tests and UI work. Joint live acceptance happens once the corresponding implementation and provider setup are both ready. The detailed first-email setup remains in [new jeffrey.md](../new%20jeffrey.md).
+The project owner handles Twilio accounts, business-number decisions, registrations, secrets and live activation, alongside the SMS, calling, recording, transcript and remaining agency development with Codex. Jeffrey handles the separate email setup only. Local feature code, migrations, tests and UI work can proceed while email activation is completed. Provider acceptance follows when the corresponding implementation and setup are ready. The email-only handoff remains in [new jeffrey.md](../new%20jeffrey.md).
 
 ## Business workflow and boundaries
 
