@@ -47,7 +47,7 @@ Anonymized records remain readable as sanitized history and reject further edits
 
 ### First increment — shared sales email
 
-Implemented in source; deployment and authenticated production acceptance are not yet recorded for this increment. Follow [Communications setup](COMMUNICATIONS_SETUP.md) to apply website migration **0010**, Mail migration **0037**, separately deploy Mail, configure the independent `CRM_MAIL_SECRET` in both services and approve the exact address grants.
+Implemented in source and deployed to the website as recorded below; separate Mail activation and authenticated production acceptance remain pending. Follow [Communications setup](COMMUNICATIONS_SETUP.md) to verify website migration **0010**, apply Mail migration **0037**, separately deploy Mail, configure the independent `CRM_MAIL_SECRET` in both services and approve the exact address grants.
 
 - `/dashboard/inbox` provides a conversation queue, plain-text timeline/composer and CRM context on desktop, with separate panes on phone. Live folder/search pagination comes from Tailored Mail.
 - Conversation status is open, waiting or done, with an active teammate owner and deliberate business/lead links. Notes are internal to approved readers; drafts and read receipts are personal. The unread toggle applies to the current provider page, not a claimed whole-mailbox unread count. Watchers and more detailed needs-reply automation remain future work.
@@ -71,6 +71,8 @@ Verified on October 21 using isolated synthetic fixtures: 185 website code/Postg
 The Inbox checks include attachments and revoked download access, private drafts, internal notes, status/assignment/links, viewer/read-only grants, explicit send, uncertain retry with the same key across refresh, accessibility and widths from 320 to 1440 pixels. Accepted-send cleanup handles whitespace while preserving a newer draft from another tab. Reviewed synthetic previews: [desktop Inbox](previews/inbox-desktop.png) and [phone Inbox](previews/inbox-phone.png). Mail's tests verify individual alias isolation, approval/revocation, safe plain text, forged/stale replies and durable recovery. The Mail lockfile repair adds only its two missing optional dependency entries; existing dependency versions remain unchanged.
 
 Live setup and authenticated provider acceptance remain assigned to the developer with Cloudflare/Render access. The complete handoff is [new jeffrey.md](../new%20jeffrey.md); source verification does not establish live mailbox access or delivery.
+
+Website revision `f8569fe2b9e1d9acbaf20cdf0ef92a92a7e5f376` auto-deployed successfully on October 21 at 22:47:38 UTC (6:47 p.m. EDT), GitHub deployment `7239112044`, [Render deployment dep-dbck1b0u01pc73bduusg](https://dashboard.render.com/web/srv-db6hod8473hc739q2uo0/deploys/dep-dbck1b0u01pc73bduusg). Public health/pricing/sign-in and Mail login return 200; anonymous Inbox and attachment requests redirect to sign-in. This verifies website deployment and its unauthenticated boundary. Mail has not been deployed by this push, and no production CRM secret, mailbox grant or customer message was created here.
 
 ## Release 3 — Proposals, onboarding and delivery
 
