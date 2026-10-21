@@ -89,7 +89,9 @@ Use synthetic messages and explicitly authorized test correspondents; avoid test
 - [ ] Verify desktop and phone layouts. Revoke one approved test account and confirm its next request loses message and collaboration access, then restore only the intended grant.
 - [ ] For an uncertain send, retain the original message and use **Check send status**. Confirm one provider message for the repeated attempt. Do not make a new send key or manually resubmit through another client until Mail's state is resolved.
 
-## Subsequent work after email acceptance
+## Upcoming development context
+
+Feature implementation continues in the Codex development work described in [the roadmap](docs/AGENCY_OS_ROADMAP.md). This section gives context for future provider setup; it does not transfer the remaining feature development to Jeffrey. Jeffrey's part is live account/number/registration configuration, secrets, deployments and acceptance. Local SMS development can proceed while email activation is being completed.
 
 1. **Twilio SMS:** confirm the business number/account owner, registration/use case, consent/opt-out flow and budget with Jeffrey. Add server-side adapter, verified callbacks, inbound threading, delivery events and restrictions. BatchDialer remains Devon's campaign dialer.
 2. **Calling:** browser calls, inbound routing/forwarding, business hours, missed-call responsibility and voicemail.

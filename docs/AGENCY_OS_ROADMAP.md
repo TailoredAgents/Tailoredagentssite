@@ -2,6 +2,22 @@
 
 Updated October 21, 2026. This is the active implementation sequence authorized by the owner's agency-OS brief. It supersedes the earlier instruction to proceed directly from internal analytics to the client Growth Hub. The historical Search Console, Mail and website release records remain evidence for those releases.
 
+## Current development resume point
+
+We paused after completing the first shared-email Inbox increment. The next development phase is **Twilio SMS in the CRM Inbox**. Jeffrey's handoff covers live environment access, provider setup, deployment and acceptance; implementation continues here. Cloudflare/Render sign-in is not required to build and test the next increment locally.
+
+The current repository has manual SMS/call activity logs and contact restrictions, but no operational Twilio adapter, SMS message store, callbacks or calling integration. Marketing illustrations do not establish those capabilities.
+
+Our development queue is:
+
+1. **SMS Inbox foundation:** number-scoped conversations/messages linked deliberately to existing CRM businesses/contacts, explicit compose/reply, durable outbound attempts, inbound/status callbacks, delivery states, permissions and opt-out enforcement. Implement and test with synthetic transport while provider activation proceeds separately; verify the current official Twilio contract before writing the integration.
+2. **Calling and voicemail:** persistent phone controls, outbound browser calls, incoming routing/forwarding, business hours, missed calls and voicemail linked to CRM records.
+3. **Recordings, transcripts and assistance:** approved recording controls, protected playback/deletion and retention; then transcription, summaries and editable follow-up suggestions.
+4. **Remaining Inbox and design work:** outgoing email attachments, watchers, richer needs-reply/follow-up views and further visual refinement of real staff workflows. The shared shell and first email Inbox redesign are already implemented.
+5. **Agency delivery and recurring services:** proposals/scopes, onboarding, billing/payment events, hosting/maintenance/SEO agreements and renewals, following the releases below. Client SEO and internal AI architecture continue in parallel; their operational agents and client portal remain later implementation.
+
+Jeffrey supplies or configures the live accounts, approved business number, registrations, secrets and deployment access needed for each provider. We continue feature code, migrations, local tests and UI work. Joint live acceptance happens once the corresponding implementation and provider setup are both ready. The detailed first-email setup remains in [new jeffrey.md](../new%20jeffrey.md).
+
 ## Business workflow and boundaries
 
 The immediate business is website sales: researched prospect -> Devon's BatchDialer outreach -> interested conversation -> appointment and/or personalized mockup -> proposal -> won sale -> website project -> recurring services.
