@@ -122,3 +122,18 @@ export async function revokeMailDashboardSession(sessionId: string) {
     catch { /* The local session is still revoked if mail is temporarily unavailable. */ }
   }
 }
+
+/** Server-only credential transport. This identity grant alone has no mailbox
+ * authority; the separate CRM service validates explicit address grants. */
+export async function readMailDashboardToken(sessionId: string, userId: string) {
+  const result = await getDatabasePool().query<{ grant_encrypted: string }>(
+    `SELECT g.grant_encrypted FROM mail_dashboard_sessions g
+     JOIN mail_dashboard_identities i ON i.mail_user_id=g.mail_user_id
+     JOIN "session" s ON s.id=g.session_id AND s."userId"=i.user_id
+     WHERE g.session_id=$1 AND i.user_id=$2 AND s."expiresAt">now()`,
+    [sessionId, userId],
+  );
+  if (!result.rows[0]) return null;
+  try { return decryptCredential(result.rows[0].grant_encrypted, grantKey()); }
+  catch { return null; }
+}

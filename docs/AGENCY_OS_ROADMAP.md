@@ -45,13 +45,32 @@ Anonymized records remain readable as sanitized history and reject further edits
 
 ## Release 2 — Communications and provider activation
 
-Build the unified Inbox using the saved company/contact/opportunity links. Desktop uses conversation queue, timeline/composer and context panel; phone uses separate panes. Include assignment, unread/needs-reply/waiting/done states, watchers, internal notes, drafts, safe attachments and explicit source/delivery states. Provider administration belongs in Settings.
+### First increment — shared sales email
 
-Tailored Mail integration requires a new narrow authenticated service API plus owner-approved sender/mailbox grants. The existing login endpoint cannot read an inbox. Keep personal/restricted messages private; avoid sharing the Mail database with Next.js or enabling inherited disabled APIs wholesale. Email synchronization uses durable provider events and deduplication. Decide explicitly whether an individual message is shared with a client record; matching an email address does not grant mailbox visibility.
+Implemented in source; deployment and authenticated production acceptance are not yet recorded for this increment. Follow [Communications setup](COMMUNICATIONS_SETUP.md) to apply website migration **0010**, Mail migration **0037**, separately deploy Mail, configure the independent `CRM_MAIL_SECRET` in both services and approve the exact address grants.
 
-Twilio setup can be prepared in parallel with Release 1 using `COMMUNICATIONS_SETUP.md`. After registration and controlled acceptance, add direct-number SMS/MMS, delivery callbacks, opt-outs and browser calling. BatchDialer continues Devon's campaign calling. Subsequent increments add inbound routing, forwarding, hours, voicemail and a persistent phone panel. Signed callbacks, bounded payloads, idempotent events and reliable retry/exception state are mandatory.
+- `/dashboard/inbox` provides a conversation queue, plain-text timeline/composer and CRM context on desktop, with separate panes on phone. Live folder/search pagination comes from Tailored Mail.
+- Conversation status is open, waiting or done, with an active teammate owner and deliberate business/lead links. Notes are internal to approved readers; drafts and read receipts are personal. The unread toggle applies to the current provider page, not a claimed whole-mailbox unread count. Watchers and more detailed needs-reply automation remain future work.
+- Compose and reply require a deliberate send. Reply recipients and subject come from the approved original Mail message; the first increment sends plain text with one explicit compose recipient. Existing email opt-outs, actual workspace roles and current Mail send permission are enforced. Incoming attachments have authenticated downloads; outgoing file attachments remain later work.
+- An outgoing intent is reserved before Mail is called. A stable send key protects retries, and uncertain attempts keep the same payload/key for status checks. Accepted/queued state is distinct from confirmed delivery. Notes expire after 24 months and private drafts after 90 days; content-free send-key receipts remain to prevent replay.
+- Mail remains separately deployed and owns message bodies, attachments, routing and delivery. Next.js reads live through a narrow private API and stores only CRM metadata/private drafts, rather than caching mailbox content or sharing Mail's database. The existing login endpoint grants no email access; disabled public APIs remain disabled.
+- The owner approved **sales@tailoredagents.com** for **Devon, Jeffrey and Austin** with read/reply access. Activation must select their confirmed existing Mail accounts and that exact address; names are not guessed login emails and dashboard membership does not imply mailbox access. Personal aliases and unrelated messages remain private. Client-facing message sharing is not automatic.
 
-Add recordings only with an approved disclosure/consent process, restricted playback/download, visible readiness, retention/deletion and provider failures. Transcription and structured call summaries run in bounded background jobs; they link timestamped evidence and propose editable follow-ups. Human review controls important CRM changes and external actions. No new provider, paid service, number purchase, port or customer outreach is performed by Release 1.
+### Remaining communications increments
+
+1. **Twilio SMS:** prepare the account/number and registration alongside email activation using `COMMUNICATIONS_SETUP.md`. After controlled acceptance, add direct-number messaging, incoming replies, delivery callbacks and opt-outs. SMS/MMS provider work is not implemented by the email increment.
+2. **Calling and voicemail:** add direct CRM calling, inbound routing/forwarding, hours, staff fallback, missed calls, voicemail and a persistent phone panel. BatchDialer continues Devon's campaign calling.
+3. **Recordings and transcripts:** activate recordings only with an approved disclosure/consent process, restricted playback/download, visible readiness, retention/deletion and provider failure handling. Transcription and structured summaries run in bounded background jobs, link timestamped evidence and propose editable follow-ups.
+
+Signed callbacks, bounded payloads, idempotent events and reliable retry state apply to each later provider. Human review controls important CRM changes and external actions. No Twilio number, paid service, port, call, recording or customer outreach is created by implementing the first email increment. SEO-agent architecture continues in the parallel track below; proposals, billing and recurring services follow communications.
+
+### Email increment local verification
+
+Verified on October 21 using isolated synthetic fixtures: 185 website code/PostgreSQL tests, including 19 Inbox persistence/authorization/send tests and eight Mail gateway tests; 10 desktop/phone Inbox browser checks; and 33 existing reporting, manual-lead, sales and operations browser checks, with one intentional phone skip. Mail separately passes 395 code/SQLite tests and 11 real Worker browser checks after a clean install. Lint, strict types, both production builds, dependency audits and the populated PostgreSQL migration/dump/restore check pass.
+
+The Inbox checks include attachments and revoked download access, private drafts, internal notes, status/assignment/links, viewer/read-only grants, explicit send, uncertain retry with the same key across refresh, accessibility and widths from 320 to 1440 pixels. Accepted-send cleanup handles whitespace while preserving a newer draft from another tab. Reviewed synthetic previews: [desktop Inbox](previews/inbox-desktop.png) and [phone Inbox](previews/inbox-phone.png). Mail's tests verify individual alias isolation, approval/revocation, safe plain text, forged/stale replies and durable recovery. The Mail lockfile repair adds only its two missing optional dependency entries; existing dependency versions remain unchanged.
+
+Live setup and authenticated provider acceptance remain assigned to the developer with Cloudflare/Render access. The complete handoff is [new jeffrey.md](../new%20jeffrey.md); source verification does not establish live mailbox access or delivery.
 
 ## Release 3 — Proposals, onboarding and delivery
 
@@ -113,6 +132,7 @@ $env:TEST_DATABASE_URL = 'postgresql://ta_test@127.0.0.1:55433/ta_reporting_test
 $env:TEST_MAIL_AUTH_DATABASE_URL = 'postgresql://ta_test@127.0.0.1:55433/ta_mail_login_test'
 $env:TEST_SALES_DATABASE_URL = 'postgresql://ta_test@127.0.0.1:55433/ta_sales_test'
 $env:TEST_SALES_SCHEMA_DATABASE_URL = 'postgresql://ta_test@127.0.0.1:55433/ta_sales_schema_test'
+$env:TEST_INBOX_DATABASE_URL = 'postgresql://ta_test@127.0.0.1:55433/ta_inbox_test'
 npm test
 npm run lint
 npm run typecheck
@@ -125,6 +145,10 @@ $env:REPORTING_TEST_DATABASE_URL = 'postgresql://ta_test@127.0.0.1:55433/ta_repo
 $env:TEST_DATABASE_URL = $env:REPORTING_TEST_DATABASE_URL
 node scripts/seed-reporting-preview.mjs
 npm run test:browser -- --reporter=line
+
+# Separate Mail-mode Inbox suite with synthetic local Mail on 3130/3131.
+$env:INBOX_TEST_DATABASE_URL = 'postgresql://ta_test@127.0.0.1:55433/ta_inbox_browser_test'
+npm run test:inbox:browser -- --reporter=line
 ```
 
 For an interactive synthetic workspace, run `npm run reporting:preview` with those final two `REPORTING_TEST_*` variables. This intentionally reseeds the disposable browser database. Open `http://127.0.0.1:3120/dashboard/sales` and sign in as `owner@example.test` or `viewer@example.test`, password `Reporting-test-password-2026`. These fixture credentials grant no production access. Import a small synthetic CSV through Calling lists to exercise the workflow; production uses the existing Mail login and approved dashboard grants.

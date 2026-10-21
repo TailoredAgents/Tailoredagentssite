@@ -11,6 +11,7 @@ import {
   CalendarCheck2,
   Columns3,
   Gauge,
+  Inbox,
   Globe2,
   FolderKanban,
   ListFilter,
@@ -30,6 +31,7 @@ const navigationGroups = [
     label: "Daily work",
     items: [
       { label: "Overview", href: "/dashboard", icon: Gauge },
+      { label: "Inbox", href: "/dashboard/inbox", icon: Inbox },
       { label: "My day", href: "/dashboard/sales/today", icon: CalendarCheck2 },
       { label: "Sales", href: "/dashboard/sales", icon: Columns3 },
       { label: "Mockups", href: "/dashboard/sales/mockups", icon: PanelsTopLeft },

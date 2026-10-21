@@ -18,6 +18,7 @@
     "mail:build": "npm --prefix apps/mail run build",
     "dashboard:provision": "node scripts/provision-dashboard-user.mjs",
     "test:browser": "playwright test",
+    "test:inbox:browser": "playwright test --config playwright.inbox.config.ts",
     "test:integration": "vitest run lib/reporting/database.integration.test.ts",
     "reporting:preview": "node scripts/start-reporting-preview.mjs",
     "test:recovery": "node scripts/test-reporting-recovery.mjs"
