@@ -11,7 +11,7 @@ Jeffrey authorized merging this release into `main` and removing the feature bra
 - [x] PostgreSQL integration tests, browser checks, restore drill and complete release checks.
 - [x] Reviewable preview, documentation and focused commits prepared for review.
 - [x] Reporting release deployed with migration 0005.
-- [ ] October 21 www configuration, migration 0006 and live worker verification.
+- [x] October 21 www configuration, migration 0006 and live scheduled-worker verification.
 - [ ] Google authorization, reconciled import, browser-independent processing and scheduled daily refresh.
 
 ## Confirmed baseline, October 20, 2026
@@ -37,7 +37,7 @@ October 21 choice: canonical https://www.tailoredagents.com (replaces the origin
 - Migration 0005 adds connection versions, durable jobs, expiring leases, completed-date coverage (including zero days), worker/retention health, and an inquiry-attribution outbox. Existing metrics, credentials and operational records survive. Long URLs and queries are preserved; a compact hash index replaces the oversized text index. A hash collision fails the date transaction rather than combining distinct values.
 - Initial import checks 90 days, recent first, ending three Pacific calendar days ago to use finalized data. Later requests check every missing date plus the latest ten days. Unrecoverable gaps older than Google's 16-month window are disclosed. Pagination retrieves up to Google's 50,000 detailed rows per day/type and reports the limit.
 - Each date replaces its saved results only after all three Google reports succeed. Expired leases recover after interruption. Version checks prevent a previous connection's work from committing after disconnect/reconnect. Temporary failures wait before retrying; revoked permission stops retries. Manual requests return HTTP 202 and reuse pending work.
-- The existing cron's proposed cadence is every five minutes. A daily refresh is requested on its first check after 10:17 UTC, normally 10:20. Each request processes bounded work; the trigger exits when idle or after its runtime budget. Requests refuse redirects. Worker check-in, Google data dates and completed imports are distinct.
+- The existing cron's configured cadence is every five minutes. A daily refresh is requested on its first check after 10:17 UTC, normally 10:20. Each request processes bounded work; the trigger exits when idle or after its runtime budget. Requests refuse redirects. Worker check-in, Google data dates and completed imports are distinct.
 - Website presets use completed Pacific days through yesterday; Google presets use the latest covered date. Custom dates are retained, with missing portions marked. Comparisons require sufficient earlier history. Google totals use property totals; missing chart dates are gaps.
 - Actual stored website inquiries are authoritative. Optional attribution is recorded server-side, with retryable pending work. Browser claims of successful submissions are rejected. Retries reuse the submission ID. DNT/GPC inquiries remain receivable without creating tracked sessions. Legacy browser submission records are retained but excluded from verified conversion rates.
 - The redesigned screen has readable controls, two charts with accessible data tables, searchable/sortable/paginated detail tables, protected CSV export with formula escaping, progress, update history, connection recovery and disconnect confirmation. Scoped navigation size/contrast adjustments apply on this route only.
@@ -139,3 +139,28 @@ Record non-secret evidence for each item before declaring activation complete:
 6. Only after verification, point the reviewed application at the restored candidate, verify sign-in/report access, and resume the existing cron. Re-run live acceptance and observe the next scheduled daily refresh. Do not drop additive schema changes as rollback.
 
 Read-only live availability check on October 20: apex health still redirects to www (301); www health and contact page return 200; mail redirects to its login (303). This was the pre-merge baseline. The subsequent user-authorized merge triggers the existing Render deployment and its migration command; it does not itself complete the later www environment alignment or Google acceptance checks. These availability checks do not replace the post-deployment submission and Google acceptance tests.
+
+
+## October 21 www rollout — verified live
+
+Jeffrey chose www, replacing the earlier apex-only plan. Commit `78cc5fd` is deployed on both existing Render services. The web deployment finished at 12:14:11 UTC; the cron build finished at 12:13:20 UTC. The workspace remains on `main`, with no feature branch.
+
+- Updated only `NEXT_PUBLIC_SITE_URL` and `BETTER_AUTH_URL` on the existing web service, and `SEARCH_CONSOLE_SYNC_URL` on the existing cron, using merged environment updates. Existing secrets were preserved. No domain, mail, billing-plan or cron-schedule changes were made in this rollout.
+- Production build logs confirm migration 0006 applied successfully. Existing migrations 0001–0005 remain recorded.
+- All **16 sitemap pages** return HTTP 200 and declare their own matching `https://www.tailoredagents.com` canonical URL. The sitemap and robots file use www. Apex `/contact?source=www-check&keep=1` redirects to the same page and query on www.
+- The health and sign-in pages return 200. Signed-out reports, exports, tables and Google status return 401. The Google callback sends signed-out users to the www sign-in page. Unsigned scheduled requests return 401.
+- An invalid contact submission returns 400 with database-backed rate limiting available. This did **not** create a real inquiry or send notification email. A successful live inquiry and dashboard count still need checking.
+- The separate mail login returns 200; no mail files or DNS records changed. This is an availability check, not a repeat of mail send/receive testing.
+- The genuinely scheduled **12:15 UTC** cron run started at 12:15:05 and finished successfully at 12:15:27. Its worker response was **0 date updates, 0 stopped imports**. This verifies the URL, matching job authentication and successful idle processing. It does not establish a real Google import or a completed daily Google-data refresh.
+- Local checks: **63 automated tests**, including **22 PostgreSQL integration tests**; **10 desktop/phone browser tests**; lint; strict types; production build; dependency audit with **0 vulnerabilities**; and a populated-database upgrade through migration 0006 followed by PostgreSQL dump/restore all passed. The tests include www management requests, the exact OAuth callback, preserved paths/queries, prevention of redirect loops, and rejection of redirects by the private worker command.
+
+### Remaining live acceptance
+
+1. Verify Jeffrey and Austin can each sign in with their own approved dashboard account and see the expected reports and controls. Use the existing private provisioning command only if an approved account is missing.
+2. Confirm the previously flagged database password and website authentication secret were rotated, and confirm current production backups and private restore access. The local restore drill passed; the production connector cannot inspect the private database. Do not open its network allowlist for this task.
+3. In the existing Google OAuth client, allow exactly `https://www.tailoredagents.com/api/integrations/search-console/callback`. Verify the Search Console API, the exact Domain property, the approved Google owner and read-only permission; then authorize from the dashboard. The app's callback code is updated, but Google's account settings were not accessible to verify or change. Google requires the return address to match its registered callback. [Google OAuth documentation](https://developers.google.com/identity/protocols/oauth2/web-server).
+4. Import the actual 90 days; compare a fixed range with Google's report; refresh twice; close the browser while processing; verify recovery and the next scheduled daily data refresh. A successful idle worker check is separate evidence from these Google-data checks.
+5. Submit a clearly identified real inquiry and verify one saved inquiry, correct reporting/attribution, privacy behavior and notification delivery. Local controlled tests cover these behaviors; no live notification was sent during this rollout.
+6. Review actual active-runtime charges for the existing five-minute cron. Its schedule and plan were already in place before this change. The observed run elapsed about 23 seconds including startup and shutdown; one run is not a monthly billing estimate.
+
+For rollback, use a compatible application build that keeps www as the canonical origin and understands migration 0005. Keep both migrations and stored reports. Do not reenable the old www-to-apex redirect or restore an apex worker URL. Pause the existing job if operational recovery requires it, then repeat the live checks after restoring service.

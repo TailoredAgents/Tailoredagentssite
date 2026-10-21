@@ -28,7 +28,7 @@ Use this checklist for the public website and private dashboard. The mail applic
 - [ ] Confirm Render injects the database's private connection string into `DATABASE_URL`.
 - [ ] Confirm `BETTER_AUTH_SECRET` is generated, private, and at least 32 high-entropy characters.
 - [ ] Rotate the database password and authentication secret previously exposed during setup, then update only Render's secret store.
-- [ ] Set `BETTER_AUTH_URL=https://www.tailoredagents.com` using the final canonical hostname.
+- [x] Set `BETTER_AUTH_URL=https://www.tailoredagents.com` using the final canonical hostname (October 21).
 - [ ] Set `DASHBOARD_ALLOWED_EMAILS` to the exact approved internal accounts.
 - [ ] Set a private `DASHBOARD_INITIAL_PASSWORD` of at least 10 characters.
 - [ ] Configure `RESEND_API_KEY`, `CONTACT_FROM_EMAIL`, and `CONTACT_TO_EMAIL` when inquiry email notifications are ready; dashboard login does not depend on them.
@@ -131,10 +131,12 @@ Local verification and production acceptance are separate. See [release evidence
 - [ ] Privately verify/complete database and authentication-secret rotation (Jeffrey answered “Not sure”).
 - [ ] Check Jeffrey’s production dashboard account; provision only if missing, using the owner-controlled command.
 - [ ] Confirm a current production backup and restore access before applying the migration.
-- [ ] Align website/authentication/worker settings with the chosen www address, preserve apex-to-www routing, and verify canonical links and sign-in. The obsolete apex redirect flag is ignored. Preserve mail DNS.
+- [x] Align website/authentication/worker settings with www, preserve apex-to-www routing, and verify all 16 canonical pages and the public sign-in page. Mail DNS is unchanged; individual account sign-in remains a separate check.
 - [x] Migration 0005 applied in production; the existing cron is configured for five-minute checks.
-- [ ] Deploy migration 0006, verify successful worker checks at www, and review actual active-runtime cost.
+- [x] Deploy migration 0006 and observe the scheduled 12:15 UTC worker check succeed at www on October 21.
+- [ ] Review actual active-runtime charges for the existing five-minute cron.
 - [ ] Authorize Austin’s approved Google account, confirm exact Domain property and read-only access.
 - [ ] Reconcile a fixed date range with Google; verify manual refresh twice and processing after closing the browser.
 - [ ] Verify a manual worker run and the next genuinely scheduled daily refresh; record worker/data timestamps separately.
-- [ ] Verify live website, contact submission and separate mail service after deployment.
+- [x] Verify live website and separate mail-login availability after the www deployment.
+- [ ] Verify one successful live contact submission and its reporting/notification results.
