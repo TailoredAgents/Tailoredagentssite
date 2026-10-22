@@ -108,6 +108,7 @@ test("keeps draft text across channel changes and sends from the same selected c
   await expect(page).toHaveURL(new RegExp(`conversation=${id}`));
   await page.getByRole("tab",{name:"SMS",exact:true}).click();
   await expect(sms.getByRole("textbox",{name:"Text message *",exact:true})).toHaveValue("Text draft to the customer.");
+  await expect(sms.locator('[name="permissionConfirmed"], [name="permissionEvidence"]')).toHaveCount(0);
   await sms.getByRole("button",{name:"Send text",exact:true}).click();
   await expect(page.getByRole("region",{name:"Conversation timeline",exact:true}).getByText("Text draft to the customer.",{exact:true})).toBeVisible();
   await page.getByRole("tab",{name:"Email",exact:true}).click();

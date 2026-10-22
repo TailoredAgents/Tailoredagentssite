@@ -523,39 +523,16 @@ export async function sendSmsMessage(
       throw new SmsInputError(
         "The hourly SMS limit has been reached (30 per teammate, 100 per business number). Existing send status checks remain available.",
       );
-    const permission = (
+    const preference = (
       await db.query<{ status: string }>(
         "SELECT status FROM crm_channel_preferences WHERE workspace_id=$1 AND channel='sms' AND normalized_address=$2 FOR UPDATE",
         [context.workspace.id, phone],
       )
     ).rows[0]?.status;
-    if (permission === "blocked")
+    if (preference === "blocked")
       throw new SmsInputError(
-        "This phone number is opted out of SMS. A confirmation checkbox cannot override its restriction.",
+        "This phone number has opted out of SMS.",
       );
-    if (permission !== "allowed") {
-      if (!input.permissionConfirmed || input.permissionEvidence.length < 5)
-        throw new SmsInputError(
-          "Confirm permission to text and record how it was obtained before the first outbound SMS.",
-        );
-      await db.query(
-        "INSERT INTO crm_channel_preferences(workspace_id,channel,normalized_address,status,evidence,actor_user_id) VALUES($1,'sms',$2,'allowed',$3,$4) ON CONFLICT(workspace_id,channel,normalized_address) DO UPDATE SET status='allowed',evidence=EXCLUDED.evidence,actor_user_id=EXCLUDED.actor_user_id,updated_at=now() WHERE crm_channel_preferences.status<>'blocked'",
-        [
-          context.workspace.id,
-          phone,
-          input.permissionEvidence,
-          context.user.id,
-        ],
-      );
-      const current = (
-        await db.query(
-          "SELECT status FROM crm_channel_preferences WHERE workspace_id=$1 AND channel='sms' AND normalized_address=$2",
-          [context.workspace.id, phone],
-        )
-      ).rows[0];
-      if (current?.status !== "allowed")
-        throw new SmsInputError("This recipient is opted out of SMS.");
-    }
     const conversation =
         linked ??
         (await ensureConversation(db, context.workspace.id, number.id, phone)),

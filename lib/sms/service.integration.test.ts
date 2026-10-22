@@ -120,8 +120,6 @@ function compose(overrides: Record<string, unknown> = {}) {
     to: remote,
     text: "A synthetic SMS",
     requestId: randomUUID(),
-    permissionConfirmed: true,
-    permissionEvidence: "Explicit permission recorded in fixture",
     ...overrides,
   };
 }
@@ -389,7 +387,7 @@ describe.skipIf(!databaseUrl)(
       const record = await selected(first.conversationId);
       expect(record.messages[0].mediaCount).toBe(2);
       expect(JSON.stringify(record)).not.toContain("untrusted.example");
-      expect(record.conversation.permissionState).toBe("unknown");
+      expect(record.conversation.blocked).toBe(false);
     });
     it("records STOP for unknown contacts and keeps START blocked pending deliberate review", async () => {
       const first = await receiveSmsWebhook(incoming("STOPALL"));
@@ -398,15 +396,12 @@ describe.skipIf(!databaseUrl)(
       );
       await receiveSmsWebhook(incoming("START", { OptOutType: "START" }));
       expect(
-        (await selected(first.conversationId)).conversation.permissionState,
-      ).toBe("blocked");
+        (await selected(first.conversationId)).conversation.blocked,
+      ).toBe(true);
       await expect(
         sendSmsMessage(
           owner,
-          compose({
-            permissionConfirmed: true,
-            permissionEvidence: "Cannot override an optout",
-          }),
+          compose(),
         ),
       ).rejects.toBeInstanceOf(SmsInputError);
       expect(gateway.create).not.toHaveBeenCalled();
@@ -428,36 +423,21 @@ describe.skipIf(!databaseUrl)(
       expect(await count("sms_messages")).toBe(1);
       expect(await count("crm_channel_preferences")).toBe(0);
     });
-    it("requires permission evidence for the first send and reuses recorded permission without overriding blocks", async () => {
-      await expect(
-        sendSmsMessage(
-          owner,
-          compose({ permissionConfirmed: false, permissionEvidence: "" }),
-        ),
-      ).rejects.toBeInstanceOf(SmsInputError);
-      expect(await count("sms_outbound_intents")).toBe(0);
+    it("sends a new text without permission fields or manufacturing an allowed preference", async () => {
       const first = await sendSmsMessage(owner, compose());
       expect(first.sendState).toBe("accepted");
-      expect(
-        (await selected(first.conversationId!)).conversation.permissionState,
-      ).toBe("allowed");
-      expect(
-        (
-          await sendSmsMessage(
-            member,
-            compose({ permissionConfirmed: false, permissionEvidence: "" }),
-          )
-        ).sendState,
-      ).toBe("accepted");
-      expect(
-        JSON.stringify(
-          (
-            await pool.query(
-              "SELECT metadata FROM audit_logs WHERE action LIKE 'sms.%'",
-            )
-          ).rows,
-        ),
-      ).not.toContain("Explicit permission");
+      expect((await selected(first.conversationId!)).conversation.blocked).toBe(false);
+      expect((await sendSmsMessage(member, compose())).sendState).toBe("accepted");
+      expect(gateway.create).toHaveBeenCalledTimes(2);
+      expect(await count("crm_channel_preferences")).toBe(0);
+    });
+    it("replies to an incoming text without permission fields", async () => {
+      const incomingText = await receiveSmsWebhook(incoming());
+      const reply = await sendSmsMessage(owner, compose({ conversationId: incomingText.conversationId }));
+      expect(reply.sendState).toBe("accepted");
+      expect(reply.conversationId).toBe(incomingText.conversationId);
+      expect(gateway.create).toHaveBeenCalledTimes(1);
+      expect(await count("crm_channel_preferences")).toBe(0);
     });
     it("rejects SMS extensions and oversized/blank text before making a provider request", async () => {
       await expect(

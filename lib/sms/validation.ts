@@ -57,8 +57,6 @@ export const sendSchema = draftSchema.extend({
     .string()
     .max(1600, "Keep this text to 1,600 characters or fewer.")
     .refine((value) => !!value.trim(), "Write a text message first."),
-  permissionConfirmed: bool,
-  permissionEvidence: z.string().trim().max(2000).default(""),
 });
 export const checkSchema = z.object({
   numberId: identifier,

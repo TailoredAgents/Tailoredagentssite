@@ -20,9 +20,9 @@ async function openThread(page: Page) {
   await page.getByRole("link").filter({ has: page.getByRole("heading", { name: "+16785550101", exact: true }) }).click();
   await expect(page.getByLabel("SMS message history", { exact: true })).toBeVisible();
 }
-async function permission(page: Page) {
-  await page.getByRole("checkbox", { name: "I have permission to text this recipient about this conversation." }).check();
-  await page.getByRole("textbox", { name: "Permission evidence *", exact: true }).fill("Customer requested a reply by text during our discovery call.");
+async function expectDirectSend(page: Page) {
+  await expect(page.locator('[name="permissionConfirmed"], [name="permissionEvidence"]')).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Send text", exact: true })).toBeEnabled();
 }
 test.beforeEach(async ({ request }) => { await control(request, "reset"); });
 
@@ -57,7 +57,7 @@ test("saves a private draft and sends a text once with separate delivered status
   expect((await control(request, "inspect")).creates).toHaveLength(0);
   await page.reload();
   await expect(page.getByRole("textbox", { name: "Text message *", exact: true })).toHaveValue("Thanks. Tuesday morning works for our discovery call.");
-  await permission(page); await page.getByRole("button", { name: "Send text", exact: true }).click();
+  await expectDirectSend(page); await page.getByRole("button", { name: "Send text", exact: true }).click();
   await expect(page.getByRole("article", { name: "Outgoing text", exact: true })).toContainText("Thanks. Tuesday morning works for our discovery call.");
   expect((await control(request, "inspect")).creates).toHaveLength(1);
   const delivered = await control(request, "status"); expect(delivered.status).toBe(204);
@@ -67,7 +67,7 @@ test("saves a private draft and sends a text once with separate delivered status
 test("checks an uncertain send across refresh without creating a second provider message", async ({ page, request }) => {
   await signIn(page); await page.getByRole("link", { name: "New text", exact: true }).click();
   await page.getByRole("textbox", { name: "Recipient phone *", exact: true }).fill("+16785550101");
-  await page.getByRole("textbox", { name: "Text message *", exact: true }).fill("Would Tuesday morning work for you?"); await permission(page);
+  await page.getByRole("textbox", { name: "Text message *", exact: true }).fill("Would Tuesday morning work for you?"); await expectDirectSend(page);
   await control(request, "unknown"); await page.getByRole("button", { name: "Send text", exact: true }).click();
   await expect(page.getByRole("button", { name: "Check SMS status", exact: true })).toBeVisible();
   await page.reload(); await page.getByRole("button", { name: "Check SMS status", exact: true }).click();
@@ -86,7 +86,7 @@ test("blocks opt-outs even from new compose and preserves them after a START req
   await expect(page.getByRole("button", { name: "Send text", exact: true })).toBeDisabled();
   await page.getByRole("link", { name: "New text", exact: true }).click();
   await page.getByRole("textbox", { name: "Recipient phone *", exact: true }).fill("+16785550101");
-  await page.getByRole("textbox", { name: "Text message *", exact: true }).fill("An attempted text to a blocked recipient."); await permission(page);
+  await page.getByRole("textbox", { name: "Text message *", exact: true }).fill("An attempted text to a blocked recipient."); await expectDirectSend(page);
   await page.getByRole("button", { name: "Send text", exact: true }).click();
   await expect(page.locator(".sms-composer").getByRole("alert")).toContainText(/opted out|Do not text|blocked/i);
   expect((await control(request, "inspect")).creates).toHaveLength(0);

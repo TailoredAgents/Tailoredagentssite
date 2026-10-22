@@ -46,7 +46,6 @@ async function reset() {
   await pool.query("INSERT INTO sms_conversations(id,workspace_id,number_id,remote_phone,business_id,lead_id) VALUES($1,$2,$3,$4,$5,$6)", [smsId, workspace, numberId, remote, businessId, leadId]);
   await pool.query("INSERT INTO sms_messages(id,workspace_id,conversation_id,direction,body,status,created_at) VALUES('00000000-0000-4000-8000-000000000812',$1,$2,'inbound','Text: Tuesday morning works for our website review.','received',$3)", [workspace, smsId, stamp(10)]);
   await pool.query("INSERT INTO sms_notes(id,workspace_id,conversation_id,author_user_id,body,created_at) VALUES('00000000-0000-4000-8000-000000000813',$1,$2,'conv-owner','SMS-only legacy note',$3)", [workspace, smsId, stamp(11)]);
-  await pool.query("INSERT INTO crm_channel_preferences(workspace_id,channel,normalized_address,status,evidence,actor_user_id) VALUES($1,'sms',$2,'allowed','Synthetic fixture permission','conv-owner')", [workspace, remote]);
   await pool.query("INSERT INTO inbox_conversations(id,workspace_id,mailbox_id,thread_id,business_id,lead_id) VALUES('00000000-0000-4000-8000-000000000914',$1,'address-sales','thread-website',$2,$3)", [workspace, businessId, leadId]);
   await pool.query("INSERT INTO inbox_notes(id,workspace_id,conversation_id,author_user_id,body,created_at) VALUES('00000000-0000-4000-8000-000000000915',$1,'00000000-0000-4000-8000-000000000914','conv-owner','Mail-only legacy note',$2)", [workspace, stamp(5)]);
   threads = new Map([

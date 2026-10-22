@@ -32,7 +32,6 @@ export type SmsConversation = {
   businessId: string | null;
   leadId: string | null;
   blocked: boolean;
-  permissionState: "unknown" | "allowed" | "blocked";
 };
 export type SmsMessage = {
   id: string;
