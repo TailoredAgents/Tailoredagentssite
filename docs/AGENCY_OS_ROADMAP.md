@@ -159,17 +159,32 @@ The build standard is:
 
 #### Budget design
 
-Use the existing Search Console connection, first-party analytics, PostgreSQL and public-site fetches first. Google documents the [Search Console API as free within quotas](https://developers.google.com/webmaster-tools/pricing). An expensive SEO subscription is not a prerequisite. The initial research design uses a small, metered web-search allowance; comprehensive backlink databases and city-by-city rank grids are optional later capabilities with a separately priced data contract. Research snippets and generic web search must not be presented as exact local rank or search-volume data.
+Use the existing Search Console connection, first-party analytics, PostgreSQL and public-site fetches first. Google documents the [Search Console API as free within quotas](https://developers.google.com/webmaster-tools/pricing). An expensive SEO subscription is not a prerequisite. The researched recommendation below adds metered keyword/location/device search results for national/local monitoring. Comprehensive backlink databases and dense map-rank grids remain optional capabilities with a separately priced data contract. Research snippets and generic web search must not be presented as exact local rank or search-volume data.
 
-Proposed monthly allocation, not a bill or a guaranteed forecast:
+**Researched recommendation, October 22: plan around $30–$40 per month in incremental operating usage, with a representative month totaling approximately $32.** This is a workload-based projection, not observed billing. The earlier $90 allocation was a ceiling allocation, not an operating estimate. These recurring vendor costs are separate from implementation/human-review effort, taxes and existing website/CRM bills.
 
-| Bucket | Planning allowance |
+Recommended setup: GPT-6.1 Sol for normal complex work, GPT-6 Astra for weekly strategy and difficult-change review, GPT-6 Luna for validated extraction; DataForSEO Standard queues for search results and keyword metrics; a separate Render cron worker using the existing PostgreSQL database; existing first-party analytics and Search Console for outcomes. Model routing remains subject to the quality evaluations below. A separate scheduled worker keeps longer SEO work out of the website request path without requiring an always-on service.
+
+Workload assumptions: one website; daily evidence/health checks; weekly strategy and national/local keyword checks; roughly 4–8 substantive page/content improvements per month including research, drafting, review and technical work. Actual work depends on evidence and permitted publishing scope. The sample search plan uses 50 keywords across four location settings (national plus three owner-confirmed local areas), both desktop/mobile, and 4.35 weeks/month. This is a costing assumption, not a selected local-market list or a guaranteed publication quota.
+
+| Monthly usage model | Projected cost |
 | --- | ---: |
-| Routine analysis, editorial work and execution reasoning | $45 |
-| Deeper strategy and difficult-change review | $25 |
-| Web research tool calls | $10 |
-| Evaluation and recovery allowance | $10 |
-| Unallocated headroom below the owner's $100 ceiling | $10 |
+| GPT-6.1 Sol: 2M input + 400K billed output tokens | $8.00 |
+| GPT-6 Astra: 500K input + 100K billed output tokens | $10.00 |
+| GPT-6 Luna: 1M input + 200K billed output tokens | $0.20 |
+| Model usage variation, evaluation and retries: 25% of the above | $4.55 |
+| DataForSEO: weekly ranking checks, keyword metrics and additional research | $7.02 |
+| OpenAI web search: 100 tool calls | $1.00 |
+| Separate light Render cron worker: minimum-charge assumption | $1.00 |
+| **Representative monthly consumption** | **$31.77** |
+
+Model figures use standard short-context rates, count billed reasoning in output, include research-content tokens in model inputs, assume no cache discounts or paid cache writes, and exclude optional higher-priced processing tiers. The token volumes are estimates that must be checked against a metered pilot. More tool-loop context, longer outputs, retries or additional work changes the estimate; retain the reservation controls below.
+
+DataForSEO's [Google Organic pricing](https://dataforseo.com/pricing/google-serp/google-organic-serp-api) starts at **$0.0006 per ten-result page** in the Standard queue. The sample conservatively prices up to 50 results/check at five full base charges: 50 × 4 × 2 × 4.35 × 5 × $0.0006 = **$5.22**. This does not rely on additional-page discounts. Add 20 [keyword-metric tasks](https://dataforseo.com/pricing/keywords-data/google-ads) at $0.06 (**$1.20**) and 200 additional 50-result research checks (**$0.60**) for **$7.02**. Optional parameters can increase fees; record actual request cost. Location/device observations describe that retrieval context and are not every user's personalized result.
+
+**Initial funding differs from monthly consumption:** DataForSEO has a **$50 minimum prepaid top-up**, no monthly subscription and no balance expiry, per its [pricing terms](https://dataforseo.com/Pricing). The sample first month's cash funding is approximately **$75**: $50 prepaid SEO credits + $22.75 model allowance + $1 web research + $1 worker. Its $7.02 of SEO usage is deducted from the prepaid balance, not charged again on top. Allow around **$80 before tax** for the initial month, with unused SEO credit carried forward. Provider billing/prepayment settings and the initial audit can change cash timing and first-month usage. No account, top-up or paid job has been activated by this estimate.
+
+Render [cron billing](https://render.com/docs/cronjobs#compute-plans-and-billing) has a **$1/month minimum per service**, then active-runtime billing. Expect approximately $1–$2 for the light scheduled worker; verify actual runtime and deployment/build usage. Reuse the existing database and dashboard, assuming no plan upgrade is required. This projection does not include new infrastructure beyond that worker, extensive hosted-browser use, premium backlink subscriptions or human editorial services; price any such addition before changing the design.
 
 The paid-work ledger should stop new reservations at **$90**, counting model tokens, tools and evaluation/retry work together, leaving headroom under $100. Any incremental hosting/CI expense must be quoted separately and cannot be silently added. Existing voice-analysis bills are separate from this SEO-only budget; a shared API key does not make a per-agent ledger an account-wide billing limit.
 
