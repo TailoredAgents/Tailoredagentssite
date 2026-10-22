@@ -249,6 +249,8 @@ Future integrations must use server-only environment variables or encrypted data
 
 The owner clarified that the SEO AI agent must manage Tailored Agents' SEO continuously: observe performance, maintain a strategy, choose work, carry out improvements, verify changes and measure outcomes across repeated runs. The dashboard is its oversight interface. An audit/recommendation tool alone does not fulfill the goal. Start with tailoredagents.com and the existing internal reporting foundation; multi-client reporting and a client portal are later extensions. The earlier advisory-only agent scope describes an intermediate stage, not the final product. Define the exact standing execution permissions, deployment/rollback tools, factual-content review, budgets and evaluation windows before activating live automated changes. The active scope is recorded in `AGENCY_OS_ROADMAP.md` under the SEO manager track.
 
+The owner further requested the strongest practical quality, targeting **both national and local customers**, with **recurring AI/SEO-data costs below $100 per month**. The roadmap now defines the evidence, execution, evaluation and budget gates. Its proposed $90 paid-work reservation stop leaves headroom under that ceiling; all provider/tool/retry/evaluation costs count. Specific local markets remain unconfirmed. No subscription, new hosting service, paid evaluation or live automated publisher is activated by recording these requirements.
+
 ### October 15, 2026 — Sequence the product around evidence
 
 Build the backend and internal dashboard first, internal operations second, analytics third, the client/demo experience fourth, the manual SEO workspace fifth, and the SEO agent last.
