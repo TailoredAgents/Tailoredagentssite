@@ -100,3 +100,11 @@ node scripts/design-gallery.mjs after
 The seed resets this disposable database. It is not a production import command. The suite runs the production build on local port 3170, writes revised screenshots/findings separately, and preserves the original `before` images. Run browser suites sequentially or use separate Playwright output directories; the provider suites also share Next's development output and must run one at a time.
 
 Implementation lives in `app/dashboard/polish.css` and the shared components in `components/dashboard/`; existing page styles retain layout responsibilities. There are no dependency changes, schema migrations or provider-configuration changes in this release.
+
+## Website delivery
+
+Source **43bb46642f9cb13801ee458068419d1097a274b3** was pushed to `main`. Render reported successful deployment on **October 22, 2026 at 10:43:40 a.m. EDT** (**14:43:40 UTC**). GitHub deployment **7255189660**; [Render deployment](https://dashboard.render.com/web/srv-db6hod8473hc739q2uo0/deploys/dep-dbd21d6k1f9s73b8adlg).
+
+Post-deployment checks completed at **10:44:38 a.m. EDT**: website, sign-in, health and Mail login returned 200; all 13 dashboard destinations and a protected voicemail request redirected anonymous requests to sign-in; all seven voice callbacks rejected GET with 405. Dashboard responses retained private/no-store caching, private microphone permission and the exact production Twilio CSP hosts without the local fixture host. The public microphone policy remained restrictive.
+
+Authenticated visual and workflow verification used the production build with isolated local accounts. Production acceptance here verifies deployment and anonymous boundaries; it does not use a teammate's private session or establish live Mail/Twilio delivery. No production provider configuration or customer records were changed.

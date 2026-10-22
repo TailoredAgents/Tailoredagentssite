@@ -10,6 +10,8 @@ The project owner supplied the existing SMS/voice-capable number **+16785417725*
 
 The October 22 visual pass covers all 22 dashboard page/view templates: shared tokens and controls, four navigation groups and keyboard page finder, client/project/site creation drawers, business-first Overview, service cards and SMS/voice disclosures in Settings, record facts and section navigation. [The design audit](DASHBOARD_DESIGN_AUDIT.md) records every before/after score, desktop/phone comparisons, verification and delivery. Remaining Inbox capabilities below are functional follow-up work.
 
+Design revision **43bb466** deployed successfully on October 22 at **10:43:40 a.m. EDT**. Verification passed 327 code/database tests and 101 browser checks, with one existing duplicate viewport sweep skipped. All 44 revised page captures passed their automated accessibility and overflow checks. [Delivery evidence](DASHBOARD_DESIGN_AUDIT.md#website-delivery) records the production checks.
+
 Unified Inbox website revision **8d23c1f** deployed successfully on October 21 at **9:19:19 p.m. EDT** (October 22, 01:19:19 UTC). [Unified Inbox](UNIFIED_INBOX.md#website-delivery) records the deployment and verification separately from the remaining Mail/Twilio activation.
 
 Calling/voicemail website revision **4f8b887** deployed successfully on October 21 at **10:28:44 p.m. EDT** (October 22, 02:28:44 UTC). [Calling setup and delivery](VOICE_SETUP.md#website-delivery) records 327 code/database tests, 91 passing browser checks across calling/Inbox/SMS/email/dashboard (plus one existing skipped check), populated backup/restore and production route verification. Live Twilio routing, real audio acceptance and connected-call recording/transcripts remain outstanding.
