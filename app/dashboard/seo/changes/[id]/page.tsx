@@ -33,6 +33,7 @@ export default async function SeoChangePage({
     ready = change.status === "ready" && data.canManage;
   const outcome = change.outcome as {
       observed?: Record<string, unknown>;
+      interpretation?: string;
     } | null,
     baseline = change.baseline_metrics as Record<string, unknown> | null;
   const measured = (
@@ -269,8 +270,8 @@ export default async function SeoChangePage({
               </>
             ) : (
               <p className="seo-muted">
-                Search results need time and enough covered dates to evaluate.
-                No improvement is claimed before observations exist.
+                {outcome?.interpretation ||
+                  "Search results need time and enough covered dates to evaluate. No improvement is claimed before observations exist."}
               </p>
             )}
           </div>

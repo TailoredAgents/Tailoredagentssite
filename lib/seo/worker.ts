@@ -393,6 +393,22 @@ async function work(run: SeoRun, manager: SeoManager) {
     return;
   }
   if (!change.published_at) throw new Error("change_not_published");
+  const measuredPublication = (
+    await pool.query(
+      "SELECT change_id FROM seo_publications WHERE workspace_id=$1 AND site_id=$2 AND path=$3",
+      [run.workspace_id, run.site_id, change.path],
+    )
+  ).rows[0]?.change_id;
+  if (change.status !== "verified" || measuredPublication !== change.id) {
+    const interpretation =
+      "This publication was restored or replaced before its observation review. Its results are not comparable; no performance outcome is attributed to it.";
+    await pool.query(
+      "UPDATE seo_changes SET outcome=$2 WHERE id=$1 AND outcome IS NULL",
+      [id, JSON.stringify({ comparable: false, interpretation })],
+    );
+    await progress(run, "done", {}, "succeeded", { summary: interpretation });
+    return;
+  }
   const outcome = await seoMetrics(
     run.workspace_id,
     run.site_id,

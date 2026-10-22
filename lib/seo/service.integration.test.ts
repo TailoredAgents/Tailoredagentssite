@@ -816,4 +816,33 @@ describe.skipIf(!url)("Internal SEO manager with guarded PostgreSQL", () => {
     expect(limited.detailLimited).toBe(true);
     expect(limited.clicks).toBeNull();
   });
+  it("does not attribute a queued outcome review to a restored publication", async () => {
+    const id = await readyChange(),
+      change = await getSeoChange(owner, id);
+    await publishSeoChange(owner, {
+      id,
+      version: 1,
+      title: change.title,
+      description: change.description,
+      factChecked: true,
+    });
+    await rollbackSeoChange(owner, id);
+    await pool.query(
+      "UPDATE seo_runs SET status='cancelled' WHERE kind='verify'",
+    );
+    await pool.query(
+      "INSERT INTO seo_runs(id,workspace_id,site_id,kind,schedule_key,stage,context) VALUES($1,$2,$3,'measure','restored-review','measure',$4)",
+      [randomUUID(), ws, site, JSON.stringify({ changeId: id })],
+    );
+    await runSeoWorkerStep();
+    const outcome = (await getSeoChange(owner, id)).outcome as {
+      comparable: boolean;
+      observed?: unknown;
+      interpretation: string;
+    };
+    expect(outcome.comparable).toBe(false);
+    expect(outcome.observed).toBeUndefined();
+    expect(outcome.interpretation).toContain("restored or replaced");
+    expect(transport.json).not.toHaveBeenCalled();
+  });
 });
