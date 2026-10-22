@@ -98,6 +98,7 @@ test("enforces viewer, read-only and revoked number access", async ({ page, requ
   await expect(page.getByRole("button", { name: "Save private draft", exact: true })).toBeDisabled();
   await page.context().clearCookies(); await signIn(page, "readonly"); await openThread(page);
   await expect(page.getByRole("button", { name: "Send text", exact: true })).toBeDisabled();
+  await expect(page.locator(".sms-composer")).toContainText("An administrator must enable sending for your account.");
   await expect(page.getByRole("button", { name: "Save private draft", exact: true })).toBeEnabled();
   await control(request, "revoke", { userId: "sms-readonly" }); await page.reload();
   await expect(page.getByLabel("SMS message history", { exact: true })).toHaveCount(0);

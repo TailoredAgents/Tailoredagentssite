@@ -76,6 +76,12 @@ Verification: lint, TypeScript, production build and 142 phone/SMS/voice code/da
 
 ## Activate the existing Twilio number
 
+### October 22 — activation observations and send diagnostics
+
+The owner reports installing Twilio credentials, redeploying, configuring the number's webhooks and receiving a test SMS in the CRM Inbox. Outbound acceptance is still pending. During an attempted reply, the owner confirmed `TWILIO_SMS_ENABLED=false`; this disables outbound messages independently of a saved read/send grant. To activate the configured outbound path, the owner must set that variable to the exact value `true` in the Render website service, save/deploy, and verify an authorized test reply. These observations are owner-reported, not an authenticated production environment or permissions inspection by Codex.
+
+Fixed the composer diagnostic that incorrectly described every unavailable send as a missing grant. Both unified Inbox and SMS-only views now carry the actual sending restriction: server switch disabled, number paused, viewer role or missing send grant. The server's initial send check reports the same reason. No permissions, environment switches or Twilio routing are changed by this code fix. Verified with 85 SMS/Twilio/conversation code/database tests, four desktop/phone browser checks, lint, TypeScript and the production build. The disabled-switch regression preserves an existing send grant and verifies sending becomes available when the switch is enabled.
+
 The project owner handles these steps with Codex. Jeffrey's handoff remains email-only.
 
 1. Apply the website's ordered PostgreSQL migrations through **0011_sms_inbox.sql** before serving the SMS routes. The migration adds number bindings, explicit grants, conversations, message metadata/content, drafts, notes, read receipts and durable send intents. It grants no existing teammate automatic SMS access.

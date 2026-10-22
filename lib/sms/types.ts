@@ -11,6 +11,7 @@ export type SmsNumber = {
   label: string;
   status: "active" | "paused";
   canSend: boolean;
+  sendUnavailableReason?: string | null;
 };
 export type SmsGrant = {
   userId: string;

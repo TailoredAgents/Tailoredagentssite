@@ -29,6 +29,7 @@ import type { InboxMailbox, InboxMessage } from "@/lib/inbox/types";
 vi.mock("server-only", () => ({}));
 vi.mock('@/lib/voice-provider/config',()=>({getVoiceConfiguration:()=>({ready:false,webhookReady:false,enabled:false,missing:['TWILIO_VOICE_APP_SID'],phoneNumber:''})}));
 const gateway = vi.hoisted(() => ({
+  smsEnabled: true,
   mailboxes: vi.fn(),
   index: vi.fn(),
   history: vi.fn(),
@@ -49,13 +50,13 @@ vi.mock("@/lib/inbox/mail-provider", () => ({
 vi.mock("@/lib/twilio/config", () => ({
   getTwilioConfiguration: () => ({
     ready: true,
-    enabled: true,
+    enabled: gateway.smsEnabled,
     accountSid: "AC" + "1".repeat(32),
     phoneNumber: "+16785417725",
   }),
   getTwilioPublicConfiguration: () => ({
     ready: true,
-    enabled: true,
+    enabled: gateway.smsEnabled,
     phoneNumber: "+16785417725",
     incomingUrl: "",
     statusUrlTemplate: "",
@@ -191,6 +192,7 @@ describe.skipIf(!databaseUrl)(
       }
     }, 30000);
     beforeEach(async () => {
+      gateway.smsEnabled = true;
       await pool.query(
         'TRUNCATE crm_conversations,crm_conversation_sync,sms_numbers,inbox_conversations,inbox_drafts,crm_channel_preferences,contacts,projects,clients,crm_businesses,leads,audit_logs,"user" CASCADE',
       );
@@ -286,6 +288,19 @@ describe.skipIf(!databaseUrl)(
       delete (globalThis as { tailoredAgentsDatabasePool?: Pool })
         .tailoredAgentsDatabasePool;
       vi.unstubAllEnvs();
+    });
+    it("explains a disabled SMS switch without misreporting an existing send grant", async () => {
+      const ids = await identities();
+      gateway.smsEnabled = false;
+      const view = await workspaceView(owner, { conversation: ids.sms.id });
+      const source = view.selected!.sources.find((s) => s.channel === "sms")!;
+      expect(source.canSend).toBe(false);
+      expect(source.number?.sendUnavailableReason).toContain("Outbound SMS is turned off");
+      gateway.smsEnabled = true;
+      const enabled = await workspaceView(owner, { conversation: ids.sms.id });
+      expect(enabled.selected!.sources.find((s) => s.channel === "sms")!.number).toMatchObject({
+        canSend: true, sendUnavailableReason: null,
+      });
     });
     it("discovers independent channel histories without business-wide or guessed identity merges", async () => {
       const view = await listConversationWorkspace(owner);

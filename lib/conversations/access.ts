@@ -6,6 +6,7 @@ import { listMailboxes, MailProviderError } from "@/lib/inbox/mail-provider";
 import { getTwilioConfiguration } from "@/lib/twilio/config";
 import type { InboxMailbox } from "@/lib/inbox/types";
 import type { SmsNumber } from "@/lib/sms/types";
+import { getSmsSendUnavailableReason } from "@/lib/sms/data";
 import type { ConversationWorkspace } from "./types";
 import { getVoiceWorkspace } from "@/lib/voice/data";
 import type { VoiceLine } from "@/lib/voice/types";
@@ -81,6 +82,7 @@ export async function scopes(context: DashboardContext): Promise<Scopes> {
       phone: n.phone,
       label: "Business SMS",
       status: n.status,
+      sendUnavailableReason: getSmsSendUnavailableReason(role, config.enabled, n.status, n.can_send),
       canSend:
         n.can_send &&
         role !== "viewer" &&

@@ -331,6 +331,10 @@ describe.skipIf(!databaseUrl)(
         canRead: true,
         canSend: false,
       });
+      expect((await listSmsWorkspace(member)).number).toMatchObject({
+        canSend: false,
+        sendUnavailableReason: expect.stringContaining("enable sending for your account"),
+      });
       await expect(sendSmsMessage(member, compose())).rejects.toBeInstanceOf(
         SmsAccessError,
       );
@@ -642,6 +646,10 @@ describe.skipIf(!databaseUrl)(
     });
     it("pauses outbound requests while preserving signed inbound/callback processing", async () => {
       await setSmsNumberStatus(owner, { numberId, status: "paused" });
+      expect((await listSmsWorkspace(owner)).number).toMatchObject({
+        canSend: false,
+        sendUnavailableReason: expect.stringContaining("number is paused"),
+      });
       await expect(sendSmsMessage(owner, compose())).rejects.toBeInstanceOf(
         SmsAccessError,
       );
@@ -649,9 +657,14 @@ describe.skipIf(!databaseUrl)(
       expect((await selected(inbound.conversationId)).messages).toHaveLength(1);
       await setSmsNumberStatus(owner, { numberId, status: "active" });
       gateway.enabled = false;
-      await expect(sendSmsMessage(owner, compose())).rejects.toBeInstanceOf(
-        SmsAccessError,
-      );
+      expect((await listSmsWorkspace(owner)).number).toMatchObject({
+        canSend: false,
+        sendUnavailableReason: expect.stringContaining("Outbound SMS is turned off"),
+      });
+      expect((await listSmsSettings(owner)).numbers[0].grants).toEqual(expect.arrayContaining([
+        expect.objectContaining({ userId: ownerId, canSend: true }),
+      ]));
+      await expect(sendSmsMessage(owner, compose())).rejects.toThrow("Outbound SMS is turned off");
       expect(gateway.create).not.toHaveBeenCalled();
     });
     it("retains inbound opt-outs when REST keys are unavailable but webhook credentials remain valid", async () => {

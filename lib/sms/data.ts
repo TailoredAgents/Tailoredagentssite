@@ -16,6 +16,13 @@ import type {
 } from "./types";
 
 export class SmsAccessError extends Error {}
+export function getSmsSendUnavailableReason(role: string, enabled: boolean, status: string, canSend: boolean) {
+  if (!enabled) return "Outbound SMS is turned off for this workspace. An administrator must enable SMS sending in the server configuration.";
+  if (status !== "active") return "This business number is paused. An administrator can resume it in Settings.";
+  if (role === "viewer") return "Your dashboard access is read-only.";
+  if (!canSend) return "Your number access allows reading. An administrator must enable sending for your account.";
+  return null;
+}
 export async function authorizeSms(
   context: DashboardContext,
   mutate = false,
@@ -66,20 +73,12 @@ export async function requireSmsNumber(
     throw new SmsAccessError(
       "This business number is not available to your account.",
     );
-  if (
-    sending &&
-    (!config.enabled || number.status !== "active" || !number.can_send)
-  )
-    throw new SmsAccessError(
-      "Sending is paused or your number grant does not allow sending.",
-    );
+  const unavailableReason = getSmsSendUnavailableReason(role, config.enabled, number.status, number.can_send);
+  if (sending && unavailableReason) throw new SmsAccessError(unavailableReason);
   return {
     ...number,
-    canSend:
-      number.can_send &&
-      role !== "viewer" &&
-      config.enabled &&
-      number.status === "active",
+    canSend: unavailableReason === null,
+    sendUnavailableReason: unavailableReason,
   };
 }
 const one = (v: string | string[] | undefined) =>
@@ -163,12 +162,10 @@ export async function listSmsWorkspace(
       config.phoneNumber,
     ],
   );
-  const numbers: SmsNumber[] = listed.rows.map((n) => ({
-    ...n,
-    label: "Business SMS",
-    canSend:
-      n.canSend && role !== "viewer" && config.enabled && n.status === "active",
-  }));
+  const numbers: SmsNumber[] = listed.rows.map((n) => {
+    const unavailableReason = getSmsSendUnavailableReason(role, config.enabled, n.status, n.canSend);
+    return { ...n, label: "Business SMS", canSend: unavailableReason === null, sendUnavailableReason: unavailableReason };
+  });
   const number = one(filters.number)
     ? numbers.find((n) => n.id === one(filters.number))
     : numbers[0];
