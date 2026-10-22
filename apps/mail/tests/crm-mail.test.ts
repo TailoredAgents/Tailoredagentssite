@@ -655,3 +655,599 @@ test("background recovery never replays a CRM send after its mailbox approval is
     "sending",
   );
 });
+
+test("discovery returns only address-scoped metadata, including archive, never bodies/BCC/private aliases", async () => {
+  const f = await fixture();
+  await f.approve();
+  await f.inbound("thread-a");
+  await f.inbound("thread-b");
+  await f.inbound("thread-private", "private", "PRIVATE_BODY");
+  f.sqlite
+    .exec(`UPDATE emails SET thread_id='thread-a',created_at='2099-01-01' WHERE id='thread-private';
+    UPDATE emails SET archived_at=datetime('now'),created_at='2026-10-21 09:00:00' WHERE id='thread-b';
+    UPDATE emails SET created_at='2026-10-21 10:00:00',cc_addr='Helper <helper@example.test>, private@example.test',reply_to_addr='reply@example.test',body_text='DO_NOT_INDEX_BODY',subject='DO_NOT_INDEX_SUBJECT' WHERE id='thread-a';
+    INSERT INTO email_attachments(id,email_id,filename,content_type,size_bytes,content_base64) VALUES('private-attachment','thread-private','PRIVATE_FILE.pdf','application/pdf',3,'YWJj');`);
+  await insertEmail(f.db, {
+    id: "reply-a",
+    userId: "owner",
+    direction: "outbound",
+    from: "sales@example.test",
+    to: "prospect@example.test",
+    bcc: "secret@example.test",
+    subject: "DO_NOT_INDEX_SUBJECT",
+    bodyText: "DO_NOT_INDEX_BODY",
+    addressId: "sales",
+    domainId: "domain",
+    replyToEmailId: "thread-a",
+  });
+  f.sqlite.exec(
+    "UPDATE emails SET created_at='2026-10-21 11:00:00',status='sent',provider_id='accepted-reply-a' WHERE id='reply-a'",
+  );
+  f.bucket.get = async () => {
+    throw new Error("Discovery must never hydrate email content");
+  };
+  const data = await (
+    await f.call({
+      action: "conversationIndex",
+      mailboxId: "sales",
+      limit: 100,
+    })
+  ).json();
+  assert.equal(data.complete, true);
+  assert.equal(data.cursor, null);
+  assert.deepEqual(
+    data.items.map((row: { threadId: string }) => row.threadId),
+    ["thread-a", "thread-b"],
+  );
+  assert.deepEqual(data.items[0], {
+    threadId: "thread-a",
+    latestMessageId: "reply-a",
+    lastMessageAt: "2026-10-21T11:00:00.000Z",
+    lastInboundAt: "2026-10-21T10:00:00.000Z",
+    lastOutboundAt: "2026-10-21T11:00:00.000Z",
+    externalAddresses: [
+      "helper@example.test",
+      "prospect@example.test",
+      "reply@example.test",
+    ],
+    hasAttachments: false,
+  });
+  assert.equal(JSON.stringify(data).includes("PRIVATE"), false);
+  assert.equal(JSON.stringify(data).includes("DO_NOT_INDEX"), false);
+  assert.equal(JSON.stringify(data).includes("secret@example.test"), false);
+  assert.equal(JSON.stringify(data).includes("private@example.test"), false);
+});
+
+test("discovery response timestamps exclude unknown and unsuccessful outbound delivery", async () => {
+  const f = await fixture();
+  await f.approve();
+  await f.inbound("incoming");
+  f.sqlite.exec(
+    "UPDATE emails SET created_at='2026-10-21 10:00:00' WHERE id='incoming'",
+  );
+  for (const [hour, status] of [
+    [11, "queued"],
+    [12, "failed"],
+    [13, "bounced"],
+    [14, "complained"],
+  ] as const) {
+    await insertEmail(f.db, {
+      id: "out-" + status,
+      userId: "owner",
+      direction: "outbound",
+      from: "sales@example.test",
+      to: "prospect@example.test",
+      subject: "Reply attempt",
+      bodyText: "Attempt content",
+      addressId: "sales",
+      domainId: "domain",
+      replyToEmailId: "incoming",
+    });
+    f.sqlite
+      .query("UPDATE emails SET created_at=?,status=?,provider_id=? WHERE id=?")
+      .run(
+        `2026-10-21 ${hour}:00:00`,
+        status,
+        status === "queued" ? null : "provider-" + status,
+        "out-" + status,
+      );
+  }
+  const index = async () =>
+    (
+      await (
+        await f.call({ action: "conversationIndex", mailboxId: "sales" })
+      ).json()
+    ).items[0];
+  const pending = await index();
+  assert.equal(pending.latestMessageId, "out-complained");
+  assert.equal(pending.lastMessageAt, "2026-10-21T14:00:00.000Z");
+  assert.equal(pending.lastInboundAt, "2026-10-21T10:00:00.000Z");
+  assert.equal(pending.lastOutboundAt, null);
+  for (const status of ["sent", "delivered", "delayed"]) {
+    f.sqlite
+      .query(
+        "UPDATE emails SET status=?,provider_id='accepted' WHERE id='out-queued'",
+      )
+      .run(status);
+    assert.equal((await index()).lastOutboundAt, "2026-10-21T11:00:00.000Z");
+  }
+  f.sqlite.exec("UPDATE emails SET status='failed' WHERE id='out-queued'");
+  assert.equal((await index()).lastOutboundAt, null);
+});
+
+test("discovery keyset pages cover every eligible thread exactly once despite later activity in an earlier thread", async () => {
+  const f = await fixture();
+  await f.approve();
+  for (let i = 0; i < 7; i++) await f.inbound("thread-" + i);
+  for (const [id, change] of [
+    ["draft", "status='draft'"],
+    ["trash", "deleted_at=datetime('now')"],
+    ["spam", "spam_at=datetime('now')"],
+  ]) {
+    await f.inbound(id);
+    f.sqlite.exec(`UPDATE emails SET ${change} WHERE id='${id}'`);
+  }
+  const seen: string[] = [];
+  let cursor: string | undefined;
+  for (let page = 0; page < 4; page++) {
+    const response = await f.call({
+      action: "conversationIndex",
+      mailboxId: "sales",
+      limit: 2,
+      ...(cursor ? { cursor } : {}),
+    });
+    assert.equal(response.status, 200);
+    const data = await response.json();
+    seen.push(...data.items.map((item: { threadId: string }) => item.threadId));
+    assert.equal(data.complete, page === 3);
+    assert.equal(data.cursor === null, page === 3);
+    cursor = data.cursor ?? undefined;
+    if (page === 0)
+      f.sqlite.exec(
+        "UPDATE emails SET created_at='2099-01-01' WHERE id='thread-0'",
+      );
+  }
+  assert.deepEqual(
+    seen,
+    Array.from({ length: 7 }, (_, i) => "thread-" + i),
+  );
+  const refreshed = await (
+    await f.call({ action: "conversationIndex", mailboxId: "sales", limit: 1 })
+  ).json();
+  assert.equal(refreshed.items[0].lastMessageAt, "2099-01-01T00:00:00.000Z");
+});
+
+test("discovery obeys the invocation query budget while finishing a larger requested page without omissions", async () => {
+  const f = await fixture();
+  await f.approve();
+  for (let i = 0; i < 30; i++)
+    await f.inbound("budget-" + String(i).padStart(2, "0"));
+  let queries = 0;
+  const prepare = f.db.prepare.bind(f.db);
+  f.db.prepare = (sql: string) => {
+    queries++;
+    return prepare(sql);
+  };
+  const first = await (
+    await f.call({
+      action: "conversationIndex",
+      mailboxId: "sales",
+      limit: 100,
+    })
+  ).json();
+  assert.equal(first.items.length, 25);
+  assert.equal(first.complete, false);
+  assert.ok(
+    queries < 50,
+    `discovery exceeded the D1 invocation query budget: ${queries}`,
+  );
+  queries = 0;
+  const second = await (
+    await f.call({
+      action: "conversationIndex",
+      mailboxId: "sales",
+      limit: 100,
+      cursor: first.cursor,
+    })
+  ).json();
+  assert.equal(second.items.length, 5);
+  assert.equal(second.complete, true);
+  assert.equal(second.cursor, null);
+  assert.ok(queries < 50);
+  assert.equal(
+    new Set(
+      [...first.items, ...second.items].map(
+        (item: { threadId: string }) => item.threadId,
+      ),
+    ).size,
+    30,
+  );
+});
+
+test("discovery cursors are validated, signed, address-bound and complete empty sweeps stay explicit", async () => {
+  const f = await fixture();
+  await f.approve();
+  assert.deepEqual(
+    await (
+      await f.call({ action: "conversationIndex", mailboxId: "sales" })
+    ).json(),
+    { items: [], cursor: null, complete: true },
+  );
+  await f.inbound("a");
+  await f.inbound("b");
+  const page = await (
+    await f.call({ action: "conversationIndex", mailboxId: "sales", limit: 1 })
+  ).json();
+  for (const cursor of [
+    "garbage",
+    page.cursor.slice(0, -1) + (page.cursor.endsWith("a") ? "b" : "a"),
+    "",
+    123,
+  ])
+    assert.equal(
+      (
+        await f.call({
+          action: "conversationIndex",
+          mailboxId: "sales",
+          cursor,
+        })
+      ).status,
+      400,
+    );
+  await changeCrmGrant(f.db, "owner", {
+    mailboxId: "private",
+    granteeId: "devon",
+    canRead: true,
+    canSend: false,
+  });
+  assert.equal(
+    (
+      await f.call({
+        action: "conversationIndex",
+        mailboxId: "private",
+        cursor: page.cursor,
+      })
+    ).status,
+    400,
+  );
+  for (const limit of [0, 101, -1, 1.5, "2"])
+    assert.equal(
+      (await f.call({ action: "conversationIndex", mailboxId: "sales", limit }))
+        .status,
+      400,
+    );
+  await changeCrmGrant(f.db, "owner", {
+    mailboxId: "sales",
+    granteeId: "devon",
+    canRead: false,
+    canSend: false,
+  });
+  assert.equal(
+    (
+      await f.call({
+        action: "conversationIndex",
+        mailboxId: "sales",
+        cursor: page.cursor,
+      })
+    ).status,
+    403,
+  );
+});
+
+test("history pages are exact and deterministic through tied timestamps and scoped attachments", async () => {
+  const f = await fixture();
+  await f.approve();
+  for (let i = 0; i < 7; i++) {
+    await f.inbound("message-" + i);
+    f.sqlite.exec(
+      `UPDATE emails SET thread_id='thread',created_at='2026-10-21 12:00:00' WHERE id='message-${i}'`,
+    );
+  }
+  await f.inbound("private-message", "private", "PRIVATE_BODY");
+  f.sqlite.exec(
+    "UPDATE emails SET thread_id='thread',created_at='2099-01-01' WHERE id='private-message'; INSERT INTO email_attachments(id,email_id,filename,content_type,size_bytes,content_base64) VALUES('old-file','message-0','old.txt','text/plain',3,'YWJj'),('private-file','private-message','PRIVATE_FILE','text/plain',3,'YWJj')",
+  );
+  const seen: string[] = [];
+  let before: string | undefined;
+  for (let page = 0; page < 3; page++) {
+    const response = await f.call({
+      action: "threadHistory",
+      mailboxId: "sales",
+      threadId: "thread",
+      limit: 3,
+      ...(before ? { before } : {}),
+    });
+    assert.equal(response.status, 200);
+    const data = await response.json();
+    assert.deepEqual(
+      data.messages.map((m: { id: string }) => m.id),
+      page === 0
+        ? ["message-4", "message-5", "message-6"]
+        : page === 1
+          ? ["message-1", "message-2", "message-3"]
+          : ["message-0"],
+    );
+    assert.equal(data.hasOlder, page < 2);
+    assert.equal(data.before === null, page === 2);
+    assert.equal(JSON.stringify(data).includes("PRIVATE"), false);
+    if (page === 2)
+      assert.equal(data.messages[0].attachments[0].id, "old-file");
+    else
+      assert.equal(
+        data.messages.flatMap((m: { attachments: unknown[] }) => m.attachments)
+          .length,
+        0,
+      );
+    assert.equal(data.messages[0].created_at, "2026-10-21T12:00:00.000Z");
+    seen.push(...data.messages.map((m: { id: string }) => m.id));
+    before = data.before ?? undefined;
+  }
+  assert.equal(new Set(seen).size, 7);
+  assert.equal(
+    f.sqlite.query("SELECT sum(is_read) AS n FROM emails").all()[0].n,
+    0,
+  );
+});
+
+test("history cursor preserves fractional source precision across one-message pages", async () => {
+  const f = await fixture();
+  await f.approve();
+  for (const [id, at] of [
+    ["fraction-a", "2026-10-21 12:00:00.1231"],
+    ["fraction-b", "2026-10-21 12:00:00.1234"],
+    ["fraction-c", "2026-10-21 12:00:00.1239"],
+  ]) {
+    await f.inbound(id);
+    f.sqlite
+      .query("UPDATE emails SET thread_id='fractions',created_at=? WHERE id=?")
+      .run(at, id);
+  }
+  let before: string | undefined;
+  const seen: string[] = [];
+  for (let i = 0; i < 3; i++) {
+    const response = await f.call({
+      action: "threadHistory",
+      mailboxId: "sales",
+      threadId: "fractions",
+      limit: 1,
+      ...(before ? { before } : {}),
+    });
+    assert.equal(response.status, 200);
+    const page = await response.json();
+    seen.push(page.messages[0].id);
+    assert.equal(page.hasOlder, i < 2);
+    before = page.before ?? undefined;
+  }
+  assert.deepEqual(seen, ["fraction-c", "fraction-b", "fraction-a"]);
+});
+
+test("history supports threads larger than the legacy 200-message response and preserves safe DTOs", async () => {
+  const f = await fixture();
+  await f.approve();
+  for (let i = 0; i < 205; i++) {
+    const id = "long-" + String(i).padStart(3, "0");
+    await f.inbound(id);
+    f.sqlite
+      .query(
+        "UPDATE emails SET thread_id='long-thread',created_at='2026-10-21 12:00:00' WHERE id=?",
+      )
+      .run(id);
+  }
+  assert.equal(
+    (
+      await f.call({
+        action: "thread",
+        mailboxId: "sales",
+        threadId: "long-thread",
+      })
+    ).status,
+    422,
+  );
+  const first = await (
+    await f.call({
+      action: "threadHistory",
+      mailboxId: "sales",
+      threadId: "long-thread",
+      limit: 100,
+    })
+  ).json();
+  assert.equal(first.messages.length, 100);
+  assert.equal(first.messages[0].id, "long-105");
+  assert.equal(first.messages.at(-1).id, "long-204");
+  const second = await (
+    await f.call({
+      action: "threadHistory",
+      mailboxId: "sales",
+      threadId: "long-thread",
+      limit: 100,
+      before: first.before,
+    })
+  ).json();
+  assert.equal(second.messages[0].id, "long-005");
+  assert.equal(second.messages.at(-1).id, "long-104");
+  const third = await (
+    await f.call({
+      action: "threadHistory",
+      mailboxId: "sales",
+      threadId: "long-thread",
+      limit: 100,
+      before: second.before,
+    })
+  ).json();
+  assert.equal(third.messages.length, 5);
+  assert.equal(third.hasOlder, false);
+  assert.equal(third.before, null);
+  for (const message of first.messages)
+    for (const key of [
+      "content_key",
+      "body_html",
+      "bcc_addr",
+      "references_header",
+      "user_id",
+    ])
+      assert.equal(key in message, false);
+  const index = await (
+    await f.call({ action: "conversationIndex", mailboxId: "sales" })
+  ).json();
+  assert.equal(index.items.length, 1);
+  assert.equal(index.items[0].latestMessageId, "long-204");
+  await f.approve(true);
+  const reply = {
+    action: "send",
+    mailboxId: "sales",
+    fromAddressId: "sales",
+    threadId: "long-thread",
+    replyToMessageId: "long-204",
+    text: "Replying to the latest message after reviewing paginated history.",
+    idempotencyKey: crypto.randomUUID(),
+  };
+  assert.equal((await f.call(reply)).status, 200);
+  assert.equal((await f.call(reply)).status, 200);
+  assert.equal(f.sent.length, 1);
+});
+
+test("history cursors cannot cross threads, sources or the discovery API", async () => {
+  const f = await fixture();
+  await f.approve();
+  await f.inbound("a");
+  await f.inbound("b");
+  f.sqlite.exec("UPDATE emails SET thread_id='shared' WHERE id IN ('a','b')");
+  await f.inbound("other");
+  const history = await (
+    await f.call({
+      action: "threadHistory",
+      mailboxId: "sales",
+      threadId: "shared",
+      limit: 1,
+    })
+  ).json();
+  for (const before of ["invalid", history.before + "x"])
+    assert.equal(
+      (
+        await f.call({
+          action: "threadHistory",
+          mailboxId: "sales",
+          threadId: "shared",
+          before,
+        })
+      ).status,
+      400,
+    );
+  assert.equal(
+    (
+      await f.call({
+        action: "threadHistory",
+        mailboxId: "sales",
+        threadId: "other",
+        before: history.before,
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await f.call({
+        action: "conversationIndex",
+        mailboxId: "sales",
+        cursor: history.before,
+      })
+    ).status,
+    400,
+  );
+  await changeCrmGrant(f.db, "owner", {
+    mailboxId: "private",
+    granteeId: "devon",
+    canRead: true,
+    canSend: false,
+  });
+  assert.equal(
+    (
+      await f.call({
+        action: "threadHistory",
+        mailboxId: "private",
+        threadId: "shared",
+        before: history.before,
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await f.call({
+        action: "threadHistory",
+        mailboxId: "sales",
+        threadId: "other",
+        limit: 101,
+      })
+    ).status,
+    400,
+  );
+});
+
+test("bounded history resumes without skipping messages when content reaches the response byte budget", async () => {
+  const f = await fixture();
+  await f.approve();
+  for (let i = 0; i < 20; i++) {
+    const id = "large-" + String(i).padStart(2, "0"),
+      key = "private-large/" + id;
+    await f.inbound(id);
+    await f.bucket.put(
+      key,
+      JSON.stringify({ text: "x".repeat(200000), html: null }),
+    );
+    f.sqlite
+      .query(
+        "UPDATE emails SET thread_id='large-thread',created_at='2026-10-21 12:00:00',content_key=? WHERE id=?",
+      )
+      .run(key, id);
+  }
+  const first = await (
+    await f.call({
+      action: "threadHistory",
+      mailboxId: "sales",
+      threadId: "large-thread",
+      limit: 100,
+    })
+  ).json();
+  assert.equal(first.hasOlder, true);
+  assert.ok(first.messages.length < 20);
+  assert.ok(
+    new TextEncoder().encode(JSON.stringify(first)).length < 4 * 1024 * 1024,
+  );
+  const second = await (
+    await f.call({
+      action: "threadHistory",
+      mailboxId: "sales",
+      threadId: "large-thread",
+      limit: 100,
+      before: first.before,
+    })
+  ).json();
+  assert.equal(second.hasOlder, false);
+  const ids = [...first.messages, ...second.messages].map(
+    (m: { id: string }) => m.id,
+  );
+  assert.equal(ids.length, 20);
+  assert.equal(new Set(ids).size, 20);
+});
+
+test("ambiguous participant overflow never returns a silently complete or truncated discovery page", async () => {
+  const f = await fixture();
+  await f.approve();
+  await f.inbound("large-audience");
+  f.sqlite
+    .query("UPDATE emails SET cc_addr=? WHERE id='large-audience'")
+    .run(
+      Array.from({ length: 201 }, (_, i) => "p" + i + "@example.test").join(
+        ", ",
+      ),
+    );
+  const response = await f.call({
+    action: "conversationIndex",
+    mailboxId: "sales",
+  });
+  assert.equal(response.status, 422);
+  assert.deepEqual(await response.json(), {
+    error: "participant_review_required",
+  });
+});

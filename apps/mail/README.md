@@ -99,6 +99,38 @@ message contents or recipient lists, and expire after 90 days.
 The new bridge and approval tests use isolated SQLite, synthetic accounts and
 a mock provider; they never send real mail or enable production approvals.
 
+The unified CRM adds two private read actions to this same endpoint:
+`conversationIndex` discovers all eligible address-scoped threads, including
+archived threads, through stable thread-ID keyset pages; `threadHistory` loads
+the newest message page and continues backward through history. Both default
+to 50 items and allow up to 100. They recheck the current address approval and
+keep every message/attachment within the same proven delivery boundary.
+Discovery caps each response at 25 threads to keep participant checks inside
+the D1 Free invocation query budget; its cursor continues the same full sweep.
+
+Discovery returns only thread/message IDs, UTC activity timestamps, normalized
+external participant addresses and an attachment flag. It never returns
+subjects, previews, bodies, BCC or storage keys and never hydrates R2 content.
+The outbound-response timestamp includes only sent, delivered or delayed
+messages; queued/uncertain sends and failed, bounced or complained deliveries
+do not clear reply work.
+The explicit `complete` flag distinguishes a finished sweep from a partial
+one. Unusually large or ambiguous participant sets require review instead of
+being silently truncated into a complete index. History pages return safe
+plain-text messages in chronological order with `hasOlder` and a `before`
+cursor. Pages also enforce a response-byte budget, so a page can contain fewer
+items than its requested maximum without skipping the next older message.
+
+Cursors are opaque, signed and address-bound; history cursors additionally
+bind the thread and timestamp/message-ID boundary. Rotating `CRM_MAIL_SECRET`
+invalidates outstanding cursors: restart discovery from its first page rather
+than treating a failed continuation as complete. Changes behind the discovery
+cursor are picked up by the next full sweep. The website reconciles source
+removal after a complete sweep and rechecks grants independently. Deploy this
+Mail version before enabling unified discovery; an older Mail build returns
+an unavailable capability, never a valid empty-complete inbox. No additional
+Mail migration is required beyond `0037_crm_mail.sql`.
+
 Use Node 24 LTS (or a supported Node version at least 22.12). This machine has Node 24 at `/usr/local/bin/node`; its default Homebrew Node 20 is too old. From this directory:
 
 ```sh

@@ -14,6 +14,12 @@ import { getAttachmentForUser, readAttachmentBytes } from "./attachments";
 import { replyTarget, sendAndStore, type ComposeInput } from "./outbox";
 import { buildReferences, displaySubject } from "./threads";
 import { stripHtml } from "./html";
+import {
+  crmConversationIndex,
+  crmThreadHistory,
+  crmReplyContext,
+} from "./crm-mail-history";
+import { CrmMailPageError } from "./crm-mail-pagination";
 import { SendAttemptError, sha256Hex } from "./send-attempts";
 import type { EmailProvider } from "./email-provider";
 import {
@@ -123,6 +129,29 @@ export async function handleCrmMail(
       addressId: grant.id,
       address: grant.address,
     };
+    if (body.action === "conversationIndex") {
+      const result = await crmConversationIndex(
+        env.DB,
+        scope,
+        { cursor: body.cursor, limit: body.limit },
+        secret,
+      );
+      await requireCrmMailboxGrant(env.DB, actor.id, mailboxId);
+      return json(result);
+    }
+    if (body.action === "threadHistory") {
+      if (!id(body.threadId)) return json({ error: "invalid_request" }, 400);
+      const result = await crmThreadHistory(
+        env.DB,
+        env.ATTACHMENTS,
+        scope,
+        body.threadId,
+        { before: body.before, limit: body.limit },
+        secret,
+      );
+      await requireCrmMailboxGrant(env.DB, actor.id, mailboxId);
+      return json(result);
+    }
     if (body.action === "threads") {
       if (
         !["inbox", "sent", "archive"].includes(String(body.view)) ||
@@ -261,15 +290,11 @@ export async function handleCrmMail(
           body.subject !== undefined
         )
           return json({ error: "invalid_request" }, 400);
-        const originals = await crmThreadRows(
+        const { original, latest } = await crmReplyContext(
           env.DB,
           scope,
           body.threadId,
-          env.ATTACHMENTS,
-        );
-        if (!originals) return json({ error: "open_in_mail" }, 422);
-        const original = originals.find(
-          (message) => message.id === body.replyToMessageId,
+          body.replyToMessageId,
         );
         if (!original) return json({ error: "not_found" }, 404);
         const recipients = replyTarget(original);
@@ -279,7 +304,7 @@ export async function handleCrmMail(
         )
           .bind(scope.ownerId, await sha256Hex(`${scope.ownerId}\u0000${key}`))
           .first();
-        if (!prior && originals[originals.length - 1].id !== original.id)
+        if (!prior && latest?.id !== original.id)
           return json({ error: "conversation_advanced" }, 409);
         if (!recipients.length)
           return json({ error: "invalid_recipient" }, 400);
@@ -330,12 +355,17 @@ export async function handleCrmMail(
               scope.ownerId,
             )
             .first<{ email_id: string }>();
-          const rows = await crmThreadRows(env.DB, scope, body.threadId);
-          const reviewed = rows?.filter((row) => row.id !== attempt?.email_id);
+          const { latest } = await crmReplyContext(
+            env.DB,
+            scope,
+            body.threadId,
+            body.replyToMessageId as string,
+            attempt?.email_id,
+          );
           if (
-            !reviewed?.length ||
-            reviewed[reviewed.length - 1].id !== body.replyToMessageId ||
-            replyTarget(reviewed[reviewed.length - 1]).join(", ") !== input.to
+            !latest ||
+            latest.id !== body.replyToMessageId ||
+            replyTarget(latest).join(", ") !== input.to
           ) {
             throw new CrmMailAccessError(409, "conversation_advanced");
           }
@@ -399,6 +429,8 @@ export async function handleCrmMail(
     }
     return json({ error: "invalid_request" }, 400);
   } catch (error) {
+    if (error instanceof CrmMailPageError)
+      return json({ error: error.code }, error.status);
     if (error instanceof CrmMailAccessError)
       return json({ error: error.code }, error.status);
     if (error instanceof Error && error.name === "ReplyGuardError")
