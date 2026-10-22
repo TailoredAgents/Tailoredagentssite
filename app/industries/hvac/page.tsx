@@ -1,10 +1,11 @@
+import { managedMetadata } from "@/lib/seo/public-metadata";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, CalendarClock, MapPinned, MessageSquareReply, Search, Smartphone, Star } from "lucide-react";
 import { GrowthHeroVisual } from "@/components/growth-visuals";
 import { ArrowLink, Eyebrow, FinalCta } from "@/components/ui";
 
-export const metadata: Metadata = {
+const baselineMetadata: Metadata = {
   title: "HVAC Website Design, Local SEO & Automation",
   description: "Premium HVAC website development, local search visibility, inquiry flows, and targeted automation for established heating and cooling businesses.",
   alternates: { canonical: "/industries/hvac" },
@@ -33,3 +34,6 @@ export default function HvacPage() {
     </>
   );
 }
+
+export const revalidate = 300;
+export async function generateMetadata(): Promise<Metadata> { return managedMetadata("/industries/hvac", baselineMetadata); }

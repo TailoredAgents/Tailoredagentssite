@@ -20,6 +20,7 @@ import {
   X,
   Mail,
   Settings,
+  Sparkles,
   UsersRound,
   PanelsTopLeft,
 } from "lucide-react";
@@ -52,6 +53,7 @@ const navigationGroups = [
       { label: "Clients", href: "/dashboard/clients", icon: Building2 },
       { label: "Projects", href: "/dashboard/projects", icon: FolderKanban },
       { label: "Sites", href: "/dashboard/sites", icon: Globe2 },
+      { label: "SEO manager", href: "/dashboard/seo", icon: Sparkles },
     ],
   },
   {

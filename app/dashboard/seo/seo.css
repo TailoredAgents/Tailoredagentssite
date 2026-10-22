@@ -1,0 +1,332 @@
+.seo-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 30px 32px 22px;
+}
+.seo-heading h1 {
+  margin: 6px 0 12px;
+  color: var(--workspace-ink);
+  font-size: 30px;
+  line-height: 1.2;
+  letter-spacing: -0.04em;
+  font-weight: 650;
+}
+.seo-heading p {
+  margin: 0;
+  max-width: 740px;
+  color: var(--workspace-muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+.seo-heading > div:last-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.seo-tabs {
+  display: flex;
+  gap: 22px;
+  overflow-x: auto;
+  margin: 0 32px;
+  padding: 10px 0 16px;
+  border-bottom: 1px solid var(--workspace-line);
+  font-size: 14px;
+  color: var(--workspace-muted);
+}
+.seo-tabs a {
+  white-space: nowrap;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+.seo-tabs a:hover {
+  color: var(--workspace-blue);
+}
+.seo-body {
+  display: grid;
+  gap: 24px;
+  max-width: 1560px;
+  margin: auto;
+  padding: 28px 32px 60px;
+}
+.seo-body .sales-metrics {
+  margin: 0;
+}
+.seo-box {
+  padding: 22px;
+  color: var(--workspace-ink);
+  font-size: 15px;
+  line-height: 1.7;
+}
+.seo-box p {
+  margin: 0 0 12px;
+}
+.seo-box p:last-child {
+  margin-bottom: 0;
+}
+.seo-muted {
+  color: var(--workspace-muted);
+}
+.seo-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+  align-items: center;
+  padding: 16px 22px;
+  border: 1px solid var(--workspace-line);
+  border-radius: 10px;
+  background: var(--workspace-soft);
+}
+.seo-status-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+}
+.seo-status-row svg {
+  color: var(--workspace-blue);
+}
+.seo-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+.seo-action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.seo-action-grid .dashboard-operation-form {
+  padding: 16px;
+  box-shadow: none;
+  border: 1px solid var(--workspace-line);
+  border-radius: 9px;
+  background: var(--workspace-soft);
+}
+.seo-action-grid .dashboard-operation-fields {
+  padding: 0;
+}
+.seo-action-grid .dashboard-form-footer {
+  display: grid;
+  justify-items: start;
+  margin-top: 12px;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+}
+.seo-action-grid h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+.seo-action-grid p {
+  font-size: 14px;
+  line-height: 1.6;
+}
+.seo-work-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 20px 22px;
+  border-bottom: 1px solid var(--workspace-line);
+}
+.seo-work-card:last-child {
+  border-bottom: 0;
+}
+.seo-work-card > div {
+  min-width: 0;
+}
+.seo-work-card h3 {
+  margin: 7px 0;
+  color: var(--workspace-ink);
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.seo-work-card p {
+  margin: 4px 0;
+  color: var(--workspace-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.seo-work-card .sales-button {
+  flex-shrink: 0;
+}
+.seo-plan-item {
+  padding: 18px 0;
+  border-top: 1px solid var(--workspace-line);
+}
+.seo-plan-item h3 {
+  margin: 0 0 8px;
+  color: var(--workspace-ink);
+  font-size: 16px;
+}
+.seo-plan-item p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.seo-detail-row {
+  display: grid;
+  grid-template-columns: minmax(100px, 0.5fr) minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--workspace-line);
+  font-size: 14px;
+}
+.seo-detail-row strong {
+  color: var(--workspace-ink);
+  font-weight: 550;
+}
+.seo-detail-row span {
+  color: var(--workspace-muted);
+  overflow-wrap: anywhere;
+}
+.seo-body .dashboard-operation-form {
+  border: 0;
+}
+.seo-body .dashboard-operation-fields {
+  min-width: 0;
+}
+.seo-body .dashboard-field input,
+.seo-body .dashboard-field select,
+.seo-body .dashboard-field textarea {
+  max-width: 100%;
+}
+.seo-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 15px 0;
+  color: var(--workspace-ink);
+  font-size: 14px;
+  line-height: 1.65;
+}
+.seo-checkbox input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  accent-color: var(--workspace-blue);
+}
+.seo-body details > summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--workspace-blue);
+  font-size: 14px;
+}
+.seo-evidence {
+  margin: 12px 0;
+  padding: 12px 16px;
+  border-left: 3px solid var(--workspace-blue);
+  background: var(--workspace-soft);
+  color: var(--workspace-muted);
+  overflow-wrap: anywhere;
+}
+.seo-copy-preview {
+  padding: 18px;
+  border: 1px solid var(--workspace-line);
+  border-radius: 9px;
+  background: var(--workspace-field);
+}
+.seo-copy-preview small {
+  color: var(--workspace-success);
+  font-size: 13px;
+}
+.seo-copy-preview h3 {
+  margin: 5px 0 9px;
+  color: var(--workspace-blue);
+  font-size: 19px;
+  line-height: 1.4;
+}
+.seo-copy-preview p {
+  margin: 0;
+  color: var(--workspace-muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.seo-table-wrap {
+  overflow-x: auto;
+}
+.seo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.seo-table th,
+.seo-table td {
+  padding: 13px 18px;
+  text-align: left;
+  border-bottom: 1px solid var(--workspace-line);
+  vertical-align: top;
+}
+.seo-table th {
+  color: var(--workspace-muted);
+  font-weight: 550;
+  background: var(--workspace-soft);
+}
+.seo-table td {
+  color: var(--workspace-ink);
+}
+.seo-budget-bar {
+  width: 100%;
+  height: 8px;
+  accent-color: var(--workspace-blue);
+}
+@media (max-width: 1050px) {
+  .seo-action-grid {
+    grid-template-columns: 1fr;
+  }
+  .seo-split {
+    grid-template-columns: 1fr;
+  }
+  .seo-heading {
+    flex-direction: column;
+  }
+  .seo-body {
+    gap: 18px;
+  }
+}
+@media (max-width: 680px) {
+  .seo-heading {
+    padding: 24px 18px 18px;
+  }
+  .seo-heading h1 {
+    font-size: 27px;
+  }
+  .seo-tabs {
+    margin: 0 18px;
+  }
+  .seo-body {
+    padding: 22px 18px 50px;
+  }
+  .seo-box {
+    padding: 18px;
+  }
+  .seo-work-card {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 18px;
+  }
+  .seo-status-row {
+    padding: 16px;
+  }
+  .seo-detail-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .seo-table th,
+  .seo-table td {
+    padding: 12px;
+  }
+}
+
+.seo-table-wrap:focus-visible {
+  outline: 2px solid var(--workspace-blue);
+  outline-offset: -2px;
+}

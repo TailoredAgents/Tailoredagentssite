@@ -1,3 +1,4 @@
+import { managedMetadata } from "@/lib/seo/public-metadata";
 import type { Metadata } from "next";
 import { BarChart3, CheckCircle2, FileSearch, Gauge, MapPin, SearchCheck } from "lucide-react";
 import { SeoDashboard } from "@/components/growth-visuals";
@@ -5,7 +6,7 @@ import { PricingCards } from "@/components/pricing-cards";
 import { ArrowLink, Eyebrow, FinalCta } from "@/components/ui";
 import { seoPlans } from "@/lib/services";
 
-export const metadata: Metadata = {
+const baselineMetadata: Metadata = {
   title: "Local SEO, Analytics & Growth Hub",
   description: "Managed local SEO, website analytics, technical improvements, conversion measurement, and a clear client reporting direction for growing service businesses.",
   alternates: { canonical: "/seo" },
@@ -36,3 +37,6 @@ export default function SeoPage() {
     </>
   );
 }
+
+export const revalidate = 300;
+export async function generateMetadata(): Promise<Metadata> { return managedMetadata("/seo", baselineMetadata); }

@@ -1,3 +1,4 @@
+import { managedMetadata } from "@/lib/seo/public-metadata";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -5,7 +6,7 @@ import { WebsiteConceptGallery } from "@/components/growth-visuals";
 import { ProductWindow } from "@/components/product-window";
 import { Eyebrow, FinalCta, PageHero } from "@/components/ui";
 
-export const metadata: Metadata = {
+const baselineMetadata: Metadata = {
   title: "Our Work & Design Concepts",
   description: "Explore original service-business website concepts and StonegateOS, Tailored Agents' connected operating platform and engineering showcase.",
   alternates: { canonical: "/work" },
@@ -25,3 +26,6 @@ export default function WorkPage() {
     </>
   );
 }
+
+export const revalidate = 300;
+export async function generateMetadata(): Promise<Metadata> { return managedMetadata("/work", baselineMetadata); }

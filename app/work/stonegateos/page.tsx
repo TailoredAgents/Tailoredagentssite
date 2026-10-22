@@ -1,8 +1,9 @@
+import { managedMetadata } from "@/lib/seo/public-metadata";
 import type { Metadata } from "next";
 import { ProductWindow } from "@/components/product-window";
 import { Eyebrow, FinalCta, PageHero } from "@/components/ui";
 
-export const metadata: Metadata = {
+const baselineMetadata: Metadata = {
   title: "StonegateOS Case Study",
   description: "A technical case study of StonegateOS, a connected operating platform built around the requirements of a service business.",
   alternates: { canonical: "/work/stonegateos" },
@@ -50,3 +51,6 @@ export default function StonegateCaseStudy() {
     </>
   );
 }
+
+export const revalidate = 300;
+export async function generateMetadata(): Promise<Metadata> { return managedMetadata("/work/stonegateos", baselineMetadata); }

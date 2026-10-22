@@ -1,10 +1,11 @@
+import { managedMetadata } from "@/lib/seo/public-metadata";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Bot, ChartNoAxesCombined, Layers3 } from "lucide-react";
 import { PackageCalculator } from "@/components/package-calculator";
 import { Eyebrow, FinalCta } from "@/components/ui";
 
-export const metadata: Metadata = {
+const baselineMetadata: Metadata = {
   title: "Website & SEO Growth Packages",
   description: "Explore Tailored Agents website and SEO bundles, then adjust the upfront website investment to see a clear six-month cost breakdown.",
   alternates: { canonical: "/packages" },
@@ -70,3 +71,6 @@ export default function PackagesPage() {
     </>
   );
 }
+
+export const revalidate = 300;
+export async function generateMetadata(): Promise<Metadata> { return managedMetadata("/packages", baselineMetadata); }

@@ -2,6 +2,14 @@
 
 Prepared October 21, 2026 for Jeffrey: email activation only.
 
+## October 22 addition: SEO manager worker
+
+The owner approved the ongoing internal SEO manager and confirmed Woodstock, Canton, Marietta, Acworth and Roswell, Georgia alongside national customers. The new website release includes migration 0016, the manager screens and a reviewed metadata publisher. The manager starts paused.
+
+Follow **[SEO_MANAGER_SETUP.md](docs/SEO_MANAGER_SETUP.md#jeffrey-deploy-the-scheduled-worker)** for the exact new Render cron job, database connection and environment references. Preserve the existing OpenAI key. Austin needs to create/fund DataForSEO and enter/share its **API login and API password** securely; the guide includes his steps. No new Mail or Twilio configuration is needed for this feature. Verify whether Blueprint sync created the service; a committed Blueprint does not establish that it exists or is running. The SEO manager is not live merely because the website deployed.
+
+After the worker timestamp appears, Austin reviews the business facts and enables the $40/month AI/data limit in Dashboard → SEO manager. A supervised real plan/publication and provider billing check remain activation acceptance. Do not label synthetic tests as real model-quality evaluation.
+
 ## Priority: Austin needs Mail team-management access
 
 Requested October 22, 2026. Austin is signed into Mail as **austin@tailoredagents.com** and cannot see **Manage team**. He wants the same Mail management permission as Jeffrey so he can approve **devon@tailoredagents.com** for the website dashboard today. **This change is pending; Codex has not verified or modified these production accounts.** Austin does not have the Cloudflare account, and this workstation is signed out.

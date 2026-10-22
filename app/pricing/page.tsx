@@ -1,3 +1,4 @@
+import { managedMetadata } from "@/lib/seo/public-metadata";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowDown, FileCheck2, Handshake, ReceiptText } from "lucide-react";
@@ -5,7 +6,7 @@ import { PricingCards } from "@/components/pricing-cards";
 import { Eyebrow, FinalCta } from "@/components/ui";
 import { customAutomationPlans, foundingAgentPlans, seoPlans, websitePlans } from "@/lib/services";
 
-export const metadata: Metadata = {
+const baselineMetadata: Metadata = {
   title: "Website, SEO & AI Automation Pricing",
   description: "Clear starting prices for professional websites, managed local SEO, focused automation, and managed AI agents from Tailored Agents.",
   alternates: { canonical: "/pricing" },
@@ -90,3 +91,6 @@ export default function PricingPage() {
     </>
   );
 }
+
+export const revalidate = 300;
+export async function generateMetadata(): Promise<Metadata> { return managedMetadata("/pricing", baselineMetadata); }

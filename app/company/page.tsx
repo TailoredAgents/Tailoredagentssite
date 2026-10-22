@@ -1,7 +1,8 @@
+import { managedMetadata } from "@/lib/seo/public-metadata";
 import type { Metadata } from "next";
 import { FinalCta, PageHero } from "@/components/ui";
 
-export const metadata: Metadata = {
+const baselineMetadata: Metadata = {
   title: "About Tailored Agents",
   description: "Tailored Agents combines digital design, software engineering, local growth expertise, and practical business automation.",
   alternates: { canonical: "/company" },
@@ -18,3 +19,6 @@ export default function CompanyPage() {
     </>
   );
 }
+
+export const revalidate = 300;
+export async function generateMetadata(): Promise<Metadata> { return managedMetadata("/company", baselineMetadata); }

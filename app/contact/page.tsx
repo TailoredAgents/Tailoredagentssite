@@ -1,9 +1,10 @@
+import { managedMetadata } from "@/lib/seo/public-metadata";
 import type { Metadata } from "next";
 import { ContactForm } from "@/components/contact-form";
 import { PageHero } from "@/components/ui";
 import { siteConfig } from "@/lib/site";
 
-export const metadata: Metadata = {
+const baselineMetadata: Metadata = {
   title: "Discuss a Project",
   description: "Tell Tailored Agents about your website, SEO, automation, integration, or custom software opportunity.",
   alternates: { canonical: "/contact" },
@@ -17,3 +18,6 @@ export default function ContactPage() {
     </>
   );
 }
+
+export const revalidate = 300;
+export async function generateMetadata(): Promise<Metadata> { return managedMetadata("/contact", baselineMetadata); }

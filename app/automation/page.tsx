@@ -1,3 +1,4 @@
+import { managedMetadata } from "@/lib/seo/public-metadata";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, CalendarCheck, DatabaseZap, MessagesSquare, PhoneCall, Route, Sparkles } from "lucide-react";
@@ -7,7 +8,7 @@ import { WorkflowShowcase } from "@/components/workflow-showcase";
 import { ArrowLink, Eyebrow, FinalCta } from "@/components/ui";
 import { customAutomationPlans, foundingAgentPlans } from "@/lib/services";
 
-export const metadata: Metadata = {
+const baselineMetadata: Metadata = {
   title: "AI Agents & Business Automation",
   description: "Website AI assistants, lead qualification, follow-up, AI phone reception, business automation, integrations, and custom agent systems.",
   alternates: { canonical: "/automation" },
@@ -122,3 +123,6 @@ export default function AutomationPage() {
     </>
   );
 }
+
+export const revalidate = 300;
+export async function generateMetadata(): Promise<Metadata> { return managedMetadata("/automation", baselineMetadata); }

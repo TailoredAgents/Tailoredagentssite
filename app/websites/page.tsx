@@ -1,3 +1,4 @@
+import { managedMetadata } from "@/lib/seo/public-metadata";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Accessibility, ArrowRight, Bot, Gauge, LayoutTemplate, Search, Smartphone } from "lucide-react";
@@ -6,7 +7,7 @@ import { PricingCards } from "@/components/pricing-cards";
 import { ArrowLink, Eyebrow, FinalCta } from "@/components/ui";
 import { websitePlans } from "@/lib/services";
 
-export const metadata: Metadata = {
+const baselineMetadata: Metadata = {
   title: "Website Design & Development",
   description: "Premium, responsive website design and development for service businesses that need credibility, clarity, performance, and better inquiry paths.",
   alternates: { canonical: "/websites" },
@@ -59,3 +60,6 @@ export default function WebsitesPage() {
     </>
   );
 }
+
+export const revalidate = 300;
+export async function generateMetadata(): Promise<Metadata> { return managedMetadata("/websites", baselineMetadata); }

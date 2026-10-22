@@ -93,6 +93,11 @@ try {
     await pool.query(`INSERT INTO voice_intents(id,workspace_id,actor_user_id,request_id,payload_hash,line_id,call_id,expires_at,redeemed_at) VALUES('00000000-0000-4000-8000-000000000923',$1,'recovery-sms-user','00000000-0000-4000-8000-000000000924',$2,'00000000-0000-4000-8000-000000000920','00000000-0000-4000-8000-000000000927',now()+interval '2 minutes',now())`, [workspace, 'c'.repeat(64)]);
     await pool.query(`INSERT INTO voice_voicemails(id,workspace_id,call_id,recording_sid,status,duration) VALUES('00000000-0000-4000-8000-000000000925',$1,'00000000-0000-4000-8000-000000000922',$2,'ready',12)`, [workspace, 'RE'+'4'.repeat(32)]);
     await pool.query(`INSERT INTO crm_conversation_sources(id,workspace_id,conversation_id,channel,voice_conversation_id,external_addresses) SELECT '00000000-0000-4000-8000-000000000926',workspace_id,conversation_id,'call','00000000-0000-4000-8000-000000000921',ARRAY['+16785550101'] FROM crm_conversation_sources WHERE sms_conversation_id='00000000-0000-4000-8000-000000000902'`);
+    // Preserve a reviewed active publication and an uncertain paid request.
+    await pool.query(`INSERT INTO seo_runs(id,workspace_id,site_id,kind,schedule_key,status,stage) VALUES('00000000-0000-4000-8000-000000000940',$1,$2,'strategy','recovery','uncertain','plan')`,[workspace,site]);
+    await pool.query(`INSERT INTO seo_changes(id,workspace_id,site_id,run_id,path,title,description,rationale,evidence,baseline,review,status,human_reviewed_at,reviewed_by_user_id) VALUES('00000000-0000-4000-8000-000000000941',$1,$2,'00000000-0000-4000-8000-000000000940','/websites','Reviewed recovery title','Reviewed synthetic search description for a real recovery test.','Synthetic recovery rationale','[]','{}','{"approved":true}','verified',now(),'recovery-sms-user')`,[workspace,site]);
+    await pool.query(`INSERT INTO seo_publications(workspace_id,site_id,path,change_id) VALUES($1,$2,'/websites','00000000-0000-4000-8000-000000000941')`,[workspace,site]);
+    await pool.query(`INSERT INTO seo_costs(id,workspace_id,site_id,run_id,request_key,provider,operation,reserved_micros,status,attempted_at) VALUES('00000000-0000-4000-8000-000000000942',$1,$2,'00000000-0000-4000-8000-000000000940','recovery-charge','openai','plan',250000,'uncertain',now())`,[workspace,site]);
     assert.equal(
       (await pool.query("SELECT url FROM sites WHERE id=$1", [site])).rows[0]
         .url,
@@ -258,9 +263,11 @@ try {
     assert.equal(voice.payload_hash, 'c'.repeat(64)); assert.ok(voice.redeemed_at); assert.equal(voice.status, 'ready'); assert.equal(voice.duration, 12); assert.equal(voice.channel, 'call');
     assert.equal((await restored.query(`SELECT body FROM inbox_notes WHERE id='00000000-0000-4000-8000-000000000907'`)).rows[0].body, 'Synthetic mailbox-scoped note');
     assert.equal((await restored.query(`SELECT body FROM inbox_drafts WHERE id='00000000-0000-4000-8000-000000000908'`)).rows[0].body, 'Synthetic private email draft');
+    const seo=(await restored.query("SELECT c.title,c.human_reviewed_at,k.status,k.reserved_micros FROM seo_publications p JOIN seo_changes c ON c.id=p.change_id JOIN seo_costs k ON k.run_id=c.run_id WHERE p.site_id=$1",[site])).rows[0];
+    assert.equal(seo.title,"Reviewed recovery title");assert.ok(seo.human_reviewed_at);assert.equal(seo.status,"uncertain");assert.equal(Number(seo.reserved_micros),250000);
     await restored.query("SELECT perform_reporting_retention()");
     console.log(
-      "PASS: reports, credential metadata, client/contact links, unified source backfill, scoped email notes/private drafts, SMS grants/drafts/uncertain receipts, voice grants/redeemed intents/voicemail references survive populated migration and PostgreSQL dump/restore; retention remains callable.",
+      "PASS: reports, credential metadata, client/contact links, unified source backfill, scoped email notes/private drafts, SMS grants/drafts/uncertain receipts, voice grants/redeemed intents/voicemail references, reviewed SEO publications and uncertain cost receipts survive populated migration and PostgreSQL dump/restore; retention remains callable.",
     );
   } finally {
     await restored.end();

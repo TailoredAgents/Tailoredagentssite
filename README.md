@@ -273,3 +273,5 @@ Do not add another proxy or CDN until certificate, forwarding-header, authentica
 - Review service scope, public copy, and the StonegateOS case study with the business owner.
 
 See [the launch checklist](docs/LAUNCH_CHECKLIST.md) for the complete production gate.
+
+The internal **Dashboard → SEO manager** scans the public site, prepares strategies and content briefs, and publishes fact-reviewed search metadata with verification, rollback and outcome tracking. See [SEO manager setup](docs/SEO_MANAGER_SETUP.md) for DataForSEO, the separate cron worker, costs and the initial live pilot. It starts paused; full article and technical repair publishing are later stages.

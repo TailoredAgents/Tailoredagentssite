@@ -1,3 +1,4 @@
+import { managedMetadata } from "@/lib/seo/public-metadata";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Check } from "lucide-react";
@@ -6,7 +7,7 @@ import { WebsiteReviewForm } from "@/components/website-review-form";
 import { Eyebrow } from "@/components/ui";
 import { siteConfig } from "@/lib/site";
 
-export const metadata: Metadata = {
+const baselineMetadata: Metadata = {
   title: "Free Website & Local Visibility Review",
   description: "Request a free initial review of your business website, mobile experience, inquiry paths, and local visibility foundations.",
   alternates: { canonical: "/free-review" },
@@ -20,3 +21,6 @@ export default function FreeReviewPage() {
     </>
   );
 }
+
+export const revalidate = 300;
+export async function generateMetadata(): Promise<Metadata> { return managedMetadata("/free-review", baselineMetadata); }

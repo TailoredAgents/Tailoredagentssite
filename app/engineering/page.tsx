@@ -1,7 +1,8 @@
+import { managedMetadata } from "@/lib/seo/public-metadata";
 import type { Metadata } from "next";
 import { FinalCta, PageHero } from "@/components/ui";
 
-export const metadata: Metadata = {
+const baselineMetadata: Metadata = {
   title: "Engineering",
   description: "Our approach to AI agent engineering, full-stack software, system integrations, data processing, reliability, and human oversight.",
   alternates: { canonical: "/engineering" },
@@ -44,3 +45,6 @@ export default function EngineeringPage() {
     </>
   );
 }
+
+export const revalidate = 300;
+export async function generateMetadata(): Promise<Metadata> { return managedMetadata("/engineering", baselineMetadata); }

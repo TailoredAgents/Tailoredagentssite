@@ -25,7 +25,9 @@
     "test:design:browser": "playwright test --config playwright.design.config.ts",
     "test:integration": "vitest run lib/reporting/database.integration.test.ts",
     "reporting:preview": "node scripts/start-reporting-preview.mjs",
-    "test:recovery": "node scripts/test-reporting-recovery.mjs"
+    "test:recovery": "node scripts/test-reporting-recovery.mjs",
+    "seo:worker": "node --conditions=react-server --import tsx scripts/run-seo-worker.ts",
+    "test:seo:browser": "playwright test --config playwright.seo.config.ts"
   },
   "engines": {
     "node": ">=22.0.0"
@@ -36,11 +38,13 @@
     "better-auth": "^1.7.10",
     "lucide-react": "^0.468.0",
     "next": "16.4.2",
+    "parse5": "8.0.1",
     "pg": "^8.16.3",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "server-only": "^0.0.1",
     "tailwindcss": "^4.1.14",
+    "tsx": "4.23.15",
     "twilio": "^6.2.0",
     "zod": "^4.6.7"
   },
