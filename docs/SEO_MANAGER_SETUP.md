@@ -85,3 +85,11 @@ October 22, 2026:
 Reviewed synthetic previews: [light desktop manager](previews/seo-manager-desktop.png), [light phone review](previews/seo-change-phone.png), [dark desktop manager](previews/themes/dark/providers/seo-manager-desktop.png), [dark phone review](previews/themes/dark/providers/seo-change-phone.png).
 
 These results establish the application mechanism. A real provider quality/cost pilot, the first reviewed production improvement, scheduled-service acceptance and later search outcomes remain separate live gates.
+
+## Website delivery
+
+Implementation `1e5c988ac41c4dd2a4c638499d3b4ea751461bab` and the measurement follow-up `510e09a9c18572ad7b9d294e0b40f181af460aaf` are pushed to `main`. GitHub deployment **7262788867** reports Render success for the final code revision at **4:25:01 p.m. EDT on October 22, 2026** (20:25:01 UTC). [Render deployment](https://dashboard.render.com/web/srv-db6hod8473hc739q2uo0/deploys/dep-dbd71hmk1f9s738q646g).
+
+After that deployment, the health, sign-in, Websites and Pricing endpoints return 200. Both SEO dashboard routes redirect anonymous visitors to sign-in. The worker rejects unsigned POST requests with 401 and GET with 405. Production CSP does not allow development eval. The public Websites page still serves its original title and passes this release's metadata/canonical/heading checks; no production SEO copy was published during delivery.
+
+Open [SEO manager](https://www.tailoredagents.com/dashboard/seo) with your existing approved login. Authenticated owner acceptance, Render cron existence/environment checks, real AI/DataForSEO authentication and billing, the first reviewed publication and its eventual search outcome remain pending. The live availability checks above do not establish that the recurring manager is activated. Follow the Austin/Jeffrey steps above; no paid provider request, account funding or production content change was performed by Codex.
