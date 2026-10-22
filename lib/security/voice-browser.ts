@@ -10,12 +10,18 @@ export function voiceBrowserFixture(environment: Environment = process.env) {
   return true;
 }
 
+// Next's development React runtime needs eval for debugging. Production keeps
+// the stricter policy; both public and dashboard policies use the same switch.
+export function browserScriptSources(development = process.env.NODE_ENV === "development") {
+  return `'self' 'unsafe-inline'${development ? " 'unsafe-eval'" : ""}`;
+}
+
 export function voiceDashboardHeaders(fixture = false) {
   // The SDK is bundled locally. These are Twilio's documented default-roaming
   // signaling, insights and sound hosts; public pages retain the original CSP.
   const hosts = "https://media.twiliocdn.com https://sdk.twilio.com";
   return [
     { key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=(), payment=()" },
-    { key: "Content-Security-Policy", value: `default-src 'self'; script-src 'self' 'unsafe-inline' ${hosts}; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://eventgw.twilio.com wss://voice-js.roaming.twilio.com ${hosts}${fixture ? " http://127.0.0.1:3161" : ""}; media-src 'self' blob: mediastream: ${hosts}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests` },
+    { key: "Content-Security-Policy", value: `default-src 'self'; script-src ${browserScriptSources()} ${hosts}; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://eventgw.twilio.com wss://voice-js.roaming.twilio.com ${hosts}${fixture ? " http://127.0.0.1:3161" : ""}; media-src 'self' blob: mediastream: ${hosts}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests` },
   ];
 }

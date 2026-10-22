@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { voiceBrowserFixture, voiceDashboardHeaders } from "./voice-browser";
+import { browserScriptSources, voiceBrowserFixture, voiceDashboardHeaders } from "./voice-browser";
 describe("private browser phone policy", () => {
+  it("supports React development debugging while retaining the production script policy", () => {
+    expect(browserScriptSources(true)).toContain("'unsafe-eval'");
+    expect(browserScriptSources(false)).toBe("'self' 'unsafe-inline'");
+  });
   it("allows same-origin microphone and the documented default Twilio hosts without broad network access", () => {
     const headers = Object.fromEntries(voiceDashboardHeaders().map(h => [h.key, h.value]));
     expect(headers["Permissions-Policy"]).toContain("microphone=(self)");
