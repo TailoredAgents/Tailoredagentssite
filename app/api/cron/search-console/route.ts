@@ -3,6 +3,7 @@ import { syncAllSearchConsoleConnections } from "@/lib/search-console/sync";
 import { runReportingMaintenance } from "@/lib/reporting/maintenance";
 import { getDatabasePool } from "@/lib/dashboard/db";
 import { privateJson } from "@/lib/reporting/http";
+import { runVoiceMaintenance } from "@/lib/voice/maintenance";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -21,6 +22,15 @@ export async function POST(request: Request) {
     return privateJson({ ok: false }, 401);
   try {
     await runReportingMaintenance();
+    // A single leased recording deletion keeps this shared worker bounded.
+    // Voice outages must not prevent the reporting queue from advancing.
+    let voice = { checked: 0, failed: 0 };
+    try {
+      voice = await runVoiceMaintenance();
+    } catch {
+      voice = { checked: 0, failed: 1 };
+      console.error("voice_retention_worker_failed");
+    }
     const outcomes = await syncAllSearchConsoleConnections();
     const due = await getDatabasePool()
       .query(`SELECT 1 FROM integration_sync_runs WHERE
@@ -31,6 +41,7 @@ export async function POST(request: Request) {
       more: Boolean(due.rowCount),
       checked: outcomes.length,
       failed: outcomes.filter((outcome) => outcome.status === "failed").length,
+      voice,
     });
   } catch {
     console.error("reporting_worker_failed");

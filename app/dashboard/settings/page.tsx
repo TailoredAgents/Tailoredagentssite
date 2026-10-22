@@ -8,16 +8,19 @@ import { getInquiryNotificationConfiguration } from "@/lib/inquiry-notifications
 import { listMailboxes, MailProviderError } from "@/lib/inbox/mail-provider";
 import { listSmsSettings } from "@/lib/sms/data";
 import { SmsSettingsPanel } from "@/components/sms/settings-panel";
+import { getVoiceWorkspace } from "@/lib/voice/data";
+import { VoiceSettingsPanel } from "@/components/voice/settings-panel";
 
 export const metadata: Metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
   const context = await requireDashboardContext();
   const mailLogin = resolveDashboardConfiguration().authMode === "mail";
-  const [google, inbox, sms] = await Promise.all([
+  const [google, inbox, sms, voice] = await Promise.all([
     getSearchConsoleConnection(context).catch(() => null),
     listMailboxes(context).then(mailboxes => ({ connected: mailboxes.length > 0, detail: mailboxes.length ? `${mailboxes.length} approved address${mailboxes.length === 1 ? "" : "es"}. Mail → Manage team controls who can read and send. Dashboard roles also apply.` : "Ask the Mail owner to approve your account for the shared sales address." })).catch(error => ({ connected: false, detail: error instanceof MailProviderError ? error.message : "The email connection could not be checked. Open Inbox to try again." })),
     listSmsSettings(context),
+    getVoiceWorkspace(context),
   ]);
   const googleStatus = !google ? "Unable to check" : !google.configured ? "Setup needed" : google.connection?.status === "active" ? "Connected" : google.connection?.status === "error" ? "Needs attention" : "Not connected";
   const notifications = getInquiryNotificationConfiguration();
@@ -26,7 +29,7 @@ export default async function SettingsPage() {
     { icon: UsersRound, label: "Team access", value: "Approval required", detail: mailLogin ? "The mail owner approves teammates in Mail → Manage team. Dashboard roles control what each person can do." : "Only approved internal team accounts can sign in.", healthy: true },
     { icon: Inbox, label: "Shared email inbox", value: inbox.connected ? "Connected" : "Setup or access needed", detail: inbox.detail, healthy: inbox.connected },
     { icon: Phone, label: "Business SMS", value: sms.connection.state === "ready" && sms.numbers.some(number => number.canSend) ? "Sending enabled" : "Setup or approval needed", detail: sms.connection.message, healthy: sms.connection.state === "ready" && sms.numbers.some(number => number.canSend) },
-    { icon: Phone, label: "Calling and recordings", value: "Not yet enabled", detail: "Calling, voicemail, recordings and transcripts follow the SMS increment.", healthy: false },
+    { icon: Phone, label: "Voice and voicemail", value: voice.lines.some(line => line.canCall || line.canReceive) ? "Calling available" : "Setup or approval needed", detail: voice.message, healthy: voice.state === "ready" && voice.lines.some(line => line.canCall || line.canReceive) },
     { icon: BarChart3, label: "Google Search Console", value: googleStatus, detail: "See how people find your website in Google. Open Analytics to connect, review updates, or fix a connection.", healthy: googleStatus === "Connected" },
     { icon: Mail, label: "Inquiry notifications", value: notifications ? "Configured" : "Not configured", detail: notifications ? `New inquiry alerts go to ${notifications.to.join(" and ")}. Every inquiry is also saved in Leads.` : "Email alerts need setup. New inquiries are still saved in Leads.", healthy: Boolean(notifications) },
     { icon: BarChart3, label: "Website activity", value: "Enabled", detail: "Visits and inquiry activity are measured when the visitor's privacy settings allow it.", healthy: true },
@@ -42,6 +45,7 @@ export default async function SettingsPage() {
         <article className="dashboard-panel dashboard-system-card"><div className="dashboard-panel-heading"><div><span>Service status</span><h2>Connections and access</h2></div></div><div className="dashboard-settings-list">{settings.map(({ icon: Icon, label, value, detail, healthy }) => <div key={label}><span><Icon size={20} /></span><div><strong>{label}</strong><small>{detail}</small></div><em className={healthy ? "" : "is-neutral"}>{value}</em></div>)}</div></article>
       </section>
       <SmsSettingsPanel settings={sms} />
+      <VoiceSettingsPanel workspace={voice} />
       <section className="dashboard-panel dashboard-boundary-card"><ShieldCheck size={22} /><div><h2>This workspace is private to your team</h2><p>Clients cannot sign in to this dashboard. If you need a password reset or someone has left the team, contact the mail owner.</p></div></section>
     </div>
   </>;

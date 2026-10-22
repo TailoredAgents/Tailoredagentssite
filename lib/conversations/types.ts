@@ -6,11 +6,9 @@ import type {
   InboxLinks,
 } from "@/lib/inbox/types";
 import type { SmsNumber, SmsRecord } from "@/lib/sms/types";
+import type { VoiceLine, VoiceCall } from "@/lib/voice/types";
 export type ConversationStatus =
-  | "needs_reply"
-  | "waiting"
-  | "done"
-  | "archived";
+  "needs_reply" | "waiting" | "done" | "archived";
 export type ConversationFilters = {
   conversation?: string | string[];
   thread?: string | string[];
@@ -34,12 +32,12 @@ export type ConversationSummary = {
   lastActivityAt: string;
   preview: string;
   unread: boolean;
-  channels: ("email" | "sms")[];
+  channels: ("email" | "sms" | "call")[];
   sourceCount: number;
 };
 export type ConversationSource = {
   id: string;
-  channel: "email" | "sms";
+  channel: "email" | "sms" | "call";
   label: string;
   mailboxId: string | null;
   threadId: string | null;
@@ -51,13 +49,16 @@ export type ConversationSource = {
   mailRecord: InboxRecord | null;
   number: SmsNumber | null;
   smsRecord: SmsRecord | null;
+  line: VoiceLine | null;
+  voiceConversationId: string | null;
+  voiceCalls: VoiceCall[];
   hasOlder: boolean;
   before: string | null;
 };
 export type ConversationTimelineItem = {
   id: string;
   sourceId: string;
-  channel: "email" | "sms" | "note";
+  channel: "email" | "sms" | "call" | "note";
   direction: "inbound" | "outbound" | null;
   text: string;
   subject: string | null;
@@ -66,6 +67,7 @@ export type ConversationTimelineItem = {
   createdAt: string;
   emailMessage?: InboxMessage;
   mediaCount?: number;
+  voiceCall?: VoiceCall;
 };
 export type ConversationContext = {
   opportunityId: string | null;
@@ -100,7 +102,7 @@ export type ConversationWorkspace = {
   };
   mergeTargets: { id: string; title: string }[];
   sync: {
-    channel: "email" | "sms";
+    channel: "email" | "sms" | "call";
     state: "ready" | "syncing" | "setup" | "grant_required" | "unavailable";
     message: string;
   }[];

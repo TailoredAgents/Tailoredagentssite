@@ -1,6 +1,6 @@
 # Communications setup and activation
 
-Release 2's first email and business SMS increments are implemented in source. Production deployment, mailbox/number approval and authorized delivery acceptance are separate steps below; this document does not record them as completed. BatchDialer remains the current campaign dialer. Calling, voicemail, recordings and transcripts remain later increments.
+Release 2's email, business SMS, unified Inbox, browser calling and voicemail increments are implemented in source. Production deployment, mailbox/number approval and authorized delivery acceptance are separate steps below; this document does not record them as completed. BatchDialer remains the current campaign dialer. Connected-call recordings and transcripts remain later increments. The owner-led calling activation checklist is [VOICE_SETUP.md](VOICE_SETUP.md), including migration 0013, separate voice grants, hours and voicemail retention.
 
 The first unified relationship Inbox is implemented in source at `/dashboard/inbox`; the existing separate provider workspaces remain compatible at `?channel=email` and `?channel=sms`. Apply website migration **0012_unified_inbox.sql** and deploy the latest Mail code for the address-scoped discovery and history APIs. Mail uses the existing migration **0037** and `CRM_MAIL_SECRET`; this increment adds no Mail migration or secret. See [Unified Inbox](UNIFIED_INBOX.md) for current behavior, verification and remaining refinements. The provider activation instructions below still apply.
 
@@ -118,7 +118,7 @@ For rollback, leave the additive schema and intent keys in place, disable `TWILI
 
 1. Reuse the verified Tailored Agents number and confirm its sales/support purpose, accountable account owner, business details and approved caller identity. Keep this business's numbers and registrations distinct from Wholesale's Stonegate configuration. Review costs and existing routing before service changes.
 2. For US local-number application SMS, prepare the Tailored Agents brand/use-case registration, exact opt-in flow, sample messages, privacy/terms URLs and opt-out handling. Do not infer that a researched public phone number is messaging consent. See [Twilio A2P 10DLC](https://www.twilio.com/docs/messaging/compliance/a2p-10dlc).
-3. Specify team routing, Devon's BatchDialer workflow, staff fallback numbers, business hours, voicemail greeting and missed-call responsibility. Begin with a single simple business line; browser calling is a later increment.
+3. Configure the implemented browser staff routing, business hours and voicemail using [VOICE_SETUP.md](VOICE_SETUP.md). Devon's BatchDialer workflow continues separately. External staff fallback numbers and advanced forwarding remain later work.
 4. Decide approved call-recording disclosure/consent, which staff can play/download recordings, retention and deletion ownership. Confirm the policy for the jurisdictions actually served before recording activation. See [Twilio recording guidance](https://www.twilio.com/docs/voice/twiml/record).
 5. Preserve explicit mailbox sharing above as future SMS/call context is added. Matching a contact address does not authorize sharing private Mail content with a client or another workspace.
 6. Prepare environment variables in the appropriate provider's secret store; never copy API keys, passwords, private credentials, production email content or recordings into source, chat, CSVs or screenshots. Staging uses distinct accounts/resources where supported.
@@ -131,7 +131,7 @@ For rollback, leave the additive schema and intent keys in place, disable `TWILI
 - Synchronize `START`, `STOP` and `HELP` events with channel restrictions and avoid duplicate confirmation replies when the provider already sent one. Check saved restrictions immediately before an outbound action. See [Advanced Opt-Out](https://www.twilio.com/docs/messaging/tutorials/advanced-opt-out).
 - Distinguish queued, provider-accepted, delivered, failed, unknown and genuinely read states. A saved manual log or delivery receipt does not establish that a person read a message.
 - Recording callbacks and transcription jobs have separate readiness, retry, expiry and failure state. Media playback/download requires both recording permission and the correct workspace/conversation access.
-- Move sustained email synchronization, attachment processing, transcription and agent work into a durable bounded worker. Choose the smallest runtime that meets measured workload and approved costs; retain the current reporting cron for its existing task.
+- Move sustained email synchronization, attachment processing, transcription and agent work into a durable bounded worker. Choose the smallest runtime that meets measured workload and approved costs. The current reporting cron also performs one bounded voicemail retention deletion per invocation; its reporting task remains isolated from voice failures.
 
 ## Controlled acceptance for later increments
 

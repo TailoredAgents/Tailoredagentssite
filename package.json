@@ -21,6 +21,7 @@
     "test:inbox:browser": "playwright test --config playwright.inbox.config.ts",
     "test:sms:browser": "playwright test --config playwright.sms.config.ts",
     "test:conversations:browser": "playwright test --config playwright.conversations.config.ts",
+    "test:voice:browser": "playwright test --config playwright.voice.config.ts",
     "test:integration": "vitest run lib/reporting/database.integration.test.ts",
     "reporting:preview": "node scripts/start-reporting-preview.mjs",
     "test:recovery": "node scripts/test-reporting-recovery.mjs"
@@ -30,6 +31,7 @@
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.14",
+    "@twilio/voice-sdk": "^2.18.5",
     "better-auth": "^1.7.10",
     "lucide-react": "^0.468.0",
     "next": "16.4.0",

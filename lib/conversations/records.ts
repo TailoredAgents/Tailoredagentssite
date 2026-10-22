@@ -6,6 +6,7 @@ import { listSmsWorkspace } from "@/lib/sms/data";
 import type { InboxRecord } from "@/lib/inbox/types";
 import { requireSource, type Scopes, type SourceRow } from "./access";
 import type { ConversationSource, ConversationTimelineItem } from "./types";
+import { listVoiceCalls } from "@/lib/voice/data";
 export async function hydrateSource(
   context: DashboardContext,
   s: SourceRow,
@@ -26,6 +27,9 @@ export async function hydrateSource(
     mailRecord: null,
     number: null,
     smsRecord: null,
+    line: null,
+    voiceConversationId: s.voice_conversation_id,
+    voiceCalls: [],
     hasOlder: false,
     before: null,
   };
@@ -155,7 +159,7 @@ export async function hydrateSource(
         createdAt: n.createdAt,
       })),
     );
-  } else {
+  } else if (s.channel === "sms") {
     const number = scope.numbers.find((n) => n.id === s.number_id)!;
     const found = await listSmsWorkspace(context, {
       number: number.id,
@@ -217,6 +221,41 @@ export async function hydrateSource(
         createdAt: n.createdAt,
       })),
     );
+  } else {
+    const line = scope.lines.find((l) => l.id === s.line_id)!;
+    const calls = await listVoiceCalls(context, s.voice_conversation_id!);
+    const oldest = calls.items[0];
+    source = {
+      ...source,
+      label: line.phone,
+      line,
+      voiceCalls: calls.items,
+      canSend: line.canCall,
+      hasOlder: calls.hasOlder,
+      before: oldest
+        ? Buffer.from(
+            JSON.stringify({ time: oldest.createdAt, id: oldest.id }),
+          ).toString("base64url")
+        : null,
+    };
+    items.push(
+      ...calls.items.map((c) => ({
+        id: `call:${c.id}`,
+        sourceId: s.id,
+        channel: "call" as const,
+        direction: c.direction,
+        text: c.voicemail
+          ? "Voicemail"
+          : c.direction === "inbound"
+            ? "Incoming call"
+            : "Outgoing call",
+        subject: null,
+        status: c.status,
+        authorName: null,
+        createdAt: c.createdAt,
+        voiceCall: c,
+      })),
+    );
   }
   return { source, items };
 }
@@ -260,6 +299,52 @@ export async function loadConversationSourceHistory(
   } catch {
     throw new Error("Refresh the conversation history.");
   }
+  if (source.channel === "call") {
+    const { readCalls } = await import("@/lib/voice/data");
+    const current = await scopesForVoice(context, source.id);
+    const rows = await getDatabasePool().query<{ id: string; time: string }>(
+      "SELECT id,created_at::text AS time FROM voice_calls WHERE workspace_id=$1 AND voice_conversation_id=$2 AND (created_at,id)<($3::timestamptz,$4::uuid) ORDER BY created_at DESC,id DESC LIMIT 51",
+      [
+        context.workspace.id,
+        source.voice_conversation_id,
+        cursor.time,
+        cursor.id,
+      ],
+    );
+    const page = rows.rows.slice(0, 50),
+      oldest = page.at(-1),
+      calls = await readCalls(
+        getDatabasePool(),
+        context.workspace.id,
+        page.map((c) => c.id),
+        current.canManageVoicemail,
+      );
+    await requireSource(context, source.id);
+    return {
+      items: calls.map((c) => ({
+        id: `call:${c.id}`,
+        sourceId: source.id,
+        channel: "call" as const,
+        direction: c.direction,
+        text: c.voicemail
+          ? "Voicemail"
+          : c.direction === "inbound"
+            ? "Incoming call"
+            : "Outgoing call",
+        subject: null,
+        status: c.status,
+        authorName: null,
+        createdAt: c.createdAt,
+        voiceCall: c,
+      })),
+      before: oldest
+        ? Buffer.from(
+            JSON.stringify({ time: oldest.time, id: oldest.id }),
+          ).toString("base64url")
+        : null,
+      hasOlder: rows.rows.length > 50,
+    };
+  }
   const rows = await getDatabasePool().query<{
     id: string;
     direction: "inbound" | "outbound";
@@ -295,4 +380,13 @@ export async function loadConversationSourceHistory(
       : null,
     hasOlder: rows.rows.length > 50,
   };
+}
+async function scopesForVoice(context: DashboardContext, id: string) {
+  const source = await requireSource(context, id);
+  const { getVoiceWorkspace } = await import("@/lib/voice/data");
+  const line = (await getVoiceWorkspace(context)).lines.find(
+    (l) => l.id === source.line_id,
+  );
+  if (!line) throw new Error("Call history is unavailable.");
+  return line;
 }

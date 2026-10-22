@@ -38,5 +38,7 @@ do {
   console.log(
     `Worker check ${checks}: ${result.checked ?? 0} date updates, ${result.failed ?? 0} stopped imports.`,
   );
+  if (result.voice?.checked || result.voice?.failed)
+    console.log(`Voicemail retention: ${result.voice.checked ?? 0} checked, ${result.voice.failed ?? 0} pending failures.`);
   if (!result.more) break;
 } while (Date.now() < deadline);

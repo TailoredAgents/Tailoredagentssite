@@ -1,4 +1,7 @@
 import type { NextConfig } from "next";
+import { voiceBrowserFixture, voiceDashboardHeaders } from "./lib/security/voice-browser";
+
+const voiceFixture = voiceBrowserFixture();
 
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -13,13 +16,17 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // Twilio uses native Node HTTP clients and server-side credential handling.
   serverExternalPackages: ["twilio"],
+  ...(voiceFixture ? { turbopack: { resolveAlias: { "@twilio/voice-sdk": { browser: "./scripts/voice-browser-sdk-fixture.ts" } } } } : {}),
   poweredByHeader: false,
   compress: true,
   async redirects() {
     return [{ source: "/:path*", has: [{ type: "host" as const, value: "tailoredagents.com" }], destination: "https://www.tailoredagents.com/:path*", permanent: true }];
   },
   async headers() {
-    return [{ source: "/(.*)", headers: securityHeaders }];
+    return [
+      { source: "/(.*)", headers: securityHeaders },
+      { source: "/dashboard/:path*", headers: voiceDashboardHeaders(voiceFixture) },
+    ];
   },
 };
 

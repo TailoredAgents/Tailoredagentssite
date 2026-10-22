@@ -84,6 +84,15 @@ try {
     // Upgrade populated provider conversations instead of testing only empty DDL.
     for (const file of (await readdir("db/migrations")).filter(file => file.endsWith(".sql") && file >= "0012").sort())
       await pool.query(await readFile("db/migrations/" + file, "utf8"));
+    // Preserve voice grants, durable redemption and a scoped voicemail reference.
+    await pool.query(`INSERT INTO voice_lines(id,workspace_id,account_sid,provider_sid,phone) VALUES('00000000-0000-4000-8000-000000000920',$1,$2,$3,'+16785550100')`, [workspace, 'AC'+'1'.repeat(32), 'PN'+'2'.repeat(32)]);
+    await pool.query(`INSERT INTO voice_line_grants(workspace_id,line_id,user_id,can_call,can_receive,can_manage_voicemail) VALUES($1,'00000000-0000-4000-8000-000000000920','recovery-sms-user',true,true,true)`, [workspace]);
+    await pool.query(`INSERT INTO voice_conversations(id,workspace_id,line_id,remote_phone) VALUES('00000000-0000-4000-8000-000000000921',$1,'00000000-0000-4000-8000-000000000920','+16785550101')`, [workspace]);
+    await pool.query(`INSERT INTO voice_calls(id,workspace_id,line_id,voice_conversation_id,actor_user_id,direction,from_phone,to_phone,status,parent_sid) VALUES('00000000-0000-4000-8000-000000000922',$1,'00000000-0000-4000-8000-000000000920','00000000-0000-4000-8000-000000000921','recovery-sms-user','inbound','+16785550101','+16785550100','no-answer',$2)`, [workspace, 'CA'+'3'.repeat(32)]);
+    await pool.query(`INSERT INTO voice_calls(id,workspace_id,line_id,voice_conversation_id,actor_user_id,direction,from_phone,to_phone,status,parent_sid) VALUES('00000000-0000-4000-8000-000000000927',$1,'00000000-0000-4000-8000-000000000920','00000000-0000-4000-8000-000000000921','recovery-sms-user','outbound','+16785550100','+16785550101','completed',$2)`, [workspace, 'CA'+'5'.repeat(32)]);
+    await pool.query(`INSERT INTO voice_intents(id,workspace_id,actor_user_id,request_id,payload_hash,line_id,call_id,expires_at,redeemed_at) VALUES('00000000-0000-4000-8000-000000000923',$1,'recovery-sms-user','00000000-0000-4000-8000-000000000924',$2,'00000000-0000-4000-8000-000000000920','00000000-0000-4000-8000-000000000927',now()+interval '2 minutes',now())`, [workspace, 'c'.repeat(64)]);
+    await pool.query(`INSERT INTO voice_voicemails(id,workspace_id,call_id,recording_sid,status,duration) VALUES('00000000-0000-4000-8000-000000000925',$1,'00000000-0000-4000-8000-000000000922',$2,'ready',12)`, [workspace, 'RE'+'4'.repeat(32)]);
+    await pool.query(`INSERT INTO crm_conversation_sources(id,workspace_id,conversation_id,channel,voice_conversation_id,external_addresses) SELECT '00000000-0000-4000-8000-000000000926',workspace_id,conversation_id,'call','00000000-0000-4000-8000-000000000921',ARRAY['+16785550101'] FROM crm_conversation_sources WHERE sms_conversation_id='00000000-0000-4000-8000-000000000902'`);
     assert.equal(
       (await pool.query("SELECT url FROM sites WHERE id=$1", [site])).rows[0]
         .url,
@@ -243,12 +252,15 @@ try {
     assert.equal(sms.draft, 'Synthetic private draft');
     const canonical = (await restored.query(`SELECT count(*)::int AS n FROM crm_conversations WHERE workspace_id=$1`, [workspace])).rows[0];
     assert.equal(canonical.n, 2, 'Each existing provider thread keeps its own conversation until deliberate linking');
-    assert.equal((await restored.query(`SELECT count(*)::int AS n FROM crm_conversation_sources WHERE workspace_id=$1`, [workspace])).rows[0].n, 2);
+    assert.equal((await restored.query(`SELECT count(*)::int AS n FROM crm_conversation_sources WHERE workspace_id=$1`, [workspace])).rows[0].n, 3);
+    const voice = (await restored.query(`SELECT g.can_call,g.can_receive,g.can_manage_voicemail,i.payload_hash,i.redeemed_at,v.status,v.duration,s.channel FROM voice_intents i JOIN voice_line_grants g ON g.line_id=i.line_id AND g.user_id=i.actor_user_id JOIN voice_calls c ON c.id=i.call_id JOIN voice_calls incoming ON incoming.voice_conversation_id=c.voice_conversation_id AND incoming.direction='inbound' JOIN voice_voicemails v ON v.call_id=incoming.id JOIN crm_conversation_sources s ON s.voice_conversation_id=c.voice_conversation_id WHERE i.id='00000000-0000-4000-8000-000000000923'`)).rows[0];
+    assert.equal(voice.can_call, true); assert.equal(voice.can_receive, true); assert.equal(voice.can_manage_voicemail, true);
+    assert.equal(voice.payload_hash, 'c'.repeat(64)); assert.ok(voice.redeemed_at); assert.equal(voice.status, 'ready'); assert.equal(voice.duration, 12); assert.equal(voice.channel, 'call');
     assert.equal((await restored.query(`SELECT body FROM inbox_notes WHERE id='00000000-0000-4000-8000-000000000907'`)).rows[0].body, 'Synthetic mailbox-scoped note');
     assert.equal((await restored.query(`SELECT body FROM inbox_drafts WHERE id='00000000-0000-4000-8000-000000000908'`)).rows[0].body, 'Synthetic private email draft');
     await restored.query("SELECT perform_reporting_retention()");
     console.log(
-      "PASS: reports, credential metadata, client/contact links, unified conversation/source backfill, scoped email notes/private drafts, SMS grants/drafts and uncertain-send receipts survive populated migration and PostgreSQL dump/restore; retention remains callable.",
+      "PASS: reports, credential metadata, client/contact links, unified source backfill, scoped email notes/private drafts, SMS grants/drafts/uncertain receipts, voice grants/redeemed intents/voicemail references survive populated migration and PostgreSQL dump/restore; retention remains callable.",
     );
   } finally {
     await restored.end();

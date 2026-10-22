@@ -1,0 +1,108 @@
+"use server";
+import { revalidatePath } from "next/cache";
+import { ZodError } from "zod";
+import { requireDashboardContext } from "@/lib/dashboard/data";
+import { VoiceAccessError, VoiceInputError, getVoiceCall } from "./data";
+import { VoiceProviderError } from "@/lib/voice-provider/provider";
+import * as service from "./service";
+import type { VoiceActionState } from "./types";
+function failure(e: unknown): VoiceActionState {
+  return {
+    status: "error",
+    message:
+      e instanceof ZodError
+        ? (e.issues[0]?.message ?? "Review the call details.")
+        : e instanceof VoiceAccessError ||
+            e instanceof VoiceInputError ||
+            e instanceof VoiceProviderError
+          ? e.message
+          : "The call change could not be confirmed. Refresh the existing call before trying again.",
+  };
+}
+async function change(
+  form: FormData,
+  work: (
+    context: Awaited<ReturnType<typeof requireDashboardContext>>,
+    input: Record<string, unknown>,
+  ) => Promise<unknown>,
+  message: string,
+) {
+  const context = await requireDashboardContext();
+  try {
+    const i: Record<string, unknown> = Object.fromEntries(form.entries());
+    for (const key of [
+      "canRead",
+      "canCall",
+      "canReceive",
+      "canManageVoicemail",
+    ])
+      i[key] = form.get(key) === "on" || form.get(key) === "true";
+    if (form.has("days"))
+      i.days = String(form.get("days")).split(",").filter(Boolean).map(Number);
+    await work(context, i);
+    revalidatePath("/dashboard/inbox");
+    revalidatePath("/dashboard/settings");
+    revalidatePath("/dashboard", "layout");
+    return { status: "success", message } as VoiceActionState;
+  } catch (e) {
+    return failure(e);
+  }
+}
+export async function connectVoiceLineAction(_: VoiceActionState, f: FormData) {
+  return change(
+    f,
+    service.connectVoiceLine,
+    "Voice line verified. Only your own voice grant was added.",
+  );
+}
+export async function saveVoiceGrantAction(_: VoiceActionState, f: FormData) {
+  return change(f, service.saveVoiceGrant, "Voice permissions updated.");
+}
+export async function saveVoiceRoutingAction(_: VoiceActionState, f: FormData) {
+  return change(f, service.saveVoiceRouting, "Call routing updated.");
+}
+export async function deleteVoicemailAction(_: VoiceActionState, f: FormData) {
+  return change(
+    f,
+    (c, i) => service.deleteVoicemail(c, String(i.voicemailId ?? "")),
+    "Voicemail deleted.",
+  );
+}
+export async function issueVoiceTokenAction(lineId: string) {
+  return service.issueVoiceToken(await requireDashboardContext(), lineId);
+}
+export async function updateVoicePresenceAction(input: {
+  lineId: string;
+  available: boolean;
+}) {
+  return service.updateVoicePresence(await requireDashboardContext(), input);
+}
+export async function createVoiceIntentAction(input: {
+  lineId: string;
+  to: string;
+  conversationId?: string;
+  requestId: string;
+}) {
+  return service.createVoiceIntent(await requireDashboardContext(), input);
+}
+export async function getVoiceCallAction(callId: string) {
+  return getVoiceCall(await requireDashboardContext(), callId);
+}
+export async function acceptVoiceCallAction(input: { callId: string }) {
+  return service.acceptVoiceCall(await requireDashboardContext(), input);
+}
+export async function endVoiceCallAction(input: {
+  callId: string;
+}): Promise<VoiceActionState> {
+  try {
+    await service.endCall(await requireDashboardContext(), input);
+    revalidatePath("/dashboard/inbox");
+    return {
+      status: "success",
+      message: "The call has ended.",
+      callId: input.callId,
+    };
+  } catch (e) {
+    return failure(e);
+  }
+}

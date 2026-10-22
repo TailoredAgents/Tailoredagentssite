@@ -7,16 +7,20 @@ import { getTwilioConfiguration } from "@/lib/twilio/config";
 import type { InboxMailbox } from "@/lib/inbox/types";
 import type { SmsNumber } from "@/lib/sms/types";
 import type { ConversationWorkspace } from "./types";
+import { getVoiceWorkspace } from "@/lib/voice/data";
+import type { VoiceLine } from "@/lib/voice/types";
 export class ConversationAccessError extends Error {}
 export type SourceRow = {
   id: string;
   workspace_id: string;
   conversation_id: string;
-  channel: "email" | "sms";
+  channel: "email" | "sms" | "call";
   mailbox_id: string | null;
   thread_id: string | null;
   sms_conversation_id: string | null;
   number_id: string | null;
+  voice_conversation_id: string | null;
+  line_id: string | null;
   external_addresses: string[];
   latest_message_id: string | null;
   last_activity_at: Date;
@@ -28,9 +32,10 @@ export type Scopes = {
   role: string;
   mailboxes: InboxMailbox[];
   numbers: SmsNumber[];
+  lines: VoiceLine[];
   sync: ConversationWorkspace["sync"];
 };
-export const sourceSelect = `SELECT s.*,sc.number_id FROM crm_conversation_sources s LEFT JOIN sms_conversations sc ON sc.id=s.sms_conversation_id AND sc.workspace_id=s.workspace_id`;
+export const sourceSelect = `SELECT s.*,sc.number_id,vc.line_id FROM crm_conversation_sources s LEFT JOIN sms_conversations sc ON sc.id=s.sms_conversation_id AND sc.workspace_id=s.workspace_id LEFT JOIN voice_conversations vc ON vc.id=s.voice_conversation_id AND vc.workspace_id=s.workspace_id`;
 export async function scopes(context: DashboardContext): Promise<Scopes> {
   const role = await authorizeInbox(context);
   let mailboxes: InboxMailbox[] = [];
@@ -96,14 +101,18 @@ export async function scopes(context: DashboardContext): Promise<Scopes> {
       message:
         "SMS setup is incomplete. Existing Mail conversations remain available.",
     });
-  return { role, mailboxes, numbers, sync };
+  const voice = await getVoiceWorkspace(context);
+  sync.push({ channel: "call", state: voice.state, message: voice.message });
+  return { role, mailboxes, numbers, lines: voice.lines, sync };
 }
 export function permitted(source: SourceRow, scope: Scopes) {
   return (
     source.visible &&
     (source.channel === "email"
       ? scope.mailboxes.some((m) => m.id === source.mailbox_id)
-      : scope.numbers.some((n) => n.id === source.number_id))
+      : source.channel === "sms"
+        ? scope.numbers.some((n) => n.id === source.number_id)
+        : scope.lines.some((n) => n.id === source.line_id))
   );
 }
 export async function authorizedSources(

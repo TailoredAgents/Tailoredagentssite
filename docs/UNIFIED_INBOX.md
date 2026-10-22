@@ -2,6 +2,8 @@
 
 Updated October 21, 2026 after the owner asked us to inspect Wholesale's actual Inbox. The first shared email/SMS/notes conversation increment is now implemented in source. This document records the design, implemented behavior and remaining work. Production delivery and provider acceptance are separate records.
 
+October 22 source update: the **Call** composer, persistent dashboard browser phone, signed incoming staff routing, call history and protected voicemail now extend this same conversation model. Voice sources use explicit line grants independent of SMS. See [VOICE_SETUP.md](VOICE_SETUP.md) for implemented behavior, owner activation, test limits and remaining recording/transcript work. References below to calling as a future increment describe the original design sequence.
+
 ## What the owner meant
 
 Open a lead or customer conversation and see the whole relationship: texts, emails, incoming/outgoing calls, voicemail, recordings, transcripts and internal notes. Choose how to respond inside that conversation. Ownership, follow-ups and CRM context stay with the relationship when the response channel changes.

@@ -27,6 +27,7 @@ import {
 import { ConversationAccessError } from "./access";
 import type { InboxMailbox, InboxMessage } from "@/lib/inbox/types";
 vi.mock("server-only", () => ({}));
+vi.mock('@/lib/voice-provider/config',()=>({getVoiceConfiguration:()=>({ready:false,webhookReady:false,enabled:false,missing:['TWILIO_VOICE_APP_SID'],phoneNumber:''})}));
 const gateway = vi.hoisted(() => ({
   mailboxes: vi.fn(),
   index: vi.fn(),

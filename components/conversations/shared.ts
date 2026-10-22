@@ -2,6 +2,7 @@ import type { ConversationFilters, ConversationStatus, ConversationSummary } fro
 
 export const queueLabels: Record<string, string> = { mine: "Mine", team: "Team", unassigned: "Unassigned", needs_reply: "Needs reply", unread: "Unread", waiting: "Waiting", done: "Done", archived: "Archived", due: "Due now", reminders: "Reminders" };
 export const statusLabels: Record<ConversationStatus, string> = { needs_reply: "Needs reply", waiting: "Waiting", done: "Done", archived: "Archived" };
+export const sourceChannelLabels = { email: "Email", sms: "SMS", call: "Call" };
 
 export function conversationWorkLabel(conversation: ConversationSummary) {
   if (conversation.status === "needs_reply" && conversation.remindAt) return new Date(conversation.remindAt).getTime() <= Date.now() ? "Reminder due" : "Reminder set";

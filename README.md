@@ -10,7 +10,7 @@ Read [the product plan](docs/PRODUCT_PLAN.md) and [active agency OS sequence](do
 
 The owner has prioritized the internal sales CRM around researched calling lists, Devon's BatchDialer outreach, personalized Factory previews and website sales. The first source release adds Sales, My day, Calling lists and Mockups inside this existing dashboard, using canonical businesses and the existing contacts/clients/projects. It includes reviewed CSV imports, visual sales stages, list attribution, manual/imported communications, evidence-backed channel restrictions, explicit appointments/follow-ups, mockup handoffs and repeat-safe client/project conversion. Public package prices are unchanged; a promotional $800 offer is entered on its individual opportunity.
 
-Read [the active agency OS roadmap](docs/AGENCY_OS_ROADMAP.md) for implemented scope, deployment acceptance and the next releases. [Communications preparation](docs/COMMUNICATIONS_SETUP.md) covers the later narrow Mail integration and Twilio activation. This phase does not create a replacement dialer, enable live CRM email/SMS/calls, collect payments or publish agent changes. Existing website inquiries, Mail sign-in, reporting and public-site behavior are preserved.
+Read [the active agency OS roadmap](docs/AGENCY_OS_ROADMAP.md) for implemented scope, deployment acceptance and the next releases. [Communications setup](docs/COMMUNICATIONS_SETUP.md) covers the implemented unified Inbox, separate Mail activation and owner-managed Twilio SMS/calling activation. Source implementation and production provider acceptance are tracked separately.
 
 ## Current release state
 
@@ -209,6 +209,8 @@ For private account checks/provisioning, preview steps, recovery instructions, e
 The shared Sales Inbox release adds `/dashboard/inbox` and a separately deployed, address-scoped Mail bridge. For email-only live setup, approved teammate access and verification, follow [new jeffrey.md](new%20jeffrey.md) and [the communications runbook](docs/COMMUNICATIONS_SETUP.md). The isolated email browser suite is `npm run test:inbox:browser`; it uses synthetic Mail on loopback and requires the disposable `ta_inbox_browser_test` PostgreSQL database.
 
 The SMS channel at `/dashboard/inbox?channel=sms` adds text conversations and a separate owner-managed Twilio connection in Settings. The project owner handles Twilio activation using [the communications runbook](docs/COMMUNICATIONS_SETUP.md); email activation remains Jeffrey's assignment. `npm run test:sms:browser` uses the exact disposable `ta_sms_browser_test` database and intercepts the SDK transport only inside the guarded test process. It sends no real texts. Production sending defaults off until configuration, verified number access and recipient permission are ready.
+
+The unified customer Inbox now also includes a Call composer, persistent browser phone, signed staff routing, business hours, call history and protected voicemail. Migration **0013** and [the voice runbook](docs/VOICE_SETUP.md) cover separate voice permissions, owner activation, voicemail retention and actual audio acceptance. `npm run test:voice:browser` uses only `ta_voice_browser_test` on loopback port 55433, with a development-only SDK fixture and intercepted provider transport. It places no real calls. Connected-call recording and transcripts remain later increments.
 
 Run the complete website gate after dependency, schema, authentication, route, or design changes:
 

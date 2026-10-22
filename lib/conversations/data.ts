@@ -128,7 +128,9 @@ export async function listConversationWorkspace(
             preview:
               latest.channel === "email"
                 ? "Email activity"
-                : preview.get(latest.id) || "SMS activity",
+                : latest.channel === "call"
+                  ? "Call activity"
+                  : preview.get(latest.id) || "SMS activity",
             unread: owned.some(
               (s) =>
                 !!s.latest_message_id && read.get(s.id) !== s.latest_message_id,
@@ -176,7 +178,7 @@ export async function listConversationWorkspace(
         sources = sources.filter(
           (s) => s.channel !== "email" || s.mailbox_id !== source.mailbox_id,
         );
-        if (source.channel === "sms")
+        if (source.channel !== "email")
           sources = sources.filter((s) => s.id !== source.id);
         scope.sync.push({
           channel: source.channel,
@@ -212,12 +214,16 @@ export async function listConversationWorkspace(
         )!;
         item.source.mailbox = mailbox;
         item.source.canSend = fresh.role !== "viewer" && mailbox.canSend;
-      } else {
+      } else if (item.source.channel === "sms") {
         const number = fresh.numbers.find(
           (n) => n.id === item.source.numberId,
         )!;
         item.source.number = number;
         item.source.canSend = number.canSend;
+      } else {
+        const line = fresh.lines.find((l) => l.id === item.source.line?.id)!;
+        item.source.line = line;
+        item.source.canSend = line.canCall;
       }
     }
     const noteRows = await pool.query<{
