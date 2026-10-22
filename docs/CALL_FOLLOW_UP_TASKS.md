@@ -24,8 +24,12 @@ My day defaults to the signed-in teammate's work. **Team** shows work the viewer
 
 Verification: **353 code/PostgreSQL tests across 35 files**, including eight new task persistence/access/retention cases; **22 calling desktop/phone checks**, the new task workflow repeated in both dark-theme viewports, and **four shared Inbox history/draft/send checks** pass. The final scheduler also passes its focused light/dark browser checks, including native dialog dismissal/focus return, accessibility, duplicate-save protection through reload, assignment, My day visibility, editing and outcome persistence. Lint and strict TypeScript pass. All browser fixtures use synthetic staff, customers and call analysis, with no customer outreach or live provider requests. Clean local database migration checks pass; pre-existing test fixtures with an obsolete earlier sales schema were rebuilt before the complete suite passed.
 
-The Next.js production build passes and includes the protected `/dashboard/tasks/[id]` route. Deployment evidence will be recorded after the release completes. Automated verification does not claim an independently created production task.
+The Next.js production build passes and includes the protected `/dashboard/tasks/[id]` route. Automated verification does not claim an independently created production task.
 
 Previews: [schedule a task](previews/call-follow-up-schedule-desktop.png), [task detail](previews/call-follow-up-task-desktop.png), [phone task](previews/call-follow-up-task-phone.png), [My day](previews/call-follow-up-my-day-desktop.png), [dark task](previews/themes/dark/providers/call-follow-up-task-desktop.png).
 
 The next Inbox increment is starting a missing email/text channel with the selected customer's saved details prefilled. Jeffrey's shared-email activation remains a separate handoff.
+
+## Website delivery
+
+Source **5cf148d66d94f7842ee28acc5131851f45ad9e91** was pushed to `main`. Render reported success on **October 22, 2026 at 3:09:44 p.m. EDT** (19:09:44 UTC), GitHub deployment **7261128999**, [Render deployment](https://dashboard.render.com/web/srv-db6hod8473hc739q2uo0/deploys/dep-dbd5u1bbc2fs73a00s30). The existing build command applies migration 0015 and runs retention before building. Post-deployment health and sign-in returned **200**; anonymous Inbox and task-detail requests redirected to sign-in (**307**). No production task, customer call/message or paid analysis request was created during release verification. These availability checks are separate from the synthetic authenticated workflow above.
