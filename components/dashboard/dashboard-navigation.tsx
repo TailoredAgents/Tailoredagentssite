@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { dashboardAuthClient } from "@/lib/dashboard/auth-client";
 import type { DashboardContext } from "@/lib/dashboard/data";
+import { PageFinder } from "./page-finder";
 
 const navigationGroups = [
   {
@@ -33,15 +34,20 @@ const navigationGroups = [
       { label: "Overview", href: "/dashboard", icon: Gauge },
       { label: "Inbox", href: "/dashboard/inbox", icon: Inbox },
       { label: "My day", href: "/dashboard/sales/today", icon: CalendarCheck2 },
+    ],
+  },
+  {
+    label: "Sales & prospects",
+    items: [
+      { label: "Leads", href: "/dashboard/leads", icon: UsersRound },
       { label: "Sales", href: "/dashboard/sales", icon: Columns3 },
       { label: "Mockups", href: "/dashboard/sales/mockups", icon: PanelsTopLeft },
       { label: "Calling lists", href: "/dashboard/sales/imports", icon: ListFilter },
     ],
   },
   {
-    label: "Relationships & delivery",
+    label: "Clients & delivery",
     items: [
-      { label: "Leads", href: "/dashboard/leads", icon: UsersRound },
       { label: "Clients", href: "/dashboard/clients", icon: Building2 },
       { label: "Projects", href: "/dashboard/projects", icon: FolderKanban },
       { label: "Sites", href: "/dashboard/sites", icon: Globe2 },
@@ -99,7 +105,7 @@ export function DashboardNavigation({ context }: { context: DashboardContext }) 
       <div className="dashboard-sidebar-brand">
         <Link href="/" className="dashboard-brand" aria-label="Tailored Agents website">
           <span className="brand-mark" aria-hidden="true" />
-          <span>Tailored Agents<small>Business workspace</small></span>
+          <span>Tailored Agents<small>Agency workspace</small></span>
         </Link>
         <button ref={menuButton} type="button" className="dashboard-menu-toggle" aria-label={menuOpen ? "Close menu" : "Menu"} aria-expanded={menuOpen} aria-controls="dashboard-navigation" onClick={() => setMenuOpen(!menuOpen)}>
           {menuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}<span className="dashboard-menu-label">{menuOpen ? "Close menu" : "Menu"}</span>
@@ -113,6 +119,7 @@ export function DashboardNavigation({ context }: { context: DashboardContext }) 
         </div>
       </div>
 
+      <PageFinder destinations={navigationGroups.flatMap(group => group.items.map(item => ({ label: item.label, href: item.href, group: group.label })))} />
       <nav id="dashboard-navigation" className={`dashboard-nav ${menuOpen ? "is-open" : ""}`} aria-label="Dashboard navigation">
         {navigationGroups.map((group) => <div className="dashboard-nav-group" key={group.label}>
           <span className="dashboard-nav-label">{group.label}</span>

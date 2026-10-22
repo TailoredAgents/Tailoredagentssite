@@ -1,3 +1,4 @@
+import { RecordFacts } from "@/components/dashboard/record-facts";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
@@ -82,6 +83,7 @@ export default async function LeadPage({
           </em>
         </section>
 
+        <RecordFacts facts={[{label:"Lead owner",value:lead.ownerName || "Unassigned"},{label:"Service interest",value:lead.interest || "General inquiry"},{label:"Follow-up",value:lead.nextActionAt ? formatOperationalDate(lead.nextActionAt,{dateOnly:true}) : "Not scheduled"}]} />
         <div className="dashboard-record-grid">
           <div className="dashboard-record-main">
             <section className="dashboard-panel dashboard-detail-card">

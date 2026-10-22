@@ -1,5 +1,7 @@
 # Dashboard readability and everyday workflows
 
+Historical October 21 release record. The October 22 [22-page design audit and implementation](DASHBOARD_DESIGN_AUDIT.md) supersedes the presentation and create-form layout described here; creation now uses focused drawers. The verification and deployment evidence below belongs to the earlier release.
+
 October 21, 2026. Work is on `main`, as Jeffrey requested. This release covers the existing internal workspace. The separate Google authorization and live-import acceptance checks remain open.
 
 ## What changed

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, ArrowRight, Building2, CalendarCheck2, CalendarClock, Columns3, FolderKanban, Globe2, Inbox, ListFilter, PanelsTopLeft, ShieldCheck } from "lucide-react";
+import { Activity, ArrowRight, Building2, CalendarCheck2, CalendarClock, Columns3, FolderKanban, Globe2, Inbox, ShieldCheck } from "lucide-react";
 import { getDashboardOverview, requireDashboardContext } from "@/lib/dashboard/data";
 import { formatOperationalDate } from "@/lib/operations/format";
 
@@ -15,8 +15,8 @@ export default async function DashboardPage() {
   ];
   const workspaces = [
     { title: "Sales pipeline", description: "Move interested businesses from first conversation to a website sale.", href: "/dashboard/sales", label: "Open sales", icon: Columns3 },
-    { title: "Mockup requests", description: "Build the right preview, attach the Factory link, and keep the handoff moving.", href: "/dashboard/sales/mockups", label: "Review mockups", icon: PanelsTopLeft },
-    { title: "Calling lists", description: "Bring your researched prospects and BatchDialer results into one record.", href: "/dashboard/sales/imports", label: "Manage lists", icon: ListFilter },
+    { title: "Customer conversations", description: "Email, texts, calls and follow-ups in one customer history.", href: "/dashboard/inbox", label: "Open Inbox", icon: Inbox },
+    { title: "Client delivery", description: "Keep owners, milestones and the next website launch moving.", href: "/dashboard/projects", label: "Review projects", icon: FolderKanban },
   ];
 
   return <>
@@ -30,13 +30,6 @@ export default async function DashboardPage() {
         <Link className="dashboard-primary-button" href="/dashboard/sales/today"><CalendarCheck2 size={18} aria-hidden="true" />Open My day<ArrowRight size={17} aria-hidden="true" /></Link>
       </section>
 
-      <section className="dashboard-workspaces" aria-label="Sales workspaces">
-        {workspaces.map(({ title, description, href, label, icon: Icon }) => <Link className="dashboard-workspace-card-link" href={href} key={title}>
-          <span className="dashboard-workspace-icon"><Icon size={21} aria-hidden="true" /></span>
-          <div><h2>{title}</h2><p>{description}</p><span className="dashboard-workspace-cta">{label}<ArrowRight size={16} aria-hidden="true" /></span></div>
-        </Link>)}
-      </section>
-
       <div className="dashboard-section-heading"><h2>Relationships & delivery</h2><Link href="/dashboard/analytics">View website reports<ArrowRight size={16} aria-hidden="true" /></Link></div>
       <section className="dashboard-metrics" aria-label="Workspace overview">
         {metrics.map(({ label, count, detail, href, icon: Icon }) => <article key={label}>
@@ -47,6 +40,14 @@ export default async function DashboardPage() {
         <Link href="/dashboard/leads?status=new" className="dashboard-secondary-button">Review new leads</Link>
         {mutable ? <><Link href="/dashboard/clients#create-client" className="dashboard-secondary-button">Add a client</Link><Link href="/dashboard/projects#create-project" className="dashboard-secondary-button">Start a project</Link></> : null}
       </nav>
+
+      <div className="dashboard-section-heading"><h2>Your workspaces</h2><span className="workspace-section-hint">From the next conversation to delivery</span></div>
+      <section className="dashboard-workspaces" aria-label="Sales workspaces">
+        {workspaces.map(({ title, description, href, label, icon: Icon }) => <Link className="dashboard-workspace-card-link" href={href} key={title}>
+          <span className="dashboard-workspace-icon"><Icon size={21} aria-hidden="true" /></span>
+          <div><h2>{title}</h2><p>{description}</p><span className="dashboard-workspace-cta">{label}<ArrowRight size={16} aria-hidden="true" /></span></div>
+        </Link>)}
+      </section>
 
       <div className="dashboard-overview-grid">
         <section className="dashboard-panel">

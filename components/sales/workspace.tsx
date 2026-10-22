@@ -11,7 +11,7 @@ export function SalesHeader({ title, subtitle, active, children }: { title: stri
   ] as const;
   return <>
     <header className="dashboard-topbar"><div><span>Tailored Agents / Sales</span><strong>{title}</strong></div><span className="dashboard-secure"><LockKeyhole size={14} />Private workspace</span></header>
-    <div className="sales-page-heading"><div><span className="sales-eyebrow">Your next client starts here</span><h1>{title}</h1><p>{subtitle}</p></div>{children ? <div className="sales-heading-actions">{children}</div> : null}</div>
+    <div className="sales-page-heading"><div><span className="sales-eyebrow">{active === "today" ? "Daily work" : active === "imports" ? "Prospecting" : active === "mockups" ? "Website delivery" : "Sales & prospects"}</span><h1>{title}</h1><p>{subtitle}</p></div>{children ? <div className="sales-heading-actions">{children}</div> : null}</div>
     <nav className="sales-tabs" aria-label="Sales workspace">{tabs.map(({ key, href, label, icon: Icon }) => <Link key={key} href={href} className={active === key ? "is-active" : ""} aria-current={active === key ? "page" : undefined}><Icon size={16} />{label}</Link>)}</nav>
   </>;
 }
@@ -20,8 +20,8 @@ export function SalesEmpty({ title, children, href, linkLabel }: { title: string
   return <div className="sales-empty"><span><ListFilter size={23} /></span><h3>{title}</h3>{children ? <p>{children}</p> : null}{href ? <Link href={href}>{linkLabel || "Open pipeline"}<ArrowRight size={15} /></Link> : null}</div>;
 }
 
-export function SalesPanel({ title, eyebrow, children, action, className = "" }: { title: string; eyebrow?: string; children: ReactNode; action?: ReactNode; className?: string }) {
-  return <section className={`dashboard-panel sales-panel ${className}`}><div className="sales-panel-heading"><div>{eyebrow ? <span className="sales-eyebrow">{eyebrow}</span> : null}<h2>{title}</h2></div>{action}</div>{children}</section>;
+export function SalesPanel({ title, eyebrow, children, action, className = "", id }: { title: string; eyebrow?: string; children: ReactNode; action?: ReactNode; className?: string; id?: string }) {
+  return <section id={id} className={`dashboard-panel sales-panel ${className}`}><div className="sales-panel-heading"><div>{eyebrow ? <span className="sales-eyebrow">{eyebrow}</span> : null}<h2>{title}</h2></div>{action}</div>{children}</section>;
 }
 
 export function SalesMetric({ label, value, detail, tone = "default" }: { label: string; value: ReactNode; detail: string; tone?: "default" | "teal" | "blue" }) {

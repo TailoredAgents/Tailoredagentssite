@@ -22,6 +22,7 @@
     "test:sms:browser": "playwright test --config playwright.sms.config.ts",
     "test:conversations:browser": "playwright test --config playwright.conversations.config.ts",
     "test:voice:browser": "playwright test --config playwright.voice.config.ts",
+    "test:design:browser": "playwright test --config playwright.design.config.ts",
     "test:integration": "vitest run lib/reporting/database.integration.test.ts",
     "reporting:preview": "node scripts/start-reporting-preview.mjs",
     "test:recovery": "node scripts/test-reporting-recovery.mjs"

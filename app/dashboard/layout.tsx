@@ -6,6 +6,7 @@ import type { VoiceWorkspace } from "@/lib/voice/types";
 import { VoicePhoneProvider } from "@/components/voice/phone-provider";
 import "./dashboard.css";
 import "./inbox/voice.css";
+import "./polish.css";
 
 export const metadata: Metadata = {
   title: { default: "Dashboard", template: "%s — Tailored Agents Dashboard" },

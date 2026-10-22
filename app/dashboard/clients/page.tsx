@@ -8,6 +8,7 @@ import { saveClientAction } from "@/lib/operations/actions";
 import { listClients } from "@/lib/operations/data";
 import { formatOperationalDate, statusLabel } from "@/lib/operations/format";
 import { clientStatuses } from "@/lib/operations/validation";
+import { RecordDrawer } from "@/components/dashboard/record-drawer";
 
 export const metadata: Metadata = { title: "Clients" };
 
@@ -33,8 +34,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
               <DashboardPagination basePath="/dashboard/clients" page={clients.page} pages={clients.pages} values={{ q: clients.q }} />
             </section>
           </div>
-          <aside id="create-client" className="dashboard-panel dashboard-create-panel">
-            <div className="dashboard-panel-heading"><div><span>Manual entry</span><h2>Create client</h2></div></div>
+          <RecordDrawer id="create-client" title="Create client" description="Start a client relationship. Contacts, sites and projects stay connected to this record." enabled={mutable}>
             <OperationForm disabled={!mutable} action={saveClientAction} submitLabel="Create client" pendingLabel="Creating">
               <fieldset disabled={!mutable} className="dashboard-form-grid">
                 <label className="dashboard-field dashboard-field-full"><span>Client name</span><input name="name" required minLength={2} maxLength={160} /></label>
@@ -42,7 +42,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
                 <label className="dashboard-field dashboard-field-full"><span>Internal notes</span><textarea name="notes" maxLength={4000} placeholder="Relationship context, scope, or operating constraints" /></label>
               </fieldset>
             </OperationForm>
-          </aside>
+          </RecordDrawer>
         </div>
       </div>
     </>
