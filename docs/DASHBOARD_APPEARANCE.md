@@ -69,3 +69,13 @@ The seed resets only the guarded disposable database. Browser configs accept the
 Focused rechecks also passed after the final surface and phone-helper refinements. The review corrected a dark selected-label contrast shortfall, retained the chart/legend pairing, and kept neutral relationship panels separate from semantic success backgrounds. Keyboard focus on the dark sidebar has its own high-contrast indicator. Mobile appearance fields use 16px text.
 
 Local tests verify source behavior with synthetic data and provider transports. They do not activate the owner's Twilio account or Jeffrey's separately deployed Mail service.
+
+## Website delivery
+
+Source **e82363c28ad7e467c84898b7f28c7f0c388d6fb1** was pushed to `main`. Render reported success on **October 22, 2026 at 11:30:48 a.m. EDT** (**15:30:48 UTC**). GitHub deployment **7256307278**; [Render deployment](https://dashboard.render.com/web/srv-db6hod8473hc739q2uo0/deploys/dep-dbd2ne6k1f9s73b9eubg).
+
+Post-deployment checks completed at **11:32:14 a.m. EDT**. Public site, sign-in, health and Mail login returned 200. All 13 dashboard destinations and a protected voicemail request redirected anonymous requests to sign-in; all seven voice callbacks rejected GET with 405. Dashboard responses retained private/no-store caching, private microphone permission and the exact production Twilio CSP hosts without the local fixture host. The public microphone policy remained restrictive.
+
+All five preloaded private stylesheets returned 200. The served CSS contains both the Slate/Midnight canvas values and the saved-theme selectors; the production compiler lowers `light-dark()` into equivalent conditional variables. A Dark preference cookie did not apply private theming to the public homepage.
+
+Authenticated appearance, draft and call-state checks used local isolated accounts. Production verification here establishes website delivery, styles and anonymous boundaries. No production customer records, provider grants, Twilio routing or Mail deployment were changed.
