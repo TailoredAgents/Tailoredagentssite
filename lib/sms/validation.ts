@@ -17,7 +17,7 @@ export const phoneSchema = z
   .transform((value) => normalizePhone(value))
   .refine(
     (value): value is string => !!value,
-    "Enter a valid phone number with country code.",
+    "Enter a valid 10-digit US phone number.",
   );
 export const threadSchema = z.object({
   numberId: identifier,

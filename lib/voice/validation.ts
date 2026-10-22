@@ -14,7 +14,7 @@ export const phoneSchema = z
       .string()
       .regex(
         /^\+[1-9]\d{7,14}$/,
-        "Use a direct phone number with its country code.",
+        "Enter a valid 10-digit US phone number.",
       ),
   );
 export const connectSchema = z.object({ phone: phoneSchema });

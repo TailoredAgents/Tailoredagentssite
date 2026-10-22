@@ -64,9 +64,15 @@ The owner requested removal of the CRM permission-confirmation form on October 2
 
 ### October 22 — direct SMS sending
 
-Removed the permission checkbox, evidence field and first-send evidence requirement from both SMS composer entry points and the server send path at the owner's request. New texts and replies use the same direct composer. The conversation details now show opt-out status instead of permission-recorded status. The send schema no longer accepts those fields, and sending does not manufacture an allowed channel preference. Existing preference history remains intact; no migration or credential changes are required.
+Removed the permission checkbox, evidence field and first-send evidence requirement from both SMS composer entry points and the server send path at the owner's request. New texts and replies use the same direct composer. The conversation details now show opt-out status instead of permission-recorded status. The send schema no longer requires or uses those fields, and sending does not manufacture an allowed channel preference. Existing preference history remains intact; no migration or credential changes are required.
 
 Verification: lint, TypeScript and the production build passed, along with 62 SMS/Twilio code/database tests, 14 SMS desktop/phone browser checks and 16 unified Inbox desktop/phone browser checks. The unified fixture no longer preapproves the recipient. Direct new sends, replies, private drafts, uncertain-send refresh/recovery, duplicate prevention, opt-outs, number grants and read-only access passed using isolated synthetic providers; no real text was sent by these checks. This supersedes the first-send confirmation behavior in earlier release descriptions.
+
+### October 22 — US phone entry
+
+Phone entry defaults to the United States. SMS and browser calling accept ten digits with optional spaces, parentheses or hyphens, such as `6785550123` or `(678) 555-0123`; the existing shared normalizer adds `+1` before passing the destination to Twilio. Composer examples and validation wording now reflect that behavior, and browser autofill requests a national-format number.
+
+Verification: lint, TypeScript, production build and 142 phone/SMS/voice code/database tests passed. Four SMS and two calling desktop/phone browser checks entered national-format numbers and verified normalized `+1` destinations at the synthetic provider boundary. The SMS checks also preserved opt-out matching and uncertain-send recovery. No real text or call was placed.
 
 ## Activate the existing Twilio number
 

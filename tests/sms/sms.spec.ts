@@ -66,12 +66,12 @@ test("saves a private draft and sends a text once with separate delivered status
 
 test("checks an uncertain send across refresh without creating a second provider message", async ({ page, request }) => {
   await signIn(page); await page.getByRole("link", { name: "New text", exact: true }).click();
-  await page.getByRole("textbox", { name: "Recipient phone *", exact: true }).fill("+16785550101");
+  await page.getByRole("textbox", { name: "Recipient phone *", exact: true }).fill("(678) 555-0101");
   await page.getByRole("textbox", { name: "Text message *", exact: true }).fill("Would Tuesday morning work for you?"); await expectDirectSend(page);
   await control(request, "unknown"); await page.getByRole("button", { name: "Send text", exact: true }).click();
   await expect(page.getByRole("button", { name: "Check SMS status", exact: true })).toBeVisible();
   await page.reload(); await page.getByRole("button", { name: "Check SMS status", exact: true }).click();
-  expect((await control(request, "inspect")).creates).toHaveLength(1);
+  expect((await control(request, "inspect")).creates).toMatchObject([{ to: "+16785550101" }]);
   await expect(page.getByRole("textbox", { name: "Text message *", exact: true })).toHaveAttribute("readonly", "");
   expect((await control(request, "status")).status).toBe(204);
   await page.getByRole("button", { name: "Check SMS status", exact: true }).click();
@@ -85,7 +85,7 @@ test("blocks opt-outs even from new compose and preserves them after a START req
   await incoming(request, "START", `SM${"6".repeat(32)}`); await page.reload();
   await expect(page.getByRole("button", { name: "Send text", exact: true })).toBeDisabled();
   await page.getByRole("link", { name: "New text", exact: true }).click();
-  await page.getByRole("textbox", { name: "Recipient phone *", exact: true }).fill("+16785550101");
+  await page.getByRole("textbox", { name: "Recipient phone *", exact: true }).fill("(678) 555-0101");
   await page.getByRole("textbox", { name: "Text message *", exact: true }).fill("An attempted text to a blocked recipient."); await expectDirectSend(page);
   await page.getByRole("button", { name: "Send text", exact: true }).click();
   await expect(page.locator(".sms-composer").getByRole("alert")).toContainText(/opted out|Do not text|blocked/i);

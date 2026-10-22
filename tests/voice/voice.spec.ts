@@ -44,6 +44,7 @@ test("makes one durable outbound call, mutes and retains it through client navig
   const panel = await connect(page, request);
   await panel.getByRole("button", { name: "Minimize browser phone", exact: true }).click();
   await expect(page.getByRole("combobox", { name: "Customer phone *", exact: true })).toBeInViewport();
+  await page.getByRole("combobox", { name: "Customer phone *", exact: true }).fill("(678) 555-0101");
   await page.getByRole("form", { name: "Start browser call", exact: true }).getByRole("button", { name: "Start browser call", exact: true }).click();
   await expect(panel.locator(".voice-connection-state")).toContainText("Call in progress");
   expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
@@ -59,7 +60,7 @@ test("makes one durable outbound call, mutes and retains it through client navig
   await phone(page);
   await expect(panel.locator(".voice-connection-state")).toContainText("Call in progress");
   await expect(panel.getByRole("button", { name: "Unmute microphone", exact: true })).toHaveAttribute("aria-pressed", "true");
-  const state = await control(request, "inspect"); expect(state.connects).toHaveLength(1); expect(state.connects[0].keys).toEqual(["IntentToken"]);
+  const state = await control(request, "inspect"); expect(state.connects).toHaveLength(1); expect(state.connects[0].keys).toEqual(["IntentToken"]); expect(state.connects[0].to).toBe("+16785550101");
   // The client Link must retain the layout's live phone rather than remount it.
   await panel.getByRole("link", { name: "Open customer conversation", exact: true }).click();
   await expect(panel.locator(".voice-connection-state")).toContainText("Call in progress");
