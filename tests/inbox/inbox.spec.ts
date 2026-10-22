@@ -12,7 +12,7 @@ async function signIn(page: Page, name = "owner") {
   await page.getByLabel("Password", { exact: true }).fill("Inbox-test-password-2026");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard(?:\/analytics)?$/, { timeout: 20000 });
-  await page.goto("/dashboard/inbox");
+  await page.goto("/dashboard/inbox?channel=email");
   await expect(page.getByRole("heading", { name: "Team inbox", exact: true })).toBeVisible();
 }
 async function openThread(page: Page) {
@@ -113,7 +113,7 @@ test("searches conversations and stays usable at narrow widths", async ({ page }
   await page.getByRole("button", { name: "Apply email filters" }).click();
   await expect(page.getByRole("heading", { name: "Quote follow-up", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Website project", exact: true })).toHaveCount(0);
-  await page.goto("/dashboard/inbox"); await openThread(page);
+  await page.goto("/dashboard/inbox?channel=email"); await openThread(page);
   for (const width of [320, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: 950 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth+1)).toBeTruthy();

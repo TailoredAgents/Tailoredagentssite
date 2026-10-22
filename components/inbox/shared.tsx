@@ -3,7 +3,7 @@ import { ArrowUpRight, Inbox, LockKeyhole, Mail, Paperclip } from "lucide-react"
 import type { InboxConnection, InboxFilters, InboxMessage } from "@/lib/inbox/types";
 
 export function inboxHref(values: InboxFilters, overrides: Record<string, string | undefined> = {}) {
-  const query = new URLSearchParams();
+  const query = new URLSearchParams({ channel: "email" });
   for (const [key, value] of Object.entries({ ...values, ...overrides })) {
     const next = Array.isArray(value) ? value[0] : value;
     if (next) query.set(key, next);

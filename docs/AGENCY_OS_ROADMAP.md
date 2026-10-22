@@ -4,7 +4,7 @@ Updated October 21, 2026. This is the active implementation sequence authorized 
 
 ## Current development resume point
 
-The shared-email and first SMS increments are implemented, but their separate channel workspaces do not yet deliver the owner's requested unified Inbox. After reviewing Wholesale's actual conversation model and UI on October 21, the next feature development is **one relationship conversation queue, mixed email/SMS/notes timeline and channel composer**, followed by calling and voicemail in that same workspace. The correction and acceptance criteria are in [Unified Inbox](UNIFIED_INBOX.md).
+The first unified Inbox increment is implemented in source: **one relationship conversation queue, mixed email/SMS/notes timeline, channel composer, ownership and reminders**, with the Wholesale-inspired three-pane layout. Existing histories are deliberately linked rather than merged by company name. The current behavior, remaining refinements and acceptance record are in [Unified Inbox](UNIFIED_INBOX.md). **Calling and voicemail in that same conversation workspace are the next feature development.**
 
 The project owner supplied the existing SMS/voice-capable number **+16785417725**; live Twilio credentials, number/account verification, registration and delivery acceptance remain separate activation work with the owner. Jeffrey's handoff covers only email-specific Cloudflare/Render configuration, Mail deployment, Sales address approvals and email acceptance. The project owner handles Twilio and all remaining development with Codex.
 
@@ -12,10 +12,10 @@ The repository now includes the Twilio SMS adapter, explicit number grants, SMS 
 
 Our development queue is:
 
-1. **Unified conversation workspace:** add a canonical CRM conversation and provider-thread bindings; build authorized discovery/global queue pagination; show emails, texts and notes together with one owner, reply work state, reminders and CRM context. Replace separate channel navigation with a channel composer. Preserve source permissions and the existing sending/recovery adapters. This is the next development increment, not completed by the earlier channel releases.
+1. **Unified conversation workspace acceptance:** the canonical conversation/source bindings, authorized discovery/global queue pagination, shared timeline/composer, team queues and CRM context are implemented. Migration **0012** backfills existing channel histories independently. The updated Mail code must be deployed separately for metadata discovery and older history; existing grants/secrets remain the authorization boundary. Complete provider acceptance with the approved team after activation.
 2. **Provider activation in parallel:** use the implemented Mail/Twilio adapters and callback handlers. Follow `COMMUNICATIONS_SETUP.md`, keeping SMS sending off until the existing account/number, registration, grants and authorized test exchange are confirmed. Jeffrey handles the separate email activation. Local implementation and synthetic verification do not prove live delivery.
 3. **Calling, voicemail, recordings and transcripts:** add persistent phone controls, outbound browser calls, incoming routing/forwarding, business hours, missed calls and voicemail to the shared conversation. Then add approved recording controls, protected playback/deletion and retention, transcription, summaries and editable follow-up suggestions.
-4. **Remaining Inbox and design work:** outgoing email attachments, CC/BCC, signatures/templates, watchers/coverage and further visual refinement within the unified workspace. Mine/Team/Needs reply queues and relationship context belong in the unified increment rather than being deferred as cosmetic work.
+4. **Remaining Inbox and design work:** outgoing email attachments, CC/BCC, signatures/templates, watchers/coverage, direct general-email conversion into a lead and starting a missing channel with contact details prefilled. The first unified release already includes Mine/Team/Needs reply/Unread/Archived plus deliberate reminder queues and CRM context. New email/text entry still uses the existing composer workspaces, then deliberate relationship linking.
 5. **Agency delivery and recurring services:** proposals/scopes, onboarding, billing/payment events, hosting/maintenance/SEO agreements and renewals, following the releases below. Client SEO and internal AI architecture continue in parallel; their operational agents and client portal remain later implementation.
 
 The project owner handles Twilio accounts, business-number decisions, registrations, secrets and live activation, alongside the SMS, calling, recording, transcript and remaining agency development with Codex. Jeffrey handles the separate email setup only. Local feature code, migrations, tests and UI work can proceed while email activation is completed. Provider acceptance follows when the corresponding implementation and setup are ready. The email-only handoff remains in [new jeffrey.md](../new%20jeffrey.md).
@@ -76,7 +76,7 @@ Implemented in source and deployed to the website as recorded below; separate Ma
 
 ### Remaining communications increments
 
-1. **Unified Inbox correction:** deliver the relationship queue, mixed timeline and channel composer defined in [Unified Inbox](UNIFIED_INBOX.md). The earlier email and SMS increments below are verified provider foundations, not evidence that this target workflow is already implemented.
+1. **Unified Inbox:** the first relationship queue, mixed timeline and channel composer increment is implemented as recorded in [Unified Inbox](UNIFIED_INBOX.md). The earlier email and SMS increments below remain the provider foundations. Their historical test/deployment evidence does not establish the newer release's delivery or live acceptance.
 2. **Twilio SMS activation in parallel:** source implementation is complete for text compose/reply, inbound messages, delivery callbacks and opt-outs. Confirm the existing number/account, registration, credentials, number grants and live delivery using `COMMUNICATIONS_SETUP.md`. MMS file transfer remains later work; incoming messages record only text and media count.
 3. **Calling and voicemail:** add direct CRM calling, inbound routing/forwarding, hours, staff fallback, missed calls, voicemail and a persistent phone panel within the same conversation workspace. BatchDialer continues Devon's campaign calling.
 4. **Recordings and transcripts:** activate recordings only with an approved disclosure/consent process, restricted playback/download, visible readiness, retention/deletion and provider failure handling. Transcription and structured summaries run in bounded background jobs, link timestamped evidence and propose editable follow-ups in that conversation.
@@ -169,6 +169,7 @@ $env:TEST_SALES_DATABASE_URL = 'postgresql://ta_test@127.0.0.1:55433/ta_sales_te
 $env:TEST_SALES_SCHEMA_DATABASE_URL = 'postgresql://ta_test@127.0.0.1:55433/ta_sales_schema_test'
 $env:TEST_INBOX_DATABASE_URL = 'postgresql://ta_test@127.0.0.1:55433/ta_inbox_test'
 $env:TEST_SMS_DATABASE_URL = 'postgresql://ta_test@127.0.0.1:55433/ta_sms_test'
+$env:TEST_CONVERSATIONS_DATABASE_URL = 'postgresql://ta_test@127.0.0.1:55433/ta_conversations_test'
 npm test
 npm run lint
 npm run typecheck
@@ -189,6 +190,10 @@ npm run test:inbox:browser -- --reporter=line
 # Separate SMS suite: synthetic SDK transport on 3140/3141, no real messages.
 $env:SMS_TEST_DATABASE_URL = 'postgresql://ta_test@127.0.0.1:55433/ta_sms_browser_test'
 npm run test:sms:browser -- --reporter=line
+
+# Combined Mail-mode/SMS suite on 3150/3151, entirely synthetic providers.
+$env:CONVERSATIONS_TEST_DATABASE_URL = 'postgresql://ta_test@127.0.0.1:55433/ta_conversations_browser_test'
+npm run test:conversations:browser -- --reporter=line
 ```
 
 For an interactive synthetic workspace, run `npm run reporting:preview` with those final two `REPORTING_TEST_*` variables. This intentionally reseeds the disposable browser database. Open `http://127.0.0.1:3120/dashboard/sales` and sign in as `owner@example.test` or `viewer@example.test`, password `Reporting-test-password-2026`. These fixture credentials grant no production access. Import a small synthetic CSV through Calling lists to exercise the workflow; production uses the existing Mail login and approved dashboard grants.

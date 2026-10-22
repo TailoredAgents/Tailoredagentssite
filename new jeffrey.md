@@ -6,16 +6,20 @@ Prepared October 21, 2026 for Jeffrey: email activation only.
 
 Connect **sales@tailoredagents.com** to the internal website CRM. **Devon, Jeffrey and Austin** should have read and reply access. Confirm their actual existing Mail login accounts; their names are not permission to guess email addresses or share the inbox with everyone.
 
-This handoff covers the first email increment. The project owner handles Twilio and the remaining development with Codex. Jeffrey's scope is the email-specific Cloudflare/Render configuration, Mail deployment, Sales address approvals and email acceptance below.
+This handoff covers email activation. The project owner handles Twilio and the remaining development with Codex. Jeffrey's scope is the email-specific Cloudflare/Render configuration, Mail deployment, Sales address approvals and email acceptance below.
+
+**Unified Inbox update:** deploy the latest Mail code from `main`, including the new address-scoped `conversationIndex` and `threadHistory` API actions. The website now has a shared email/SMS/notes conversation workspace at `/dashboard/inbox` and needs these actions to discover email histories. There is no additional Mail migration or secret beyond **0037** and `CRM_MAIL_SECRET` below. The website's ordered migrations now include **0012_unified_inbox.sql**. Its existing email-only workspace remains at `/dashboard/inbox?channel=email` for compatibility. An older Mail deployment cannot provide the unified discovery API, even if the original email bridge works.
+
+Mail API source commit: **4bdc828** (or a later `main` containing it). This code passes 406 Mail code/SQLite tests, 12 Mail browser checks, type checks and the production Mail build. Website deployment still does not deploy the Mail Worker.
 
 ## Implemented in this release
 
-- `/dashboard/inbox`: shared email list, search/folders, plain-text history, new email/replies, incoming attachment downloads and phone layouts.
-- Conversation owner and open/waiting/done status, explicit business/inquiry links, shared internal notes, private saved drafts and per-person read receipts.
+- `/dashboard/inbox`: unified customer conversation queue, mixed permitted email/SMS/notes history, ownership, reminders and CRM context. The compatible email list/folders/new-email workspace remains at `?channel=email`.
+- Relationship ownership, Needs reply/Waiting/Done/Archived states, reminders, explicit contact/business/inquiry links, source-scoped internal notes, private drafts and personal reads. The compatible email workspace retains its original open/waiting/done controls.
 - Narrow Mail service API with explicit address grants. Sharing Sales does not share the address owner's unrelated aliases or private messages.
 - Durable send keys and recovery after uncertain confirmation; a status check reuses the same attempt. Saving a draft or note never sends email.
 - Mail owner controls to approve or revoke each account's address access. Dashboard roles apply in addition to Mail permissions.
-- Settings displays actual shared-email availability and identifies SMS/calling as not yet enabled.
+- Settings displays actual shared-email availability. Twilio configuration and activation remain the project owner's separate work.
 
 Mail remains the source for email bodies, attachments and delivery state. CRM PostgreSQL stores collaboration metadata, private drafts and content-free send receipts. Replies derive recipients and subject from Mail's verified original message. Incoming HTML is displayed as safe plain text; outgoing attachment upload remains in native Mail for now. The CRM composer sends plain text up to 12,000 characters, with one explicit recipient for a new email.
 
@@ -25,7 +29,7 @@ Keep both existing maintenance paths running: website `npm run db:retention` exp
 
 The development environment is signed out of Cloudflare and Render. **No live mailbox grants or new production secrets were installed here.** Local tests use synthetic data and do not prove production mail delivery. A website push can auto-deploy Render; it does **not** deploy the separate Mail Worker.
 
-**Website delivery record:** source revision `f8569fe2b9e1d9acbaf20cdf0ef92a92a7e5f376` auto-deployed successfully on October 21 at **6:47 p.m. EDT** (22:47:38 UTC), [Render deployment dep-dbck1b0u01pc73bduusg](https://dashboard.render.com/web/srv-db6hod8473hc739q2uo0/deploys/dep-dbck1b0u01pc73bduusg), GitHub deployment `7239112044`. Public health/pricing/sign-in and Mail login respond successfully; anonymous Inbox and attachment requests redirect to sign-in. **Live shared email is still pending** the Mail deployment, matching secret and explicit grants below. The included prerequisite commits are `ced01f8` (Mail lock repair) and `74a7c38` (Mail bridge).
+**Website delivery record for the earlier email increment:** source revision `f8569fe2b9e1d9acbaf20cdf0ef92a92a7e5f376` auto-deployed successfully on October 21 at **6:47 p.m. EDT** (22:47:38 UTC), [Render deployment dep-dbck1b0u01pc73bduusg](https://dashboard.render.com/web/srv-db6hod8473hc739q2uo0/deploys/dep-dbck1b0u01pc73bduusg), GitHub deployment `7239112044`. Public health/pricing/sign-in and Mail login respond successfully; anonymous Inbox and attachment requests redirect to sign-in. **Live shared email is still pending** the Mail deployment, matching secret and explicit grants below. The included prerequisite commits are `ced01f8` (Mail lock repair) and `74a7c38` (Mail bridge).
 
 Do these steps using your existing authorized accounts. Keep secret values in the provider secret stores, not source, this document or chat.
 

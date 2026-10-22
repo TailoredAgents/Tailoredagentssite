@@ -1,12 +1,12 @@
 # Unified Inbox correction
 
-Updated October 21, 2026 after the owner asked us to inspect Wholesale's actual Inbox. This defines the next development increment. It describes intended behavior; the current website still has separate email and SMS workspaces.
+Updated October 21, 2026 after the owner asked us to inspect Wholesale's actual Inbox. The first shared email/SMS/notes conversation increment is now implemented in source. This document records the design, implemented behavior and remaining work. Production delivery and provider acceptance are separate records.
 
 ## What the owner meant
 
 Open a lead or customer conversation and see the whole relationship: texts, emails, incoming/outgoing calls, voicemail, recordings, transcripts and internal notes. Choose how to respond inside that conversation. Ownership, follow-ups and CRM context stay with the relationship when the response channel changes.
 
-The first email and SMS increments supply useful provider adapters, sending/recovery behavior and access controls. They do not yet deliver this experience. More channel tabs would continue the wrong direction. Build the shared conversation workspace before adding calling.
+The first email and SMS increments supply the provider adapters, sending/recovery behavior and access controls. The new shared conversation layer brings them together before calling is added.
 
 ## Reference inspected
 
@@ -55,7 +55,7 @@ Keep the approved email scope: **sales@tailoredagents.com**, with Devon, Jeffrey
 
 ## Implementation order and acceptance
 
-**Next coherent increment: shared email/SMS/notes conversation workspace.** Add the canonical relationship/source bindings, safe existing-data reconciliation, authorized queue discovery and unified read model, then replace the separate default channel screens with the three-pane workspace and channel composer. Establish this end-to-end behavior before adding another communication channel. Existing setup and provider acceptance can continue independently.
+**Implemented first increment: shared email/SMS/notes conversation workspace.** Migration **0012** introduces canonical relationship/source bindings and independently backfills existing channel histories, preserving their original collaboration data. The default Inbox now uses the three-pane workspace, authorized queue discovery, global indexed ordering/pagination and channel composer. Existing setup and provider acceptance continue independently.
 
 Acceptance uses synthetic records and both same-user and different-user grants:
 
@@ -67,5 +67,28 @@ Acceptance uses synthetic records and both same-user and different-user grants:
 - Provider outage/discovery lag is visible without inventing an empty complete inbox or exposing stale unauthorized Mail content. Desktop/phone interactions and existing sales/auth/provider regressions pass.
 
 **Following increments:** integrated calling and voicemail, then protected recordings/transcripts and editable assistance, all attached to the same conversation. Complete richer email features (outgoing attachments, CC/BCC, signatures/templates), watchers/coverage and visual refinements within this workspace. Do not treat them as another standalone mailbox product.
+
+## Using the first release
+
+- Start in **Team**, then select a conversation. **Mine**, **Unassigned**, **Needs reply**, **Unread**, **Archived**, **Reminders** and **Due now** describe work across the permitted indexed sources. Search covers contact/business names and external addresses, not uncached email bodies. Counts describe discovered records; discovery notices identify incomplete or unavailable sources.
+- In **Customer details**, connect the correct contact, business and inquiry. Use **Combine conversations** to move another history into the destination relationship after review. The destination's assignment, work state and CRM context are retained; different contexts require explicit confirmation. Linking never grants Mail or number access. The existing histories stay separate until this deliberate action.
+- Switch **Email**, **SMS** and **Note** inside the selected customer. Unsent email/text survives channel switches. Explicit private draft saving remains available. A note's selected email/number audience controls who can read it, including after merging. Existing narrower notes and private drafts keep their access boundary. Accepted receipts are processed once; unknown sends retain their original request through refresh/channel changes.
+- Assign a teammate and set work state in the context panel. A new customer reply reopens work; a confirmed outbound updates Waiting. Failed/unknown sends, delivery callbacks, opt-out controls, notes and drafts do not prove a customer response. Reminders require Needs reply and a deliberately selected future time; Due now surfaces elapsed reminders. Read state remains personal.
+- Desktop uses a scrollable list/timeline/context panel with the composer anchored below the timeline. Phone switches **Conversations / Thread / Details**. A visible-tab refresh runs about every 20 seconds while idle, with a manual refresh control; typing and pending forms pause automatic refresh.
+- **New conversation** opens the existing new-email/new-text entry. After the new history is discovered, deliberately link it to the appropriate relationship. Direct creation of a missing channel with customer details prefilled and one-click general-email-to-lead conversion remain refinements.
+
+Mail remains the email body/attachment authority. Deploy the latest Mail code before relying on unified email discovery/history; it adds signed cursor APIs using the existing **0037** schema and service secret. The discovery endpoint returns at most **25 threads per invocation** within the D1 query budget. Website discovery advances bounded sweeps and rotates approved addresses; vanished sources are hidden only after a complete sweep. Grant checks are independent and apply on every request. Provider outages hide unverifiable source data and show an availability notice.
+
+Conversation queue pagination is 25 rows. For a relationship with many provider threads, connected-history pages load up to 20 permitted threads at a time with explicit coverage/Previous/Next controls. Each thread supports older-message loading; initial SMS history is the latest 200 messages, and email page size is bounded by Mail's count/byte budget. Save private drafts before changing reply threads or connected-history pages. Recent note reads are bounded to 200 entries per query. New notes expire after 24 months through the existing maintenance function; private draft and provider retention contracts are unchanged.
+
+## Local verification
+
+Verified October 21 with isolated synthetic data: **273 website code/PostgreSQL tests** across 26 files, including **22 unified-conversation database cases**, and **406 Mail code/SQLite tests**. The unified suite covers explicit linking/replay/conflicts, contact separation, source audiences, current grants, per-person reads, multiple metadata pages, missing sources, bounded reads during Mail outages, late delivery failure, deliberate reminders, older messages, more than 20 connected histories and permission changes while a mutation waits for its lock. Gateway tests preserve the existing Mail contract alongside the new APIs.
+
+**16 unified Inbox desktop/phone browser checks** pass for the actual combined workspace, channel draft preservation (including a fresh draft after a confirmed send), explicit email/text/note actions, assignment/reminders, customer reply reopening, revoked and SMS-only access, viewers, uncertain-send recovery across refresh without duplicate creation, older email history and discovery beyond one metadata page. Accessibility and 320–1440px layouts are included. Synthetic previews: [desktop](previews/conversations-desktop.png), [phone](previews/conversations-phone.png). Mail's 12 Worker browser checks also pass, including the actual new signed-cursor API and revoked grants.
+
+The populated PostgreSQL upgrade/dump/restore check preserves independent canonical/source backfills, scoped email notes/private drafts and SMS grants/drafts/unknown intents. These results verify local implementation; they do not establish provider activation or actual customer delivery.
+
+All **10 existing email** and **14 existing SMS** browser checks pass after the compatibility and composer changes. The existing reporting/manual-lead/sales/operations suite passes **33 checks** with one intentional phone skip. A final desktop/phone layout check confirms the message body and Send control remain in the viewport, with no accessibility violations. Lint, strict types and the production build pass. Provider credentials, grants, routing and authorized live delivery remain separate activation steps.
 
 Jeffrey's assignment remains email activation in [new jeffrey.md](../new%20jeffrey.md). The owner and Codex handle the unified workspace, Twilio, calling, recordings, transcripts and remaining agency development. [Communications setup](COMMUNICATIONS_SETUP.md) records current implemented provider behavior; [the agency roadmap](AGENCY_OS_ROADMAP.md) records release evidence and the active development order.

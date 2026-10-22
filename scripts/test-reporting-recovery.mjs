@@ -66,7 +66,7 @@ try {
       [workspace],
     );
     for (const file of (await readdir("db/migrations"))
-      .filter((file) => file.endsWith(".sql") && file >= "0005")
+      .filter((file) => file.endsWith(".sql") && file >= "0005" && file < "0012")
       .sort())
       await pool.query(await readFile("db/migrations/" + file, "utf8"));
     // Synthetic SMS collaboration and uncertain-send state must survive restore.
@@ -78,6 +78,12 @@ try {
     await pool.query(`INSERT INTO sms_messages(id,workspace_id,conversation_id,direction,body,status,actor_user_id) VALUES('00000000-0000-4000-8000-000000000903',$1,'00000000-0000-4000-8000-000000000902','outbound','Synthetic uncertain message','unknown','recovery-sms-user')`, [workspace]);
     await pool.query(`INSERT INTO sms_outbound_intents(request_id,workspace_id,number_id,message_id,actor_user_id,request_hash,state) VALUES('00000000-0000-4000-8000-000000000904',$1,'00000000-0000-4000-8000-000000000901','00000000-0000-4000-8000-000000000903','recovery-sms-user',$2,'unknown')`, [workspace,'b'.repeat(64)]);
     await pool.query(`INSERT INTO sms_drafts(id,workspace_id,number_id,author_user_id,thread_key,recipient,body) VALUES('00000000-0000-4000-8000-000000000905',$1,'00000000-0000-4000-8000-000000000901','recovery-sms-user','','+16785550101','Synthetic private draft')`, [workspace]);
+    await pool.query(`INSERT INTO inbox_conversations(id,workspace_id,mailbox_id,thread_id,owner_user_id,business_id,status) VALUES('00000000-0000-4000-8000-000000000906',$1,'recovery-sales-address','recovery-mail-thread','recovery-sms-user','00000000-0000-4000-8000-000000000081','waiting')`, [workspace]);
+    await pool.query(`INSERT INTO inbox_notes(id,workspace_id,conversation_id,author_user_id,body) VALUES('00000000-0000-4000-8000-000000000907',$1,'00000000-0000-4000-8000-000000000906','recovery-sms-user','Synthetic mailbox-scoped note')`, [workspace]);
+    await pool.query(`INSERT INTO inbox_drafts(id,workspace_id,mailbox_id,thread_key,author_user_id,body) VALUES('00000000-0000-4000-8000-000000000908',$1,'recovery-sales-address','recovery-mail-thread','recovery-sms-user','Synthetic private email draft')`, [workspace]);
+    // Upgrade populated provider conversations instead of testing only empty DDL.
+    for (const file of (await readdir("db/migrations")).filter(file => file.endsWith(".sql") && file >= "0012").sort())
+      await pool.query(await readFile("db/migrations/" + file, "utf8"));
     assert.equal(
       (await pool.query("SELECT url FROM sites WHERE id=$1", [site])).rows[0]
         .url,
@@ -235,9 +241,14 @@ try {
     assert.equal(sms.body, 'Synthetic uncertain message');
     assert.equal(sms.can_send, true);
     assert.equal(sms.draft, 'Synthetic private draft');
+    const canonical = (await restored.query(`SELECT count(*)::int AS n FROM crm_conversations WHERE workspace_id=$1`, [workspace])).rows[0];
+    assert.equal(canonical.n, 2, 'Each existing provider thread keeps its own conversation until deliberate linking');
+    assert.equal((await restored.query(`SELECT count(*)::int AS n FROM crm_conversation_sources WHERE workspace_id=$1`, [workspace])).rows[0].n, 2);
+    assert.equal((await restored.query(`SELECT body FROM inbox_notes WHERE id='00000000-0000-4000-8000-000000000907'`)).rows[0].body, 'Synthetic mailbox-scoped note');
+    assert.equal((await restored.query(`SELECT body FROM inbox_drafts WHERE id='00000000-0000-4000-8000-000000000908'`)).rows[0].body, 'Synthetic private email draft');
     await restored.query("SELECT perform_reporting_retention()");
     console.log(
-      "PASS: reports, credential metadata, client/contact links, SMS grants/drafts and uncertain-send receipts survive migration and PostgreSQL dump/restore; retention remains callable.",
+      "PASS: reports, credential metadata, client/contact links, unified conversation/source backfill, scoped email notes/private drafts, SMS grants/drafts and uncertain-send receipts survive populated migration and PostgreSQL dump/restore; retention remains callable.",
     );
   } finally {
     await restored.end();
