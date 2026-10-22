@@ -1,5 +1,7 @@
 # Connected-call recordings, transcripts and summaries
 
+**Owner confirmation, October 22, 2026:** following deployment and the activation instructions, the owner reports that the recording/analysis setup is verified. Treat initial OpenAI activation and the basic live recording/analysis check as completed by the owner. This is owner-reported acceptance; it does not claim independent production testing of every deletion, retention or access-control scenario. The setup instructions below remain a reference for future configuration.
+
 October 22, 2026. The owner reports live calling and two-way SMS are working. This increment adds automatic connected-call recordings and optional OpenAI analysis to that existing Inbox. New recording/transcript acceptance is separate from that earlier calling confirmation.
 
 ## Behavior
