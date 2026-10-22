@@ -25,7 +25,8 @@ test("record drawers support existing links, keep cancelled input and fit narrow
   const drawer = page.getByRole("dialog", { name: "Create client", exact: true }); await expect(drawer).toBeVisible();
   await drawer.getByRole("textbox", { name: "Client name", exact: true }).fill("Unsaved design review");
   await accessible(page, ".workspace-record-dialog[open]");
-  await page.screenshot({ path: `docs/previews/design/after/client-drawer-${info.project.name}.png` });
+  const directory = process.env.DASHBOARD_TEST_THEME ? `docs/previews/themes/${process.env.DASHBOARD_TEST_THEME}` : "docs/previews/design/after";
+  await page.screenshot({ path: `${directory}/client-drawer-${info.project.name}.png` });
   await page.keyboard.press("Escape"); await expect(drawer).not.toBeVisible(); await expect(page).not.toHaveURL(/#create-client/);
   await page.getByRole("link", { name: "Add client", exact: true }).click(); await expect(drawer.getByRole("textbox", { name: "Client name", exact: true })).toHaveValue("Unsaved design review");
   await drawer.getByRole("button", { name: "Close create client", exact: true }).click();

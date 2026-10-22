@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Activity,
   ArrowUpRight,
@@ -26,6 +26,7 @@ import {
 import { dashboardAuthClient } from "@/lib/dashboard/auth-client";
 import type { DashboardContext } from "@/lib/dashboard/data";
 import { PageFinder } from "./page-finder";
+import { DashboardThemeSelect } from "./theme-provider";
 
 const navigationGroups = [
   {
@@ -69,6 +70,15 @@ export function DashboardNavigation({ context }: { context: DashboardContext }) 
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
+  const navigation = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const container = navigation.current;
+    const active = container?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!container || !active || window.innerWidth <= 1024) return;
+    const bounds = container.getBoundingClientRect(), item = active.getBoundingClientRect();
+    if (item.bottom > bounds.bottom) container.scrollTop += item.bottom - bounds.bottom + 8;
+    else if (item.top < bounds.top) container.scrollTop -= bounds.top - item.top + 8;
+  }, [pathname]);
   const initials = context.user.name
     .split(/\s+/)
     .filter(Boolean)
@@ -120,7 +130,7 @@ export function DashboardNavigation({ context }: { context: DashboardContext }) 
       </div>
 
       <PageFinder destinations={navigationGroups.flatMap(group => group.items.map(item => ({ label: item.label, href: item.href, group: group.label })))} />
-      <nav id="dashboard-navigation" className={`dashboard-nav ${menuOpen ? "is-open" : ""}`} aria-label="Dashboard navigation">
+      <nav ref={navigation} id="dashboard-navigation" className={`dashboard-nav ${menuOpen ? "is-open" : ""}`} aria-label="Dashboard navigation">
         {navigationGroups.map((group) => <div className="dashboard-nav-group" key={group.label}>
           <span className="dashboard-nav-label">{group.label}</span>
           <div className="dashboard-nav-links">{group.items.map((item) => {
@@ -132,6 +142,7 @@ export function DashboardNavigation({ context }: { context: DashboardContext }) 
         </div>)}
       </nav>
 
+      <DashboardThemeSelect />
       <a className="dashboard-mail-link" href="https://mail.tailoredagents.com" target="_blank" rel="noreferrer"><Mail size={18} aria-hidden="true" /><span>Open email<span className="sr-only"> (new tab)</span></span><ArrowUpRight size={16} aria-hidden="true" /></a>
       <div className="dashboard-user">
         <span className="dashboard-avatar">{initials}</span>

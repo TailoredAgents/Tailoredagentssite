@@ -11,7 +11,8 @@ const routes = [
 test("review every dashboard page on desktop and phone", async ({ page }, info) => {
   const phase = process.env.DESIGN_CAPTURE_PHASE || "after";
   if (!["before", "after"].includes(phase)) throw new Error("Use before or after for the visual audit.");
-  const directory = `docs/previews/design/${phase}`;
+  const theme = process.env.DASHBOARD_TEST_THEME;
+  const directory = theme ? `docs/previews/themes/${theme}` : `docs/previews/design/${phase}`;
   await mkdir(directory, { recursive: true });
   await page.goto("/sign-in"); await page.getByLabel("Team email").fill("owner@example.test");
   await page.getByLabel("Password", { exact: true }).fill("Reporting-test-password-2026");

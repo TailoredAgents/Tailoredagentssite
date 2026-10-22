@@ -2,6 +2,8 @@
 
 Reviewed October 22, 2026. Baseline: `6ed169e`. All 13 navigation destinations, six record templates, the sales table alternative and the two provider workspaces were captured at 1440×1000 and 390×844 using synthetic local records. The populated communications states are also reviewed through the existing Mail/SMS/conversation/voice fixtures. No customer data is used in the previews.
 
+The later [appearance release](DASHBOARD_APPEARANCE.md) replaces this layout pass's bright surfaces with Slate & blue, adds Midnight blue and a saved Light/Dark/System choice, and provides a separate current-theme gallery. This document preserves the original layout scorecard and screenshots.
+
 Scores are a design assessment against a consistent rubric: visual hierarchy (20), shared visual language (20), organization and task focus (20), typography/spacing (20), and responsive/accessibility polish (20). A 100 represents an exceptional, thoroughly validated product; the implementation target is 94–96, with remaining tradeoffs documented rather than claiming perfection.
 
 ## Page ranking and original plan

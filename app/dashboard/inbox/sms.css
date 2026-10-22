@@ -1,60 +1,60 @@
-.inbox-channel-switch { display: flex; gap: 1.4rem; margin: 0 clamp(1rem, 2.4vw, 2rem) 1.25rem; border-bottom: 1px solid #dce4ee; }
-.inbox-channel-switch a { display: flex; align-items: center; gap: .45rem; min-height: 46px; padding: .55rem .2rem .8rem; border-bottom: 2px solid transparent; color: #5a6e88; font-size: .95rem; font-weight: 550; }
-.inbox-channel-switch a.is-current { border-bottom-color: #255fc5; color: #255fc5; font-weight: 650; }
+.inbox-channel-switch { display: flex; gap: 1.4rem; margin: 0 clamp(1rem, 2.4vw, 2rem) 1.25rem; border-bottom: 1px solid var(--workspace-line); }
+.inbox-channel-switch a { display: flex; align-items: center; gap: .45rem; min-height: 46px; padding: .55rem .2rem .8rem; border-bottom: 2px solid transparent; color: var(--workspace-muted); font-size: .95rem; font-weight: 550; }
+.inbox-channel-switch a.is-current { border-bottom-color: var(--workspace-blue); color: var(--workspace-blue); font-weight: 650; }
 .sms-workspace { color: var(--dashboard-ink); }
 .sms-workspace .inbox-thread-link h2 { font-size: 1rem; }
-.sms-workspace .inbox-conversation-heading > div > .sms-recipient-line { color: #38685f; }
-.sms-messages { display: flex; flex-direction: column; align-items: flex-start; gap: 1rem; max-height: 540px; overflow: auto; padding: 1.2rem; background: #f5f8fc; }
-.sms-message { width: min(92%, 500px); padding: .85rem 1rem; border: 1px solid #d9e3ee; border-radius: 12px 12px 12px 3px; background: #fff; }
-.sms-message.is-outbound { align-self: flex-end; border-color: #c9e0d8; border-radius: 12px 12px 3px 12px; background: #edf7f2; }
-.sms-message > p { margin: 0; color: #354d68; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .95rem; line-height: 1.75; }
-.sms-message > footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .35rem .8rem; margin-top: .6rem; color: #556b85; font-size: .875rem; line-height: 1.5; }
-.sms-message.is-outbound > footer { color: #45695e; }
-.sms-message-error { display: block; margin: .5rem 0 0; color: #9d3e48; font-size: .875rem; line-height: 1.6; }
-.sms-history-limit { padding: .7rem 1rem; margin: 0; border-bottom: 1px solid #dfe6ef; color: #566d89; background: #f7f9fc; font-size: .875rem; line-height: 1.6; }
+.sms-workspace .inbox-conversation-heading > div > .sms-recipient-line { color: var(--workspace-success); }
+.sms-messages { display: flex; flex-direction: column; align-items: flex-start; gap: 1rem; max-height: 540px; overflow: auto; padding: 1.2rem; background: var(--workspace-surface); }
+.sms-message { width: min(92%, 500px); padding: .85rem 1rem; border: 1px solid var(--workspace-line); border-radius: 12px 12px 12px 3px; background: var(--workspace-surface); }
+.sms-message.is-outbound { align-self: flex-end; border-color: var(--workspace-line); border-radius: 12px 12px 3px 12px; background: var(--workspace-success-soft); }
+.sms-message > p { margin: 0; color: var(--workspace-muted); white-space: pre-wrap; overflow-wrap: anywhere; font-size: .95rem; line-height: 1.75; }
+.sms-message > footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .35rem .8rem; margin-top: .6rem; color: var(--workspace-muted); font-size: .875rem; line-height: 1.5; }
+.sms-message.is-outbound > footer { color: var(--workspace-muted); }
+.sms-message-error { display: block; margin: .5rem 0 0; color: var(--workspace-danger); font-size: .875rem; line-height: 1.6; }
+.sms-history-limit { padding: .7rem 1rem; margin: 0; border-bottom: 1px solid var(--workspace-line); color: var(--workspace-muted); background: var(--workspace-surface); font-size: .875rem; line-height: 1.6; }
 .sms-composer .inbox-message-field textarea { min-height: 130px; }
-.sms-character-count { display: flex; align-items: center; justify-content: space-between; gap: .7rem; margin-top: .4rem; color: #576c88; font-size: .875rem; line-height: 1.5; }
+.sms-character-count { display: flex; align-items: center; justify-content: space-between; gap: .7rem; margin-top: .4rem; color: var(--workspace-muted); font-size: .875rem; line-height: 1.5; }
 .sms-character-count strong { font-weight: 500; white-space: nowrap; }
-.sms-consent-notice, .sms-recipient-optout { display: flex; align-items: flex-start; gap: .55rem; padding: .85rem; margin: .9rem 0; border: 1px solid #eadabb; border-radius: 7px; background: #fff9ee; color: #7e612b; font-size: .875rem; line-height: 1.7; }
+.sms-consent-notice, .sms-recipient-optout { display: flex; align-items: flex-start; gap: .55rem; padding: .85rem; margin: .9rem 0; border: 1px solid var(--workspace-line); border-radius: 7px; background: var(--workspace-warning-soft); color: var(--workspace-warning); font-size: .875rem; line-height: 1.7; }
 .sms-consent-notice > svg, .sms-recipient-optout > svg { flex-shrink: 0; margin-top: .15rem; }
-.sms-recipient-optout { border-color: #ebccd1; color: #9b3f4a; background: #fff4f5; }
-.sms-preference-status { display: inline-flex; align-items: center; gap: .35rem; padding: .3rem .5rem; border: 1px solid #d9e4ef; border-radius: 5px; color: #516986; background: #f2f6fb; font-size: .875rem; line-height: 1.5; }
-.sms-preference-status.is-blocked { color: #9b3f4a; border-color: #edcdd2; background: #fff3f4; }
-.sms-preference-status.is-allowed { color: #2e705e; border-color: #cce4d9; background: #edf8f1; }
+.sms-recipient-optout { border-color: var(--workspace-line); color: var(--workspace-danger); background: var(--workspace-danger-soft); }
+.sms-preference-status { display: inline-flex; align-items: center; gap: .35rem; padding: .3rem .5rem; border: 1px solid var(--workspace-line); border-radius: 5px; color: var(--workspace-muted); background: var(--workspace-surface); font-size: .875rem; line-height: 1.5; }
+.sms-preference-status.is-blocked { color: var(--workspace-danger); border-color: var(--workspace-line); background: var(--workspace-danger-soft); }
+.sms-preference-status.is-allowed { color: var(--workspace-success); border-color: var(--workspace-line); background: var(--workspace-success-soft); }
 .sms-setup-steps { display: grid; gap: .75rem; padding: 0; margin: 1.2rem 0; list-style: none; counter-reset: sms-setup; }
-.sms-setup-steps li { position: relative; padding-left: 2.2rem; color: #536b87; font-size: .9rem; line-height: 1.7; counter-increment: sms-setup; }
-.sms-setup-steps li::before { content: counter(sms-setup); position: absolute; left: 0; top: .05rem; display: grid; place-items: center; width: 25px; height: 25px; border: 1px solid #d7e3f2; border-radius: 50%; background: #f1f6fd; color: #51739f; font-size: .875rem; }
-.sms-setup-steps strong { display: block; color: #3c5676; font-weight: 600; }
+.sms-setup-steps li { position: relative; padding-left: 2.2rem; color: var(--workspace-muted); font-size: .9rem; line-height: 1.7; counter-increment: sms-setup; }
+.sms-setup-steps li::before { content: counter(sms-setup); position: absolute; left: 0; top: .05rem; display: grid; place-items: center; width: 25px; height: 25px; border: 1px solid var(--workspace-line); border-radius: 50%; background: var(--workspace-surface); color: var(--workspace-muted); font-size: .875rem; }
+.sms-setup-steps strong { display: block; color: var(--workspace-muted); font-weight: 600; }
 .sms-settings-panel { margin-bottom: 1.25rem; }
 .sms-settings-body { padding: 1.2rem; }
-.sms-settings-body > p { margin: 0 0 1rem; color: #5a6e88; font-size: .9rem; line-height: 1.8; }
+.sms-settings-body > p { margin: 0 0 1rem; color: var(--workspace-muted); font-size: .9rem; line-height: 1.8; }
 .sms-settings-body .inbox-context-fields { grid-template-columns: 1fr 1fr; gap: 1rem; }
 .sms-settings-body .inbox-field-full { grid-column: 1 / -1; }
 .sms-settings-body :is(input, select, textarea) { font-size: 1rem; }
-.sms-settings-number { padding: 1rem 0; border-top: 1px solid #e3eaf2; }
+.sms-settings-number { padding: 1rem 0; border-top: 1px solid var(--workspace-line); }
 .sms-settings-number > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
-.sms-settings-number > header h3 { margin: 0 0 .4rem; color: #3f5675; font-size: 1rem; font-weight: 600; }
-.sms-settings-number > header p { margin: 0; color: #586e8a; font-size: .875rem; line-height: 1.65; }
+.sms-settings-number > header h3 { margin: 0 0 .4rem; color: var(--workspace-muted); font-size: 1rem; font-weight: 600; }
+.sms-settings-number > header p { margin: 0; color: var(--workspace-muted); font-size: .875rem; line-height: 1.65; }
 .sms-settings-number-actions { margin: 1rem 0; }
-.sms-settings-grants { margin: 1rem 0; border: 1px solid #dce4ef; border-radius: 7px; overflow: hidden; }
-.sms-settings-grants > div { display: flex; align-items: center; justify-content: space-between; gap: .7rem; padding: .8rem; border-bottom: 1px solid #e4eaf3; }
+.sms-settings-grants { margin: 1rem 0; border: 1px solid var(--workspace-line); border-radius: 7px; overflow: hidden; }
+.sms-settings-grants > div { display: flex; align-items: center; justify-content: space-between; gap: .7rem; padding: .8rem; border-bottom: 1px solid var(--workspace-line); }
 .sms-settings-grants > div:last-child { border-bottom: 0; }
-.sms-settings-grants strong { display: block; color: #415876; font-size: .875rem; font-weight: 600; }
-.sms-settings-grants small { display: block; margin-top: .25rem; color: #586f8d; font-size: .875rem; }
+.sms-settings-grants strong { display: block; color: var(--workspace-muted); font-size: .875rem; font-weight: 600; }
+.sms-settings-grants small { display: block; margin-top: .25rem; color: var(--workspace-muted); font-size: .875rem; }
 .sms-settings-grants > div > span { min-width: 0; overflow-wrap: anywhere; }
-.sms-settings-check { display: flex; align-items: flex-start; gap: .6rem; color: #4e6684; font-size: .9rem; line-height: 1.6; }
-.sms-settings-check input { width: 19px; height: 19px; flex-shrink: 0; margin-top: .15rem; accent-color: #255fc5; }
+.sms-settings-check { display: flex; align-items: flex-start; gap: .6rem; color: var(--workspace-muted); font-size: .9rem; line-height: 1.6; }
+.sms-settings-check input { width: 19px; height: 19px; flex-shrink: 0; margin-top: .15rem; accent-color: var(--workspace-blue); }
 .sms-settings-submit { margin-top: 1rem; }
-.sms-settings-help { margin: .7rem 0 0; color: #5c708a; font-size: .875rem; line-height: 1.7; }
-.sms-number-paused { color: #86632b; font-size: .875rem; }
+.sms-settings-help { margin: .7rem 0 0; color: var(--workspace-muted); font-size: .875rem; line-height: 1.7; }
+.sms-number-paused { color: var(--workspace-warning); font-size: .875rem; }
 .sms-workspace .inbox-folders { gap: .15rem; padding-inline: .5rem; }
 .sms-workspace .inbox-folders a { padding-inline: .45rem; }
-.sms-message > .sms-media-note { margin-top: .65rem; color: #5a6f87; font-size: .875rem; }
-.sms-settings-security { display: flex; align-items: flex-start; gap: .7rem; margin-bottom: 1.2rem; padding: .9rem; border: 1px solid #dfe6f0; border-radius: 7px; background: #f7f9fc; }
-.sms-settings-security > svg { flex-shrink: 0; margin-top: .15rem; color: #53769d; }
-.sms-settings-security > p { margin: 0; color: #556e8b; font-size: .875rem; line-height: 1.7; }
-.sms-webhook-details { margin-top: 1.3rem; padding-top: 1rem; border-top: 1px solid #dfe6f0; }
-.sms-webhook-details > summary { width: fit-content; padding: .35rem 0; color: #3c638e; font-size: .95rem; font-weight: 600; cursor: pointer; }
-.sms-webhook-details > p { color: #566f8b; font-size: .875rem; line-height: 1.7; }
+.sms-message > .sms-media-note { margin-top: .65rem; color: var(--workspace-muted); font-size: .875rem; }
+.sms-settings-security { display: flex; align-items: flex-start; gap: .7rem; margin-bottom: 1.2rem; padding: .9rem; border: 1px solid var(--workspace-line); border-radius: 7px; background: var(--workspace-surface); }
+.sms-settings-security > svg { flex-shrink: 0; margin-top: .15rem; color: var(--workspace-muted); }
+.sms-settings-security > p { margin: 0; color: var(--workspace-muted); font-size: .875rem; line-height: 1.7; }
+.sms-webhook-details { margin-top: 1.3rem; padding-top: 1rem; border-top: 1px solid var(--workspace-line); }
+.sms-webhook-details > summary { width: fit-content; padding: .35rem 0; color: var(--workspace-muted); font-size: .95rem; font-weight: 600; cursor: pointer; }
+.sms-webhook-details > p { color: var(--workspace-muted); font-size: .875rem; line-height: 1.7; }
 .sms-webhook-details .inbox-field { margin-top: .9rem; }
 @media (max-width: 760px) { .sms-messages { max-height: none; padding: .9rem; } .sms-message { width: 95%; } .sms-character-count { align-items: flex-start; } .sms-settings-body .inbox-context-fields { grid-template-columns: 1fr; } .sms-settings-number > header, .sms-settings-grants > div { flex-wrap: wrap; } }

@@ -7,7 +7,7 @@ import { stageLabels, websiteStatusLabels, type SalesOpportunity } from "@/lib/s
 export function OpportunityCard({ opportunity }: { opportunity: SalesOpportunity }) {
   const { business } = opportunity;
   return <Link href={`/dashboard/sales/${opportunity.id}`} className="sales-opportunity-card">
-    <div className="sales-card-top"><span className="sales-card-category">{business.industry || "Website opportunity"}</span><ArrowUpRight size={15} color="#8899ad" /></div>
+    <div className="sales-card-top"><span className="sales-card-category">{business.industry || "Website opportunity"}</span><ArrowUpRight size={15} color="var(--workspace-muted)" /></div>
     <h3>{business.name}</h3><p className="sales-card-title">{opportunity.title}</p><p>{opportunity.contact?.name || business.state || "Contact not yet identified"}</p>
     <p>{websiteStatusLabels[business.websiteStatus] || business.websiteStatus}{business.score !== null ? ` · Score ${business.score}` : ""}</p>
     {opportunity.nextTask ? <p className="sales-card-next"><CalendarClock size={13} /> {opportunity.nextTask.title}<br /><LocalTime value={opportunity.nextTask.dueAt} /></p> : null}

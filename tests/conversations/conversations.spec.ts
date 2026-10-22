@@ -1,3 +1,4 @@
+import { dashboardPreviewPath } from "../dashboard-theme-state";
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 type Source = { id: string; conversation_id: string; channel: string; thread_id: string | null; sms_conversation_id: string | null };
@@ -76,7 +77,7 @@ test("combines customer history and exposes agency context in a responsive works
   await page.locator(".conversation-timeline").evaluate(node=>{node.scrollTop=0;});
   await expect(page.getByRole("button",{name:"Send reply",exact:true})).toBeInViewport();
   await expect(timeline.getByText("Email: Could you build our website and an AI receptionist?",{exact:true})).toBeInViewport();
-  await page.screenshot({path:`docs/previews/conversations-${info.project.name}.png`,fullPage:true,style:"nextjs-portal{display:none!important;}"});
+  await page.screenshot({path: dashboardPreviewPath(`conversations-${info.project.name}.png`),fullPage:true,style:"nextjs-portal{display:none!important;}"});
   const axe=await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze();
   expect(axe.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,message:n.failureSummary}))}))).toEqual([]);
   expect(errors).toEqual([]);
@@ -87,6 +88,13 @@ test("keeps draft text across channel changes and sends from the same selected c
   await page.getByRole("tab",{name:"Email",exact:true}).click();
   const email=page.getByRole("tabpanel",{name:"Email",exact:true});
   await email.getByRole("textbox",{name:"Message *",exact:true}).fill("Email draft to the customer.");
+  const menu = page.getByRole("button", { name: "Menu", exact: true });
+  const mobile = await menu.isVisible();
+  if (mobile) await menu.click();
+  await page.getByLabel("Appearance", { exact: true }).selectOption("light");
+  await page.getByLabel("Appearance", { exact: true }).selectOption("dark");
+  if (mobile) await page.getByRole("button", { name: "Close menu", exact: true }).click();
+  await expect(email.getByRole("textbox",{name:"Message *",exact:true})).toHaveValue("Email draft to the customer.");
   await page.getByRole("tab",{name:"SMS",exact:true}).click();
   const sms=page.getByRole("tabpanel",{name:"SMS",exact:true});
   await sms.getByRole("textbox",{name:"Text message *",exact:true}).fill("Text draft to the customer.");

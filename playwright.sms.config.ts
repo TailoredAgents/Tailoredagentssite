@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { dashboardThemeStorage } from "./tests/dashboard-theme-state";
 import { resolve } from "node:path";
 const origin = "http://127.0.0.1:3140";
 const databaseUrl = process.env.SMS_TEST_DATABASE_URL || "postgresql://ta_test@127.0.0.1:55433/ta_sms_browser_test";
@@ -7,7 +8,7 @@ if (!["127.0.0.1", "localhost"].includes(parsed.hostname) || parsed.pathname !==
   throw new Error("SMS browser tests require the isolated local ta_sms_browser_test database.");
 export default defineConfig({
   testDir: "./tests/sms", workers: 1, fullyParallel: false, timeout: 60000,
-  use: { baseURL: origin, trace: "retain-on-failure" },
+  use: { baseURL: origin, trace: "retain-on-failure", storageState: dashboardThemeStorage() },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 1000 } } },
     { name: "phone", use: { ...devices["iPhone 13"], defaultBrowserType: "chromium" } },

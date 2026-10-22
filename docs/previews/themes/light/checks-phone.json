@@ -1,0 +1,134 @@
+[
+  {
+    "name": "overview",
+    "path": "/dashboard",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "inbox",
+    "path": "/dashboard/inbox",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "my-day",
+    "path": "/dashboard/sales/today",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "sales-board",
+    "path": "/dashboard/sales",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "sales-table",
+    "path": "/dashboard/sales?view=table",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "mockups",
+    "path": "/dashboard/sales/mockups",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "calling-lists",
+    "path": "/dashboard/sales/imports",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "leads",
+    "path": "/dashboard/leads",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "clients",
+    "path": "/dashboard/clients",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "projects",
+    "path": "/dashboard/projects",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "sites",
+    "path": "/dashboard/sites",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "analytics",
+    "path": "/dashboard/analytics",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "activity",
+    "path": "/dashboard/activity",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "settings",
+    "path": "/dashboard/settings",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "lead-detail",
+    "path": "/dashboard/leads/00000000-0000-4000-8000-000000000317",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "client-detail",
+    "path": "/dashboard/clients/00000000-0000-4000-8000-000000000311",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "contact-detail",
+    "path": "/dashboard/clients/00000000-0000-4000-8000-000000000311/contacts/00000000-0000-4000-8000-000000000312",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "project-detail",
+    "path": "/dashboard/projects/00000000-0000-4000-8000-000000000314",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "site-detail",
+    "path": "/dashboard/sites/00000000-0000-4000-8000-000000000313",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "sales-detail",
+    "path": "/dashboard/sales/00000000-0000-4000-8000-000000000530",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "email-workspace",
+    "path": "/dashboard/inbox?channel=email",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "sms-workspace",
+    "path": "/dashboard/inbox?channel=sms",
+    "overflow": false,
+    "violations": []
+  }
+]

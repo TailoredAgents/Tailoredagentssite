@@ -1,3 +1,4 @@
+import { dashboardPreviewPath } from "../dashboard-theme-state";
 import { test, expect, type Page, type APIRequestContext } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 async function control(request: APIRequestContext, action: string) {
@@ -52,7 +53,7 @@ test("reads approved mail safely, downloads attachments, assigns and links a con
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
   expect(axe.violations).toEqual([]);
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
-  await page.screenshot({ path: `docs/previews/inbox-${info.project.name}.png`, fullPage: true, style: "nextjs-portal { display: none !important; }" });
+  await page.screenshot({ path: dashboardPreviewPath(`inbox-${info.project.name}.png`), fullPage: true, style: "nextjs-portal { display: none !important; }" });
   expect(errors).toEqual([]);
 });
 

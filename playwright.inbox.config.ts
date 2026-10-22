@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { dashboardThemeStorage } from "./tests/dashboard-theme-state";
 const origin = "http://127.0.0.1:3130";
 const databaseUrl = process.env.INBOX_TEST_DATABASE_URL || "postgresql://ta_test@127.0.0.1:55433/ta_inbox_browser_test";
 const parsed = new URL(databaseUrl);
@@ -7,7 +8,7 @@ if (!["127.0.0.1", "localhost"].includes(parsed.hostname) || parsed.pathname !==
 export default defineConfig({
   testDir: "./tests/inbox", fullyParallel: false, workers: 1,
   timeout: 60000,
-  use: { baseURL: origin, trace: "retain-on-failure" },
+  use: { baseURL: origin, trace: "retain-on-failure", storageState: dashboardThemeStorage() },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 1000 } } },
     { name: "phone", use: { ...devices["iPhone 13"], defaultBrowserType: "chromium" } },

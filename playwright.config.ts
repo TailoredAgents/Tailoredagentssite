@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { dashboardThemeStorage } from "./tests/dashboard-theme-state";
 const port = Number(process.env.REPORTING_TEST_PORT || 3100);
 if (!Number.isInteger(port) || port < 1024 || port > 65535)
   throw new Error("Use a valid local reporting-test port.");
@@ -18,7 +19,7 @@ export default defineConfig({
   testDir: "./tests/reporting",
   fullyParallel: false,
   workers: 1,
-  use: { baseURL: origin, trace: "retain-on-failure" },
+  use: { baseURL: origin, trace: "retain-on-failure", storageState: dashboardThemeStorage() },
   projects: [
     {
       name: "desktop",

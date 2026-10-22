@@ -1,3 +1,4 @@
+import { dashboardPreviewPath } from "../dashboard-theme-state";
 import { test, expect, type Page, type APIRequestContext } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 async function control(request: APIRequestContext, action: string, data: Record<string, unknown> = {}) {
@@ -45,7 +46,7 @@ test("receives one signed message, links CRM context and keeps notes internal", 
   expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
   await page.addStyleTag({ content: "nextjs-portal{display:none!important}" });
   await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); window.scrollTo({ top: 0, behavior: "instant" }); });
-  await page.screenshot({ path: `docs/previews/sms-${info.project.name}.png`, fullPage: true });
+  await page.screenshot({ path: dashboardPreviewPath(`sms-${info.project.name}.png`), fullPage: true });
 });
 
 test("saves a private draft and sends a text once with separate delivered status", async ({ page, request }) => {

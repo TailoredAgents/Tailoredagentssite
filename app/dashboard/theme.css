@@ -1,0 +1,92 @@
+/* Dashboard-only palettes. Native color-scheme also themes fields, menus and media controls. */
+.dashboard-theme {
+  color-scheme: light;
+  --workspace-canvas: light-dark(#e2e8f0, #111827);
+  --workspace-surface: light-dark(#edf2f7, #1b2638);
+  --workspace-soft: light-dark(#dce5ef, #243247);
+  --workspace-field: light-dark(#f5f7fa, #243247);
+  --workspace-ink: light-dark(#172334, #e4ebf5);
+  --workspace-muted: light-dark(#4e6078, #a8b6cb);
+  --workspace-line: light-dark(#bbc8d8, #40516b);
+  --workspace-control-line: light-dark(#7b8da6, #7387a2);
+  --workspace-blue: light-dark(#2d5bd1, #7fa6ff);
+  --workspace-blue-hover: light-dark(#244cb5, #96b6ff);
+  --workspace-blue-soft: light-dark(#d6e3fa, #243957);
+  --workspace-on-primary: light-dark(#ffffff, #101827);
+  --workspace-focus: light-dark(#2d5bd1, #a8c1ff);
+  --workspace-success: light-dark(#27664f, #8ed7b8);
+  --workspace-success-soft: light-dark(#d5e5dc, #203b33);
+  --workspace-success-solid: light-dark(#23775c, #8ed7b8);
+  --workspace-warning: light-dark(#7b5018, #e7bc73);
+  --workspace-warning-soft: light-dark(#ede0c6, #46391f);
+  --workspace-danger: light-dark(#a52d46, #ffadbc);
+  --workspace-danger-soft: light-dark(#f2dce1, #452733);
+  --workspace-danger-solid: light-dark(#aa2534, #ffadbc);
+  --workspace-purple: light-dark(#70419b, #cdb1f0);
+  --workspace-purple-soft: light-dark(#e8dff1, #3c3051);
+  --workspace-teal: light-dark(#116e64, #72d2c7);
+  --workspace-nav: light-dark(#142031, #0e1624);
+  --workspace-nav-surface: light-dark(#1d2b3e, #17253a);
+  --workspace-nav-hover: light-dark(#203249, #1c2c43);
+  --workspace-nav-selected: light-dark(#2a3d59, #21344f);
+  --workspace-nav-text: #bdc9db;
+  --workspace-nav-title: #f7faff;
+  --workspace-nav-muted: #a9b7ca;
+  --workspace-nav-line: #3b4a60;
+  --workspace-nav-accent: #acc8ff;
+  --workspace-nav-danger: #ffc0c7;
+  --workspace-nav-danger-bg: #422d36;
+  --workspace-brand-mark: #4c7adc;
+  --workspace-shadow-ink: light-dark(rgb(12 25 45 / 7%), rgb(0 0 0 / 20%));
+  --workspace-backdrop: rgb(7 17 32 / 52%);
+  min-height: 100dvh;
+  background: var(--workspace-canvas);
+  color: var(--workspace-ink);
+  font-family: var(--font-sans);
+}
+.dashboard-theme[data-theme="dark"] { color-scheme: dark; }
+.dashboard-theme[data-theme="system"] { color-scheme: light dark; }
+/* Match the document scrollbar and overscroll area while the private workspace is mounted. */
+:root:has(.dashboard-theme[data-theme="dark"]) { color-scheme: dark; }
+:root:has(.dashboard-theme[data-theme="system"]) { color-scheme: light dark; }
+body:has(.dashboard-theme) { background: light-dark(#e2e8f0, #111827); }
+
+.workspace-theme-select { flex-shrink: 0; margin: 12px 4px 0; }
+.workspace-theme-select label { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; color: var(--workspace-nav-muted); font-size: 14px; }
+.workspace-theme-select select { color-scheme: dark; width: 100%; min-height: 44px; padding: 8px 9px; border: 1px solid var(--workspace-nav-line); border-radius: 7px; background: var(--workspace-nav-surface); color: var(--workspace-nav-title); font: 14px var(--font-sans); }
+.workspace-appearance { margin-bottom: 28px; padding: 22px; border: 1px solid var(--workspace-line); border-radius: 12px; background: var(--workspace-surface); scroll-margin-top: 22px; }
+.workspace-appearance h2 { margin: 0 0 7px; color: var(--workspace-ink); font-size: 18px; font-weight: 600; letter-spacing: -.025em; }
+.workspace-appearance p { margin: 0; color: var(--workspace-muted); font-size: 14px; line-height: 1.6; }
+.workspace-theme-options { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin-top: 20px; }
+.workspace-theme-options button { display: flex; align-items: flex-start; gap: 12px; min-width: 0; min-height: 108px; padding: 17px; border: 1px solid var(--workspace-control-line); border-radius: 9px; background: var(--workspace-field); color: var(--workspace-ink); font: inherit; text-align: left; cursor: pointer; }
+.workspace-theme-options button > svg { flex-shrink: 0; margin-top: 2px; color: var(--workspace-muted); }
+.workspace-theme-options button strong { display: block; margin-bottom: 5px; font-size: 15px; font-weight: 600; }
+.workspace-theme-options button small { display: block; color: var(--workspace-muted); font-size: 14px; line-height: 1.55; }
+.workspace-theme-options button:hover { background: var(--workspace-soft); }
+.workspace-theme-options button[aria-pressed="true"] { border-color: var(--workspace-blue); background: var(--workspace-blue-soft); box-shadow: inset 0 0 0 1px var(--workspace-blue); }
+.workspace-theme-options button[aria-pressed="true"] > svg { color: var(--workspace-blue); }
+.dashboard-theme :is(input,select,textarea) { accent-color: var(--workspace-blue); }
+/* Form text remains readable on its actual input surface; buttons use a separate foreground. */
+.dashboard-theme :is(.dashboard-field,.sales-field,.inbox-field,.voice-field) :is(input,select,textarea),
+.dashboard-theme :is(.dashboard-filter-bar,.sales-filter-bar) :is(input,select) { background-color: var(--workspace-field); border-color: var(--workspace-control-line); }
+.dashboard-theme :is(.dashboard-filter-bar label,.conversation-search label) { border-color: var(--workspace-control-line); }
+.dashboard-theme :is(input,textarea)::placeholder { color: var(--workspace-muted); opacity: 1; }
+.dashboard-theme .dashboard-sidebar :is(.dashboard-nav-item,.workspace-page-finder-trigger,.workspace-theme-select select,.dashboard-mail-link,.dashboard-menu-toggle,.dashboard-user button):focus-visible { outline-color: var(--workspace-nav-accent); }
+.dashboard-theme :is(.dashboard-primary-button,.sales-button-primary,.inbox-button-primary,.voice-button.is-primary) { color: var(--workspace-on-primary); }
+.dashboard-theme .voice-launcher { background: var(--workspace-surface); color: var(--workspace-blue); }
+.dashboard-theme .voice-launcher.has-call { background: var(--workspace-success-solid); color: var(--workspace-on-primary); }
+.dashboard-theme .report-chart { --report-chart-blue: var(--workspace-blue); --report-chart-teal: var(--workspace-teal); }
+.dashboard-theme .report-chart line { stroke: var(--workspace-line); }
+.dashboard-theme .report-legend span:nth-child(2) i { background: var(--workspace-teal); }
+.dashboard-theme .report-freshness i { background: var(--workspace-success); }
+.dashboard-theme :is(.dashboard-primary-button,.sales-button-primary,.inbox-button-primary,.voice-button.is-primary):hover:not(:disabled) { background: var(--workspace-blue-hover); border-color: var(--workspace-blue-hover); }
+@media (max-width: 1024px) {
+  .workspace-theme-select { display: none; max-width: 320px; margin: 14px 0 0; }
+  .workspace-theme-select select { font-size: 16px; }
+  .dashboard-sidebar:has(.dashboard-nav.is-open) .workspace-theme-select { display: block; }
+}
+@media (max-width: 760px) {
+  .workspace-appearance { padding: 20px; }
+  .workspace-theme-options { grid-template-columns: minmax(0,1fr); gap: 10px; }
+  .workspace-theme-options button { min-height: 84px; padding: 16px; }
+}

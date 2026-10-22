@@ -39,6 +39,7 @@ The existing operations and measurement releases are active. The agency sales fo
 - Protected dashboard routes for operations, activity, settings, and real website analytics.
 - Readable desktop and phone layouts across every dashboard tab, with an overview of open inquiries, due follow-ups and project deadlines. See [dashboard usability and verification](docs/DASHBOARD_USABILITY.md).
 - A shared private-workspace design system, grouped navigation with a keyboard page finder, focused creation drawers and organized record/settings pages. See the [22-page design scorecard and implementation](docs/DASHBOARD_DESIGN_AUDIT.md) and [desktop/phone comparison gallery](docs/previews/design/index.html).
+- Slate & blue and Midnight blue palettes with a saved Light / Dark / System preference in the sidebar and Settings. See [dashboard appearance](docs/DASHBOARD_APPEARANCE.md) and the [light/dark gallery](docs/previews/themes/index.html).
 - Manual lead entry with a business name and phone or email, plus optional contact, website, service and notes; lead search, qualification, ownership, next actions, conversion, and safe CSV export.
 - Client, contact, site, and project workspaces with milestones, deliverables, decisions, and notes.
 - Shared database-backed inquiry controls, delivery status, retention metadata, and audited mutations.

@@ -145,7 +145,7 @@ function Trend({
                 x2="570"
                 y1={y(max * level)}
                 y2={y(max * level)}
-                stroke="#e2e8f0"
+                stroke="var(--workspace-line)"
                 strokeDasharray={level ? "4 4" : undefined}
               />
               <text x="62" y={y(max * level) + 5} textAnchor="end">
@@ -153,11 +153,11 @@ function Trend({
               </text>
             </g>
           ))}
-          <path d={path("a")} fill="none" stroke="#2459cf" strokeWidth="3" />
+          <path d={path("a")} fill="none" stroke="var(--workspace-blue)" strokeWidth="3" />
           <path
             d={path("b")}
             fill="none"
-            stroke="#0a807a"
+            stroke="var(--workspace-teal)"
             strokeWidth="2.5"
             strokeDasharray="6 3"
           />
@@ -165,10 +165,10 @@ function Trend({
             data.map((row, i) => (
               <g key={row.day}>
                 {row.a !== null && (
-                  <circle cx={x(i)} cy={y(row.a)} r="4" fill="#2459cf" />
+                  <circle cx={x(i)} cy={y(row.a)} r="4" fill="var(--workspace-blue)" />
                 )}
                 {row.b !== null && (
-                  <circle cx={x(i)} cy={y(row.b)} r="4" fill="#0a807a" />
+                  <circle cx={x(i)} cy={y(row.b)} r="4" fill="var(--workspace-teal)" />
                 )}
               </g>
             ))}

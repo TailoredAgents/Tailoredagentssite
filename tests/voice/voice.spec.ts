@@ -1,3 +1,4 @@
+import { dashboardPreviewPath } from "../dashboard-theme-state";
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 async function control(request: APIRequestContext, action: string, fields: Record<string, unknown> = {}) {
@@ -16,7 +17,11 @@ async function signIn(page: Page, user = "owner") {
 }
 async function phone(page: Page) {
   const panel = page.getByRole("region", { name: "Browser phone", exact: true });
-  if (!(await panel.isVisible())) await page.getByRole("button", { name: /^Open browser phone/ }).click();
+  if (!(await panel.isVisible())) {
+    const launcher = page.locator(".voice-launcher");
+    if (await launcher.isVisible()) await launcher.click();
+    else await page.getByRole("button", { name: "Open browser phone", exact: true }).click();
+  }
   return panel;
 }
 async function connect(page: Page, request: APIRequestContext) {
@@ -42,8 +47,17 @@ test("makes one durable outbound call, mutes and retains it through client navig
   await page.getByRole("form", { name: "Start browser call", exact: true }).getByRole("button", { name: "Start browser call", exact: true }).click();
   await expect(panel.locator(".voice-connection-state")).toContainText("Call in progress");
   expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
-  await page.screenshot({ path: `docs/previews/voice-active-${info.project.name}.png`, fullPage: true });
+  await page.screenshot({ path: dashboardPreviewPath(`voice-active-${info.project.name}.png`), fullPage: true });
   await panel.getByRole("button", { name: "Mute microphone", exact: true }).click();
+  await expect(panel.getByRole("button", { name: "Unmute microphone", exact: true })).toHaveAttribute("aria-pressed", "true");
+  // Changing appearance must not replace the persistent phone or its live call.
+  await panel.getByRole("button", { name: "Minimize browser phone", exact: true }).click();
+  if (info.project.name === "phone") await page.getByRole("button", { name: "Menu", exact: true }).click();
+  await page.getByLabel("Appearance", { exact: true }).selectOption("light");
+  await page.getByLabel("Appearance", { exact: true }).selectOption("dark");
+  if (info.project.name === "phone") await page.getByRole("button", { name: "Close menu", exact: true }).click();
+  await phone(page);
+  await expect(panel.locator(".voice-connection-state")).toContainText("Call in progress");
   await expect(panel.getByRole("button", { name: "Unmute microphone", exact: true })).toHaveAttribute("aria-pressed", "true");
   const state = await control(request, "inspect"); expect(state.connects).toHaveLength(1); expect(state.connects[0].keys).toEqual(["IntentToken"]);
   // The client Link must retain the layout's live phone rather than remount it.
@@ -110,7 +124,7 @@ test("plays scoped voicemail, deletes provider audio, and keeps a readable histo
   expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
   await page.addStyleTag({ content: "nextjs-portal{display:none!important}" });
   await page.locator(".conversation-timeline").evaluate((element) => { element.scrollTop = 0; });
-  await page.screenshot({ path: `docs/previews/voice-${info.project.name}.png`, fullPage: true });
+  await page.screenshot({ path: dashboardPreviewPath(`voice-${info.project.name}.png`), fullPage: true });
   await page.getByRole("button", { name: "Delete voicemail", exact: true }).click();
   await page.getByRole("button", { name: "Confirm voicemail deletion", exact: true }).click();
   await expect(page.getByText("This voicemail recording has been deleted.", { exact: true })).toBeVisible();
