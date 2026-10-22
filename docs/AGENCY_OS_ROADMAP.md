@@ -127,7 +127,23 @@ Add versioned proposals/scopes, signed acceptance, explicit package/promotion te
 
 ## Parallel architecture track — Client SEO and internal AI
 
-Plan these contracts alongside sales implementation; implement capability in small later releases rather than building empty speculative tables now.
+**Owner clarification, October 22:** the SEO AI agent means an ongoing SEO manager for **Tailored Agents' own website**, responsible for monitoring, planning, carrying out improvements and measuring performance over time. The target is a recurring operating service. A reporting screen, audit tool or recommendation/task queue alone does not fulfill this request. Client SEO delivery remains a future extension; multi-client Google connections, subscriptions and a client portal are not prerequisites for the internal agent.
+
+### Tailored Agents SEO manager — primary scope
+
+- **Observe:** use the existing site's Search Console and first-party conversion evidence, supplemented by bounded site crawls and technical checks. Track the terms and services that matter to website-development and AI-agent customers. Keep missing/stale evidence explicit.
+- **Plan:** maintain a persistent SEO strategy, prioritized work backlog, page/query relationships and content plan. Retain the reasoning and previous changes across runs. Schedule daily monitoring, weekly prioritization and longer-window outcome reviews; use an explicit change budget rather than rewriting pages on every daily ranking movement.
+- **Execute:** provide tools to prepare and apply targeted site improvements, validate the exact changes, deploy through the website's established workflow and verify the published result. Define standing permissions by action and resource. Preserve before/after versions, rollback, run history, cost limits and a pause control. Research, analysis and monitoring run automatically; publishing permissions and content review must be concrete before enabling live writes. This clarification does not itself activate an unattended publisher.
+- **Measure:** record a baseline, implementation date and evaluation window for each change. Compare search visibility, qualified organic visits and inquiries, retaining uncertainty about attribution, seasonal effects and small samples. Use those observations to revise priorities; do not claim guaranteed or continually increasing rankings.
+- **Report:** give the owner a concise account of what changed, why, results so far, next work and genuine decisions needing input. The dashboard provides oversight of the running service.
+
+Implement the full observe → plan → execute → verify → measure cycle on tailoredagents.com first. The first release should complete a bounded, real improvement cycle; a new SEO dashboard by itself is not its acceptance criterion. Later releases can broaden standing permissions and extend the proven workflow to clients.
+
+Current Google guidance supports allowing time to evaluate changes and manually fact-checking/reviewing AI-generated public content, including metadata. Reflect that content-review step in the operating policy while automating the surrounding work: [SEO evaluation timing](https://developers.google.com/search/docs/fundamentals/seo-starter-guide#how-long-until-i-see-impact-in-search-results), [AI content guidance](https://developers.google.com/search/docs/fundamentals/using-gen-ai-content). These are product-design considerations, not a claim that an SEO agent is already running.
+
+### Shared architecture and later client extension
+
+Plan these contracts alongside implementation; add tables with their working behavior. The per-client requirements below apply when extending the internal manager to customer engagements.
 
 1. **Per-client access and evidence.** Replace hard-coded internal-site reporting assumptions through a new client/site-scoped contract. Every connector, metric, crawl, recommendation and run belongs to a workspace, business, engagement and assigned site. Website reporting and client data remain separate until authorization tests establish access. Reuse the proven encrypted Google connection/job concepts without assuming the current internal property is multi-client ready.
 2. **Human SEO delivery.** Define monthly package inclusions, supported audit classes, crawl limits, robots/access policy, snapshots, source evidence, severity, ownership, recommendation state, change drafts and revisions. Tie delivered work to measured Search Console/conversion outcomes. Complete an SEO engagement manually in the product and establish reviewed examples before agent-generated judgments become operational.
