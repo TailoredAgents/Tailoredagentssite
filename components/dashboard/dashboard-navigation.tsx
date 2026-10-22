@@ -100,6 +100,7 @@ export function DashboardNavigation({ context }: { context: DashboardContext }) 
   }
 
   function isCurrent(href: string) {
+    if (href === "/dashboard/sales/today" && pathname.startsWith("/dashboard/tasks/")) return true;
     if (href === "/dashboard/sales") {
       return pathname === href || (
         pathname.startsWith(`${href}/`) && !["today", "mockups", "imports"].includes(pathname.split("/")[3] ?? "")

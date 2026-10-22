@@ -279,6 +279,8 @@ export async function listConversationWorkspace(
         mockup: mockup.rows[0] ?? null,
       };
     }
+    const callTask=(await pool.query<{id:string;title:string;dueAt:Date;kind:string}>("SELECT id,title,due_at AS \"dueAt\",kind FROM crm_tasks WHERE workspace_id=$1 AND conversation_source_id=ANY($2::uuid[]) AND status='open' ORDER BY due_at,id LIMIT 1",[context.workspace.id,sources.filter(s=>s.conversation_id===requested).map(s=>s.id)])).rows[0];
+    if(callTask && (!relation.nextTask || callTask.dueAt.getTime()<Date.parse(relation.nextTask.dueAt)))relation.nextTask={...callTask,dueAt:callTask.dueAt.toISOString(),href:`/dashboard/tasks/${callTask.id}`};
     if (summary.leadId)
       relation.serviceInterest =
         (

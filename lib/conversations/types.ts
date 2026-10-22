@@ -75,7 +75,7 @@ export type ConversationContext = {
   serviceInterest: string | null;
   clientId: string | null;
   projectId: string | null;
-  nextTask: { id: string; title: string; dueAt: string; kind: string } | null;
+  nextTask: { id: string; title: string; dueAt: string; kind: string; href?: string } | null;
   mockup: { status: string; previewUrl: string | null } | null;
 };
 export type ConversationRecord = {

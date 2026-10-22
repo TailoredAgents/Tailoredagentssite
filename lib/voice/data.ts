@@ -221,7 +221,8 @@ export async function readCalls(
     )
   ).rows;
   const recordings = (await db.query<CallRecording & {callId:string}>(`SELECT r.id,r.call_id AS "callId",CASE WHEN r.expires_at<=now() AND r.status<>'deleted' THEN 'expired' ELSE r.status END status,r.duration,r.expires_at::text AS "expiresAt",r.status='ready' AND r.expires_at>now() AS "canPlay",$3::boolean AND r.recording_sid IS NOT NULL AND r.status NOT IN ('deleted','deleting') AS "canDelete",r.analysis_status AS "analysisStatus",CASE WHEN r.status='ready' AND r.expires_at>now() THEN r.analysis_error ELSE NULL END AS "analysisError",CASE WHEN r.status='ready' AND r.expires_at>now() THEN r.transcript ELSE NULL END transcript,CASE WHEN r.status='ready' AND r.expires_at>now() THEN r.summary ELSE NULL END summary FROM voice_call_recordings r WHERE r.workspace_id=$1 AND r.call_id=ANY($2::uuid[])`,[workspaceId,ids,manage])).rows;
-  const recordingMap = new Map(recordings.map(({callId,...recording})=>[callId,{...recording,analysisAvailable:analysisConfigured()}]));
+  const tasks=(await db.query<{recording_id:string;suggestionIndex:number;taskId:string;status:string}>(`SELECT f.recording_id,f.suggestion_index AS "suggestionIndex",t.id AS "taskId",t.status FROM voice_follow_up_tasks f JOIN crm_tasks t ON t.id=f.task_id AND t.workspace_id=f.workspace_id WHERE f.workspace_id=$1 AND f.recording_id=ANY($2::uuid[])`,[workspaceId,recordings.map(r=>r.id)])).rows;
+  const recordingMap = new Map(recordings.map(({callId,...recording})=>[callId,{...recording,analysisAvailable:analysisConfigured(),followUpTasks:tasks.filter(t=>t.recording_id===recording.id).map(task=>({suggestionIndex:task.suggestionIndex,taskId:task.taskId,status:task.status}))}]));
   return rows.map((r) => ({
     ...r,
     createdAt: r.createdAt.toISOString(),

@@ -37,6 +37,38 @@ async function openCustomer(page: Page) {
   if (await nav.isVisible()) await nav.getByRole("button", { name: "Thread", exact: true }).click();
 }
 test.beforeEach(async ({ request }) => { await control(request, "reset"); });
+test("schedules a reviewed call follow-up in My Day and completes it with an outcome",async({page,request},info)=>{
+  await control(request,"voicemail");await signIn(page);await openCustomer(page);await page.getByRole("tab",{name:"Call",exact:true}).click();
+  const composer=page.locator(".voice-call-composer");await composer.getByRole("button",{name:"Connect phone",exact:true}).click();await expect(composer.getByRole("button",{name:"Call now",exact:true})).toBeEnabled();await composer.getByRole("button",{name:"Call now",exact:true}).click();
+  await expect.poll(async()=>(await control(request,"inspect")).connects.length).toBe(1);await control(request,"connected-recording");await page.reload();
+  const recording=page.getByRole("region",{name:"Call recording",exact:true});await recording.getByText("Transcript, summary & follow-ups",{exact:true}).click();
+  await recording.getByLabel("Suggested follow-up 1",{exact:true}).fill("Send Jordan the website proposal");await recording.getByRole("button",{name:"Create task",exact:true}).click();
+  const scheduler=page.getByRole("dialog",{name:"Schedule a follow-up",exact:true});
+  await expect(scheduler).toBeVisible();await page.keyboard.press("Escape");await expect(scheduler).toHaveCount(0);await expect(recording.getByRole("button",{name:"Create task",exact:true})).toBeFocused();await recording.getByRole("button",{name:"Create task",exact:true}).click();
+  const form=scheduler.getByRole("form",{name:"Schedule follow-up 1",exact:true});await expect(form.getByRole("textbox",{name:"Task title *",exact:true})).toHaveValue("Send Jordan the website proposal");
+  await form.getByRole("combobox",{name:"Assign to *",exact:true}).selectOption("voice-austin");
+  await form.locator('input[name="dueAtLocal"]').fill(new Date(Date.now()+86400000).toISOString().slice(0,16));await form.getByRole("textbox",{name:"Task notes (optional)",exact:true}).fill("Include the AI receptionist scope.");
+  expect((await control(request,"inspect")).tasks).toHaveLength(0);
+  expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze()).violations).toEqual([]);
+  await scheduler.screenshot({path:dashboardPreviewPath(`call-follow-up-schedule-${info.project.name}.png`)});
+  await form.getByRole("button",{name:"Save follow-up task",exact:true}).click();await expect(recording.getByRole("link",{name:"View scheduled task",exact:true})).toBeVisible();
+  const saved=(await control(request,"inspect")).tasks;expect(saved).toHaveLength(1);expect(saved[0].owner_user_id).toBe("voice-austin");
+  await page.reload();await recording.getByText("Transcript, summary & follow-ups",{exact:true}).click();await expect(recording.getByRole("button",{name:"Create task",exact:true})).toHaveCount(0);
+  await page.goto("/dashboard/sales/today");await expect(page.getByRole("link",{name:"Send Jordan the website proposal",exact:true})).toHaveCount(0);
+  await page.getByRole("link",{name:"Team",exact:true}).click();await expect(page.getByRole("link",{name:"Send Jordan the website proposal",exact:true})).toBeVisible();await page.getByRole("link",{name:"Send Jordan the website proposal",exact:true}).click();
+  await expect(page.getByRole("heading",{name:"Send Jordan the website proposal",exact:true})).toBeVisible();await expect(page.locator(".voice-task-facts").getByText("Fixture austin",{exact:true})).toBeVisible();
+  const edit=page.getByRole("form",{name:"Save task changes",exact:true});await edit.getByRole("combobox",{name:"Assign to *",exact:true}).selectOption("voice-owner");await edit.getByRole("textbox",{name:"Task title *",exact:true}).fill("Review the final website proposal");await edit.getByRole("button",{name:"Save task changes",exact:true}).click();
+  await expect(page.getByRole("heading",{name:"Review the final website proposal",exact:true})).toBeVisible();
+  expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze()).violations).toEqual([]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBeTruthy();
+  await page.evaluate(()=>{(document.activeElement as HTMLElement)?.blur();window.scrollTo({top:0,behavior:"instant"});});
+  await page.screenshot({path:dashboardPreviewPath(`call-follow-up-task-${info.project.name}.png`),fullPage:true,style:"nextjs-portal{display:none!important;}"});
+  await page.getByRole("link",{name:"My day",exact:true}).last().click();await expect(page.getByRole("link",{name:"Review the final website proposal",exact:true})).toBeVisible();
+  await page.screenshot({path:dashboardPreviewPath(`call-follow-up-my-day-${info.project.name}.png`),fullPage:true,style:"nextjs-portal{display:none!important;}"});
+  await page.getByRole("link",{name:"Review the final website proposal",exact:true}).click();const outcome=page.getByRole("form",{name:"Save task outcome",exact:true});await outcome.getByRole("textbox",{name:"Outcome *",exact:true}).fill("Reviewed the proposal and agreed the next step.");await outcome.getByRole("button",{name:"Save task outcome",exact:true}).click();
+  await expect(page.getByText("Reviewed the proposal and agreed the next step.",{exact:false})).toBeVisible();await expect(page.getByRole("form",{name:"Save task changes",exact:true})).toHaveCount(0);
+  await page.getByRole("link",{name:"My day",exact:true}).last().click();await expect(page.getByRole("link",{name:"Review the final website proposal",exact:true})).toHaveCount(0);expect((await control(request,"inspect")).tasks).toHaveLength(1);
+});
 test("keeps protected call recordings, transcripts and editable follow-ups in the conversation",async({page,request},info)=>{
   await control(request,"voicemail");await signIn(page);await openCustomer(page);
   await page.getByRole("tab",{name:"Call",exact:true}).click();

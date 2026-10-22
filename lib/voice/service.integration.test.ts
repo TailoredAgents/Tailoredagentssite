@@ -35,6 +35,8 @@ import { getVoiceWorkspace, getVoiceCall } from "./data";
 import { runVoiceMaintenance } from "./maintenance";
 import { receiveCallRecording, saveRecordingPreferences, getCallRecordingDownload, requestCallAnalysis, deleteCallRecording } from "./recordings";
 import { runCallRecordingWorker } from "./recording-worker";
+import { createCallFollowUpTask, getCallFollowUpOptions, getCallFollowUpTask, updateCallFollowUpTask, completeCallFollowUpTask } from "./follow-up-tasks";
+import { getSalesToday } from "@/lib/sales/data";
 import {
   listConversationWorkspace,
   loadConversationSourceHistory,
@@ -273,6 +275,80 @@ describe.skipIf(!url)(
       const recording=(await getVoiceCall(owner,intent.callId)).recording!;
       return {callId:intent.callId,id:recording.id,params:{AccountSid:account,CallSid:sid(n),RecordingSid:rec(n),RecordingStatus:"completed"}};
     }
+    async function suggestedCall() {
+      const r=await recordedCall();
+      const quote="Please send a website proposal next week.";
+      await pool.query("UPDATE voice_call_recordings SET transcript=$2,summary=$3,analysis_status='ready' WHERE id=$1",[r.id,quote,JSON.stringify({summary:"Website proposal requested.",highlights:[],followUps:[{text:"Prepare the website proposal.",quote}]})]);
+      return {...r,input:{recordingId:r.id,suggestionIndex:0,title:"Review the website proposal",ownerUserId:member.user.id,dueAt:new Date(Date.now()+86400000).toISOString(),notes:"Review the site scope first."}};
+    }
+    it("creates only reviewed tasks, saves edited details and schedules them in the assignee's My Day",async()=>{
+      await grant(member.user.id);const r=await suggestedCall();
+      expect((await pool.query("SELECT id FROM crm_tasks")).rowCount).toBe(0);
+      const options=await getCallFollowUpOptions(owner,r.id,0);expect(options.members.map(m=>m.id)).toEqual(expect.arrayContaining([owner.user.id,member.user.id]));expect(options.members.map(m=>m.id)).not.toContain(viewer.user.id);
+      const ids=await Promise.all([createCallFollowUpTask(owner,r.input),createCallFollowUpTask(owner,r.input)]);expect(ids[0]).toBe(ids[1]);expect((await pool.query("SELECT id FROM crm_tasks")).rowCount).toBe(1);
+      const saved=await getCallFollowUpTask(member,ids[0]);expect(saved.title).toBe(r.input.title);expect(saved.notes).toBe(r.input.notes);expect(saved.ownerId).toBe(member.user.id);expect(saved.dueAt).toBe(r.input.dueAt);
+      await pool.query("INSERT INTO voice_line_grants(workspace_id,line_id,user_id,can_read) VALUES($1,$2,$3,true)",[ws,lineId,viewer.user.id]);expect((await getCallFollowUpTask(viewer,ids[0])).canEdit).toBe(false);await expect(completeCallFollowUpTask(viewer,{taskId:ids[0],status:"completed",outcome:"Cannot write as a viewer."})).rejects.toThrow("read-only");
+      expect((await getSalesToday(member)).tasks.map(t=>t.id)).toContain(ids[0]);expect((await getSalesToday(owner)).tasks.map(t=>t.id)).not.toContain(ids[0]);expect((await getSalesToday(owner,"team")).tasks.map(t=>t.id)).toContain(ids[0]);
+      expect((await getVoiceCall(owner,r.callId)).recording?.followUpTasks).toEqual([{suggestionIndex:0,taskId:ids[0],status:"open"}]);
+      const conversation=(await listConversationWorkspace(owner,{conversation:saved.conversationId})).selected;expect(conversation?.context.nextTask?.id).toBe(ids[0]);expect(conversation?.context.nextTask?.href).toBe(`/dashboard/tasks/${ids[0]}`);
+    });
+    it("rejects missing dates, inaccessible assignees, forged workspaces and viewer writes",async()=>{
+      const r=await suggestedCall();
+      for(const input of [{...r.input,dueAt:""},{...r.input,dueAt:"2026-10-22T09:00"},{...r.input,ownerUserId:""},{...r.input,suggestionIndex:4},{...r.input,title:" "}])await expect(createCallFollowUpTask(owner,input)).rejects.toThrow();
+      await expect(createCallFollowUpTask(owner,r.input)).rejects.toThrow("teammate");
+      await pool.query("INSERT INTO voice_line_grants(workspace_id,line_id,user_id,can_read) VALUES($1,$2,$3,true)",[ws,lineId,viewer.user.id]);await expect(createCallFollowUpTask(viewer,{...r.input,ownerUserId:owner.user.id})).rejects.toThrow("read-only");
+      await expect(createCallFollowUpTask(actor("voice-other",otherWs),r.input)).rejects.toThrow();
+      expect((await pool.query("SELECT id FROM crm_tasks")).rowCount).toBe(0);
+    });
+    it("keeps call-derived work hidden after line access is revoked, including the team queue",async()=>{
+      await grant(member.user.id);const r=await suggestedCall(),id=await createCallFollowUpTask(owner,r.input);
+      await pool.query("DELETE FROM voice_line_grants WHERE user_id=$1",[member.user.id]);
+      expect((await getSalesToday(member)).tasks).toEqual([]);expect((await getSalesToday(member,"team")).tasks).toEqual([]);
+      await expect(getCallFollowUpTask(member,id)).rejects.toThrow();await expect(updateCallFollowUpTask(member,{...r.input,taskId:id})).rejects.toThrow();
+      await expect(completeCallFollowUpTask(member,{taskId:id,status:"completed",outcome:"Cannot bypass revoked access."})).rejects.toThrow();
+    });
+    it("reschedules and reassigns reviewed work, then saves the outcome and clears the open queue",async()=>{
+      await grant(member.user.id);const r=await suggestedCall(),id=await createCallFollowUpTask(owner,r.input);
+      const dueAt=new Date(Date.now()+2*86400000).toISOString();
+      await updateCallFollowUpTask(member,{taskId:id,title:"Send the revised proposal",ownerUserId:owner.user.id,dueAt,notes:"Updated scope agreed."});
+      expect((await getSalesToday(member)).tasks).toEqual([]);expect((await getSalesToday(owner)).tasks.map(t=>t.id)).toContain(id);
+      await expect(completeCallFollowUpTask(owner,{taskId:id,status:"completed",outcome:""})).rejects.toThrow();
+      await completeCallFollowUpTask(owner,{taskId:id,status:"completed",outcome:"Proposal reviewed with the customer."});
+      const task=await getCallFollowUpTask(owner,id);expect(task.status).toBe("completed");expect(task.outcome).toContain("reviewed");expect((await getSalesToday(owner)).tasks).toEqual([]);
+      await expect(updateCallFollowUpTask(owner,{taskId:id,title:"Reopen silently",ownerUserId:owner.user.id,dueAt})).rejects.toThrow();expect(await createCallFollowUpTask(owner,r.input)).toBe(id);
+    });
+    it("preserves an explicitly created task after audio deletion while rejecting fresh conversions",async()=>{
+      await grant(member.user.id);const r=await suggestedCall(),id=await createCallFollowUpTask(owner,r.input);await deleteCallRecording(owner,r.id);
+      expect((await getCallFollowUpTask(member,id)).title).toBe(r.input.title);expect((await getSalesToday(member)).tasks.map(t=>t.id)).toContain(id);
+      await expect(createCallFollowUpTask(owner,r.input)).rejects.toThrow("no longer available");
+    });
+    it("keeps source-linked tasks attached when conversation histories are combined",async()=>{
+      await grant(member.user.id);const r=await suggestedCall(),id=await createCallFollowUpTask(owner,r.input);const other=await incoming(91,"+14045550199");
+      const before=await getCallFollowUpTask(owner,id),target=(await getVoiceCall(owner,other.callId)).conversationId;
+      await mergeConversations(owner,{conversationId:before.conversationId,targetConversationId:target,confirmConflict:true});
+      expect((await getCallFollowUpTask(member,id)).conversationId).toBe(target);expect((await getSalesToday(member)).tasks.map(t=>t.id)).toContain(id);
+    });
+    it("protects recent call follow-ups during prospect retention and scrubs expired human task content",async()=>{
+      const business=randomUUID(),contact=randomUUID();
+      await pool.query("INSERT INTO crm_businesses(id,workspace_id,name,normalized_phone) VALUES($1,$2,'Retention fixture',$3)",[business,ws,remote]);
+      await pool.query("INSERT INTO contacts(id,workspace_id,business_id,name,phone) VALUES($1,$2,$3,'Retention contact',$4)",[contact,ws,business,remote]);
+      await grant(member.user.id);const r=await suggestedCall(),id=await createCallFollowUpTask(owner,r.input);
+      await pool.query("UPDATE crm_businesses SET updated_at=now()-interval '3 years',retained_until=now()-interval '1 year' WHERE id=$1",[business]);
+      await pool.query("SELECT perform_reporting_retention()");expect((await pool.query("SELECT anonymized_at FROM crm_businesses WHERE id=$1",[business])).rows[0].anonymized_at).toBeNull();
+      await pool.query("UPDATE crm_tasks SET updated_at=now()-interval '3 years',due_at=now()-interval '3 years',completion_outcome='Old private outcome' WHERE id=$1",[id]);
+      await pool.query("SELECT perform_reporting_retention()");const task=(await pool.query("SELECT title,notes,completion_outcome,status FROM crm_tasks WHERE id=$1",[id])).rows[0];expect(task).toEqual({title:"Expired follow-up",notes:null,completion_outcome:null,status:"cancelled"});
+    });
+    it("preserves the reporting function in an older retention chain during the task upgrade",async()=>{
+      const sql=await readFile("db/migrations/0015_call_follow_up_tasks.sql","utf8");
+      const guard=sql.slice(sql.indexOf("DO $call_task_retention_upgrade$"),sql.indexOf("CREATE OR REPLACE FUNCTION perform_reporting_retention_before_inbox"));
+      const db=await pool.connect(),schema="call_task_upgrade_"+randomUUID().replaceAll("-","");
+      try {
+        await db.query("BEGIN");await db.query(`CREATE SCHEMA "${schema}"`);await db.query(`SET LOCAL search_path="${schema}"`);
+        await db.query("CREATE FUNCTION perform_reporting_retention_before_inbox() RETURNS void LANGUAGE plpgsql AS $$ BEGIN PERFORM 1; END $$");
+        await db.query(guard);await db.query(guard);
+        const result=(await db.query("SELECT pg_get_functiondef('perform_reporting_retention_before_agency_sales()'::regprocedure) body")).rows[0];expect(result.body).toContain("PERFORM 1");expect((await db.query("SELECT to_regprocedure('perform_reporting_retention_before_inbox()') value")).rows[0].value).toBeNull();
+      } finally {await db.query("ROLLBACK");db.release();}
+    });
     it("records new calls automatically without an announcement, snapshots preferences and skips voicemail-only calls",async()=>{
       const line=(await getVoiceWorkspace(owner)).lines[0];expect(line.recordCalls).toBe(true);expect(line.recordingAnnouncement).toBe(false);
       const call=await recordedCall();

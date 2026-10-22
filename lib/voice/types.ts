@@ -82,4 +82,5 @@ export type CallRecording = {
   analysisStatus: string; analysisError: string | null;
   analysisAvailable?: boolean;
   transcript: string | null; summary: CallSummary | null;
+  followUpTasks?: {suggestionIndex:number;taskId:string;status:string}[];
 };

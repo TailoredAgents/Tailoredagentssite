@@ -23,7 +23,7 @@ export function ConversationContextPanel({ record, data, readOnly }: { record: C
     <section className="conversation-context-section"><h3><CalendarClock size={16} aria-hidden="true" />Next action</h3>
       {context.nextTask ? <div className="conversation-next-action"><span>{context.nextTask.kind === "appointment" ? "Appointment" : "Follow-up"}</span><strong>{context.nextTask.title}</strong><InboxTime value={context.nextTask.dueAt} /></div> : <p className="conversation-muted">No scheduled follow-up or appointment.</p>}
       {conversation.remindAt ? <div className="conversation-reminder"><CalendarClock size={14} aria-hidden="true" /><span>Inbox reminder<br /><InboxTime value={conversation.remindAt} /></span></div> : null}
-      {context.opportunityId ? <Link className="conversation-text-link" href={`/dashboard/sales/${context.opportunityId}`}>Manage follow-ups<ArrowUpRight size={15} aria-hidden="true" /></Link> : null}
+      {context.nextTask?.href ? <Link className="conversation-text-link" href={context.nextTask.href}>Manage follow-up<ArrowUpRight size={15} aria-hidden="true"/></Link> : context.opportunityId ? <Link className="conversation-text-link" href={`/dashboard/sales/${context.opportunityId}`}>Manage follow-ups<ArrowUpRight size={15} aria-hidden="true" /></Link> : null}
     </section>
 
     {(context.opportunityId || context.clientId || context.projectId || context.mockup) ? <section className="conversation-context-section"><h3><FolderKanban size={16} aria-hidden="true" />Relationship</h3>

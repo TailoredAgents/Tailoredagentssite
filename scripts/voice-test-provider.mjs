@@ -103,7 +103,8 @@ createServer(async (request, response) => {
       }
       const stored = (await pool.query("SELECT c.id,c.status,c.direction,c.answered_at,v.id AS voicemail_id,v.status AS voicemail_status FROM voice_calls c LEFT JOIN voice_voicemails v ON v.call_id=c.id ORDER BY c.created_at")).rows;
       const presence = (await pool.query("SELECT user_id FROM voice_presence WHERE available AND updated_at>now()-interval '60 seconds'")).rows;
-      return reply(response, { connects, devices: [...devices], presence, mediaReads, deletes, accepts, stored, lineId });
+      const tasks=(await pool.query("SELECT id,title,owner_user_id,due_at,status FROM crm_tasks ORDER BY created_at")).rows;
+      return reply(response, { connects, devices: [...devices], presence, mediaReads, deletes, accepts, stored, lineId, tasks });
     }
     if (request.url === "/browser") {
       if (input.action === "register") devices.add(input.identity);

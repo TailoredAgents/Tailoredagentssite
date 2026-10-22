@@ -2,6 +2,7 @@ import "server-only";
 import type { DashboardContext } from "@/lib/dashboard/data";
 import { getDatabasePool } from "@/lib/dashboard/db";
 import { getWorkspaceMembers } from "@/lib/operations/data";
+import { getVoiceConfiguration } from "@/lib/voice-provider/config";
 import {
   salesStages,
   type SalesFilters,
@@ -59,7 +60,7 @@ function opportunity(row: OpportunityRow): SalesOpportunity {
     closedAt: row.closedAt?.toISOString() ?? null,
   };
 }
-const taskSelect = `SELECT t.id,t.opportunity_id AS "opportunityId",b.name AS "businessName",o.title AS "opportunityTitle",t.owner_user_id AS "ownerId",u.name AS "ownerName",t.kind,t.title,t.due_at AS "dueAt",t.end_at AS "endAt",t.location,t.notes,t.status FROM crm_tasks t JOIN crm_opportunities o ON o.id=t.opportunity_id AND o.workspace_id=t.workspace_id JOIN crm_businesses b ON b.id=o.business_id AND b.workspace_id=t.workspace_id LEFT JOIN "user" u ON u.id=t.owner_user_id`;
+const taskSelect = `SELECT t.id,t.opportunity_id AS "opportunityId",COALESCE(b.name,cb.name,p.name,s.external_addresses[1],'Customer') AS "businessName",COALESCE(o.title,'Call follow-up') AS "opportunityTitle",t.owner_user_id AS "ownerId",u.name AS "ownerName",t.kind,t.title,t.due_at AS "dueAt",t.end_at AS "endAt",t.location,t.notes,t.status FROM crm_tasks t LEFT JOIN crm_opportunities o ON o.id=t.opportunity_id AND o.workspace_id=t.workspace_id LEFT JOIN crm_businesses b ON b.id=o.business_id AND b.workspace_id=t.workspace_id LEFT JOIN crm_conversation_sources s ON s.id=t.conversation_source_id AND s.workspace_id=t.workspace_id LEFT JOIN crm_conversations c ON c.id=s.conversation_id AND c.workspace_id=s.workspace_id LEFT JOIN contacts p ON p.id=c.contact_id AND p.workspace_id=c.workspace_id LEFT JOIN crm_businesses cb ON cb.id=COALESCE(c.business_id,p.business_id) AND cb.workspace_id=c.workspace_id LEFT JOIN "user" u ON u.id=t.owner_user_id`;
 type TaskRow = Omit<SalesTask, "dueAt" | "endAt"> & {
   dueAt: Date;
   endAt: Date | null;
@@ -285,6 +286,7 @@ export async function getSalesToday(
   scope: "mine" | "team" = "mine",
 ): Promise<SalesToday> {
   await authorizeSales(context);
+  const voice=getVoiceConfiguration();
   const pool = getDatabasePool(),
     values =
       scope === "mine"
@@ -294,8 +296,8 @@ export async function getSalesToday(
     scope === "mine" ? ` AND ${alias}.owner_user_id=$2` : "";
   const [tasks, opps, mockups, members] = await Promise.all([
     pool.query<TaskRow>(
-      `${taskSelect} WHERE t.workspace_id=$1 AND t.status='open' AND t.due_at<=now()+interval '7 days'${ownership("t")} ORDER BY t.due_at LIMIT 100`,
-      values,
+      `${taskSelect} WHERE t.workspace_id=$1 AND t.status='open' AND t.due_at<=now()+interval '7 days' AND (t.conversation_source_id IS NULL OR ($5 AND s.visible AND s.channel='call' AND c.merged_into_id IS NULL AND cb.anonymized_at IS NULL AND EXISTS(SELECT 1 FROM voice_conversations vc JOIN voice_lines l ON l.id=vc.line_id AND l.workspace_id=vc.workspace_id JOIN voice_line_grants g ON g.line_id=l.id AND g.workspace_id=l.workspace_id WHERE vc.id=s.voice_conversation_id AND vc.workspace_id=t.workspace_id AND l.account_sid=$3 AND l.phone=$4 AND g.user_id=$2 AND g.can_read)))${ownership("t")} ORDER BY t.due_at,t.id LIMIT 100`,
+      [context.workspace.id,context.user.id,voice.accountSid,voice.phoneNumber,voice.webhookReady],
     ),
     pool.query<OpportunityRow>(
       `${opportunitySelect} WHERE o.workspace_id=$1 AND o.stage NOT IN ('won','lost','archived')${ownership("o")} ORDER BY CASE WHEN o.stage IN ('interested','discovery','proposal') THEN 0 ELSE 1 END,o.updated_at DESC LIMIT 48`,
