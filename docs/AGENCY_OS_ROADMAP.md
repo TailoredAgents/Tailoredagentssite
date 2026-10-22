@@ -10,6 +10,8 @@ The project owner supplied the existing SMS/voice-capable number **+16785417725*
 
 Unified Inbox website revision **8d23c1f** deployed successfully on October 21 at **9:19:19 p.m. EDT** (October 22, 01:19:19 UTC). [Unified Inbox](UNIFIED_INBOX.md#website-delivery) records the deployment and verification separately from the remaining Mail/Twilio activation.
 
+Calling/voicemail website revision **4f8b887** deployed successfully on October 21 at **10:28:44 p.m. EDT** (October 22, 02:28:44 UTC). [Calling setup and delivery](VOICE_SETUP.md#website-delivery) records 327 code/database tests, 91 passing browser checks across calling/Inbox/SMS/email/dashboard (plus one existing skipped check), populated backup/restore and production route verification. Live Twilio routing, real audio acceptance and connected-call recording/transcripts remain outstanding.
+
 The repository now includes the Twilio SMS adapter, explicit number grants, SMS message store and signed callbacks, plus browser calling, separate voice grants, staff routing/hours and protected voicemail. Connected-call recordings and transcription are not implemented. Source implementation does not establish live provider activation.
 
 Our development queue is:

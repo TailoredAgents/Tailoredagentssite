@@ -41,4 +41,12 @@ The production-built dashboard suite also passed 33 reporting, manual-lead, sale
 
 Synthetic previews: [desktop call](previews/voice-active-desktop.png), [phone call](previews/voice-active-phone.png), [desktop voicemail](previews/voice-desktop.png), [phone voicemail](previews/voice-phone.png).
 
+## Website delivery
+
+Source **4f8b887e1e1d7b2dd5803f9be60b44eaaca445c2** was pushed to `main` and Render reported successful deployment on **October 21, 2026 at 10:28:44 p.m. EDT** (**October 22, 02:28:44 UTC**). GitHub deployment **7242172601**; [Render deployment](https://dashboard.render.com/web/srv-db6hod8473hc739q2uo0/deploys/dep-dbcn8tm1egvs73eu3lhg).
+
+Post-deployment checks passed: public site, sign-in and health returned 200; anonymous Inbox and voicemail-media requests redirected to sign-in; incoming/outbound/staff-answer/status callbacks rejected GET with 405. The public site retained `microphone=()` while private dashboard routes returned `microphone=(self)` and the exact production Twilio CSP hosts without the local test host.
+
+This confirms website delivery and anonymous route boundaries. No production voice line grant, TwiML App configuration, number routing change, real call, voicemail capture or provider/audio acceptance was performed. Those remain the owner's checklist above. Mail deployment and email activation remain Jeffrey's separate handoff.
+
 Provider references: [JavaScript SDK](https://www.twilio.com/docs/voice/sdks/javascript), [Device lifecycle](https://www.twilio.com/docs/voice/sdks/javascript/twiliodevice), [Dial](https://www.twilio.com/docs/voice/twiml/dial), [Record](https://www.twilio.com/docs/voice/twiml/record), [SDK CSP hosts](https://github.com/twilio/twilio-voice.js#content-security-policy).
