@@ -1,5 +1,7 @@
 # Browser calling and voicemail
 
+**October 22 current state:** the owner reports live calling and two-way SMS are working. The connected-call recording/analysis increment is documented in [CALL_RECORDINGS.md](CALL_RECORDINGS.md). It supersedes the original voicemail-only recording limitation below: new calls default to automatic recording with the announcement off, as requested. OpenAI analysis configuration and new recording acceptance are separate owner steps. The original increment's setup and release evidence follows for reference.
+
 This increment adds direct one-to-one calls and voicemail to the existing customer Inbox. It does not activate the owner's Twilio account, modify the number's provider routing, place acceptance calls, or enable connected-call recording/transcription. Jeffrey's outstanding handoff remains email only. BatchDialer remains the campaign dialer.
 
 ## Implemented behavior

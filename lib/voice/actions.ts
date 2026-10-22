@@ -6,6 +6,7 @@ import { VoiceAccessError, VoiceInputError, getVoiceCall } from "./data";
 import { VoiceProviderError } from "@/lib/voice-provider/provider";
 import * as service from "./service";
 import type { VoiceActionState } from "./types";
+import { saveRecordingPreferences, requestCallAnalysis, deleteCallRecording } from "./recordings";
 function failure(e: unknown): VoiceActionState {
   return {
     status: "error",
@@ -35,6 +36,9 @@ async function change(
       "canCall",
       "canReceive",
       "canManageVoicemail",
+      "recordCalls",
+      "recordingAnnouncement",
+      "autoTranscribe",
     ])
       i[key] = form.get(key) === "on" || form.get(key) === "true";
     if (form.has("days"))
@@ -60,6 +64,15 @@ export async function saveVoiceGrantAction(_: VoiceActionState, f: FormData) {
 }
 export async function saveVoiceRoutingAction(_: VoiceActionState, f: FormData) {
   return change(f, service.saveVoiceRouting, "Call routing updated.");
+}
+export async function saveRecordingPreferencesAction(_: VoiceActionState, f: FormData) {
+  return change(f,saveRecordingPreferences,"Call recording preferences updated. Changes apply to new calls.");
+}
+export async function requestCallAnalysisAction(_: VoiceActionState, f: FormData) {
+  return change(f,requestCallAnalysis,"Transcript and summary queued.");
+}
+export async function deleteCallRecordingAction(_: VoiceActionState, f: FormData) {
+  return change(f,(context,input)=>deleteCallRecording(context,String(input.recordingId||"")),"Recording deletion requested. Audio and analysis are now hidden.");
 }
 export async function deleteVoicemailAction(_: VoiceActionState, f: FormData) {
   return change(

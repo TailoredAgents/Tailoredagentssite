@@ -6,6 +6,30 @@
 .voice-button:disabled { cursor: default; opacity: .6; }
 .voice-icon-button { width: 40px; min-height: 40px; padding: 8px; }
 .voice-phone-panel *, .voice-settings-panel *, .voice-call-card *, .voice-call-composer * { box-sizing: border-box; }
+.voice-recording { margin-top: 16px; padding: 14px; border: 1px solid var(--workspace-line); border-radius: 9px; background: var(--workspace-surface); min-width: 0; }
+.voice-recording > header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.voice-recording h4 { display: flex; align-items: center; gap: 7px; margin: 0; color: var(--workspace-ink); font-size: 14px; font-weight: 650; }
+.voice-recording > header > span { color: var(--workspace-muted); font-size: 14px; text-transform: capitalize; }
+.voice-recording audio { display: block; width: 100%; max-width: 100%; height: 42px; margin-top: 12px; }
+.voice-call-analysis { display: grid; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--workspace-line); }
+.voice-analysis-disclosure > summary { display: flex; align-items: center; gap: 7px; min-height: 44px; color: var(--workspace-blue); font-size: 14px; cursor: pointer; }
+.voice-analysis-disclosure .voice-call-analysis { margin-top: 0; }
+.voice-analysis-summary { display: grid; gap: 12px; color: var(--workspace-ink); font-size: 14px; line-height: 1.65; }
+.voice-analysis-summary p { margin: 0; }
+.voice-analysis-summary small { color: var(--workspace-muted); font-size: 14px; }
+.voice-call-analysis details > summary { cursor: pointer; min-height: 36px; color: var(--workspace-blue); font-size: 14px; line-height: 1.6; }
+.voice-call-analysis blockquote { margin: 6px 0 12px; padding: 10px 12px; border-left: 3px solid var(--workspace-control-line); border-radius: 0 6px 6px 0; background: var(--workspace-soft); color: var(--workspace-ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+.voice-transcript > summary { display: flex; align-items: center; gap: 7px; }
+.voice-transcript > div { max-height: 340px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 12px; border: 1px solid var(--workspace-line); border-radius: 6px; background: var(--workspace-field); color: var(--workspace-ink); font-size: 14px; line-height: 1.7; }
+.voice-suggested-follow-up { display: grid; gap: 6px; margin-top: 10px; }
+.voice-suggested-follow-up label { display: grid; gap: 6px; color: var(--workspace-muted); font-size: 14px; }
+.voice-suggested-follow-up textarea { width: 100%; min-width: 0; min-height: 74px; padding: 9px 10px; resize: vertical; border: 1px solid var(--workspace-control-line); border-radius: 7px; color: var(--workspace-ink); background: var(--workspace-field); font: 16px/1.5 var(--font-sans); }
+.voice-suggested-follow-up > span { color: var(--workspace-muted); font-size: 14px; }
+.voice-analysis-form .dashboard-form-footer { margin-top: 0; }
+.voice-analysis-form .dashboard-form-footer button { padding: 9px 12px; font-size: 14px; }
+.voice-recording-settings { margin-top: 26px; padding-top: 24px; border-top: 1px solid var(--workspace-line); }
+.voice-recording-settings > fieldset { display: grid; gap: 14px; }
+.voice-recording-settings h4 { margin: 0; color: var(--workspace-ink); font-size: 16px; }
 :is(.voice-phone-panel, .voice-settings-panel, .voice-call-composer, .voice-call-card) :is(button, a, input, select, textarea):focus-visible { outline: 3px solid var(--workspace-control-line); outline-offset: 3px; }
 .voice-launcher { position: fixed; z-index: 80; right: 22px; bottom: 18px; display: flex; align-items: center; gap: 8px; min-height: 44px; max-width: calc(100vw - 32px); padding: 10px 14px; border: 1px solid var(--workspace-line); border-radius: 9px; background: var(--workspace-surface); color: var(--workspace-muted); box-shadow: 0 4px 18px var(--workspace-shadow-ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .voice-launcher.has-call { border-color: var(--workspace-success); background: var(--workspace-success-solid); color: var(--workspace-on-primary); }

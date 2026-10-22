@@ -33,6 +33,8 @@ import {
 } from "./service";
 import { getVoiceWorkspace, getVoiceCall } from "./data";
 import { runVoiceMaintenance } from "./maintenance";
+import { receiveCallRecording, saveRecordingPreferences, getCallRecordingDownload, requestCallAnalysis, deleteCallRecording } from "./recordings";
+import { runCallRecordingWorker } from "./recording-worker";
 import {
   listConversationWorkspace,
   loadConversationSourceHistory,
@@ -48,13 +50,19 @@ const provider = vi.hoisted(() => ({
   remove: vi.fn(),
   token: vi.fn(),
   end: vi.fn(),
+  recording: vi.fn(), media: vi.fn(), deleteRecording: vi.fn(), findRecording: vi.fn(), transcribe: vi.fn(), summarize: vi.fn(),
 }));
 vi.mock("@/lib/voice-provider/provider", () => ({
   lookupOwnedVoiceNumber: provider.lookup,
   fetchVoiceCall: provider.fetch,
   deleteVoicemailMedia: provider.remove,
   endVoiceCall: provider.end,
+  fetchCallRecording: provider.recording,
+  fetchCallRecordingMedia: provider.media,
+  deleteCallRecordingMedia: provider.deleteRecording,
+  findCallRecording: provider.findRecording,
 }));
+vi.mock("./analysis-provider",async(importOriginal)=>({...(await importOriginal<typeof import("./analysis-provider")>()),transcribeCallAudio:provider.transcribe,summarizeCallTranscript:provider.summarize}));
 vi.mock("@/lib/voice-provider/token", () => ({
   createVoiceAccessToken: provider.token,
   voiceIdentity: (ws: string, user: string) =>
@@ -242,6 +250,10 @@ describe.skipIf(!url)(
         expiresAt: new Date(Date.now() + 300000).toISOString(),
       });
       lineId = await connectVoiceLine(owner, { phone });
+      provider.recording.mockReset();provider.media.mockReset();provider.deleteRecording.mockReset();provider.findRecording.mockReset();provider.transcribe.mockReset();provider.summarize.mockReset();
+      provider.deleteRecording.mockResolvedValue({deleted:true});
+      provider.findRecording.mockResolvedValue(null);
+      vi.stubEnv("CALL_ANALYSIS_ENABLED","false");vi.stubEnv("OPENAI_API_KEY","");
       await allHours();
     });
     afterAll(async () => {
@@ -252,6 +264,70 @@ describe.skipIf(!url)(
         }
       ).tailoredAgentsDatabasePool = undefined;
       vi.unstubAllEnvs();
+    });
+    async function recordedCall(n=77) {
+      const intent=await reserve();
+      await receiveVoiceOutbound({AccountSid:account,CallSid:sid(n),From:`client:${identity()}`,IntentToken:intent.intentToken});
+      provider.recording.mockResolvedValue({recordingSid:rec(n),callSid:sid(n),status:"completed",duration:40,channels:2});
+      await receiveCallRecording(intent.callId,{AccountSid:account,CallSid:sid(n),RecordingSid:rec(n),RecordingStatus:"completed"});
+      const recording=(await getVoiceCall(owner,intent.callId)).recording!;
+      return {callId:intent.callId,id:recording.id,params:{AccountSid:account,CallSid:sid(n),RecordingSid:rec(n),RecordingStatus:"completed"}};
+    }
+    it("records new calls automatically without an announcement, snapshots preferences and skips voicemail-only calls",async()=>{
+      const line=(await getVoiceWorkspace(owner)).lines[0];expect(line.recordCalls).toBe(true);expect(line.recordingAnnouncement).toBe(false);
+      const call=await recordedCall();
+      await saveRecordingPreferences(owner,{lineId,recordCalls:false,recordingAnnouncement:true,autoTranscribe:false});
+      expect((await pool.query("SELECT recording_requested,recording_announcement FROM voice_calls WHERE id=$1",[call.callId])).rows[0]).toEqual({recording_requested:true,recording_announcement:false});
+      await expect(saveRecordingPreferences(member,{lineId,recordCalls:true,recordingAnnouncement:false,autoTranscribe:true})).rejects.toThrow();
+      const another=await reserve();const response=await receiveVoiceOutbound({AccountSid:account,CallSid:sid(78),From:`client:${identity()}`,IntentToken:another.intentToken});expect(response.recordCalls).toBe(false);
+      const voicemailCall=await incoming(79);expect((await getVoiceCall(owner,voicemailCall.callId)).recording).toBeNull();
+      await saveRecordingPreferences(owner,{lineId,recordCalls:true,recordingAnnouncement:false,autoTranscribe:false});
+      const unanswered=await reserve();await receiveVoiceOutbound({AccountSid:account,CallSid:sid(81),From:`client:${identity()}`,IntentToken:unanswered.intentToken});
+      await receiveVoiceDialAction(unanswered.callId,{AccountSid:account,CallSid:sid(81),DialCallStatus:"no-answer",DialCallDuration:"0"});expect((await getVoiceCall(owner,unanswered.callId)).recording?.status).toBe("absent");
+    });
+    it("binds recording identity and rechecks live access, expiry, workspace and media deletion grants",async()=>{
+      const r=await recordedCall();await grant("voice-reader");
+      expect(await getCallRecordingDownload(reader,r.id)).toEqual({recordingSid:rec(77),callSid:sid(77)});
+      await expect(getCallRecordingDownload(actor("voice-other",otherWs),r.id)).rejects.toThrow();
+      await expect(deleteCallRecording(reader,r.id)).rejects.toThrow();
+      await expect(receiveCallRecording(r.callId,{...r.params,CallSid:sid(99)})).rejects.toThrow();
+      await expect(receiveCallRecording(r.callId,{...r.params,RecordingSid:rec(88)})).rejects.toThrow();
+      await pool.query("DELETE FROM voice_line_grants WHERE user_id='voice-reader'");await expect(getCallRecordingDownload(reader,r.id)).rejects.toThrow();
+      await pool.query("UPDATE voice_call_recordings SET expires_at=now()-interval '1 second',transcript='Private expired text',summary='{}' WHERE id=$1",[r.id]);
+      const expired=(await getVoiceCall(owner,r.callId)).recording!;expect(expired.status).toBe("expired");expect(expired.transcript).toBeNull();expect(expired.summary).toBeNull();await expect(getCallRecordingDownload(owner,r.id)).rejects.toThrow();
+    });
+    it("checkpoints transcripts, deduplicates callbacks/jobs, and completes a later summary stage",async()=>{
+      vi.stubEnv("CALL_ANALYSIS_ENABLED","true");vi.stubEnv("OPENAI_API_KEY","synthetic-test-key");const r=await recordedCall();
+      provider.media.mockImplementation(async()=>new Response("synthetic audio"));provider.transcribe.mockResolvedValue({text:"Please send a website proposal.",model:"gpt-transcribe"});provider.summarize.mockResolvedValue({summary:{summary:"Website inquiry",highlights:[],followUps:[{text:"Draft a proposal",quote:"Please send a website proposal."}]},model:"gpt-6-luna"});
+      const outcomes=await Promise.all([runCallRecordingWorker(),runCallRecordingWorker()]);expect(outcomes.reduce((sum,x)=>sum+x.failed,0)).toBe(0);
+      expect(provider.transcribe).toHaveBeenCalledTimes(1);
+      await receiveCallRecording(r.callId,r.params);
+      await runCallRecordingWorker();
+      const call=(await getVoiceCall(owner,r.callId)).recording!;expect(call.transcript).toContain("website proposal");expect(call.summary?.followUps).toHaveLength(1);expect(call.analysisStatus).toBe("ready");expect(provider.transcribe).toHaveBeenCalledTimes(1);expect(provider.summarize).toHaveBeenCalledTimes(1);
+      await expect(requestCallAnalysis(owner,{recordingId:r.id})).rejects.toThrow();
+    });
+    it("preserves a successful transcript on summary failure and bounds explicit paid retries",async()=>{
+      vi.stubEnv("CALL_ANALYSIS_ENABLED","true");vi.stubEnv("OPENAI_API_KEY","synthetic-test-key");const r=await recordedCall();
+      provider.media.mockImplementation(async()=>new Response("synthetic audio"));provider.transcribe.mockResolvedValue({text:"Customer text.",model:"gpt-transcribe"});provider.summarize.mockRejectedValue(new Error("synthetic failure"));
+      await runCallRecordingWorker();for(let i=0;i<3;i++){await runCallRecordingWorker();if(i<2)await requestCallAnalysis(owner,{recordingId:r.id});}
+      expect(provider.transcribe).toHaveBeenCalledTimes(1);expect(provider.summarize).toHaveBeenCalledTimes(3);expect((await getVoiceCall(owner,r.callId)).recording?.transcript).toBe("Customer text.");await expect(requestCallAnalysis(owner,{recordingId:r.id})).rejects.toThrow();
+    });
+    it("cannot resurrect deleted analysis after an in-flight provider request or callback",async()=>{
+      vi.stubEnv("CALL_ANALYSIS_ENABLED","true");vi.stubEnv("OPENAI_API_KEY","synthetic-test-key");const r=await recordedCall();
+      provider.media.mockImplementation(async()=>new Response("synthetic audio"));provider.transcribe.mockImplementation(async()=>{await deleteCallRecording(owner,r.id);return{text:"Do not resurrect this.",model:"gpt-transcribe"};});
+      await runCallRecordingWorker();await receiveCallRecording(r.callId,r.params);
+      const row=(await getVoiceCall(owner,r.callId)).recording!;expect(row.status).toBe("deleted");expect(row.transcript).toBeNull();expect(row.summary).toBeNull();expect(row.canPlay).toBe(false);
+    });
+    it("erases expired analysis and retries failed provider deletion without exposing audio",async()=>{
+      const r=await recordedCall();await pool.query("UPDATE voice_call_recordings SET expires_at=now()-interval '1 day',transcript='private',summary='{}' WHERE id=$1",[r.id]);
+      provider.deleteRecording.mockRejectedValueOnce(new Error("synthetic failure"));expect((await runCallRecordingWorker()).failed).toBe(1);expect((await getVoiceCall(owner,r.callId)).recording?.transcript).toBeNull();
+      await pool.query("UPDATE voice_call_recordings SET delete_after=now() WHERE id=$1",[r.id]);await runCallRecordingWorker();expect((await getVoiceCall(owner,r.callId)).recording?.status).toBe("deleted");expect(provider.deleteRecording).toHaveBeenCalledTimes(2);
+    });
+    it("recovers a completed recording when its callback was missed",async()=>{
+      const intent=await reserve();await receiveVoiceOutbound({AccountSid:account,CallSid:sid(80),From:`client:${identity()}`,IntentToken:intent.intentToken});
+      await pool.query("UPDATE voice_calls SET ended_at=now() WHERE id=$1",[intent.callId]);await pool.query("UPDATE voice_call_recordings SET poll_after=now() WHERE call_id=$1",[intent.callId]);
+      const result={recordingSid:rec(80),callSid:sid(80),status:"completed",duration:30,channels:2};provider.findRecording.mockResolvedValue(result);provider.recording.mockResolvedValue(result);
+      await runCallRecordingWorker();expect((await getVoiceCall(owner,intent.callId)).recording?.canPlay).toBe(true);
     });
     it("verifies capability, grants only connector, does not inherit SMS, and rejects forged roles", async () => {
       expect((await getVoiceWorkspace(member)).lines).toHaveLength(0);

@@ -89,6 +89,18 @@ createServer(async (request, response) => {
       if (input.action === "close-hours") await pool.query("UPDATE voice_lines SET hours_days=ARRAY[]::integer[] WHERE id=$1", [lineId]);
       if (input.action === "incoming") return reply(response, await incoming());
       if (input.action === "voicemail") return reply(response, await voicemail(await incoming()));
+      if (input.action === "connected-recording") {
+        const parent=[...calls.values()].find(call=>call.callId===connects.at(-1)?.callId && !call.parent_call_sid);
+        if (!parent) throw new Error("Make a synthetic outbound call first");
+        const recordingSid=sid("RE");
+        recordings.set(recordingSid,{sid:recordingSid,account_sid:account,call_sid:parent.sid,source:"DialVerb",channels:2,duration:"35",status:"completed"});
+        const result=await callback(`${origin}/api/integrations/twilio/voice/recordings?call=${parent.callId}`,{AccountSid:account,CallSid:parent.sid,RecordingSid:recordingSid,RecordingStatus:"completed",RecordingSource:"DialVerb",RecordingDuration:"35"});
+        if(result.status!==200)throw new Error(`Connected recording ${result.status}`);
+        const recording=(await pool.query("SELECT id FROM voice_call_recordings WHERE call_id=$1",[parent.callId])).rows[0];
+        const quote="Please send a website proposal next week.";
+        await pool.query("UPDATE voice_call_recordings SET transcript=$2,summary=$3,analysis_status='ready' WHERE id=$1",[recording.id,quote,JSON.stringify({summary:"Jordan requested a website proposal for next week.",highlights:[{text:"Website development inquiry",quote}],followUps:[{text:"Prepare the website proposal for Jordan.",quote}]})]);
+        return reply(response,{recordingId:recording.id});
+      }
       const stored = (await pool.query("SELECT c.id,c.status,c.direction,c.answered_at,v.id AS voicemail_id,v.status AS voicemail_status FROM voice_calls c LEFT JOIN voice_voicemails v ON v.call_id=c.id ORDER BY c.created_at")).rows;
       const presence = (await pool.query("SELECT user_id FROM voice_presence WHERE available AND updated_at>now()-interval '60 seconds'")).rows;
       return reply(response, { connects, devices: [...devices], presence, mediaReads, deletes, accepts, stored, lineId });
@@ -103,7 +115,7 @@ createServer(async (request, response) => {
         const number = result.body.match(/<Number\b[^>]*>([^<]+)<\/Number>/)?.[1];
         if (result.status !== 200 || !number) throw new Error(`Outgoing denied ${result.status}`);
         const statusUrl = attr(result.body.match(/<Number\b[^>]*>/)?.[0] || "", "statusCallback"), callId = new URL(statusUrl).searchParams.get("call");
-        const parent = { id, callId, from: `client:${input.identity}`, to: "", sid: id, account_sid: account, parent_call_sid: null, status: "in-progress", duration: "0", direction: "inbound" };
+        const parent = { id, callId, from: `client:${input.identity}`, to: "", sid: id, account_sid: account, parent_call_sid: null, status: "in-progress", duration: "0", direction: "inbound", xml:result.body };
         const child = { ...parent, id: sid("CA"), from: phone, to: number, parent_call_sid: id, direction: "outbound-dial" }; child.sid = child.id;
         calls.set(id, parent); calls.set(child.id, child); connects.push({ callId, to: number, keys: Object.keys(input.params) });
         const accepted = await callback(statusUrl, { AccountSid: account, CallSid: child.id, ParentCallSid: id, From: phone, To: number, CallStatus: "in-progress" });

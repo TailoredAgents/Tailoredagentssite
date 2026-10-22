@@ -20,6 +20,8 @@ export function outboundCallTwiml(input: {
   callId: string;
   from: string;
   to: string;
+  recordCalls?: boolean;
+  recordingAnnouncement?: boolean;
 }) {
   const config = getVoiceConfiguration();
   if (
@@ -31,17 +33,19 @@ export function outboundCallTwiml(input: {
   )
     throw new Error("An authorized calling intent is required.");
   const response = new twilio.twiml.VoiceResponse();
+  if (input.recordCalls && input.recordingAnnouncement) response.say(RECORDING_ANNOUNCEMENT);
   const dial = response.dial({
     callerId: input.from,
     answerOnBridge: true,
     timeout: 25,
     timeLimit: 3600,
-    record: "do-not-record",
+    ...recordingAttributes(input),
     action: voiceCallbackUrl("dial", { callId: input.callId }),
     method: "POST",
   });
   dial.number(
     {
+      ...(input.recordCalls && input.recordingAnnouncement ? { url: voiceCallbackUrl("customerAnswer", { callId: input.callId }), method: "POST" } : {}),
       statusCallback: voiceCallbackUrl("status", {
         callId: input.callId,
         leg: "customer",
@@ -93,6 +97,8 @@ export function inboundCallTwiml(input: {
   voicemail: boolean;
   greeting?: string;
   timeout?: number;
+  recordCalls?: boolean;
+  recordingAnnouncement?: boolean;
 }) {
   if (
     !VOICE_UUID.test(input.callId) ||
@@ -108,6 +114,7 @@ export function inboundCallTwiml(input: {
   if (!input.targets.length)
     return input.voicemail ? voicemailTwiml(input) : hangupTwiml();
   const response = new twilio.twiml.VoiceResponse();
+  if (input.recordCalls && input.recordingAnnouncement) response.say(RECORDING_ANNOUNCEMENT);
   const dial = response.dial({
     answerOnBridge: true,
     timeout: Math.min(
@@ -115,7 +122,7 @@ export function inboundCallTwiml(input: {
       Math.max(10, Number.isInteger(input.timeout) ? input.timeout! : 25),
     ),
     timeLimit: 3600,
-    record: "do-not-record",
+    ...recordingAttributes(input),
     action: voiceCallbackUrl("dial", { callId: input.callId }),
     method: "POST",
   });
@@ -136,5 +143,20 @@ export function inboundCallTwiml(input: {
     client.identity(target.identity);
     client.parameter({ name: "CallId", value: input.callId });
   }
+  return response.toString();
+}
+export const RECORDING_ANNOUNCEMENT = "This call will be recorded by Tailored Agents.";
+function recordingAttributes(input: { callId: string; recordCalls?: boolean }) {
+  return input.recordCalls ? {
+    record: "record-from-answer-dual" as const,
+    recordingStatusCallback: voiceCallbackUrl("recording", { callId: input.callId }),
+    recordingStatusCallbackMethod: "POST" as const,
+    recordingStatusCallbackEvent: ["completed", "absent"] as ("completed" | "absent")[],
+  } : { record: "do-not-record" as const };
+}
+export function recordingAnswerTwiml(announce: boolean) {
+  if (!announce) return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
+  const response = new twilio.twiml.VoiceResponse();
+  if (announce) response.say(RECORDING_ANNOUNCEMENT);
   return response.toString();
 }

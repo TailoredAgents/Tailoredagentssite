@@ -5,9 +5,9 @@ const sdk = vi.hoisted(() => {
     update = vi.fn(),
     recordFetch = vi.fn(),
     remove = vi.fn(),
-    list = vi.fn();
+    list = vi.fn(), recordList=vi.fn();
   const calls = vi.fn(() => ({ fetch: callFetch, update })),
-    recordings = vi.fn(() => ({ fetch: recordFetch, remove }));
+    recordings = Object.assign(vi.fn(() => ({ fetch: recordFetch, remove })),{list:recordList});
   const constructor = vi.fn(() => ({
     calls,
     recordings,
@@ -22,6 +22,7 @@ const sdk = vi.hoisted(() => {
     calls,
     recordings,
     constructor,
+    recordList,
   };
 });
 vi.mock("twilio", () => ({ default: sdk.constructor }));
@@ -33,6 +34,7 @@ import {
   fetchVoicemailRecording,
   lookupOwnedVoiceNumber,
   validMediaRange,
+  fetchCallRecording, fetchCallRecordingMedia, MAX_CALL_MEDIA_BYTES, findCallRecording,
 } from "./provider";
 const account = "AC" + "a".repeat(32),
   key = "SK" + "c".repeat(32),
@@ -65,6 +67,21 @@ const recording = {
   mediaUrl: "https://evil.invalid/media.mp3",
 };
 describe("voice provider transport and private voicemail media", () => {
+  it("accepts only scoped dual-channel Dial recordings and uses a bounded private audio proxy",async()=>{
+    sdk.recordFetch.mockResolvedValue({...recording,source:"DialVerb",channels:2,duration:"3600"});
+    expect((await fetchCallRecording(reference)).duration).toBe(3600);
+    const response=await fetchCallRecordingMedia(reference);expect(response.headers.get("content-disposition")).toContain("call.mp3");expect(response.headers.get("cache-control")).toContain("no-store");expect(await response.text()).toBe("synthetic audio");
+    sdk.recordFetch.mockResolvedValue({...recording,source:"DialVerb",channels:1});await expect(fetchCallRecording(reference)).rejects.toThrow();
+    sdk.recordFetch.mockResolvedValue(recording);await expect(fetchCallRecording(reference)).rejects.toThrow();
+    sdk.recordFetch.mockResolvedValue({...recording,source:"DialVerb",channels:2,callSid:"CA"+"0".repeat(32)});await expect(fetchCallRecording(reference)).rejects.toThrow();
+    expect(()=>validMediaRange(`bytes=0-${MAX_CALL_MEDIA_BYTES+1}`,MAX_CALL_MEDIA_BYTES)).toThrow();
+  });
+  it("discovers only verified Dial audio on the selected call and distinguishes outages from an empty result",async()=>{
+    const dial={...recording,source:"DialVerb",channels:2};sdk.recordList.mockResolvedValue([dial]);sdk.recordFetch.mockResolvedValue(dial);
+    expect((await findCallRecording(sid))?.recordingSid).toBe(recordingSid);expect(sdk.recordList).toHaveBeenCalledWith({callSid:sid,limit:20});
+    sdk.recordList.mockResolvedValue([]);expect(await findCallRecording(sid)).toBeNull();
+    sdk.recordList.mockRejectedValue(new Error("provider unavailable"));await expect(findCallRecording(sid)).rejects.toThrow();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     for (const [keyName, value] of Object.entries({

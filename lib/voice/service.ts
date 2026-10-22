@@ -41,6 +41,7 @@ import {
   recordingSchema,
 } from "./validation";
 import type { VoiceIntent } from "./types";
+import { prepareCallRecording } from "./recordings";
 export { VoiceInputError, VoiceAccessError } from "./data";
 async function tx<T>(
   workspaceId: string,
@@ -538,6 +539,8 @@ type CallRow = {
   created_at: Date;
   answered_at: Date | null;
   ended_at: Date | null;
+  recording_requested: boolean;
+  recording_announcement: boolean;
 };
 async function getCallDb(
   db: Pick<PoolClient, "query">,
@@ -666,7 +669,8 @@ export async function receiveVoiceOutbound(p: Record<string, string>) {
       [c.workspace_id, c.id, sid],
     );
     await refreshSource(db, c.workspace_id, c.voice_conversation_id);
-    return { intentId: id, callId: c.id, from: c.from_phone, to: c.to_phone };
+    const recording = await prepareCallRecording(db, c.workspace_id, c.id);
+    return { intentId: id, callId: c.id, from: c.from_phone, to: c.to_phone, ...recording };
   });
 }
 function inHours(line: LineRow) {
@@ -707,6 +711,7 @@ export async function receiveVoiceIncoming(p: Record<string, string>) {
         sid,
       ])
     ).rows[0];
+    const newCall = !call;
     if (
       call &&
       (call.line_id !== line.id ||
@@ -765,16 +770,22 @@ export async function receiveVoiceIncoming(p: Record<string, string>) {
         );
       }
     }
+    if (newCall && targets.length) {
+      await prepareCallRecording(db,line.workspace_id,call.id);
+      call=await getCallDb(db,line.workspace_id,call.id);
+    }
     return {
       callId: call.id,
       targets,
       voicemail: targets.length === 0,
       greeting: fresh.greeting,
       timeout: fresh.ring_seconds,
+      recordCalls: call.recording_requested,
+      recordingAnnouncement: call.recording_announcement,
     };
   });
 }
-async function callForCallback(
+export async function callForCallback(
   p: Record<string, string>,
   context: { callId?: string; intentId?: string } = {},
 ) {
@@ -991,7 +1002,7 @@ export async function receiveVoiceStaffAnswer(
         (p.ParentCallSid && p.ParentCallSid !== live.parent_sid)
       )
         throw new VoiceInputError("The answering staff identity has changed.");
-      return;
+      return { announce: live.recording_requested && live.recording_announcement };
     }
     const child = sidSchema.parse(p.CallSid);
     if (child === live.parent_sid)
@@ -1012,6 +1023,7 @@ export async function receiveVoiceStaffAnswer(
       [c.workspace_id, c.id, p.CallSid, userId],
     );
     await applyStatus(db, live, "in-progress", null, "staff");
+    return { announce: live.recording_requested && live.recording_announcement };
   });
 }
 export async function acceptVoiceCall(context: DashboardContext, raw: unknown) {
@@ -1044,6 +1056,9 @@ export async function receiveVoiceDialAction(
       throw new VoiceInputError("The dial result does not match this call.");
     const status = statusSchema.parse(p.DialCallStatus),
       duration = durationOf(p.DialCallDuration);
+    if (["busy","no-answer","canceled","failed"].includes(status) && !live.answered_at) {
+      await db.query("UPDATE voice_call_recordings SET status='absent' WHERE workspace_id=$1 AND call_id=$2 AND status='pending' AND recording_sid IS NULL",[c.workspace_id,c.id]);
+    }
     if (p.DialCallSid) {
       await bindLeg(
         db,

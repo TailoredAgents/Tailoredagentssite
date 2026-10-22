@@ -37,6 +37,35 @@ async function openCustomer(page: Page) {
   if (await nav.isVisible()) await nav.getByRole("button", { name: "Thread", exact: true }).click();
 }
 test.beforeEach(async ({ request }) => { await control(request, "reset"); });
+test("keeps protected call recordings, transcripts and editable follow-ups in the conversation",async({page,request},info)=>{
+  await control(request,"voicemail");await signIn(page);await openCustomer(page);
+  await page.getByRole("tab",{name:"Call",exact:true}).click();
+  const composer=page.locator(".voice-call-composer");
+  await composer.getByRole("button",{name:"Connect phone",exact:true}).click();
+  await expect(composer.getByRole("button",{name:"Call now",exact:true})).toBeEnabled();
+  await composer.getByRole("button",{name:"Call now",exact:true}).click();
+  await expect.poll(async()=>(await control(request,"inspect")).connects.length).toBe(1);
+  await control(request,"connected-recording");
+  await page.reload();
+  const recording=page.getByRole("region",{name:"Call recording",exact:true});
+  await recording.getByText("Transcript, summary & follow-ups",{exact:true}).click();
+  await expect(recording.getByText("Jordan requested a website proposal for next week.",{exact:true})).toBeVisible();
+  const audio=recording.getByLabel("Play call recording",{exact:true});
+  const src=await audio.getAttribute("src");expect(src).toMatch(/^\/api\/dashboard\/voice\/recordings\//);
+  const media=await page.request.get(src!);expect(media.status()).toBe(200);expect(media.headers()["cache-control"]).toContain("no-store");
+  await recording.getByText("Full transcript",{exact:true}).click();
+  await expect(recording.locator(".voice-transcript > div")).toContainText("Please send a website proposal next week.");
+  await recording.getByText("Full transcript",{exact:true}).click();
+  const followUp=recording.getByLabel("Suggested follow-up 1",{exact:true});await followUp.fill("Prepare a website and AI receptionist proposal.");await expect(followUp).toHaveValue("Prepare a website and AI receptionist proposal.");
+  expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze()).violations).toEqual([]);
+  await recording.getByText("Transcript, summary & follow-ups",{exact:true}).click();
+  await page.locator(".conversation-timeline").evaluate(node=>{const recording=node.querySelector(".voice-recording");if(recording)node.scrollTop+=recording.getBoundingClientRect().top-node.getBoundingClientRect().top-10;});
+  await page.locator(".conversation-details-pane").evaluate(node=>{node.scrollTop=0;});
+  await page.screenshot({path:dashboardPreviewPath(`call-recording-${info.project.name}.png`),fullPage:true,style:"nextjs-portal{display:none!important;}"});
+  await recording.getByRole("button",{name:"Delete recording & analysis",exact:true}).click();
+  await recording.getByRole("button",{name:"Confirm recording deletion",exact:true}).click();
+  await expect(audio).toHaveCount(0);await expect(recording.getByText("Jordan requested a website proposal for next week.",{exact:true})).toHaveCount(0);expect((await page.request.get(src!)).status()).not.toBe(200);
+});
 
 test("makes one durable outbound call, mutes and retains it through client navigation", async ({ page, request }, info) => {
   await control(request, "voicemail"); await signIn(page); await openCustomer(page);

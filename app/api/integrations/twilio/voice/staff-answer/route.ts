@@ -3,17 +3,17 @@ import {
   handleVoiceWebhook,
   VoiceWebhookError,
 } from "@/lib/voice-provider/webhook";
-import { hangupTwiml } from "@/lib/voice-provider/twiml";
+import { hangupTwiml, recordingAnswerTwiml } from "@/lib/voice-provider/twiml";
 import { voiceServiceCall } from "@/lib/voice-provider/route-errors";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   return handleVoiceWebhook(request, "staffAnswer", async (params, context) => {
     try {
-      await voiceServiceCall(() =>
+      const result = await voiceServiceCall(() =>
         receiveVoiceStaffAnswer(context.callId!, context.userId!, params),
       );
-      return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
+      return recordingAnswerTwiml(Boolean(result?.announce));
     } catch (error) {
       if (
         error instanceof VoiceWebhookError &&

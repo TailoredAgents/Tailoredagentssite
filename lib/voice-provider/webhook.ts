@@ -185,13 +185,13 @@ export async function validateVoiceWebhook(
   )
     throw new VoiceWebhookError(400, "invalid_call");
   if (
-    kind === "voicemail" &&
+    (kind === "voicemail" || kind === "recording") &&
     (!RECORDING_SID.test(params.RecordingSid ?? "") ||
       !["completed", "absent", "failed", "in-progress"].includes(
         params.RecordingStatus ?? "",
       ) ||
       (params.RecordingSource !== undefined &&
-        params.RecordingSource !== "RecordVerb"))
+        params.RecordingSource !== (kind === "recording" ? "DialVerb" : "RecordVerb")))
   )
     throw new VoiceWebhookError(400, "invalid_voicemail");
   return { params, context };

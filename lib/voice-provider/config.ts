@@ -9,6 +9,8 @@ export const VOICE_PATHS = {
   voicemail: "/api/integrations/twilio/voice/voicemail",
   voicemailComplete: "/api/integrations/twilio/voice/voicemail-complete",
   staffAnswer: "/api/integrations/twilio/voice/staff-answer",
+  recording: "/api/integrations/twilio/voice/recordings",
+  customerAnswer: "/api/integrations/twilio/voice/customer-answer",
 } as const;
 export const CALL_SID = /^CA[0-9a-f]{32}$/i;
 export const RECORDING_SID = /^RE[0-9a-f]{32}$/i;

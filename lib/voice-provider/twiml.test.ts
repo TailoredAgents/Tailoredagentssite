@@ -20,6 +20,12 @@ describe("bounded voice TwiML", () => {
       vi.stubEnv(key, value);
   });
   afterEach(() => vi.unstubAllEnvs());
+  it("automatically records both directions with no announcement when that preference is off",()=>{
+    const outbound=outboundCallTwiml({callId,intentId:callId,from:"+15555550123",to:"+15555550456",recordCalls:true,recordingAnnouncement:false});
+    const inbound=inboundCallTwiml({callId,targets:[{identity,userId:"actor:123"}],voicemail:true,recordCalls:true,recordingAnnouncement:false});
+    for(const xml of [outbound,inbound]) {expect(xml).toContain('record="record-from-answer-dual"');expect(xml).toContain(`/recordings?call=${callId}`);expect(xml).not.toContain("<Say");}
+    const announced=outboundCallTwiml({callId,intentId:callId,from:"+15555550123",to:"+15555550456",recordCalls:true,recordingAnnouncement:true});expect(announced).toContain("This call will be recorded");expect(announced).toContain("customer-answer?call=");
+  });
   it("dials only the authorized phone with fixed callbacks and explicit no connected-call recording", () => {
     const xml = outboundCallTwiml({
       callId,

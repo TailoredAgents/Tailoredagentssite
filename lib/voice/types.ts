@@ -10,6 +10,9 @@ export type VoiceLine = {
   timezone: string;
   businessHours: { start: string; end: string; days: number[] };
   ringSeconds: number;
+  recordCalls: boolean;
+  recordingAnnouncement: boolean;
+  autoTranscribe: boolean;
 };
 export type VoiceGrant = {
   userId: string;
@@ -58,6 +61,7 @@ export type VoiceCall = {
   createdAt: string;
   answeredAt: string | null;
   endedAt: string | null;
+  recording?: CallRecording | null;
   voicemail: {
     id: string;
     status: string;
@@ -66,4 +70,16 @@ export type VoiceCall = {
     canPlay: boolean;
     canDelete: boolean;
   } | null;
+};
+export type CallSummary = {
+  summary: string;
+  highlights: { text: string; quote: string }[];
+  followUps: { text: string; quote: string }[];
+};
+export type CallRecording = {
+  id: string; status: string; duration: number | null; expiresAt: string;
+  canPlay: boolean; canDelete: boolean;
+  analysisStatus: string; analysisError: string | null;
+  analysisAvailable?: boolean;
+  transcript: string | null; summary: CallSummary | null;
 };

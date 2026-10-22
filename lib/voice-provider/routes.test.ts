@@ -29,7 +29,9 @@ vi.mock("@/lib/dashboard/data", () => ({
 vi.mock("@/lib/voice-provider/provider", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./provider")>()),
   fetchVoicemailMedia: service.media,
+  fetchCallRecordingMedia: service.media,
 }));
+vi.mock("@/lib/voice/recordings",()=>({receiveCallRecording:service.record,getCallRecordingDownload:service.download}));
 import { VoiceAccessError, VoiceInputError } from "@/lib/voice/data";
 import { POST as outbound } from "@/app/api/integrations/twilio/voice/outbound/route";
 import { POST as incoming } from "@/app/api/integrations/twilio/voice/incoming/route";
@@ -39,6 +41,8 @@ import { POST as record } from "@/app/api/integrations/twilio/voice/voicemail/ro
 import { POST as complete } from "@/app/api/integrations/twilio/voice/voicemail-complete/route";
 import { POST as staff } from "@/app/api/integrations/twilio/voice/staff-answer/route";
 import { GET as media } from "@/app/api/dashboard/voice/voicemails/[id]/route";
+import { GET as callMedia } from "@/app/api/dashboard/voice/recordings/[id]/route";
+import { POST as callRecording } from "@/app/api/integrations/twilio/voice/recordings/route";
 const origin = "https://agency.example.test",
   account = "AC" + "a".repeat(32),
   auth = "b".repeat(32),
@@ -247,6 +251,19 @@ describe("voice signed route boundaries and protected audio", () => {
     expect(log).toHaveBeenCalledExactlyOnceWith(
       JSON.stringify({ event: "voice_webhook_unavailable" }),
     );
+  });
+  it("authenticates connected-call recording callbacks and rejects voicemail-source substitution",async()=>{
+    const fields={...params,RecordingSid:"RE"+"a".repeat(32),RecordingStatus:"completed",RecordingSource:"DialVerb"};
+    expect((await callRecording(signed(`recordings?call=${callId}`,fields))).status).toBe(200);expect(service.record).toHaveBeenCalledWith(callId,fields);
+    expect((await callRecording(signed(`recordings?call=${callId}`,{...fields,RecordingSource:"RecordVerb"}))).status).toBe(400);
+    const forged=signed(`recordings?call=${callId}`,fields);forged.headers.set("x-twilio-signature","a".repeat(27)+"=");expect((await callRecording(forged)).status).toBe(401);
+  });
+  it("protects connected-call media before and after provider IO and validates ranges",async()=>{
+    const context={params:Promise.resolve({id:callId})};const request=new Request(origin+"/api/dashboard/voice/recordings/"+callId);
+    service.download.mockRejectedValueOnce(new VoiceAccessError("Revoked"));expect((await callMedia(request,context)).status).toBe(403);expect(service.media).not.toHaveBeenCalled();
+    expect((await callMedia(request,context)).status).toBe(200);
+    service.download.mockResolvedValueOnce({recordingSid:"RE"+"a".repeat(32),callSid:sid}).mockRejectedValueOnce(new VoiceAccessError("Revoked during read"));expect((await callMedia(request,context)).status).toBe(403);
+    expect((await callMedia(new Request(request.url,{headers:{range:"bytes=0-1,3-5"}}),context)).status).toBe(416);
   });
   it("requires current private download permission before provider IO, validates ranges and rechecks before releasing audio", async () => {
     const routeContext = { params: Promise.resolve({ id: callId }) },

@@ -5,6 +5,8 @@ import { getDatabasePool } from "@/lib/dashboard/db";
 import { authorizeSms } from "@/lib/sms/data";
 import { getVoiceConfiguration } from "@/lib/voice-provider/config";
 import type { VoiceCall, VoiceLine, VoiceWorkspace } from "./types";
+import type { CallRecording } from "./types";
+import { analysisConfigured } from "./analysis-provider";
 export class VoiceAccessError extends Error {}
 export class VoiceInputError extends Error {}
 export const authorizeVoice = authorizeSms;
@@ -20,6 +22,9 @@ export type LineRow = {
   hours_days: number[];
   ring_seconds: number;
   greeting: string;
+  record_calls: boolean;
+  recording_announcement: boolean;
+  auto_transcribe: boolean;
   can_read: boolean;
   can_call: boolean;
   can_receive: boolean;
@@ -51,6 +56,9 @@ export function lineDto(n: LineRow, role: string): VoiceLine {
       days: n.hours_days,
     },
     ringSeconds: n.ring_seconds,
+    recordCalls: n.record_calls,
+    recordingAnnouncement: n.recording_announcement,
+    autoTranscribe: n.auto_transcribe,
   };
 }
 export async function lineAccess(
@@ -64,7 +72,7 @@ export async function lineAccess(
     throw new VoiceAccessError("Connect the voice service in Settings first.");
   const role = (
     await db.query<{ role: string }>(
-      "SELECT m.role FROM workspace_memberships m JOIN workspaces w ON w.id=m.workspace_id WHERE m.workspace_id=$1 AND m.user_id=$2 AND m.status='active' AND w.status='active'",
+      "SELECT m.role FROM workspace_memberships m JOIN workspaces w ON w.id=m.workspace_id WHERE m.workspace_id=$1 AND m.user_id=$2 AND m.status='active' AND w.status='active' FOR SHARE OF m,w",
       [context.workspace.id, context.user.id],
     )
   ).rows[0]?.role;
@@ -212,11 +220,14 @@ export async function readCalls(
       [workspaceId, ids, manage],
     )
   ).rows;
+  const recordings = (await db.query<CallRecording & {callId:string}>(`SELECT r.id,r.call_id AS "callId",CASE WHEN r.expires_at<=now() AND r.status<>'deleted' THEN 'expired' ELSE r.status END status,r.duration,r.expires_at::text AS "expiresAt",r.status='ready' AND r.expires_at>now() AS "canPlay",$3::boolean AND r.recording_sid IS NOT NULL AND r.status NOT IN ('deleted','deleting') AS "canDelete",r.analysis_status AS "analysisStatus",CASE WHEN r.status='ready' AND r.expires_at>now() THEN r.analysis_error ELSE NULL END AS "analysisError",CASE WHEN r.status='ready' AND r.expires_at>now() THEN r.transcript ELSE NULL END transcript,CASE WHEN r.status='ready' AND r.expires_at>now() THEN r.summary ELSE NULL END summary FROM voice_call_recordings r WHERE r.workspace_id=$1 AND r.call_id=ANY($2::uuid[])`,[workspaceId,ids,manage])).rows;
+  const recordingMap = new Map(recordings.map(({callId,...recording})=>[callId,{...recording,analysisAvailable:analysisConfigured()}]));
   return rows.map((r) => ({
     ...r,
     createdAt: r.createdAt.toISOString(),
     answeredAt: r.answeredAt?.toISOString() ?? null,
     endedAt: r.endedAt?.toISOString() ?? null,
+    recording: recordingMap.get(r.id) ?? null,
   }));
 }
 export async function listVoiceCalls(

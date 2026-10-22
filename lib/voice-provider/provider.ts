@@ -201,7 +201,7 @@ export async function endVoiceCall(sid: string): Promise<VoiceCallResult> {
     throw providerError(error, true);
   }
 }
-export type VoicemailReference = { recordingSid: string; callSid: string };
+export type VoicemailReference = { recordingSid: string; callSid: string; kind?: "call" };
 async function recording(reference: VoicemailReference) {
   if (
     !RECORDING_SID.test(reference.recordingSid) ||
@@ -214,11 +214,11 @@ async function recording(reference: VoicemailReference) {
     raw.sid !== reference.recordingSid ||
     raw.accountSid !== config.accountSid ||
     raw.callSid !== reference.callSid ||
-    raw.source !== "RecordVerb" ||
+    raw.source !== (reference.kind === "call" ? "DialVerb" : "RecordVerb") ||
     (raw.status === "completed"
-      ? raw.channels !== 1 ||
+      ? raw.channels !== (reference.kind === "call" ? 2 : 1) ||
         !/^\d{1,4}$/.test(raw.duration ?? "") ||
-        Number(raw.duration) > 185
+        Number(raw.duration) > (reference.kind === "call" ? 3610 : 185)
       : !["processing", "absent", "failed", "in-progress"].includes(raw.status))
   )
     throw new VoiceProviderError(
@@ -269,7 +269,8 @@ export async function deleteVoicemailMedia(
   }
 }
 const MAX_MEDIA_BYTES = 5 * 1024 * 1024;
-export function validMediaRange(value: string | null) {
+export const MAX_CALL_MEDIA_BYTES = 64 * 1024 * 1024;
+export function validMediaRange(value: string | null, maximum = MAX_MEDIA_BYTES) {
   if (value === null) return undefined;
   const match = /^bytes=(\d{1,8})?-(\d{1,8})?$/.exec(value);
   if (
@@ -277,8 +278,8 @@ export function validMediaRange(value: string | null) {
     (!match[1] && !match[2]) ||
     (!match[1] && Number(match[2]) === 0) ||
     (match[1] && match[2] && Number(match[1]) > Number(match[2])) ||
-    Number(match[1] ?? 0) >= MAX_MEDIA_BYTES ||
-    Number(match[2] ?? 0) > MAX_MEDIA_BYTES
+    Number(match[1] ?? 0) >= maximum ||
+    Number(match[2] ?? 0) > maximum
   )
     throw new VoiceProviderError(
       "rejected",
@@ -298,7 +299,8 @@ export async function fetchVoicemailMedia(
         "rejected",
         "The voicemail audio is not ready.",
       );
-    const range = validMediaRange(input.range ?? null);
+    const maximum = reference.kind === "call" ? MAX_CALL_MEDIA_BYTES : MAX_MEDIA_BYTES;
+    const range = validMediaRange(input.range ?? null, maximum);
     const response = await fetch(
       `https://api.twilio.com/2010-04-01/Accounts/${config.accountSid}/Recordings/${reference.recordingSid}.mp3`,
       {
@@ -327,12 +329,12 @@ export async function fetchVoicemailMedia(
       !["audio/mpeg", "audio/mp3"].includes(type ?? "") ||
       !response.body ||
       (length !== null &&
-        (!/^\d+$/.test(length) || Number(length) > MAX_MEDIA_BYTES)) ||
+        (!/^\d+$/.test(length) || Number(length) > maximum)) ||
       (response.status === 206 &&
         (!range ||
           !contentRange ||
           !/^bytes \d+-\d+\/\d+$/.test(contentRange) ||
-          Number(contentRange.split("/")[1]) > MAX_MEDIA_BYTES))
+          Number(contentRange.split("/")[1]) > maximum))
     ) {
       await response.body?.cancel();
       throw new VoiceProviderError(
@@ -345,7 +347,7 @@ export async function fetchVoicemailMedia(
       new TransformStream<Uint8Array, Uint8Array>({
         transform(chunk, controller) {
           bytes += chunk.byteLength;
-          if (bytes > MAX_MEDIA_BYTES)
+          if (bytes > maximum)
             throw new Error("Voicemail audio exceeds its size limit.");
           controller.enqueue(chunk);
         },
@@ -358,7 +360,7 @@ export async function fetchVoicemailMedia(
         "cache-control": "private, no-store",
         "x-content-type-options": "nosniff",
         "referrer-policy": "no-referrer",
-        "content-disposition": 'inline; filename="voicemail.mp3"',
+        "content-disposition": reference.kind === "call" ? 'inline; filename="call.mp3"' : 'inline; filename="voicemail.mp3"',
         ...(length ? { "content-length": length } : {}),
         ...(response.status === 206 && contentRange
           ? { "content-range": contentRange, "accept-ranges": "bytes" }
@@ -368,4 +370,17 @@ export async function fetchVoicemailMedia(
   } catch (error) {
     throw providerError(error);
   }
+}
+export const fetchCallRecording = (ref: VoicemailReference) => fetchVoicemailRecording({ ...ref, kind: "call" });
+export const fetchCallRecordingMedia = (ref: VoicemailReference, input: { range?: string } = {}) => fetchVoicemailMedia({ ...ref, kind: "call" }, input);
+export const deleteCallRecordingMedia = (ref: VoicemailReference) => deleteVoicemailMedia({ ...ref, kind: "call" });
+export async function findCallRecording(callSid: string) {
+  await fetchVoiceCall(callSid);
+  const {api,config}=client();
+  try {
+    const found=await api.recordings.list({callSid,limit:20});
+    const matches=found.filter(r=>r.callSid===callSid && r.accountSid===config.accountSid && r.source==='DialVerb');
+    if (matches.length>1) throw new VoiceProviderError("rejected","Multiple call recordings require review.");
+    return matches[0]?fetchCallRecording({recordingSid:matches[0].sid,callSid}):null;
+  } catch(error) { throw providerError(error); }
 }
