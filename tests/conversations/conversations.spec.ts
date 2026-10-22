@@ -97,6 +97,7 @@ test("keeps draft text across channel changes and sends from the same selected c
   await expect(email.getByRole("textbox",{name:"Message *",exact:true})).toHaveValue("Email draft to the customer.");
   await page.getByRole("tab",{name:"SMS",exact:true}).click();
   const sms=page.getByRole("tabpanel",{name:"SMS",exact:true});
+  await expect(sms.getByText("Text details", { exact: true })).toHaveCount(0);
   await sms.getByRole("textbox",{name:"Text message *",exact:true}).fill("Text draft to the customer.");
   await page.getByRole("tab",{name:"Email",exact:true}).click();
   await expect(email.getByRole("textbox",{name:"Message *",exact:true})).toHaveValue("Email draft to the customer.");
@@ -154,6 +155,7 @@ test("uncertain sends keep their original request across channel switches and re
   await expect(page.getByRole("region",{name:"Conversation timeline",exact:true}).getByText("Email recovery stays with this customer.",{exact:true})).toBeVisible();
   await page.getByRole("tab",{name:"SMS",exact:true}).click();
   const sms=page.getByRole("tabpanel",{name:"SMS",exact:true});
+  await expect(sms.getByText("Text details", { exact: true })).toHaveCount(0);
   await sms.getByRole("textbox",{name:"Text message *",exact:true}).fill("Text recovery stays with this customer.");
   await control(request,"unknownSms");await sms.getByRole("button",{name:"Send text",exact:true}).click();
   await expect(sms.getByRole("button",{name:"Check SMS status",exact:true})).toBeVisible();
