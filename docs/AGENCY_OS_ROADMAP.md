@@ -8,6 +8,8 @@ The first unified Inbox increment is implemented in source: **one relationship c
 
 The project owner supplied the existing SMS/voice-capable number **+16785417725**; live Twilio credentials, number/account verification, registration and delivery acceptance remain separate activation work with the owner. Jeffrey's handoff covers only email-specific Cloudflare/Render configuration, Mail deployment, Sales address approvals and email acceptance. The project owner handles Twilio and all remaining development with Codex.
 
+Unified Inbox website revision **8d23c1f** deployed successfully on October 21 at **9:19:19 p.m. EDT** (October 22, 01:19:19 UTC). [Unified Inbox](UNIFIED_INBOX.md#website-delivery) records the deployment and verification separately from the remaining Mail/Twilio activation.
+
 The repository now includes the Twilio SMS adapter, explicit number grants, SMS message store, signed inbound/status callbacks and the Inbox SMS channel. Calling, voicemail, recordings and transcription are not implemented. Marketing illustrations do not establish those later capabilities.
 
 Our development queue is:

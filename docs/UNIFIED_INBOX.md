@@ -91,4 +91,12 @@ The populated PostgreSQL upgrade/dump/restore check preserves independent canoni
 
 All **10 existing email** and **14 existing SMS** browser checks pass after the compatibility and composer changes. The existing reporting/manual-lead/sales/operations suite passes **33 checks** with one intentional phone skip. A final desktop/phone layout check confirms the message body and Send control remain in the viewport, with no accessibility violations. Lint, strict types and the production build pass. Provider credentials, grants, routing and authorized live delivery remain separate activation steps.
 
+## Website delivery
+
+Website revision **8d23c1f2b44dee9fbe1f96d44f67250321eeb5af** deployed successfully at **01:19:19 UTC on October 22, 2026 (9:19:19 p.m. EDT on October 21)**, GitHub deployment **7241255271**, [Render deployment dep-dbcm8fc9v7es73bn4v1g](https://dashboard.render.com/web/srv-db6hod8473hc739q2uo0/deploys/dep-dbcm8fc9v7es73bn4v1g).
+
+After delivery, public health, pricing, sign-in and Mail login return 200. Anonymous default/email/SMS Inbox requests return 307 to sign-in. Both POST-only SMS callbacks return 405 to GET. These checks establish website delivery and basic access boundaries; authenticated team/provider acceptance remains pending activation.
+
+The website push includes Mail API source **4bdc828**, but it does not deploy the separate Mail Worker. Jeffrey's email activation handoff identifies that prerequisite. No production secrets, grants, messaging routes, customer messages, calls or recording settings were created or changed during this implementation.
+
 Jeffrey's assignment remains email activation in [new jeffrey.md](../new%20jeffrey.md). The owner and Codex handle the unified workspace, Twilio, calling, recordings, transcripts and remaining agency development. [Communications setup](COMMUNICATIONS_SETUP.md) records current implemented provider behavior; [the agency roadmap](AGENCY_OS_ROADMAP.md) records release evidence and the active development order.
