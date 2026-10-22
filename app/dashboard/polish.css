@@ -179,7 +179,12 @@
 .dashboard-shell .conversation-composer-tabs { background: var(--workspace-surface); border-color: var(--workspace-line); }
 .dashboard-shell .conversation-queues a { color: var(--workspace-muted); }
 .dashboard-shell .conversation-queues a.is-active { color: var(--workspace-blue); background: var(--workspace-blue-soft); }
-.dashboard-shell .conversation-event { border-color: var(--workspace-line); border-radius: 9px; box-shadow: none; }
+.dashboard-shell .conversation-event { border-color: var(--conversation-event-line); border-radius: 9px; box-shadow: 0 2px 5px var(--workspace-shadow-ink); }
+.dashboard-shell .conversation-event.is-note { box-shadow: none; }
+.dashboard-shell .conversation-workspace :is(.inbox-field,.voice-field,.conversation-field,.dashboard-field) :is(input,select,textarea),
+.dashboard-shell .conversation-workspace .conversation-search label,
+.dashboard-shell .conversation-workspace .conversation-source-picker select { background: var(--workspace-field); color: var(--workspace-ink); }
+.dashboard-shell .conversation-composer-tabs button[aria-selected="true"] { background: var(--workspace-blue-soft); border-radius: 6px 6px 0 0; }
 .dashboard-shell .inbox-page-header h1 { color: var(--workspace-ink); font-size: 30px; font-weight: 650; }
 .dashboard-shell .inbox-setup { border-radius: 12px; border-color: var(--workspace-line); background: var(--workspace-surface); box-shadow: var(--workspace-shadow); }
 .voice-phone-panel { border-color: var(--workspace-line); border-radius: 14px; box-shadow: 0 12px 48px var(--workspace-shadow-ink); }

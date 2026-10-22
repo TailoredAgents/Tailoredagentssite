@@ -78,12 +78,20 @@ test("combines customer history and exposes agency context in a responsive works
   await expect(page.getByRole("button",{name:"Send reply",exact:true})).toBeInViewport();
   await expect(timeline.getByText("Email: Could you build our website and an AI receptionist?",{exact:true})).toBeInViewport();
   await page.screenshot({path: dashboardPreviewPath(`conversations-${info.project.name}.png`),fullPage:true,style:"nextjs-portal{display:none!important;}"});
+  if (info.project.name === "phone") {
+    for (const name of ["Conversations", "Details"] as const) {
+      await pane(page, name);
+      await page.locator(".conversation-details-pane").evaluate(node=>{node.scrollTop=0;});
+      await page.screenshot({path: dashboardPreviewPath(`conversations-${name.toLowerCase()}-phone.png`),style:"nextjs-portal{display:none!important;}"});
+    }
+    await pane(page, "Thread");
+  }
   const axe=await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze();
   expect(axe.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,message:n.failureSummary}))}))).toEqual([]);
   expect(errors).toEqual([]);
 });
 
-test("keeps draft text across channel changes and sends from the same selected customer",async({page,request})=>{
+test("keeps draft text across channel changes and sends from the same selected customer",async({page,request},info)=>{
   await signIn(page);const id=await combine(page,request);
   await page.getByRole("tab",{name:"Email",exact:true}).click();
   const email=page.getByRole("tabpanel",{name:"Email",exact:true});
@@ -93,6 +101,7 @@ test("keeps draft text across channel changes and sends from the same selected c
   if (mobile) await menu.click();
   await page.getByLabel("Appearance", { exact: true }).selectOption("light");
   await page.getByLabel("Appearance", { exact: true }).selectOption("dark");
+  await page.getByLabel("Appearance", { exact: true }).selectOption(process.env.DASHBOARD_TEST_THEME || "light");
   if (mobile) await page.getByRole("button", { name: "Close menu", exact: true }).click();
   await expect(email.getByRole("textbox",{name:"Message *",exact:true})).toHaveValue("Email draft to the customer.");
   await page.getByRole("tab",{name:"SMS",exact:true}).click();
@@ -112,6 +121,8 @@ test("keeps draft text across channel changes and sends from the same selected c
   await expect(sms.locator('[name="permissionConfirmed"], [name="permissionEvidence"]')).toHaveCount(0);
   await sms.getByRole("button",{name:"Send text",exact:true}).click();
   await expect(page.getByRole("region",{name:"Conversation timeline",exact:true}).getByText("Text draft to the customer.",{exact:true})).toBeVisible();
+  await page.locator(".conversation-details-pane").evaluate(node=>{node.scrollTop=0;});
+  await page.screenshot({path: dashboardPreviewPath(`conversations-outgoing-${info.project.name}.png`),style:"nextjs-portal{display:none!important;}"});
   await page.getByRole("tab",{name:"Email",exact:true}).click();
   await expect(email.getByRole("textbox",{name:"Message *",exact:true})).toHaveValue("A new email draft after the confirmed send.");
   const state=await control(request,"inspect");expect(state.emailSends).toBe(1);expect(state.smsCreates).toHaveLength(1);
