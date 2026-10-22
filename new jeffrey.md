@@ -2,6 +2,52 @@
 
 Prepared October 21, 2026 for Jeffrey: email activation only.
 
+## Priority: Austin needs Mail team-management access
+
+Requested October 22, 2026. Austin is signed into Mail as **austin@tailoredagents.com** and cannot see **Manage team**. He wants the same Mail management permission as Jeffrey so he can approve **devon@tailoredagents.com** for the website dashboard today. **This change is pending; Codex has not verified or modified these production accounts.** Austin does not have the Cloudflare account, and this workstation is signed out.
+
+The current Mail app shows team management only to `users.is_admin = 1`. Its account API deliberately refuses role changes with “This mail service has one owner.” Use the existing Cloudflare administrator access for this one-time, explicitly requested additional Mail owner. Keep Jeffrey's owner access. No website or Mail deployment, password reset, credential sharing, or changes to Devon's owner role are needed.
+
+1. In Cloudflare, open **D1 SQL Database**, select **tailored-mail-production**, and open its SQL console. Confirm the database name is exactly `tailored-mail-production`, not staging or local. Alternatively, an authenticated operator can execute the same queries from `apps/mail` with `npx wrangler d1 execute DB --remote --env production --command '<SQL>'`; see [Cloudflare's query documentation](https://developers.cloudflare.com/d1/best-practices/query-d1/).
+2. Run this read-only check. Confirm Austin and Jeffrey are the intended existing accounts, both enabled (`disabled_at` is null), and that Austin has completed his temporary-password change (`must_change_password = 0`). Record Austin's original `is_admin` and `dashboard_access` values privately for rollback. Devon may be missing; create his account through Mail after Austin has management access if needed.
+
+```sql
+SELECT email, name, is_admin, dashboard_access, must_change_password, disabled_at
+FROM users
+WHERE email IN (
+  'austin@tailoredagents.com',
+  'jeffrey@tailoredagents.com',
+  'devon@tailoredagents.com'
+);
+```
+
+3. After confirming those identities and statuses, run the following guarded update. It grants Austin Mail owner management and dashboard approval, and requires an active Jeffrey owner to remain in place. It does not modify Jeffrey or Devon. If no row changes, stop and resolve the failed prerequisite rather than weakening the conditions.
+
+```sql
+UPDATE users
+SET is_admin = 1, dashboard_access = 1
+WHERE email = 'austin@tailoredagents.com'
+  AND disabled_at IS NULL
+  AND must_change_password = 0
+  AND EXISTS (
+    SELECT 1 FROM users
+    WHERE email = 'jeffrey@tailoredagents.com'
+      AND is_admin = 1
+      AND disabled_at IS NULL
+  );
+```
+
+4. Repeat the read-only query. Confirm Austin and Jeffrey both have `is_admin = 1`, Austin has `dashboard_access = 1`, and Devon's permissions are unchanged. Austin should refresh Mail and open [Manage team](https://mail.tailoredagents.com/admin). Mail looks up the current user role on each authenticated request; signing out and back in can also refresh the interface.
+5. Austin can then find Devon under **Team members** and choose **Allow dashboard access**. If Devon has no account, use **Create an account**, name **Devon**, email name **devon**, and a privately shared temporary password (12–128 characters). Devon must choose his own password in Mail first. Do not make Devon an owner. Have him verify his own login at [Dashboard sign-in](https://www.tailoredagents.com/sign-in) using **devon@tailoredagents.com** and his Mail password. A new approved account receives the dashboard `member` role; existing dashboard roles remain unchanged.
+
+Mail owner management includes creating/enabling/disabling accounts, resetting teammate passwords, approving dashboard access and managing shared-mailbox grants. It does not automatically share every person's private mailbox in the CRM. Sales mailbox grants below still apply separately.
+
+If this change must be reversed, use Cloudflare to restore **only Austin's** `is_admin` and `dashboard_access` to the original values recorded in step 2; keep Jeffrey's owner account intact. Verify the next request denies Austin's team-management access when `is_admin = 0`. Do not reset either person's password.
+
+- [ ] Austin opens **Your team** using his own Mail account.
+- [ ] Jeffrey retains owner access.
+- [ ] Devon completes his own dashboard sign-in as a regular teammate.
+
 ## What this handoff covers
 
 Connect **sales@tailoredagents.com** to the internal website CRM. **Devon, Jeffrey and Austin** should have read and reply access. Confirm their actual existing Mail login accounts; their names are not permission to guess email addresses or share the inbox with everyone.
