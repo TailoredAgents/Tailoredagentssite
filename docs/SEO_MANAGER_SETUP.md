@@ -2,18 +2,20 @@
 
 October 22, 2026. This is the internal manager for **www.tailoredagents.com**. It targets national customers plus **Woodstock, Canton, Marietta, Acworth and Roswell, Georgia**. These are service areas, not claims that we have offices there.
 
+**Ownership update:** Austin has handed the remaining SEO activation, pilot and follow-on development to Jeffrey. Use [new jeffrey.md](../new%20jeffrey.md#seo-manager--jeffrey-owns-the-remaining-work) as the working handoff; this document remains the detailed operating reference. Coordinate account ownership, payment access and unknown business facts with Austin as needed.
+
 ## What this release does
 
 The manager scans 14 registered public pages daily, prepares a weekly strategy, checks national/local keyword results on desktop and mobile, and retains its evidence and history. A planning model proposes improvements; a second, separate model request critiques each proposed metadata change. Owners/admins can edit and publish the exact title/description after factual review. The manager checks the live result, restores the previous metadata if verification fails, and records search and measured inquiry evidence after at least 28 finalized Google dates.
 
 This first publisher supports **search titles and descriptions**, including matching social metadata. It also prepares content briefs. Writing/publishing full articles, changing page bodies, code fixes, redirects, Google Business Profile edits, outreach and client-site SEO remain later work. No rankings or lead counts are invented when data is missing. The manager starts paused; deploying the code alone does not start paid requests.
 
-## Austin: create DataForSEO access
+## Jeffrey: arrange DataForSEO access
 
 1. Create your business account through [DataForSEO](https://dataforseo.com/). Use an account you control.
 2. In the DataForSEO dashboard, open **API Access**. Copy the **API login** and **API password** shown there. They are API credentials; do not assume your website login password is the API password. Keep both out of chat and Git.
 3. Fund the account when ready. The published minimum deposit is **$50**, prepaid usage credit rather than a monthly subscription. Confirm the amount on the funding screen before paying. [Official pricing](https://dataforseo.com/Pricing).
-4. Give Jeffrey the credentials using your team's secure credential-sharing method, or enter them yourself in the website's Render Environment settings:
+4. Store the credentials using your team's secure credential-sharing method and enter them in the website's Render Environment settings:
    - `DATAFORSEO_LOGIN` = the API login.
    - `DATAFORSEO_PASSWORD` = the API password.
 5. Redeploy the web service after saving. No Twilio number changes are needed.
@@ -41,7 +43,7 @@ The separate job keeps model latency out of normal CRM requests. Render charges 
 
 The optional protected HTTP endpoint `POST /api/cron/seo` executes one bounded stage, using `Authorization: Bearer <SEO_WORKER_SECRET>`. It falls back to the existing Search Console sync secret when no dedicated secret exists. Never expose either secret to the browser. The CLI cron above is the recommended runner.
 
-## Austin: start the first supervised cycle
+## Jeffrey: run the first supervised cycle
 
 1. Sign in to **Dashboard → SEO manager** with an owner/admin account. Viewers can inspect evidence but cannot enable work, spend funds or publish.
 2. Under **Settings**, review the displayed business knowledge, prices, target markets and initial keywords. Add any accurate business instructions. Keep the initial **$40 monthly AI/data limit**.
@@ -92,4 +94,4 @@ Implementation `1e5c988ac41c4dd2a4c638499d3b4ea751461bab` and the measurement fo
 
 After that deployment, the health, sign-in, Websites and Pricing endpoints return 200. Both SEO dashboard routes redirect anonymous visitors to sign-in. The worker rejects unsigned POST requests with 401 and GET with 405. Production CSP does not allow development eval. The public Websites page still serves its original title and passes this release's metadata/canonical/heading checks; no production SEO copy was published during delivery.
 
-Open [SEO manager](https://www.tailoredagents.com/dashboard/seo) with your existing approved login. Authenticated owner acceptance, Render cron existence/environment checks, real AI/DataForSEO authentication and billing, the first reviewed publication and its eventual search outcome remain pending. The live availability checks above do not establish that the recurring manager is activated. Follow the Austin/Jeffrey steps above; no paid provider request, account funding or production content change was performed by Codex.
+Open [SEO manager](https://www.tailoredagents.com/dashboard/seo) with your existing approved login. Authenticated owner/admin acceptance, Render cron existence/environment checks, real AI/DataForSEO authentication and billing, the first reviewed publication and its eventual search outcome remain pending. The live availability checks above do not establish that the recurring manager is activated. Jeffrey owns the remaining steps under the updated handoff above; no paid provider request, account funding or production content change was performed by Codex.
