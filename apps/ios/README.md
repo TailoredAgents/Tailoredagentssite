@@ -46,7 +46,7 @@ Verified on October 21, 2026 with Xcode 26.3: the Release device build and IPA a
 
 Owner confirmation on October 21: Sideloadly reported Done, Jeffrey enabled Developer Mode, and the installed app opened and allowed sign-in on his iPhone. He reported that it was working well with no blocking problems observed. This confirms initial installation and access; it does not establish completion of every workflow below.
 
-Attachment acceptance on October 21: Jeffrey sent an email containing a banner, a PNG, and a PDF to the inbox, then confirmed that both the PNG and PDF downloaded and opened successfully on his iPhone. Banner rendering has not yet been explicitly confirmed.
+Attachment acceptance on October 21: Jeffrey sent an email containing a banner, a PNG, and a PDF to the inbox, then confirmed that both the PNG and PDF downloaded and opened successfully on his iPhone. He also confirmed that the banner displayed correctly inside the email. All three checks passed for this test message.
 
 `scripts/test.sh` compiles the shared navigation and filename policy for macOS and checks trusted origins, lookalikes, credentials in URLs, URL schemes, blob origins, sandboxed message frames, download responses, and filename traversal/length limits.
 
@@ -60,4 +60,4 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild \
   -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test
 ```
 
-Remaining physical-device checks: banner rendering; reopening signed-in tabs; composing mail; saving drafts; selecting Photos/Files for uploads; dashboard operations; external links; network loss/recovery; and successful Sideloadly refresh. Automatic refresh configuration and an actual renewal have not yet been confirmed. Do not treat the successful installation, initial sign-in, attachment checks, or simulator checks as completion of these other workflows.
+Remaining physical-device checks: reopening signed-in tabs; composing mail; saving drafts; selecting Photos/Files for uploads; dashboard operations; external links; network loss/recovery; and successful Sideloadly refresh. Automatic refresh configuration and an actual renewal have not yet been confirmed. Do not treat the successful installation, initial sign-in, banner/attachment checks, or simulator checks as completion of these other workflows.
