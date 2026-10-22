@@ -44,13 +44,24 @@
 .voice-current-call > span:not(.voice-caller-icon) { color: var(--workspace-muted); font-size: 14px; }
 .voice-current-call > a { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; color: var(--workspace-blue); font-size: 14px; text-decoration: none; }
 .voice-caller-icon { display: grid; place-items: center; width: 55px; height: 55px; border-radius: 17px; background: var(--workspace-success-soft); color: var(--workspace-success); }
-.voice-call-composer { padding: 16px 18px; }
-.voice-call-from { display: none; }
-.voice-composer-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 13px; }
-.voice-composer-heading h3 { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--workspace-muted); font-size: 14px; font-weight: 650; }
-.voice-composer-heading > span { color: var(--workspace-muted); font-size: 14px; }
-.voice-call-composer form > fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0; border: 0; }
-.voice-call-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+.voice-call-composer { padding: 18px 20px; }
+.voice-call-content { width: 100%; max-width: 640px; margin-inline: auto; }
+.voice-composer-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.voice-composer-heading h3 { display: flex; align-items: center; gap: 10px; min-width: 0; margin: 0; color: var(--workspace-ink); font-size: 15px; font-weight: 650; line-height: 1.4; overflow-wrap: anywhere; }
+.voice-composer-icon { display: grid; place-items: center; flex-shrink: 0; width: 32px; height: 32px; border-radius: 9px; color: var(--workspace-blue); background: var(--workspace-blue-soft); }
+.voice-call-connection { display: inline-flex; flex-shrink: 0; align-items: center; gap: 6px; color: var(--workspace-muted); font-size: 12px; font-weight: 500; white-space: nowrap; }
+.voice-call-connection i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.voice-call-connection.is-ready { color: var(--workspace-success); }
+.voice-call-origin { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin: 0 0 14px; color: var(--workspace-muted); font-size: 13px; line-height: 1.5; }
+.voice-call-origin strong { color: var(--workspace-ink); font-weight: 550; font-variant-numeric: tabular-nums; }
+.voice-call-line-picker select { min-height: 34px; max-width: 100%; border: 1px solid var(--workspace-line); border-radius: 6px; padding: 4px 8px; color: var(--workspace-ink); background: var(--workspace-field); font: inherit; }
+.voice-call-composer .voice-call-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.voice-call-destination > span { font-size: 12px; font-weight: 550; }
+.voice-call-composer .voice-field.voice-call-destination input { height: 48px; min-height: 48px; padding: 11px 13px; border-color: var(--workspace-line); border-radius: 8px; background: var(--workspace-field); color: var(--workspace-ink); font-size: 17px; font-weight: 550; letter-spacing: .01em; font-variant-numeric: tabular-nums; }
+.voice-call-destination input::placeholder { color: var(--workspace-muted); font-weight: 400; }
+.voice-call-actions { display: flex; align-items: center; gap: 8px; }
+.voice-call-composer .voice-call-actions > .voice-button { height: 48px; min-height: 48px; min-width: 146px; padding-inline: 18px; border-radius: 8px; }
+.voice-call-actions > .is-primary:hover:not(:disabled) { border-color: var(--workspace-blue-hover); background: var(--workspace-blue-hover); }
 .voice-setup-notice { color: var(--workspace-muted); font-size: 14px; line-height: 1.7; }
 .voice-setup-notice > p { margin: 0; }
 .voice-setup-notice > a { display: inline-flex; min-height: 40px; align-items: center; margin-top: 7px; color: var(--workspace-blue); font-weight: 550; }
@@ -120,15 +131,12 @@
   .conversation-header-actions .voice-inbox-launcher { display: inline-flex; }
   .voice-phone-body { padding: 14px; }
   .voice-phone-controls > button { min-height: 44px; }
-  .voice-call-composer { padding: 12px; }
+  .voice-call-composer { padding: 14px; }
   .voice-call-composer .voice-composer-heading { display: none; }
-  .voice-call-from { display: flex; flex-wrap: wrap; align-items: baseline; gap: 7px; color: var(--workspace-muted); font-size: 14px; }
-  .voice-call-from strong { color: var(--workspace-muted); font-size: 14px; font-weight: 550; }
-  .voice-call-from .voice-text-button { min-height: 30px; margin: 0 0 0 auto; font-size: 14px; }
-  .voice-call-composer .voice-call-line-field { display: none; }
-  .voice-call-composer form > fieldset { grid-template-columns: minmax(0, 1fr); gap: 10px; }
-  .voice-call-actions { position: sticky; bottom: 0; z-index: 3; padding-top: 7px; background: var(--workspace-surface); box-shadow: 0 -6px 8px var(--workspace-shadow-ink); }
-  .voice-call-actions > button { flex: 1; }
+  .voice-call-composer .voice-field.voice-call-destination input { font-size: 16px; padding-inline: 10px; }
+  .voice-call-composer .voice-call-actions > .voice-button { min-width: 138px; padding-inline: 10px; gap: 6px; font-size: 13px; }
+  .conversation-thread-pane:has(#conversation-tab-call[aria-selected="true"]) { grid-template-rows: auto auto minmax(48px, 1fr) auto; }
+  .conversation-composer-shell:has(#conversation-tab-call[aria-selected="true"]) { max-height: min(320px, 44dvh); scroll-padding: 52px 0 0; }
   .conversation-composer-tabs:has(#conversation-tab-call) { gap: 3px; }
   .conversation-composer-tabs:has(#conversation-tab-call) > button { padding-inline: 9px; gap: 5px; min-width: 0; }
   .conversation-composer-tabs:has(#conversation-tab-call) > button svg { width: 14px; }
@@ -142,5 +150,12 @@
   .conversation-workspace .conversation-composer-shell .inbox-field textarea { min-height: 64px; }
   .conversation-workspace .conversation-composer-shell .inbox-composer-fields { gap: 7px; }
   .conversation-workspace .conversation-composer-shell .inbox-composer-actions { margin-top: 4px; padding-top: 4px; }
+}
+@media (max-width: 360px) {
+  .voice-call-composer .voice-call-controls { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .voice-call-actions > button { flex: 1; }
+  .voice-composer-heading { gap: 8px; }
+  .voice-composer-heading h3 { font-size: 14px; }
+  .voice-call-connection { font-size: 11px; }
 }
 @media (max-width: 370px) { .conversation-workspace .conversation-page-header h1 { font-size: 22px; } }

@@ -41,6 +41,21 @@ The production-built dashboard suite also passed 33 reporting, manual-lead, sale
 
 Synthetic previews: [desktop call](previews/voice-active-desktop.png), [phone call](previews/voice-active-phone.png), [desktop voicemail](previews/voice-desktop.png), [phone voicemail](previews/voice-phone.png).
 
+## October 22 — calling panel polish
+
+The owner requested a cleaner Call tab after reviewing the live interface. The composer now uses a compact calling-from label for a single business line, formatted US numbers, a small connection indicator on desktop, and a primary **Connect phone / Call now** action. Multiple approved lines retain a selector. The desktop form is bounded to 640px, and field/button heights align. Mobile uses a compact row and reserves enough space for the destination and action; narrower screens stack the controls. Repeated technical helper text and duplicate number headings were removed. Existing browser connection, microphone, grants, intent binding and persistent-call controls remain the functional foundation.
+
+Screenshots use synthetic records and numbers:
+
+| State | Light desktop | Dark desktop | Light phone | Dark phone |
+| --- | --- | --- | --- | --- |
+| Disconnected | [Preview](previews/voice-composer-disconnected-desktop.png) | [Preview](previews/themes/dark/providers/voice-composer-disconnected-desktop.png) | [Preview](previews/voice-composer-disconnected-phone.png) | [Preview](previews/themes/dark/providers/voice-composer-disconnected-phone.png) |
+| Ready to call | [Preview](previews/voice-composer-ready-desktop.png) | [Preview](previews/themes/dark/providers/voice-composer-ready-desktop.png) | [Preview](previews/voice-composer-ready-phone.png) | [Preview](previews/themes/dark/providers/voice-composer-ready-phone.png) |
+
+Verification: 329 code/PostgreSQL tests across 34 files, lint, TypeScript and the production build pass. All 18 existing desktop/phone calling scenarios passed across the full run and targeted reruns; the initial voicemail scenario encountered a synthetic reset deadlock and passed on rerun. Final composer checks pass on desktop and phone in both palettes, including full visibility of the destination/button, inline connection without opening the floating panel, formatted destination normalization, mute, navigation and theme persistence. Accessibility checks pass. Four SMS send/recovery checks and two unified Inbox draft/send checks also pass. Tests use isolated synthetic providers; production audio acceptance remains separate.
+
+The build's security check also reported the existing Next.js 16.4.0 dependency. A focused dependency commit pins Next.js 16.4.2 and its matching packages; the dependency audit reports zero vulnerabilities. This addresses the published [image optimization advisory](https://github.com/advisories/GHSA-2464-fhr4-w9xw) and [Server Actions advisory](https://github.com/advisories/GHSA-p3m5-59mp-jv5r). The patch update cleared the build blocker without bypassing the security check.
+
 ## Website delivery
 
 Source **4f8b887e1e1d7b2dd5803f9be60b44eaaca445c2** was pushed to `main` and Render reported successful deployment on **October 21, 2026 at 10:28:44 p.m. EDT** (**October 22, 02:28:44 UTC**). GitHub deployment **7242172601**; [Render deployment](https://dashboard.render.com/web/srv-db6hod8473hc739q2uo0/deploys/dep-dbcn8tm1egvs73eu3lhg).
