@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BrandLogo } from "@/components/brand-logo";
 import { ArrowLeft, LockKeyhole, ShieldCheck } from "lucide-react";
 import { SignInForm } from "@/components/dashboard/sign-in-form";
 import { resolveDashboardConfiguration } from "@/lib/dashboard/config";
@@ -27,7 +28,7 @@ export default async function SignInPage({
     <div className="signin-page">
       <div className="signin-atmosphere" aria-hidden="true" />
       <header className="signin-header">
-        <Link href="/" className="signin-brand"><span className="brand-mark" aria-hidden="true" />TAILORED AGENTS</Link>
+        <Link href="/" className="signin-brand" aria-label="Tailored Agents home"><BrandLogo dark /></Link>
         <Link href="/" className="signin-back"><ArrowLeft size={15} />Back to website</Link>
       </header>
 

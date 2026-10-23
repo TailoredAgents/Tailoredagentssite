@@ -35,6 +35,7 @@ const organizationJsonLd = {
   "@type": "Organization",
   name: siteConfig.name,
   url: siteConfig.url,
+  logo: absoluteUrl("/brand/tailored-agents-logo.png"),
   description: siteConfig.description,
   telephone: siteConfig.phoneHref.replace("tel:", ""),
   contactPoint: { "@type": "ContactPoint", telephone: siteConfig.phoneHref.replace("tel:", ""), contactType: "sales" },

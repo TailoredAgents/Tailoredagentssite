@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { siteConfig } from "@/lib/site";
+import { BrandLogo } from "@/components/brand-logo";
 
 export function SiteFooter() {
   return (
@@ -7,7 +8,7 @@ export function SiteFooter() {
       <div className="container-shell">
         <div className="footer-top">
           <div>
-            <Link href="/" className="brand"><span className="brand-mark" aria-hidden="true" />TAILORED AGENTS</Link>
+            <Link href="/" className="brand" aria-label="Tailored Agents home"><BrandLogo dark /></Link>
             <p className="footer-statement">Premium websites, measurable digital growth, and tailored AI automation.</p>
           </div>
           <div className="footer-links">

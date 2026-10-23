@@ -1,16 +1,19 @@
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
 export const alt = "Tailored Agents — Better websites, more visibility, smarter business.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default function Image() {
+export default async function Image() {
+  const logo = await readFile(join(process.cwd(), "public/brand/tailored-agents-logo.png"));
   return new ImageResponse(
     <div style={{ position: "relative", width: "100%", height: "100%", display: "flex", overflow: "hidden", background: "#f6f8fc", color: "#111827", padding: "58px 64px", fontFamily: "Arial, sans-serif" }}>
       <div style={{ position: "absolute", width: 680, height: 680, right: -170, top: -270, borderRadius: 680, background: "radial-gradient(circle, rgba(55,105,240,.3), rgba(108,76,224,.08) 56%, transparent 72%)", display: "flex" }} />
       <div style={{ position: "absolute", inset: 0, opacity: .25, backgroundImage: "linear-gradient(rgba(68,96,142,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(68,96,142,.1) 1px, transparent 1px)", backgroundSize: "62px 62px", display: "flex" }} />
       <div style={{ width: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 15, fontSize: 17, letterSpacing: 3, fontWeight: 700 }}><div style={{ width: 34, height: 34, borderRadius: 9, background: "linear-gradient(135deg, #2e6ff2, #5848d8)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, letterSpacing: 0 }}>TA</div><span>TAILORED AGENTS</span></div>
+        <div style={{ display: "flex" }}><img src={`data:image/png;base64,${logo.toString("base64")}`} width={210} height={69} alt="Tailored Agents" /></div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 52 }}>
           <div style={{ width: 575, display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", flexDirection: "column", fontSize: 69, lineHeight: .94, letterSpacing: -4.7, fontWeight: 700 }}><span>Better websites.</span><span style={{ color: "#2e6ff2" }}>More visibility.</span><span>Smarter business.</span></div>

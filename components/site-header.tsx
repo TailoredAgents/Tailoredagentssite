@@ -5,6 +5,7 @@ import { ArrowUpRight, Menu, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { siteConfig } from "@/lib/site";
+import { BrandLogo } from "@/components/brand-logo";
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
@@ -14,8 +15,7 @@ export function SiteHeader() {
     <header className="site-header">
       <div className="container-shell header-inner">
         <Link href="/" className="brand" aria-label="Tailored Agents home" onClick={() => setOpen(false)}>
-          <span className="brand-mark" aria-hidden="true" />
-          TAILORED AGENTS
+          <BrandLogo />
         </Link>
         <nav className="desktop-nav" aria-label="Primary navigation">
           {siteConfig.nav.map((item) => {

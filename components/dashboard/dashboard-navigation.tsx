@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BrandLogo } from "@/components/brand-logo";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -117,8 +118,7 @@ export function DashboardNavigation({ context }: { context: DashboardContext }) 
     }}>
       <div className="dashboard-sidebar-brand">
         <Link href="/" className="dashboard-brand" aria-label="Tailored Agents website">
-          <span className="brand-mark" aria-hidden="true" />
-          <span>Tailored Agents<small>Agency workspace</small></span>
+          <span><BrandLogo dark compact /><small>Agency workspace</small></span>
         </Link>
         <button ref={menuButton} type="button" className="dashboard-menu-toggle" aria-label={menuOpen ? "Close menu" : "Menu"} aria-expanded={menuOpen} aria-controls="dashboard-navigation" onClick={() => setMenuOpen(!menuOpen)}>
           {menuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}<span className="dashboard-menu-label">{menuOpen ? "Close menu" : "Menu"}</span>
