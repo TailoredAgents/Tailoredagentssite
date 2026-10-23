@@ -5,6 +5,7 @@ import { getDatabasePool } from "@/lib/dashboard/db";
 import { privateJson } from "@/lib/reporting/http";
 import { runVoiceMaintenance } from "@/lib/voice/maintenance";
 import { runCallRecordingWorker } from "@/lib/voice/recording-worker";
+import { runMetaLeadWorker } from "@/lib/meta/service";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -32,9 +33,10 @@ export async function POST(request: Request) {
       voice = { checked: 0, failed: 1 };
       console.error("voice_retention_worker_failed");
     }
-    const [outcomes,callRecordings] = await Promise.all([
+    const [outcomes,callRecordings,metaLeads] = await Promise.all([
       syncAllSearchConsoleConnections(),
       runCallRecordingWorker().catch(()=>{console.error("call_recording_worker_failed");return {checked:0,failed:1,more:false};}),
+      runMetaLeadWorker().catch(()=>{console.error("meta_lead_worker_failed");return {checked:0,failed:1,more:false};}),
     ]);
     const due = await getDatabasePool()
       .query(`SELECT 1 FROM integration_sync_runs WHERE
@@ -42,11 +44,12 @@ export async function POST(request: Request) {
       AND (lease_expires_at IS NULL OR lease_expires_at < now()) LIMIT 1`);
     return privateJson({
       ok: true,
-      more: Boolean(due.rowCount) || callRecordings.more,
+      more: Boolean(due.rowCount) || callRecordings.more || metaLeads.more,
       checked: outcomes.length,
       failed: outcomes.filter((outcome) => outcome.status === "failed").length,
       voice,
       callRecordings,
+      metaLeads,
     });
   } catch {
     console.error("reporting_worker_failed");

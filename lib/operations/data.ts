@@ -43,15 +43,19 @@ export async function getWorkspaceMembers(context: DashboardContext) {
 
 export async function listLeads(
   context: DashboardContext,
-  input: { q?: string | string[]; status?: string | string[]; page?: string | string[] },
+  input: { q?: string | string[]; status?: string | string[]; page?: string | string[]; source?: string | string[] },
 ) {
   const q = searchTerm(input.q);
+  const requestedSource = Array.isArray(input.source) ? input.source[0] : input.source;
+  const source = ["facebook", "website", "manual"].includes(requestedSource || "") ? requestedSource! : "all";
   const requestedStatus = Array.isArray(input.status) ? input.status[0] : input.status;
   const status = leadStatuses.includes(requestedStatus as (typeof leadStatuses)[number]) ? requestedStatus! : "all";
   const page = pageNumber(input.page);
   const offset = (page - 1) * PAGE_SIZE;
   const values: unknown[] = [context.workspace.id];
   const conditions = ["lead.workspace_id = $1"];
+
+  if (source !== "all") { values.push(source); conditions.push(`lead.source = $${values.length}`); }
 
   if (status !== "all") {
     values.push(status);
@@ -120,6 +124,7 @@ export async function listLeads(
     total,
     q,
     status,
+    source,
   };
 }
 
@@ -130,6 +135,8 @@ export async function getLead(context: DashboardContext, leadId: string) {
     id: string;
     inquiry_type: string;
     source: string;
+    meta_context: { platform?: string; formId?: string; campaignName?: string; campaignId?: string; adName?: string; adId?: string; submittedAt?: string } | null;
+    measurement_context: { utmSource?: string; utmMedium?: string; utmCampaign?: string; utmContent?: string; landingPath?: string } | null;
     status: string;
     name: string;
     organization: string;
@@ -178,6 +185,8 @@ export async function getLead(context: DashboardContext, leadId: string) {
     id: row.id,
     inquiryType: row.inquiry_type,
     source: row.source,
+    metaContext: row.meta_context,
+    acquisition: row.measurement_context,
     status: row.status,
     name: row.name,
     organization: row.organization,

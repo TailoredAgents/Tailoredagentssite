@@ -1,0 +1,26 @@
+"use server";
+import { revalidatePath } from "next/cache";
+import { requireDashboardContext } from "@/lib/dashboard/data";
+import type { OperationActionState } from "@/lib/operations/validation";
+import { retryMetaImports, runMetaLeadWorker } from "./service";
+
+export async function retryMetaImportsAction(): Promise<OperationActionState> {
+  const context = await requireDashboardContext();
+  try {
+    await retryMetaImports(context);
+    await runMetaLeadWorker();
+    revalidatePath("/dashboard/settings");
+    revalidatePath("/dashboard/leads");
+    return {
+      status: "success",
+      message:
+        "Failed imports are queued for another attempt. Check the connection status for results.",
+    };
+  } catch {
+    return {
+      status: "error",
+      message:
+        "Imports could not be retried. Check your administrator access and Meta connection.",
+    };
+  }
+}

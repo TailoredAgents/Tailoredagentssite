@@ -80,15 +80,16 @@ export async function POST(request: NextRequest) {
   }
 
   const isReview = data.inquiryType === "website-review";
+  const metaEventId = createHash("sha256").update(`meta:website-lead:${stored.leadId}`).digest("hex");
   const receivedMessage = isReview
     ? "Thank you. Your website review request has been received."
     : "Thank you. Your project inquiry has been received.";
-  if (stored.duplicate) return response(receivedMessage, 200, { duplicate: true });
+  if (stored.duplicate) return response(receivedMessage, 200, { duplicate: true, metaEventId });
 
   const notification = getInquiryNotificationConfiguration();
   if (!notification) {
     await updateDeliveryStatus(stored.leadId, { status: "not_configured" });
-    return response(receivedMessage, 201, { notification: "pending" });
+    return response(receivedMessage, 201, { notification: "pending", metaEventId });
   }
 
   const text = [
@@ -135,5 +136,5 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  return response(receivedMessage, 201);
+  return response(receivedMessage, 201, { metaEventId });
 }

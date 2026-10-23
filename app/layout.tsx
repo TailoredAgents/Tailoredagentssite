@@ -4,6 +4,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteFrame } from "@/components/site-frame";
 import { AnalyticsTracker } from "@/components/analytics-tracker";
+import { MetaPixel } from "@/components/meta-pixel";
 import { absoluteUrl, siteConfig } from "@/lib/site";
 import "./globals.css";
 
@@ -56,6 +57,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <a className="skip-link" href="#main-content">Skip to content</a>
         <AnalyticsTracker />
+        <MetaPixel />
         <SiteFrame
           header={<SiteHeader />}
           footer={<SiteFooter />}

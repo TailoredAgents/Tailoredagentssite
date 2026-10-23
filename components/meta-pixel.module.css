@@ -1,0 +1,80 @@
+.panel {
+  position: fixed;
+  z-index: 90;
+  inset: auto 24px 20px;
+  max-width: 760px;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 22px;
+  border: 1px solid #b9c8df;
+  border-radius: 16px;
+  background: #f2f6fd;
+  color: #18283f;
+  box-shadow: 0 12px 40px #0e21352b;
+}
+.panel strong {
+  font-size: 16px;
+}
+.panel p {
+  margin: 7px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.panel a {
+  text-decoration: underline;
+}
+.actions {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 8px;
+}
+.actions button {
+  min-height: 44px;
+  padding: 9px 16px;
+  border: 1px solid #8a9dbb;
+  border-radius: 8px;
+  background: #fff;
+  color: #1d345a;
+  font: 600 14px var(--font-sans);
+  cursor: pointer;
+}
+.actions button:last-child {
+  background: #265bd6;
+  color: #fff;
+  border-color: #265bd6;
+}
+.actions button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.preferences {
+  position: fixed;
+  z-index: 80;
+  bottom: 12px;
+  left: 12px;
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid #b9c8df;
+  border-radius: 8px;
+  color: #294365;
+  background: #f2f6fd;
+  font: 500 12px var(--font-sans);
+  cursor: pointer;
+}
+@media (max-width: 600px) {
+  .panel {
+    inset: auto 12px 12px;
+    display: block;
+    padding: 18px;
+  }
+  .actions {
+    flex-direction: row;
+    margin-top: 16px;
+  }
+  .actions button {
+    flex: 1;
+  }
+}

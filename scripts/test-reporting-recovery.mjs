@@ -85,6 +85,8 @@ try {
     for (const file of (await readdir("db/migrations")).filter(file => file.endsWith(".sql") && file >= "0012").sort())
       await pool.query(await readFile("db/migrations/" + file, "utf8"));
     // Preserve voice grants, durable redemption and a scoped voicemail reference.
+    await pool.query(`INSERT INTO leads(id,workspace_id,submission_id,source,name,organization,email,meta_context) VALUES('00000000-0000-4000-8000-000000000950',$1,'meta:111111111:333333333','facebook','Meta recovery fixture','Fixture business','meta-recovery@example.test','{"formId":"222222222"}')`,[workspace]);
+    await pool.query(`INSERT INTO meta_lead_events(id,workspace_id,page_id,provider_lead_id,form_id,status,lead_id,imported_at) VALUES('00000000-0000-4000-8000-000000000951',$1,'111111111','333333333','222222222','imported','00000000-0000-4000-8000-000000000950',now())`,[workspace]);
     await pool.query(`INSERT INTO voice_lines(id,workspace_id,account_sid,provider_sid,phone) VALUES('00000000-0000-4000-8000-000000000920',$1,$2,$3,'+16785550100')`, [workspace, 'AC'+'1'.repeat(32), 'PN'+'2'.repeat(32)]);
     await pool.query(`INSERT INTO voice_line_grants(workspace_id,line_id,user_id,can_call,can_receive,can_manage_voicemail) VALUES($1,'00000000-0000-4000-8000-000000000920','recovery-sms-user',true,true,true)`, [workspace]);
     await pool.query(`INSERT INTO voice_conversations(id,workspace_id,line_id,remote_phone) VALUES('00000000-0000-4000-8000-000000000921',$1,'00000000-0000-4000-8000-000000000920','+16785550101')`, [workspace]);
@@ -265,9 +267,11 @@ try {
     assert.equal((await restored.query(`SELECT body FROM inbox_drafts WHERE id='00000000-0000-4000-8000-000000000908'`)).rows[0].body, 'Synthetic private email draft');
     const seo=(await restored.query("SELECT c.title,c.human_reviewed_at,k.status,k.reserved_micros FROM seo_publications p JOIN seo_changes c ON c.id=p.change_id JOIN seo_costs k ON k.run_id=c.run_id WHERE p.site_id=$1",[site])).rows[0];
     assert.equal(seo.title,"Reviewed recovery title");assert.ok(seo.human_reviewed_at);assert.equal(seo.status,"uncertain");assert.equal(Number(seo.reserved_micros),250000);
+    const meta = (await restored.query("SELECT e.status,e.provider_lead_id,l.meta_context FROM meta_lead_events e JOIN leads l ON l.id=e.lead_id WHERE e.id='00000000-0000-4000-8000-000000000951'")).rows[0];
+    assert.equal(meta.status,"imported"); assert.equal(meta.provider_lead_id,"333333333"); assert.equal(meta.meta_context.formId,"222222222");
     await restored.query("SELECT perform_reporting_retention()");
     console.log(
-      "PASS: reports, credential metadata, client/contact links, unified source backfill, scoped email notes/private drafts, SMS grants/drafts/uncertain receipts, voice grants/redeemed intents/voicemail references, reviewed SEO publications and uncertain cost receipts survive populated migration and PostgreSQL dump/restore; retention remains callable.",
+      "PASS: reports, credential metadata, client/contact links, unified source backfill, scoped email notes/private drafts, SMS grants/drafts/uncertain receipts, voice grants/redeemed intents/voicemail references, reviewed SEO publications, uncertain cost receipts, and Meta lead attribution/replay receipts survive populated migration and PostgreSQL dump/restore; retention remains callable.",
     );
   } finally {
     await restored.end();

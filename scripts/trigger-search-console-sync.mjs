@@ -42,5 +42,7 @@ do {
     console.log(`Voicemail retention: ${result.voice.checked ?? 0} checked, ${result.voice.failed ?? 0} pending failures.`);
   if (result.callRecordings?.checked || result.callRecordings?.failed)
     console.log(`Call recordings: ${result.callRecordings.checked ?? 0} stages checked, ${result.callRecordings.failed ?? 0} need review.`);
+  if (result.metaLeads?.checked || result.metaLeads?.failed)
+    console.log(`Meta leads: ${result.metaLeads.checked ?? 0} checked, ${result.metaLeads.failed ?? 0} need retry.`);
   if (!result.more) break;
 } while (Date.now() < deadline);

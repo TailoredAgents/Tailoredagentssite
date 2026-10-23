@@ -27,7 +27,8 @@
     "reporting:preview": "node scripts/start-reporting-preview.mjs",
     "test:recovery": "node scripts/test-reporting-recovery.mjs",
     "seo:worker": "node --conditions=react-server --import tsx scripts/run-seo-worker.ts",
-    "test:seo:browser": "playwright test --config playwright.seo.config.ts"
+    "test:seo:browser": "playwright test --config playwright.seo.config.ts",
+    "test:meta:browser": "playwright test --config playwright.meta.config.ts"
   },
   "engines": {
     "node": ">=22.0.0"

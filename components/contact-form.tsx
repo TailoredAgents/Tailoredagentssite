@@ -5,6 +5,7 @@ import { ArrowRight, LoaderCircle } from "lucide-react";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { interestOptions, type ContactErrors } from "@/lib/contact";
 import { getMeasurementContext } from "@/lib/analytics/client";
+import { trackMetaLead } from "@/lib/meta/pixel";
 
 type Status = { type: "idle" | "submitting" | "success" | "error"; message?: string };
 
@@ -25,12 +26,13 @@ export function ContactForm() {
     submissionId.current ??= `inquiry_${crypto.randomUUID().replaceAll("-", "")}`;
     try {
       const response = await fetch("/api/contact", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, startedAt: startedAt.current, submissionId: submissionId.current, measurement: getMeasurementContext() }) });
-      const result = await response.json() as { message?: string; errors?: ContactErrors };
+      const result = await response.json() as { message?: string; errors?: ContactErrors; metaEventId?: string };
       if (!response.ok) {
         setErrors(result.errors || {});
         setStatus({ type: "error", message: result.message || "The inquiry could not be sent." });
         return;
       }
+      trackMetaLead(result.metaEventId);
       form.reset();
       submissionId.current = null;
       startedAt.current = Date.now();

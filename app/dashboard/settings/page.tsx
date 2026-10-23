@@ -12,17 +12,20 @@ import { getVoiceWorkspace } from "@/lib/voice/data";
 import { VoiceSettingsPanel } from "@/components/voice/settings-panel";
 import { SettingsSection } from "@/components/dashboard/settings-section";
 import { DashboardAppearance } from "@/components/dashboard/theme-provider";
+import { getMetaStatus } from "@/lib/meta/service";
+import { MetaSettingsPanel } from "@/components/meta-settings-panel";
 
 export const metadata: Metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
   const context = await requireDashboardContext();
   const mailLogin = resolveDashboardConfiguration().authMode === "mail";
-  const [google, inbox, sms, voice] = await Promise.all([
+  const [google, inbox, sms, voice, meta] = await Promise.all([
     getSearchConsoleConnection(context).catch(() => null),
     listMailboxes(context).then(mailboxes => ({ connected: mailboxes.length > 0, detail: mailboxes.length ? `${mailboxes.length} approved address${mailboxes.length === 1 ? "" : "es"}. Mail → Manage team controls who can read and send. Dashboard roles also apply.` : "Ask the Mail owner to approve your account for the shared sales address." })).catch(error => ({ connected: false, detail: error instanceof MailProviderError ? error.message : "The email connection could not be checked. Open Inbox to try again." })),
     listSmsSettings(context),
     getVoiceWorkspace(context),
+    getMetaStatus(context).catch(() => null),
   ]);
   const googleStatus = !google ? "Unable to check" : !google.configured ? "Setup needed" : google.connection?.status === "active" ? "Connected" : google.connection?.status === "error" ? "Needs attention" : "Not connected";
   const notifications = getInquiryNotificationConfiguration();
@@ -48,6 +51,7 @@ export default async function SettingsPage() {
       <section className="workspace-connections" aria-label="Service connections">{settings.map(({ icon: Icon, label, value, detail, healthy }) => <article className="workspace-connection" key={label}><header><span><Icon size={19} aria-hidden="true" /></span><div><h3>{label}</h3><em className={healthy ? "" : "is-neutral"}>{value}</em></div></header><p>{detail}</p></article>)}</section>
       <SettingsSection id="messaging-settings" target="sms" title="Business SMS" description="Verify your number, manage teammate access and control sending."><SmsSettingsPanel settings={sms} /></SettingsSection>
       <SettingsSection id="voice-settings" target="calling" title="Calling & voicemail" description="Manage voice permissions, business hours, routing and voicemail."><VoiceSettingsPanel workspace={voice} /></SettingsSection>
+      <MetaSettingsPanel state={meta} admin={context.role === "owner" || context.role === "admin"} />
       <section className="dashboard-panel dashboard-boundary-card"><ShieldCheck size={22} /><div><h2>This workspace is private to your team</h2><p>Clients cannot sign in to this dashboard. If you need a password reset or someone has left the team, contact the mail owner.</p></div></section>
     </div>
   </>;

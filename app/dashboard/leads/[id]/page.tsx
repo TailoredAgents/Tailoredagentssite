@@ -44,6 +44,7 @@ export default async function LeadPage({
   if (!lead) notFound();
   const mutable = context.role !== "viewer";
   const manual = lead.source === "manual";
+  const meta = lead.source === "facebook";
 
   return (
     <>
@@ -65,7 +66,7 @@ export default async function LeadPage({
         <section className="dashboard-page-heading dashboard-page-heading-compact dashboard-record-heading">
           <div>
             <span>
-              {manual
+              {meta ? "Facebook / Instagram lead" : manual
                 ? "Manually added lead"
                 : lead.inquiryType === "website-review"
                   ? "Website review"
@@ -73,7 +74,7 @@ export default async function LeadPage({
             </span>
             <h1>{lead.organization}</h1>
             <p>
-              {manual
+              {meta ? `Received in the CRM on ${formatOperationalDate(lead.createdAt)}.` : manual
                 ? `Added manually on ${formatOperationalDate(lead.createdAt)}.`
                 : `${lead.name} submitted this inquiry on ${formatOperationalDate(lead.createdAt)}.`}
             </p>
@@ -92,7 +93,7 @@ export default async function LeadPage({
                   <span>{manual ? "Lead details" : "Inquiry"}</span>
                   <h2>Original context</h2>
                 </div>
-                {manual ? (
+                {meta ? <small>Instant Form</small> : manual ? (
                   <small>Added manually</small>
                 ) : (
                   <small className={`delivery-${lead.deliveryStatus}`}>
@@ -149,6 +150,19 @@ export default async function LeadPage({
                   </dd>
                 </div>
               </dl>
+              {lead.metaContext && <dl className="dashboard-detail-list">
+                <div><dt>Platform</dt><dd>{lead.metaContext.platform || "Facebook / Instagram"}</dd></div>
+                <div><dt>Campaign</dt><dd>{lead.metaContext.campaignName || lead.metaContext.campaignId || "Not supplied by Meta"}</dd></div>
+                <div><dt>Ad</dt><dd>{lead.metaContext.adName || lead.metaContext.adId || "Organic or unavailable"}</dd></div>
+                <div><dt>Form ID</dt><dd>{lead.metaContext.formId}</dd></div>
+                <div><dt>Submitted</dt><dd>{lead.metaContext.submittedAt ? formatOperationalDate(lead.metaContext.submittedAt) : "Unknown"}</dd></div>
+              </dl>}
+              {lead.acquisition && <dl className="dashboard-detail-list">
+                <div><dt>Traffic source</dt><dd>{lead.acquisition.utmSource || "Direct / unknown"}{lead.acquisition.utmMedium ? ` / ${lead.acquisition.utmMedium}` : ""}</dd></div>
+                <div><dt>Campaign</dt><dd>{lead.acquisition.utmCampaign || "Not tagged"}</dd></div>
+                <div><dt>Ad / content</dt><dd>{lead.acquisition.utmContent || "Not tagged"}</dd></div>
+                <div><dt>Landing page</dt><dd>{lead.acquisition.landingPath || "/"}</dd></div>
+              </dl>}
               {lead.websiteUrl ? (
                 <p className="dashboard-detail-link">
                   <strong>Website</strong>

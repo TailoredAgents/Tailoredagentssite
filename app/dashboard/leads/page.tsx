@@ -23,6 +23,7 @@ export default async function LeadsPage({
     q?: string | string[];
     status?: string | string[];
     page?: string | string[];
+    source?: string | string[];
   }>;
 }) {
   const context = await requireDashboardContext();
@@ -46,7 +47,7 @@ export default async function LeadsPage({
             <span>Lead pipeline</span>
             <h1>Leads</h1>
             <p>
-              Keep website inquiries, referrals, and manually added prospects
+              Keep website inquiries, Facebook and Instagram leads, and manually added prospects
               together, ready for your next conversation.
             </p>
           </div>
@@ -87,8 +88,9 @@ export default async function LeadsPage({
               ))}
             </select>
           </label>
+          <label><Filter size={15} /><select aria-label="Filter leads by source" name="source" defaultValue={leads.source}><option value="all">All sources</option><option value="facebook">Facebook / Instagram</option><option value="website">Website</option><option value="manual">Added manually</option></select></label>
           <button type="submit">Apply filters</button>
-          {leads.q || leads.status !== "all" ? (
+          {leads.q || leads.status !== "all" || leads.source !== "all" ? (
             <Link href="/dashboard/leads">Clear</Link>
           ) : null}
         </form>
@@ -129,7 +131,7 @@ export default async function LeadsPage({
                         ? "Website review"
                         : lead.interest || "Project inquiry"}
                     </strong>
-                    {lead.source === "manual" ? (
+                    {lead.source === "facebook" ? <small>Facebook / Instagram</small> : lead.source === "manual" ? (
                       <small>Added manually</small>
                     ) : (
                       <small className={`delivery-${lead.deliveryStatus}`}>
@@ -172,7 +174,7 @@ export default async function LeadsPage({
             basePath="/dashboard/leads"
             page={leads.page}
             pages={leads.pages}
-            values={{ q: leads.q, status: leads.status }}
+            values={{ q: leads.q, status: leads.status, source: leads.source }}
           />
         </section>
       </div>
