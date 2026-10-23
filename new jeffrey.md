@@ -1,6 +1,48 @@
-# New Jeffrey — email and SEO manager handoff
+# New Jeffrey — Meta leads, email and SEO manager handoff
 
-Prepared October 21, 2026. SEO manager handoff expanded October 22, 2026 at Austin's request.
+Prepared October 21, 2026. SEO handoff expanded October 22. Meta connection handed to Jeffrey October 23, 2026 at Austin's request.
+
+## Meta leads — remaining connection assigned to Jeffrey
+
+Austin assigned the remaining **developer app, Page access, credentials, webhooks and live Facebook/Instagram Instant Form delivery into the CRM** to Jeffrey. Use [META_SETUP.md](docs/META_SETUP.md) for the detailed technical steps. Coordinate account access with Austin privately and preserve the existing implementation on `main`.
+
+### Already completed — preserve this setup
+
+- Austin says the business portfolio, Page, ad account and related business assets already exist. Reuse them.
+- Website Pixel/Dataset ID: **1785858192683666** (public identifier).
+- Austin confirmed **PageView and Lead events work** after a website-review inquiry saved to the CRM. This is owner-reported live acceptance. Do not install another Pixel snippet. Automatic advanced matching remains off.
+- The connector is deployed in `10a9cf3`; `4abb3c3` adds review-form browser coverage. Migration **0017_meta_leads.sql** provides durable signed lead receipts, retries and attribution. CRM Leads supports Facebook/Instagram filtering and original form answers; Settings shows connection/import status and failed-import retry controls.
+- **Instant Form imports are not yet live-verified.** The Pixel does not retrieve Facebook form answers. The developer app identifies and authorizes the CRM integration; it is not a separate customer-facing product.
+
+### Jeffrey's activation checklist
+
+1. [ ] Obtain the exact numeric Facebook **Page ID**. Create/select **Tailored Agents CRM** in [Meta Developer Apps](https://developers.facebook.com/apps/), associated with the existing business portfolio, with Lead Ads retrieval and Page webhooks. Use the actual business contact, website and `https://www.tailoredagents.com/privacy` as required.
+2. [ ] Authorize the intended Page and obtain a production-suitable **Page access token**. Check `leads_retrieval`, `pages_manage_metadata`, Page listing/read permissions and additional Page/ad permissions required by the chosen flow. Complete applicable permission review, business verification and publishing requirements shown by Meta. Check token identity, expiration and renewal ownership; do not leave a short-lived Explorer testing token in production.
+3. [ ] Set the following server-only variables on Render **tailored-agents-web**, then redeploy. Keep secrets out of this file, Git and chat.
+
+| Variable | Value |
+| --- | --- |
+| `META_PAGE_ID` | Exact numeric business Page ID |
+| `META_APP_SECRET` | CRM developer app secret |
+| `META_PAGE_ACCESS_TOKEN` | Authorized Page token |
+| `META_WEBHOOK_VERIFY_TOKEN` | New securely stored random secret, at least 32 characters |
+| `META_GRAPH_API_VERSION` | `v26.0` |
+| `META_LEADS_ENABLED` | `false` during setup; `true` for acceptance and operation |
+
+Preserve the working browser settings `NEXT_PUBLIC_META_PIXEL_ID=1785858192683666` and `NEXT_PUBLIC_META_PIXEL_ENABLED=true`.
+
+4. [ ] Configure the app's **Page** webhook: callback `https://www.tailoredagents.com/api/integrations/meta/leads`, verification token matching Render, and **leadgen** subscription. Also subscribe the **actual Page** using `POST /{PAGE_ID}/subscribed_apps` with `subscribed_fields=leadgen` and the authorized Page token. Verify with `GET /{PAGE_ID}/subscribed_apps`. App-level webhook configuration alone is insufficient.
+5. [ ] Check Business Settings **Leads Access**. Where customized, grant the token identity and connected CRM app access to this Page's leads. Confirm linked Instagram form delivery uses the intended Page. Keep access scoped to the business assets needed.
+6. [ ] Enable `META_LEADS_ENABLED=true`, redeploy and check **Settings → Facebook & Instagram**. Verify the existing **tailored-agents-search-console-sync** cron runs successfully every five minutes; it resumes queued Meta imports through the shared worker. No new paid worker is needed.
+7. [ ] Test the actual Page/form with the [Lead Ads Testing Tool](https://developers.facebook.com/tools/lead-ads-testing/), then verify an ordinary public submission and Instagram delivery if used. Confirm one CRM lead with correct answers/contact details, no duplicate on replay, and Austin/Devon can follow up. An app-role test alone does not establish public-lead access.
+8. [ ] Check failed-import recovery after correcting permissions/token issues. Record live acceptance date and Page/form identifiers without secrets or private lead data. Reconcile leads collected before activation: historical backfill is not automatic. New imports are unassigned and do not automatically contact the customer or send team alerts.
+
+### Interim alerts and follow-through
+
+- Inspect the actual Meta account for native lead notification controls and test delivery to Austin/Devon. Availability, channels and timing must be verified in that account; do not assume instant email delivery. Use Meta's lead views as the interim queue.
+- If native alerts are unavailable, **Facebook Lead Ads → New Lead → Email by Zapier** can notify the team without creating a custom developer app first. It requires an eligible **paid Zapier plan**, authorized Page/leads access and confirmed alert recipients. No subscription or automation has been created. [Zapier integration](https://zapier.com/apps/facebook-lead-ads/integrations), [plan/access prerequisites](https://help.zapier.com/hc/en-us/articles/8496061306253-How-to-get-started-with-Facebook-Lead-Ads-on-Zapier).
+- Website contact/review forms already support **Resend** alerts through `RESEND_API_KEY`, `CONTACT_FROM_EMAIL` (verified sender) and `CONTACT_TO_EMAIL` (comma-separated recipients, up to ten). Confirm actual configuration and delivery before claiming alerts work. This is independent of shared Mail inbox activation. A saved CRM inquiry does not prove its alert was delivered. This path currently does not notify on Meta Instant Form imports.
+- Confirm ongoing assignment and alert recipients with Austin, and avoid duplicate alerts when retiring a temporary integration. **Conversions API and qualified/won feedback remain future development**, not prerequisites for this handoff.
 
 ## SEO manager — Jeffrey owns the remaining work
 
@@ -151,7 +193,7 @@ If this change must be reversed, use Cloudflare to restore **only Austin's** `is
 
 Connect **sales@tailoredagents.com** to the internal website CRM. **Devon, Jeffrey and Austin** should have read and reply access. Confirm their actual existing Mail login accounts; their names are not permission to guess email addresses or share the inbox with everyone.
 
-This handoff covers email activation. The project owner handles Twilio and the remaining development with Codex. Jeffrey's scope is the email-specific Cloudflare/Render configuration, Mail deployment, Sales address approvals and email acceptance below.
+This email section covers Cloudflare/Render configuration, Mail deployment, Sales address approvals and email acceptance. Jeffrey also owns the Meta connection and SEO work above. The project owner handles Twilio and the remaining agency development with Codex.
 
 **Unified Inbox update:** deploy the latest Mail code from `main`, including the new address-scoped `conversationIndex` and `threadHistory` API actions. The website now has a shared email/SMS/notes conversation workspace at `/dashboard/inbox` and needs these actions to discover email histories. There is no additional Mail migration or secret beyond **0037** and `CRM_MAIL_SECRET` below. The website's ordered migrations now include **0012_unified_inbox.sql**. Its existing email-only workspace remains at `/dashboard/inbox?channel=email` for compatibility. An older Mail deployment cannot provide the unified discovery API, even if the original email bridge works.
 
@@ -240,7 +282,7 @@ Use synthetic messages and explicitly authorized test correspondents; avoid test
 
 ## Scope after email acceptance
 
-Twilio account/number setup, SMS, calling, voicemail, recordings, transcripts and the remaining agency development stay with the project owner and Codex. The active queue is in [the roadmap](docs/AGENCY_OS_ROADMAP.md). Jeffrey's assignment is the email activation and acceptance checklist above.
+Twilio, SMS, calling, voicemail, recordings, transcripts and the remaining agency development stay with the project owner and Codex. The active queue is in [the roadmap](docs/AGENCY_OS_ROADMAP.md). Jeffrey owns the email, SEO manager and remaining Meta connection checklists in this file.
 
 ## Developer references and repeatable local checks
 

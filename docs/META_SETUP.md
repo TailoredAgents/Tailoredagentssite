@@ -1,6 +1,8 @@
 # Meta Pixel and Facebook / Instagram leads
 
-Owner: Austin. Updated October 23, 2026. This work takes priority over the next Inbox convenience increment. Jeffrey's SEO and shared-email handoff continues separately.
+Remaining connection owner: Jeffrey, assigned by Austin October 23, 2026. See [new jeffrey.md](../new%20jeffrey.md#meta-leads--remaining-connection-assigned-to-jeffrey). Austin retains business-account ownership and can supply needed asset access. Jeffrey's SEO and shared-email handoffs continue alongside this work.
+
+**Current acceptance:** Austin reports the business assets already exist and has confirmed website PageView and Lead events after a saved website-review inquiry. Pixel/Dataset ID is **1785858192683666**. Preserve this working installation; steps 1–2 below are reference, not a request to create duplicate assets. Facebook/Instagram Instant Form connection and real delivery acceptance remain outstanding for Jeffrey. Conversions API is not implemented.
 
 ## What this release does
 
@@ -10,7 +12,7 @@ Owner: Austin. Updated October 23, 2026. This work takes priority over the next 
 - Settings → Facebook & Instagram: setup state, imported/queued/failed totals, and owner/admin retry of exhausted imports. A configured Pixel is explicitly awaiting verification in Meta Test Events; it is not claimed to be live merely because an ID exists.
 - Failures: immediate work runs after webhook acknowledgement; the existing five-minute reporting/call worker resumes pending imports. Leases recover interrupted jobs. Up to 12 attempts use bounded backoff, then Settings shows a failure requiring attention. Pausing imports still retains signed receipts.
 
-**Still requires Austin's Meta assets and a real acceptance test.** No account, Page, Dataset, app, token, campaign or ad spend is created by this code. Live credential/permission acceptance has not been established by synthetic tests.
+**Instant Form activation still requires Page/app credentials, permissions and real delivery acceptance.** No account, Page, Dataset, app, token, campaign or ad spend is created by this code. Synthetic tests do not establish live credential/permission acceptance. Website Pixel acceptance is separately owner-confirmed above.
 
 ## 1. Finish the Meta assets
 
