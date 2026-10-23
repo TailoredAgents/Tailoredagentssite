@@ -84,6 +84,33 @@ test("only measures accepted public visits and saved website inquiries", async (
   expect((await calls(page)).at(-1)).toEqual(["consent", "revoke"]);
 });
 
+test("website review emits Lead after saving across public navigation", async ({ page }, info) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Allow Meta cookies", exact: true }).click();
+  await expect.poll(async () => (await calls(page)).filter(row => row[2] === "PageView").length).toBe(1);
+  await page.getByRole("link", { name: "Get a Free Website Review", exact: true }).first().click();
+  await expect(page).toHaveURL(/\/free-review$/);
+  await expect.poll(async () => (await calls(page)).filter(row => row[2] === "PageView").length).toBe(2);
+  await page.getByLabel("Contact name", { exact: true }).fill("Meta review fixture");
+  await page.getByLabel("Business name", { exact: true }).fill("Meta review browser fixture");
+  const email = `meta-review-${info.project.name}@example.test`;
+  await page.getByLabel("Email address", { exact: true }).fill(email);
+  await page.getByLabel("Current website URL", { exact: true }).fill("https://example.com");
+  await page.waitForTimeout(2600);
+  const responsePromise = page.waitForResponse(response => response.url().endsWith("/api/contact") && response.request().method() === "POST");
+  await page.getByRole("button", { name: "Request my review", exact: true }).click();
+  const response = await responsePromise;
+  expect(response.ok()).toBe(true);
+  const result = await response.json();
+  expect(result.metaEventId).toMatch(/^[a-f0-9]{64}$/);
+  await expect(page.getByText("Thank you. Your website review request has been received.")).toBeVisible();
+  await expect.poll(async () => (await calls(page)).filter(row => row[2] === "Lead")).toEqual([
+    ["trackSingle", "123456789", "Lead", {}, { eventID: result.metaEventId }],
+  ]);
+  const saved = await pool.query("SELECT id FROM leads WHERE email=$1 AND source='website'", [email]);
+  expect(saved.rowCount).toBe(1);
+});
+
 test("declining and private sign-in keep the Pixel unloaded", async ({
   page,
 }, info) => {
