@@ -799,3 +799,4 @@ a.dashboard-nav-item:hover { background: var(--workspace-nav-hover); color: var(
   .dashboard-manual-lead-actions { width: 100%; }
   .dashboard-manual-lead-actions > button { flex: 1; }
 }
+.dashboard-record-contact-action { margin: -4px 0 20px; }

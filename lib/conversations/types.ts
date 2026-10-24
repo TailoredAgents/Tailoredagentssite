@@ -1,15 +1,18 @@
 import type {
   InboxMailbox,
+  InboxDraft,
   InboxRecord,
   InboxMessage,
   InboxMember,
   InboxLinks,
 } from "@/lib/inbox/types";
-import type { SmsNumber, SmsRecord } from "@/lib/sms/types";
+import type { SmsNumber, SmsRecord, SmsDraft } from "@/lib/sms/types";
 import type { VoiceLine, VoiceCall } from "@/lib/voice/types";
 export type ConversationStatus =
   "needs_reply" | "waiting" | "done" | "archived";
 export type ConversationFilters = {
+  contact?: string | string[];
+  lead?: string | string[];
   conversation?: string | string[];
   thread?: string | string[];
   view?: string | string[];
@@ -79,6 +82,7 @@ export type ConversationContext = {
   mockup: { status: string; previewUrl: string | null } | null;
 };
 export type ConversationRecord = {
+  recipient?: ConversationRecipient | null;
   conversation: ConversationSummary;
   sources: ConversationSource[];
   timeline: ConversationTimelineItem[];
@@ -88,6 +92,9 @@ export type ConversationRecord = {
   historyTotal: number;
 };
 export type ConversationWorkspace = {
+  recipientDrafts: { email: Record<string, InboxDraft>; sms: Record<string, SmsDraft> };
+  recipient: ConversationRecipient | null;
+  recipientConversations: ConversationSummary[];
   items: ConversationSummary[];
   selected: ConversationRecord | null;
   total: number;
@@ -108,6 +115,15 @@ export type ConversationWorkspace = {
   }[];
   mailboxes: InboxMailbox[];
   numbers: SmsNumber[];
+};
+export type ConversationRecipient = {
+  id: string;
+  kind: "contact" | "lead";
+  name: string;
+  email: string | null;
+  phone: string | null;
+  businessId: string | null;
+  businessName: string | null;
 };
 export type ConversationActionState = {
   status: "idle" | "success" | "error";

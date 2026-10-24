@@ -13,15 +13,15 @@ function displayPhone(value: string) {
   return `(${local.slice(0, 3)}) ${local.slice(3, 6)}-${local.slice(6)}`;
 }
 
-export function VoiceCallComposer({ record }: { record: ConversationRecord }) {
+export function VoiceCallComposer({ record, recipient }: { record?: ConversationRecord; recipient?: { name: string; phone: string | null } | null }) {
   const phone = useBrowserPhone();
-  const targets = [...new Set(record.sources.flatMap((source) => source.externalAddresses).filter((value) => /^\+?[\d\s().-]{7,}$/.test(value)))];
+  const targets = [...new Set([...(recipient?.phone ? [recipient.phone] : []), ...(record?.sources || []).flatMap((source) => source.externalAddresses)].filter((value) => /^\+?[\d\s().-]{7,}$/.test(value)))];
   const [to, setTo] = useState(displayPhone(targets[0] || ""));
   const line = phone.workspace.lines.find((item) => item.id === phone.lineId);
   const ready = phone.connection === "ready" && Boolean(line?.canCall) && line?.status === "active" && phone.workspace.state === "ready";
   const busy = phone.phase !== "idle";
   const canConnect = phone.workspace.state === "ready" && Boolean(line && (line.canCall || line.canReceive)) && !phone.readOnly && phone.supported !== false;
-  const name = record.conversation.personName;
+  const name = recipient?.name || record?.conversation.personName || "Customer";
   const title = /^\+?[\d\s().-]+$/.test(name) ? "Make a call" : `Call ${name}`;
 
   return <section className="voice-call-composer" aria-labelledby="voice-call-title">
@@ -33,7 +33,7 @@ export function VoiceCallComposer({ record }: { record: ConversationRecord }) {
 
       {phone.workspace.state !== "ready" ? <div className="voice-setup-notice"><p>{phone.workspace.message}</p><Link href="/dashboard/settings#calling">Review calling setup</Link></div> : <form aria-label="Start browser call" onSubmit={(event) => {
         event.preventDefault();
-        if (ready && !busy && to.trim()) void phone.startCall({ lineId: phone.lineId, to: to.trim(), conversationId: record.conversation.id, name });
+        if (ready && !busy && to.trim()) void phone.startCall({ lineId: phone.lineId, to: to.trim(), conversationId: record?.conversation.id, name });
       }}>
         {phone.workspace.lines.length > 1 ? <label className="voice-call-origin voice-call-line-picker"><span>Calling line</span><select aria-label="Calling line" value={phone.lineId} disabled={phone.readOnly || busy || phone.connection === "connecting"} onChange={(event) => phone.setLineId(event.target.value)}>{phone.workspace.lines.map((item) => <option key={item.id} value={item.id}>{displayPhone(item.phone)}{item.status === "paused" ? " · Paused" : ""}{!item.canCall ? " · Outbound access required" : ""}</option>)}</select></label> : <p className="voice-call-origin"><span>Calling from</span><strong>{line ? displayPhone(line.phone) : "No calling line"}</strong></p>}
 

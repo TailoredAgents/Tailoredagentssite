@@ -174,7 +174,7 @@ export async function saveDraft(context: DashboardContext, raw: unknown) {
         randomUUID(),
         context.workspace.id,
         input.mailboxId,
-        input.threadId || "",
+        input.threadId || input.composeKey || "",
         context.user.id,
         input.to,
         input.subject,
@@ -414,7 +414,7 @@ export async function sendInboxMessage(
         [
           context.workspace.id,
           input.mailboxId,
-          input.threadId || "",
+          input.threadId || input.composeKey || "",
           context.user.id,
           submittedDraftText,
           input.to,

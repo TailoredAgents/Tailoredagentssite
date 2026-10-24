@@ -1,4 +1,5 @@
 "use server";
+import { bindSentRecipient } from "@/lib/conversations/service";
 import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
 import { requireDashboardContext } from "@/lib/dashboard/data";
@@ -76,6 +77,10 @@ export async function sendInboxMessageAction(
   const context = await requireDashboardContext();
   try {
     const result = await inbox.sendInboxMessage(context, inboxFormValues(form));
+    if (result.sendState === "accepted" && result.threadId && form.get("recipientId")) {
+      try { result.crmConversationId = await bindSentRecipient(context, form, { channel: "email", id: result.threadId }); }
+      catch { result.message += " Your message was accepted, but the CRM link could not be saved. Open the channel history to review it."; }
+    }
     revalidatePath("/dashboard/inbox");
     return result;
   } catch (error) {

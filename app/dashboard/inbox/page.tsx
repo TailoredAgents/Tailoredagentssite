@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -21,5 +22,6 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
   if (channel === "email" || (!one(filters.conversation) && (one(filters.mailbox) || one(filters.thread) || one(filters.compose)))) return <><Link className="conversation-legacy-back" href="/dashboard/inbox"><ArrowLeft size={16} aria-hidden="true" />Back to customer conversations</Link><LegacyEmailPage searchParams={Promise.resolve(filters)} /></>;
   const context = await requireDashboardContext();
   const data = await listConversationWorkspace(context, filters);
-  return <ConversationWorkspace key={data.selected?.conversation.id || "list"} data={data} userId={context.user.id} readOnly={context.role === "viewer"} />;
+  if ((one(filters.contact) || one(filters.lead)) && !data.recipient) notFound();
+  return <ConversationWorkspace key={one(filters.contact) || one(filters.lead) || data.selected?.conversation.id || "list"} data={data} userId={context.user.id} readOnly={context.role === "viewer"} />;
 }

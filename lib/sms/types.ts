@@ -86,6 +86,7 @@ export type SmsSettings = {
   statusUrl: string;
 };
 export type SmsActionState = {
+  crmConversationId?: string;
   status: "idle" | "success" | "error";
   message: string;
   requestId?: string;

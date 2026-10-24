@@ -54,6 +54,107 @@ async function combine(page:Page,request:APIRequestContext) {
 }
 test.beforeEach(async({request})=>{await control(request,"reset");});
 
+test("chooses a person first and opens a lead directly in the Inbox", async ({page,request}, info) => {
+  await signIn(page);
+  await page.getByRole("link",{name:"New conversation",exact:true}).click();
+  await expect(page.getByRole("heading",{name:"New conversation",exact:true})).toBeVisible();
+  await page.getByRole("searchbox",{name:"Find a contact or lead"}).fill("Taylor");
+  await page.getByRole("button",{name:"Search",exact:true}).click();
+  await expect(page.locator(".conversation-recipient-result")).toHaveCount(1);
+  expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa"]).analyze()).violations).toEqual([]);
+  await page.screenshot({path:`test-results/recipient-picker-${info.project.name}.png`,fullPage:true,caret:"initial",style:"nextjs-portal{display:none!important;}"});
+  await page.getByRole("link",{name:/Taylor Example.*Contact/}).click();
+  await expect(page.getByRole("region",{name:"Selected customer conversation",exact:true}).getByRole("heading",{name:"Taylor Example",exact:true})).toBeVisible();
+  await expect(page.getByRole("region",{name:"Conversation timeline",exact:true})).toContainText("Taylor has a separate request.");
+  const state=await control(request,"inspect");
+  await page.goto(`/dashboard/leads/${state.leadId}`);
+  await page.getByRole("link",{name:"Contact lead",exact:true}).click();
+  await expect(page).toHaveURL(new RegExp(`lead=${state.leadId}`));
+  await expect(page.getByRole("region",{name:"Selected customer conversation",exact:true}).getByRole("heading",{name:"Jordan Example",exact:true})).toBeVisible();
+  await expect(page.getByRole("region",{name:"Conversation timeline",exact:true})).toContainText("Tuesday morning");
+  expect((await control(request,"inspect")).smsCreates).toHaveLength(0);
+});
+
+test("prefills a new lead, preserves its draft and keeps first SMS and email together", async ({page,request},info) => {
+  const lead=await control(request,"newLead");
+  await signIn(page);
+  await page.goto(`/dashboard/inbox?lead=${lead.id}`);
+  const sms=page.getByRole("form",{name:"Compose SMS",exact:true});
+  await expect(sms.getByRole("textbox",{name:"Recipient phone *",exact:true})).toHaveValue("+16785550103");
+  await sms.getByRole("textbox",{name:"Text message *",exact:true}).fill("First message for Morgan");
+  await sms.getByRole("button",{name:"Save private draft",exact:true}).click();
+  await expect(sms.getByRole("status").filter({hasText:"Private draft saved"})).toBeVisible();
+  await page.reload();
+  await expect(sms.getByRole("textbox",{name:"Text message *",exact:true})).toHaveValue("First message for Morgan");
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth+1)).toBeTruthy();
+  await sms.getByRole("button",{name:"Send text",exact:true}).scrollIntoViewIfNeeded();
+  await page.screenshot({path:`test-results/recipient-start-${info.project.name}.png`,fullPage:true,style:"nextjs-portal{display:none!important;}"});
+  await sms.getByRole("button",{name:"Send text",exact:true}).click();
+  await expect(page).toHaveURL(/conversation=/);
+  const canonical=new URL(page.url()).searchParams.get("conversation");
+  await expect(page.getByRole("region",{name:"Conversation timeline",exact:true})).toContainText("First message for Morgan");
+  await page.getByRole("tab",{name:"Email",exact:true}).click();
+  const email=page.getByRole("form",{name:"Compose email",exact:true});
+  await expect(email.getByRole("textbox",{name:"To *",exact:true})).toHaveValue("morgan@example.test");
+  await email.getByRole("textbox",{name:"Subject *",exact:true}).fill("Your project");
+  await email.getByRole("textbox",{name:"Message *",exact:true}).fill("Email follow-up for Morgan");
+  await email.getByRole("button",{name:"Send email",exact:true}).click();
+  await expect(page.getByRole("region",{name:"Conversation timeline",exact:true})).toContainText("Email follow-up for Morgan");
+  expect(new URL(page.url()).searchParams.get("conversation")).toBe(canonical);
+  const state=await control(request,"inspect");
+  expect(state.sources.filter((s:Source)=>s.conversation_id===canonical).map((s:Source)=>s.channel).sort()).toEqual(["email","sms"]);
+  expect(state.smsCreates).toHaveLength(1);expect(state.emailSends).toBe(1);
+  await page.goto(`/dashboard/inbox?lead=${lead.id}`);
+  await expect(page.getByRole("region",{name:"Conversation timeline",exact:true})).toContainText("First message for Morgan");
+});
+
+test("keeps an unresolved first text available after refreshing the recipient view", async ({page,request}) => {
+  const lead=await control(request,"newLead");
+  await signIn(page);await page.goto(`/dashboard/inbox?lead=${lead.id}`);
+  await control(request,"unknownSms");
+  await page.getByRole("textbox",{name:"Text message *",exact:true}).fill("Uncertain first text");
+  await page.getByRole("button",{name:"Send text",exact:true}).click();
+  await expect(page.getByRole("button",{name:"Check SMS status",exact:true})).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("button",{name:"Check SMS status",exact:true})).toBeVisible();
+  await expect(page.getByRole("textbox",{name:"Text message *",exact:true})).toHaveValue("Uncertain first text");
+  expect((await control(request,"inspect")).smsCreates).toHaveLength(1);
+});
+
+test("recovers an uncertain first email after its new thread is discovered without sending twice", async ({page,request}) => {
+  const lead=await control(request,"newLead");
+  await signIn(page);await page.goto(`/dashboard/inbox?lead=${lead.id}`);
+  await page.getByRole("tab",{name:"Email",exact:true}).click();
+  await page.getByRole("textbox",{name:"Subject *",exact:true}).fill("First email");
+  await page.getByRole("textbox",{name:"Message *",exact:true}).fill("Uncertain first email");
+  await control(request,"unknownMail");
+  await page.getByRole("button",{name:"Send email",exact:true}).click();
+  await expect(page.getByRole("button",{name:"Check send status",exact:true})).toBeVisible();
+  await control(request,"refreshMailIndex");await page.reload();
+  await expect(page.getByRole("button",{name:"Check send status",exact:true})).toBeVisible();
+  await expect(page.getByRole("textbox",{name:"Message *",exact:true})).toHaveValue("Uncertain first email");
+  await page.getByRole("button",{name:"Check send status",exact:true}).click();
+  await expect(page.getByRole("button",{name:"Send reply",exact:true})).toBeEnabled();
+  expect((await control(request,"inspect")).emailSends).toBe(1);
+  await expect(page).toHaveURL(/conversation=/);
+});
+
+test("keeps new-recipient drafts separate and respects read-only send grants", async ({page,request}) => {
+  const lead=await control(request,"newLead");
+  await signIn(page,"readonly");await page.goto(`/dashboard/inbox?lead=${lead.id}`);
+  await expect(page.getByRole("button",{name:"Send text",exact:true})).toBeDisabled();
+  await page.getByRole("textbox",{name:"Text message *",exact:true}).fill("Private Morgan draft");
+  await page.getByRole("button",{name:"Save private draft",exact:true}).click();
+  await expect(page.getByRole("status").filter({hasText:"Private draft saved"})).toBeVisible();
+  await page.goto("/dashboard/inbox?contact=00000000-0000-4000-8000-000000000904");
+  await page.getByRole("tab",{name:"SMS",exact:true}).click();
+  await expect(page.getByRole("textbox",{name:"Text message *",exact:true})).toBeEmpty();
+  await expect(page.getByRole("textbox",{name:"Recipient phone *",exact:true})).toHaveValue("+16785550102");
+  await expect(page.getByRole("button",{name:"Send text",exact:true})).toBeDisabled();
+  await page.getByRole("tab",{name:"Email",exact:true}).click();
+  await expect(page.getByRole("button",{name:"Send reply",exact:true})).toBeDisabled();
+});
+
 test("combines customer history and exposes agency context in a responsive workspace",async({page,request},info)=>{
   const errors:string[]=[];page.on("pageerror",error=>errors.push(error.message));
   await signIn(page);await combine(page,request);

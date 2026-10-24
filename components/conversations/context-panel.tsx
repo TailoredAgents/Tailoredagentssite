@@ -12,11 +12,12 @@ import { safeExternalUrl, statusLabels } from "./shared";
 export function ConversationContextPanel({ record, data, readOnly }: { record: ConversationRecord; data: ConversationWorkspace; readOnly: boolean }) {
   const { conversation, context, sources } = record;
   const addresses = [...new Set(sources.flatMap((source) => source.externalAddresses))];
+  const personName = record.recipient?.name || conversation.personName;
   const linked = Boolean(conversation.contactId || conversation.businessId || conversation.leadId);
   const previewUrl = safeExternalUrl(context.mockup?.previewUrl);
   const formKey = [conversation.status, conversation.ownerId, conversation.remindAt, conversation.contactId, conversation.businessId, conversation.leadId].join(":");
   return <div className="conversation-context-content">
-    <section className="conversation-context-person"><span className="conversation-avatar is-large" aria-hidden="true">{conversation.personName.slice(0, 1).toUpperCase()}</span><h2>{conversation.personName}</h2>{conversation.businessName ? <p>{conversation.businessName}</p> : null}<span className={`conversation-state is-${conversation.status}`}>{statusLabels[conversation.status]}</span>
+    <section className="conversation-context-person"><span className="conversation-avatar is-large" aria-hidden="true">{personName.slice(0, 1).toUpperCase()}</span><h2>{personName}</h2>{conversation.businessName ? <p>{conversation.businessName}</p> : null}<span className={`conversation-state is-${conversation.status}`}>{statusLabels[conversation.status]}</span>
       {addresses.length ? <div className="conversation-contact-methods">{addresses.map((address) => <span key={address}>{address.includes("@") ? <Mail size={14} aria-hidden="true" /> : <MessageSquareText size={14} aria-hidden="true" />}{address}</span>)}</div> : null}
     </section>
 

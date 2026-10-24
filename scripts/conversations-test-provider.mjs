@@ -72,9 +72,15 @@ createServer(async (request, response) => {
       if (request.headers.authorization !== "Bearer conversations-synthetic-control") return reply(response, {}, 403);
       if (request.url === "/control") {
         if (body.action === "reset") await reset();
+        if (body.action === "newLead") {
+          const id = randomUUID();
+          await pool.query("INSERT INTO leads(id,workspace_id,name,organization,email,phone,description,source) VALUES($1,$2,'Morgan New','','morgan@example.test','+16785550103','','manual')",[id,workspace]);
+          return reply(response,{id});
+        }
         if (body.action === "revokeMail") revokedMail.add(body.actor || "owner");
         if (body.action === "revokeSms") await pool.query("DELETE FROM sms_number_grants WHERE user_id=$1", [`conv-${body.actor || "owner"}`]);
         if (body.action === "unknownMail") unknownMail = true;
+        if (body.action === "refreshMailIndex") await pool.query("UPDATE crm_conversation_sync SET last_completed_at=now()-interval '1 minute' WHERE workspace_id=$1",[workspace]);
         if (body.action === "unknownSms") unknownSms = true;
         if (body.action === "incomingEmail") {
           const thread = threads.get(body.threadId || "thread-website");

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export type InboxActionState = {
+  crmConversationId?: string;
   status: "idle" | "success" | "error";
   message: string;
   requestId?: string;
@@ -28,6 +29,7 @@ export const conversationSchema = threadSchema.extend({
   leadId: optionalId,
 });
 export const draftSchema = z.object({
+  composeKey: z.string().regex(/^(contact|lead):[0-9a-f-]{36}$/i).optional(),
   mailboxId: providerId,
   threadId: optionalProviderId,
   text: z.string().max(50000).default(""),

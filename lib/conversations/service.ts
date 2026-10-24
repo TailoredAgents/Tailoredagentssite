@@ -4,6 +4,8 @@ import type { PoolClient } from "pg";
 import type { DashboardContext } from "@/lib/dashboard/data";
 import { getDatabasePool, insertAuditLog } from "@/lib/dashboard/db";
 import { authorizeInbox } from "@/lib/inbox/data";
+import { getMailThreadHistory } from "@/lib/inbox/mail-provider";
+import { getConversationRecipient, recipientMatchesAddress, recipientMatchesConversation } from "./recipients";
 import {
   authorizedSources,
   scopes,
@@ -20,6 +22,82 @@ import {
   workSchema,
 } from "./validation";
 export class ConversationInputError extends Error {}
+
+// Called only after the channel service has returned an accepted send receipt.
+// Linking must never turn an accepted send into a retryable send failure.
+export async function bindSentRecipient(
+  context: DashboardContext,
+  form: FormData,
+  receipt: { channel: "email" | "sms"; id: string },
+) {
+  const recipient = await getConversationRecipient(context, String(form.get("recipientKind") || ""), String(form.get("recipientId") || ""));
+  if (!recipient) throw new ConversationInputError("The recipient is no longer available.");
+  const scope = await scopes(context);
+  const mailboxId = String(form.get("mailboxId") || "");
+  const numberId = String(form.get("numberId") || "");
+  let addresses: string[], latestId: string | null, activity: Date, inbound: Date | null, outbound: Date | null;
+  if (receipt.channel === "sms") {
+    if (!scope.numbers.some(n => n.id === numberId)) throw new ConversationAccessError("Number access changed.");
+    const sms = (await getDatabasePool().query<{remote_phone:string;last_message_at:Date;last_inbound_at:Date|null;last_outbound_at:Date|null;latest:string|null}>(
+      `SELECT c.remote_phone,
+        (SELECT max(created_at) FROM sms_messages m WHERE m.workspace_id=c.workspace_id AND m.conversation_id=c.id) last_message_at,
+        (SELECT max(created_at) FROM sms_messages m WHERE m.workspace_id=c.workspace_id AND m.conversation_id=c.id AND direction='inbound') last_inbound_at,
+        (SELECT max(created_at) FROM sms_messages m WHERE m.workspace_id=c.workspace_id AND m.conversation_id=c.id AND direction='outbound') last_outbound_at,
+        (SELECT id::text FROM sms_messages m WHERE m.workspace_id=c.workspace_id AND m.conversation_id=c.id ORDER BY created_at DESC,id DESC LIMIT 1) latest FROM sms_conversations c WHERE c.workspace_id=$1 AND c.number_id=$2 AND c.id=$3`,
+      [context.workspace.id, numberId, receipt.id],
+    )).rows[0];
+    if (!sms) throw new ConversationAccessError("Text history is unavailable.");
+    addresses = [sms.remote_phone]; latestId = sms.latest; activity = sms.last_message_at; inbound = sms.last_inbound_at; outbound = sms.last_outbound_at;
+  } else {
+    if (!scope.mailboxes.some(m => m.id === mailboxId)) throw new ConversationAccessError("Mailbox access changed.");
+    const page = await getMailThreadHistory(context, mailboxId, receipt.id, { limit: 50 });
+    // Only the actual provider-confirmed destination can establish the CRM link.
+    addresses = [...new Set(page.messages.filter(m => m.direction === "outbound").map(m => m.to))];
+    const last = page.messages.at(-1);
+    if (!last) throw new ConversationInputError("Email history is still syncing.");
+    latestId = last.id; activity = new Date(last.createdAt);
+    const received = [...page.messages].reverse().find(m => m.direction === "inbound");
+    const sent = [...page.messages].reverse().find(m => m.direction === "outbound");
+    inbound = received ? new Date(received.createdAt) : null; outbound = sent ? new Date(sent.createdAt) : null;
+  }
+  if (!addresses.length || !addresses.every(address => recipientMatchesAddress(recipient, address)))
+    throw new ConversationInputError("The message destination does not match this person.");
+  return transaction(context, async db => {
+    await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [receipt.channel === "sms" ? `unified-sms:${context.workspace.id}:${numberId}` : `unified-mail:${context.workspace.id}:${mailboxId}`]);
+    const fresh = await scopes(context);
+    if (receipt.channel === "sms" ? !fresh.numbers.some(n => n.id === numberId) : !fresh.mailboxes.some(m => m.id === mailboxId))
+      throw new ConversationAccessError("Channel access changed.");
+    const existing = (await db.query<{id:string;conversation_id:string}>(
+      `SELECT id,conversation_id FROM crm_conversation_sources WHERE workspace_id=$1 AND ${receipt.channel === "sms" ? "sms_conversation_id=$2" : "thread_id=$2 AND mailbox_id=$3"} FOR UPDATE`,
+      [context.workspace.id, receipt.id, ...(receipt.channel === "email" ? [mailboxId] : [])],
+    )).rows[0];
+    let canonicalId = existing?.conversation_id;
+    const target = String(form.get("crmConversationId") || "");
+    // Existing histories keep their identity and work state. Only a newly created
+    // source can join the conversation from which the user started the send.
+    if (!canonicalId && target) {
+      await available(context, target, true);
+      const row = (await db.query<{contact_id:string|null;lead_id:string|null;business_id:string|null}>("SELECT contact_id,lead_id,business_id FROM crm_conversations WHERE workspace_id=$1 AND id=$2 AND merged_into_id IS NULL FOR UPDATE", [context.workspace.id,target])).rows[0];
+      const sources = await authorizedSources(context, fresh, target);
+      if (row && recipientMatchesConversation(recipient,row,sources.flatMap(s => s.external_addresses))) canonicalId = target;
+    }
+    if (canonicalId) {
+      if (existing) await available(context, canonicalId, true);
+      const row = (await db.query<{contact_id:string|null;lead_id:string|null;business_id:string|null}>("SELECT contact_id,lead_id,business_id FROM crm_conversations WHERE workspace_id=$1 AND id=$2 AND merged_into_id IS NULL FOR UPDATE", [context.workspace.id,canonicalId])).rows[0];
+      if (!row || !recipientMatchesConversation(recipient,row,addresses)) throw new ConversationInputError("This history is linked to another CRM record.");
+      await db.query(`UPDATE crm_conversations SET ${recipient.kind === "lead" ? "lead_id" : "contact_id"}=$3,business_id=COALESCE(business_id,$4),updated_at=now() WHERE workspace_id=$1 AND id=$2`,[context.workspace.id,canonicalId,recipient.id,recipient.businessId]);
+    } else {
+      canonicalId = randomUUID();
+      await db.query("INSERT INTO crm_conversations(id,workspace_id,contact_id,lead_id,business_id,owner_user_id,status) VALUES($1,$2,$3,$4,$5,$6,'waiting')",[canonicalId,context.workspace.id,recipient.kind === "contact" ? recipient.id : null,recipient.kind === "lead" ? recipient.id : null,recipient.businessId,context.user.id]);
+    }
+    if (!existing) await db.query(
+      `INSERT INTO crm_conversation_sources(id,workspace_id,conversation_id,channel,mailbox_id,thread_id,sms_conversation_id,external_addresses,latest_message_id,last_activity_at,last_inbound_at,last_outbound_at,seen_sweep) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,(SELECT sweep_id FROM crm_conversation_sync WHERE workspace_id=$2 AND mailbox_id=$5))`,
+      [randomUUID(),context.workspace.id,canonicalId,receipt.channel,receipt.channel === "email" ? mailboxId : null,receipt.channel === "email" ? receipt.id : null,receipt.channel === "sms" ? receipt.id : null,addresses,latestId,activity,inbound,outbound],
+    );
+    await audit(db,context,"conversation.recipient_linked",canonicalId);
+    return canonicalId;
+  });
+}
 async function transaction<T>(
   context: DashboardContext,
   work: (db: PoolClient) => Promise<T>,

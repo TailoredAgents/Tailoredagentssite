@@ -3,6 +3,7 @@ import type { DashboardContext } from "@/lib/dashboard/data";
 import { getDatabasePool } from "@/lib/dashboard/db";
 import { authorizedSources, permitted, scopes } from "./access";
 import { discover } from "./discovery";
+import { getConversationRecipient, recipientMatchesConversation } from "./recipients";
 import { hydrateSource } from "./records";
 import type {
   ConversationContext,
@@ -22,7 +23,11 @@ export async function listConversationWorkspace(
     scope = await scopes(context);
   await discover(context, scope);
   let sources = await authorizedSources(context, scope);
-  const requested = one(filters.conversation) || one(filters.thread),
+  let recipient = one(filters.contact) || one(filters.lead)
+    ? await getConversationRecipient(context, one(filters.contact) ? "contact" : "lead", one(filters.contact) || one(filters.lead))
+    : null;
+  let requested = one(filters.conversation) || one(filters.thread);
+  const
     q = one(filters.q).slice(0, 120),
     view = [
       "mine",
@@ -69,7 +74,7 @@ export async function listConversationWorkspace(
         [context.workspace.id],
       ),
       pool.query<{ id: string; name: string }>(
-        `SELECT id,organization||' — '||name AS name FROM leads WHERE workspace_id=$1 AND anonymized_at IS NULL AND status<>'archived' ORDER BY created_at DESC LIMIT 500`,
+        `SELECT id,concat_ws(' — ',NULLIF(organization,''),name) AS name FROM leads WHERE workspace_id=$1 AND anonymized_at IS NULL AND status<>'archived' ORDER BY created_at DESC LIMIT 500`,
         [context.workspace.id],
       ),
       pool.query<{ id: string; name: string; businessId: string | null }>(
@@ -146,6 +151,16 @@ export async function listConversationWorkspace(
           a.id.localeCompare(b.id),
       );
   }
+  const recipientIds = recipient ? canonical.rows.filter(c => {
+    const owned = sources.filter(s => s.conversation_id === c.id);
+    return owned.length && recipientMatchesConversation(recipient!, c, owned.flatMap(s => s.external_addresses));
+  }).map(c => c.id) : [];
+  if (recipient && requested && !recipientIds.includes(requested)) requested = "";
+  if (recipient && !requested) {
+    const person = recipient;
+    const matches = summaries().filter(c => recipientIds.includes(c.id));
+    requested = matches.find(c => (person.kind === "contact" ? c.contactId : c.leadId) === person.id)?.id || matches[0]?.id || "";
+  }
   let selected: ConversationRecord | null = null;
   const hydrated: Awaited<ReturnType<typeof hydrateSource>>[] = [];
   const selectedPool = sources
@@ -205,6 +220,8 @@ export async function listConversationWorkspace(
   const allowed = new Set(sources.map((s) => s.id));
   const all = summaries();
   const summary = all.find((c) => c.id === requested);
+  if (!recipient && !one(filters.contact) && !one(filters.lead) && summary && (summary.contactId || summary.leadId))
+    recipient = await getConversationRecipient(context, summary.contactId ? "contact" : "lead", summary.contactId || summary.leadId!);
   if (summary) {
     const selectedSources = hydrated.filter((h) => allowed.has(h.source.id));
     for (const item of selectedSources) {
@@ -290,6 +307,7 @@ export async function listConversationWorkspace(
           )
         ).rows[0]?.interest ?? null;
     selected = {
+      recipient,
       conversation: summary,
       sources: selectedSources.map((h) => h.source),
       timeline: [
@@ -380,7 +398,20 @@ export async function listConversationWorkspace(
       pages,
       Math.max(1, Number.parseInt(one(filters.page), 10) || 1),
     );
+  const recipientDrafts: ConversationWorkspace["recipientDrafts"] = { email: {}, sms: {} };
+  if (recipient) {
+    const key = `${recipient.kind}:${recipient.id}`;
+    const [email, sms] = await Promise.all([
+      pool.query<{mailbox_id:string;id:string;to:string;subject:string;text:string;replyToMessageId:null}>(`SELECT mailbox_id,id,recipient AS "to",subject,body AS text,NULL AS "replyToMessageId" FROM inbox_drafts WHERE workspace_id=$1 AND author_user_id=$2 AND thread_key=$3 AND mailbox_id=ANY($4::text[]) AND updated_at>now()-interval '90 days'`,[context.workspace.id,context.user.id,key,fresh.mailboxes.map(m=>m.id)]),
+      pool.query<{number_id:string;id:string;to:string;text:string}>(`SELECT number_id,id,recipient AS "to",body AS text FROM sms_drafts WHERE workspace_id=$1 AND author_user_id=$2 AND thread_key=$3 AND number_id=ANY($4::uuid[]) AND updated_at>now()-interval '90 days'`,[context.workspace.id,context.user.id,key,fresh.numbers.map(n=>n.id)]),
+    ]);
+    recipientDrafts.email = Object.fromEntries(email.rows.map(d=>[d.mailbox_id,d]));
+    recipientDrafts.sms = Object.fromEntries(sms.rows.map(d=>[d.number_id,d]));
+  }
   return {
+    recipientDrafts,
+    recipient,
+    recipientConversations: all.filter(c => recipientIds.includes(c.id)),
     items: filtered.slice((page - 1) * 25, page * 25),
     selected,
     total,

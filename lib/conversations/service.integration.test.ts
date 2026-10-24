@@ -25,6 +25,8 @@ import {
   ConversationInputError,
 } from "./service";
 import { ConversationAccessError } from "./access";
+import { bindSentRecipient } from "./service";
+import { getConversationRecipient, listConversationRecipients } from "./recipients";
 import type { InboxMailbox, InboxMessage } from "@/lib/inbox/types";
 vi.mock("server-only", () => ({}));
 vi.mock('@/lib/voice-provider/config',()=>({getVoiceConfiguration:()=>({ready:false,webhookReady:false,enabled:false,missing:['TWILIO_VOICE_APP_SID'],phoneNumber:''})}));
@@ -282,6 +284,70 @@ describe.skipIf(!databaseUrl)(
         before: null,
         hasOlder: false,
       }));
+    });
+
+    it("finds contacts by name and formatted phone, without crossing workspaces", async () => {
+      expect((await listConversationRecipients(owner, "Alice")).map(p=>p.id)).toEqual([contactId]);
+      expect((await listConversationRecipients(owner, "(212) 555-0123")).map(p=>p.id)).toEqual([contactId]);
+      expect(await getConversationRecipient(context(otherId, otherWorkspace), "contact", contactId)).toBeNull();
+      expect(await getConversationRecipient(owner, "contact", "invalid")).toBeNull();
+      await pool.query("UPDATE crm_businesses SET anonymized_at=now() WHERE id=$1",[businessId]);
+      expect(await listConversationRecipients(owner, "Alice")).toEqual([]);
+    });
+
+    it("opens authorized existing history for a person and offers a fresh composer when none exists", async () => {
+      const view = await workspaceView(smsOnly, {contact:contactId});
+      expect(view.recipient?.name).toBe("Alice");
+      expect(view.selected?.sources.map(s=>s.channel)).toEqual(["sms"]);
+      expect(view.recipientConversations).toHaveLength(1);
+      const fresh = await workspaceView(owner, {contact:secondContactId});
+      expect(fresh.selected).toBeNull();
+      expect(fresh.recipient?.email).toBe("bob@example.test");
+      expect(fresh.recipientConversations).toEqual([]);
+    });
+
+    it("opens a lead with no business name and reuses its phone history", async () => {
+      const leadId = randomUUID();
+      await pool.query("INSERT INTO leads(id,workspace_id,business_id,name,organization,email,phone,description) VALUES($1,$2,$3,'Alice Lead','','alice@example.test','(212) 555-0123','')",[leadId,workspace,businessId]);
+      const view = await workspaceView(smsOnly, {lead:leadId});
+      expect(view.recipient?.name).toBe("Alice Lead");
+      expect(view.selected?.sources[0].smsConversationId).toBe(smsId);
+      expect(view.links.leads.find(l=>l.id===leadId)?.name).toBe("Alice Lead");
+    });
+
+    it("binds accepted SMS to the selected CRM person and is idempotent", async () => {
+      const form = new FormData();
+      form.set("recipientKind","contact");form.set("recipientId",contactId);form.set("numberId",numberId);
+      const id = await bindSentRecipient(owner,form,{channel:"sms",id:smsId});
+      expect(await bindSentRecipient(owner,form,{channel:"sms",id:smsId})).toBe(id);
+      const view = await workspaceView(owner,{contact:contactId});
+      expect(view.selected?.conversation.contactId).toBe(contactId);
+      expect(view.selected?.conversation.id).toBe(id);
+      expect((await pool.query("SELECT count(*)::int n FROM crm_conversation_sources WHERE sms_conversation_id=$1",[smsId])).rows[0].n).toBe(1);
+    });
+
+    it("adds a new email source to the selected person's existing conversation", async () => {
+      const smsForm = new FormData();smsForm.set("recipientKind","contact");smsForm.set("recipientId",contactId);smsForm.set("numberId",numberId);
+      const id = await bindSentRecipient(owner,smsForm,{channel:"sms",id:smsId});
+      const form = new FormData();form.set("recipientKind","contact");form.set("recipientId",contactId);form.set("mailboxId",mailbox.id);form.set("crmConversationId",id);
+      mailMessages = [message("outgoing", "Hello", new Date().toISOString(), "outbound")];
+      expect(await bindSentRecipient(owner,form,{channel:"email",id:"new-person-thread"})).toBe(id);
+      expect((await pool.query("SELECT contact_id FROM crm_conversations WHERE id=$1",[id])).rows[0].contact_id).toBe(contactId);
+      expect((await pool.query("SELECT channel FROM crm_conversation_sources WHERE conversation_id=$1 ORDER BY channel",[id])).rows.map(r=>r.channel)).toEqual(["email","sms"]);
+    });
+
+    it("rejects mismatched destinations, conflicting identities, viewers and revoked access", async () => {
+      const form = new FormData();form.set("recipientKind","contact");form.set("recipientId",secondContactId);form.set("numberId",numberId);
+      await expect(bindSentRecipient(owner,form,{channel:"sms",id:smsId})).rejects.toThrow(/destination/);
+      form.set("recipientId",contactId);
+      await expect(bindSentRecipient(viewer,form,{channel:"sms",id:smsId})).rejects.toThrow();
+      const id = await bindSentRecipient(owner,form,{channel:"sms",id:smsId});
+      await pool.query("UPDATE crm_conversations SET contact_id=$2 WHERE id=$1",[id,secondContactId]);
+      await expect(bindSentRecipient(owner,form,{channel:"sms",id:smsId})).rejects.toThrow(/another CRM record/);
+      const view = await workspaceView(smsOnly,{contact:contactId});
+      expect(view.selected).toBeNull();
+      await pool.query("DELETE FROM sms_number_grants WHERE user_id=$1",[ownerId]);
+      await expect(bindSentRecipient(owner,form,{channel:"sms",id:smsId})).rejects.toThrow(/access/);
     });
     afterAll(async () => {
       await pool?.end();

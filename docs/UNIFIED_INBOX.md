@@ -1,5 +1,17 @@
 # Unified Inbox correction
 
+## Contact-first entry — October 24, 2026
+
+- **New conversation** opens a searchable contact/lead directory. Search by name, business, email or phone, then open that person's Inbox. The lead detail page now has **Contact lead** using the same flow.
+- Existing authorized CRM-linked history takes priority. Exact normalized email/phone matches can open unlinked history; conflicting CRM identities are excluded. Other matching histories remain individually accessible, without silently merging older records.
+- A person without history gets email, SMS and call options with saved contact details filled in. Missing email/SMS channels can also be started inside an existing conversation. Mailbox/number grants and actual workspace roles still control sending; opening a person never sends a message or starts a call.
+- Accepted first email/SMS sends bind to the selected lead/contact. A new channel source joins the selected conversation when all its histories are available and its identity matches. Existing sources retain their context; binding failures leave the accepted send accepted and show a separate link warning. Provider content and grants are checked before linking.
+- Migration **0019** expands the SMS draft key length for separate private drafts per CRM recipient. Pending sends retain their original request across refresh, including when a newly discovered thread replaces the initial composer. No provider setup or new environment values are required.
+
+Verification: **74 focused PostgreSQL/service checks**, **26 Inbox browser cases** across desktop and phone, plus **four dark-theme recipient-flow cases** passed. The browser suites use isolated synthetic Mail/Twilio providers; no real customer message or call was sent. Lint, TypeScript and the production build passed.
+
+Remaining Inbox work includes general-email-to-lead conversion, outgoing attachments, CC/BCC, signatures/templates and team coverage. The remaining shared Mail acceptance checks stay with Jeffrey's handoff.
+
 Updated October 21, 2026 after the owner asked us to inspect Wholesale's actual Inbox. The first shared email/SMS/notes conversation increment is now implemented in source. This document records the design, implemented behavior and remaining work. Production delivery and provider acceptance are separate records.
 
 October 22 source update: the **Call** composer, persistent dashboard browser phone, signed incoming staff routing, call history and protected voicemail now extend this same conversation model. Voice sources use explicit line grants independent of SMS. See [VOICE_SETUP.md](VOICE_SETUP.md) for implemented behavior, owner activation, test limits and remaining recording/transcript work. References below to calling as a future increment describe the original design sequence.

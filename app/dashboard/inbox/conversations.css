@@ -309,3 +309,45 @@
   .conversation-sync-actions { flex-direction: column; align-items: flex-end; gap: 2px; }
   .conversation-context-section .conversation-fields { grid-template-columns: minmax(0, 1fr); }
 }
+.conversation-recipient-picker { max-width: 960px; margin: 0 auto; padding: 28px 24px 80px; color: var(--workspace-ink); }
+.conversation-recipient-picker header { margin: 20px 0 24px; }
+.conversation-recipient-picker h1 { margin: 5px 0 9px; font-size: clamp(26px, 4vw, 34px); font-weight: 650; letter-spacing: -.04em; }
+.conversation-recipient-picker p { color: var(--workspace-muted); line-height: 1.6; }
+.conversation-recipient-search { display: flex; gap: 10px; margin-bottom: 20px; }
+.conversation-recipient-search label { display: flex; flex: 1; min-width: 0; align-items: center; gap: 10px; border: 1px solid var(--workspace-line); border-radius: 9px; padding: 0 14px; background: var(--workspace-surface); color: var(--workspace-muted); }
+.conversation-recipient-search input { width: 100%; min-width: 0; padding: 15px 0; border: 0; background: transparent; color: var(--workspace-ink); font: inherit; }
+.conversation-recipient-search label:focus-within { outline: 2px solid var(--workspace-blue); outline-offset: 2px; }
+.conversation-recipient-search input:focus-visible { outline: none; }
+.conversation-recipient-results { border: 1px solid var(--workspace-line); border-radius: 12px; background: var(--workspace-surface); overflow: hidden; }
+.conversation-recipient-result { display: flex; gap: 14px; align-items: center; padding: 18px; color: var(--workspace-ink); text-decoration: none; border-bottom: 1px solid var(--workspace-line); }
+.conversation-recipient-result:last-child { border-bottom: 0; }
+.conversation-recipient-result:hover, .conversation-recipient-result:focus-visible { background: var(--workspace-soft); }
+.conversation-recipient-result > div { flex: 1; min-width: 0; }
+.conversation-recipient-result strong, .conversation-recipient-result div > span { display: block; overflow-wrap: anywhere; }
+.conversation-recipient-result div > span { color: var(--workspace-muted); font-size: 14px; line-height: 1.6; margin-top: 4px; }
+.conversation-recipient-result small { background: var(--workspace-soft); border-radius: 5px; padding: 5px 8px; color: var(--workspace-muted); }
+.conversation-recipient-picker footer { padding: 12px 0; font-size: 14px; }
+.conversation-recipient-picker footer > div { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 24px; }
+.conversation-recipient-start { display: flex; grid-row: 1 / -1; min-height: 0; flex-direction: column; overflow-y: auto; }
+.conversation-recipient-start .conversation-thread-heading { flex-shrink: 0; }
+.conversation-recipient-start .conversation-thread-heading > div { min-width: 0; }
+.conversation-recipient-start .conversation-thread-heading > a { white-space: nowrap; }
+.conversation-recipient-start .conversation-composer-shell { flex-shrink: 0; max-height: none; overflow: visible; }
+.conversation-recipient-intro { flex: 1; min-height: 140px; padding: 30px 24px; color: var(--workspace-muted); background: var(--workspace-soft); }
+.conversation-recipient-intro h3 { color: var(--workspace-ink); margin: 10px 0 6px; }
+.conversation-recipient-intro p { line-height: 1.6; margin: 0; }
+.conversation-recipient-context { padding: 24px 18px; overflow-wrap: anywhere; }
+.conversation-recipient-context h2 { font-size: 17px; margin: 16px 0 8px; }
+.conversation-recipient-context p { color: var(--workspace-muted); font-size: 14px; line-height: 1.6; }
+.conversation-related-histories { display: flex; gap: 8px; padding: 8px 14px; flex-wrap: wrap; border-bottom: 1px solid var(--workspace-line); }
+.conversation-related-histories a { padding: 7px 10px; border-radius: 6px; font-size: 13px; text-transform: capitalize; }
+.conversation-related-histories a[aria-current="page"] { background: var(--workspace-soft); font-weight: 650; }
+.conversation-thread-pane.has-related-histories { grid-template-rows: auto auto auto minmax(100px, 1fr) auto; }
+@media (max-width: 640px) {
+  .conversation-recipient-picker { padding: 20px 14px 80px; }
+  .conversation-recipient-result { padding: 15px 12px; gap: 10px; }
+  .conversation-recipient-result > svg { display: none; }
+  .conversation-recipient-intro { display: none; }
+  .conversation-header-actions > a.conversation-button { width: 44px; padding: 10px; gap: 0; }
+  .conversation-header-actions > a.conversation-button > span { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+}

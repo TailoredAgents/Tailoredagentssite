@@ -1,5 +1,6 @@
 "use client";
 
+import type { ConversationRecipient } from "@/lib/conversations/types";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FilePenLine, LoaderCircle, LockKeyhole, Send, ShieldAlert } from "lucide-react";
@@ -10,7 +11,7 @@ import { smsHref } from "./shared";
 const initial: SmsActionState = { status: "idle", message: "" };
 type Intent = { requestId: string; to: string; text: string; state: "pending" | "unknown" };
 
-export function SmsComposer({ number, conversationId, phone, blocked = false, draft, userId, readOnly, conversationHref, compact = false }: { number: SmsNumber; conversationId?: string; phone?: string; blocked?: boolean; draft?: SmsDraft | null; userId: string; readOnly: boolean; conversationHref?: string; compact?: boolean }) {
+export function SmsComposer({ number, conversationId, phone, blocked = false, draft, userId, readOnly, conversationHref, recipient, crmConversationId, compact = false }: { number: SmsNumber; conversationId?: string; phone?: string; blocked?: boolean; draft?: SmsDraft | null; userId: string; readOnly: boolean; conversationHref?: string; recipient?: ConversationRecipient | null; crmConversationId?: string; compact?: boolean }) {
   const router = useRouter();
   const [to, setTo] = useState(phone || draft?.to || "");
   const [text, setText] = useState(draft?.text || "");
@@ -18,15 +19,19 @@ export function SmsComposer({ number, conversationId, phone, blocked = false, dr
   const [unresolved, setUnresolved] = useState(false);
   const [feedback, setFeedback] = useState<SmsActionState>(initial);
   const unresolvedRef = useRef(false);
+  const recoveredRecipientIntent = useRef(false);
   const intentRef = useRef<Intent | null>(null);
-  const storageKey = `tailored-sms-send:${userId}:${number.id}:${conversationId || "compose"}`;
+  const composeKey = recipient ? `${recipient.kind}:${recipient.id}` : undefined;
+  const newRecipientKey = composeKey ? `tailored-sms-send:${userId}:${number.id}:${composeKey}` : undefined;
+  const storageKey = `tailored-sms-send:${userId}:${number.id}:${conversationId || composeKey || "compose"}`;
 
   function applyReceipt(receipt: SmsActionState) {
     setFeedback(receipt);
     if (receipt.sendState === "accepted") {
-      try { sessionStorage.removeItem(storageKey); } catch { /* In-memory state is sufficient for this tab. */ }
+      try { sessionStorage.removeItem(storageKey); if (newRecipientKey && recoveredRecipientIntent.current) sessionStorage.removeItem(newRecipientKey); } catch { /* In-memory state is sufficient for this tab. */ }
       unresolvedRef.current = false; intentRef.current = null; setUnresolved(false); setText(""); setRequestId(crypto.randomUUID());
-      if (receipt.conversationId && !conversationHref) router.replace(smsHref({ number: number.id, thread: receipt.conversationId }));
+      if (receipt.crmConversationId) router.replace(`/dashboard/inbox?conversation=${receipt.crmConversationId}`);
+      else if (receipt.conversationId && !conversationHref) router.replace(smsHref({ number: number.id, thread: receipt.conversationId }));
       router.refresh();
     } else if (receipt.sendState === "unknown" || receipt.sendState === "pending") {
       const intent = intentRef.current;
@@ -36,10 +41,10 @@ export function SmsComposer({ number, conversationId, phone, blocked = false, dr
         try { sessionStorage.setItem(storageKey, JSON.stringify(next)); } catch { /* Retain the original intent in memory. */ }
       }
     } else if (receipt.sendState === "rejected") {
-      try { sessionStorage.removeItem(storageKey); } catch { /* Storage is optional. */ }
+      try { sessionStorage.removeItem(storageKey); if (newRecipientKey && recoveredRecipientIntent.current) sessionStorage.removeItem(newRecipientKey); } catch { /* Storage is optional. */ }
       unresolvedRef.current = false; intentRef.current = null; setUnresolved(false); setRequestId(crypto.randomUUID());
     } else if (!unresolvedRef.current) {
-      try { sessionStorage.removeItem(storageKey); } catch { /* Storage is optional. */ }
+      try { sessionStorage.removeItem(storageKey); if (newRecipientKey && recoveredRecipientIntent.current) sessionStorage.removeItem(newRecipientKey); } catch { /* Storage is optional. */ }
     }
   }
 
@@ -55,14 +60,16 @@ export function SmsComposer({ number, conversationId, phone, blocked = false, dr
 
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem(storageKey);
+      const primary = sessionStorage.getItem(storageKey);
+      const raw = primary || (newRecipientKey ? sessionStorage.getItem(newRecipientKey) : null);
+      recoveredRecipientIntent.current = !primary && !!raw;
       const stored = raw ? JSON.parse(raw) as Partial<Intent> : null;
       if (stored && typeof stored.requestId === "string" && typeof stored.to === "string" && typeof stored.text === "string" && ["pending", "unknown"].includes(stored.state || "")) {
         intentRef.current = stored as Intent; unresolvedRef.current = true; setUnresolved(true); setRequestId(stored.requestId); setTo(stored.to); setText(stored.text); return;
       }
     } catch { /* Browser storage may be unavailable. */ }
     setRequestId(crypto.randomUUID());
-  }, [storageKey]);
+  }, [storageKey, newRecipientKey]);
 
   const envelopeFields = <><div className="inbox-from"><span>From</span><strong>{number.phone}</strong></div><label className="inbox-field"><span>Recipient phone *</span><input type="tel" name="to" aria-label="Recipient phone *" aria-describedby="sms-recipient-note" required maxLength={50} value={to} readOnly={Boolean(conversationId) || unresolved} onChange={(event) => setTo(event.target.value)} placeholder="(678) 555-0123" autoComplete="tel-national" /><small id="sms-recipient-note">Enter a 10-digit US number. We add +1 automatically.</small></label></>;
   return <section className="inbox-composer sms-composer" aria-labelledby="sms-composer-title"><div className="inbox-composer-heading"><h2 id="sms-composer-title">{conversationId ? "Send a text" : "New text message"}</h2><span><LockKeyhole size={13} aria-hidden="true" />Private draft</span></div><form action={unresolved ? checkAction : sendAction} aria-label={conversationId ? "Send SMS reply" : "Compose SMS"} aria-busy={busy} onSubmit={(event) => {
@@ -70,7 +77,7 @@ export function SmsComposer({ number, conversationId, phone, blocked = false, dr
     const intent: Intent = { requestId, to, text, state: "pending" };
     intentRef.current = intent;
     try { sessionStorage.setItem(storageKey, JSON.stringify(intent)); } catch { /* Keep the same intent in memory. */ }
-  }}><input type="hidden" name="numberId" value={number.id} /><input type="hidden" name="conversationId" value={conversationId || ""} /><input type="hidden" name="requestId" value={requestId} />
+  }}>{recipient ? <><input type="hidden" name="recipientId" value={recipient.id} /><input type="hidden" name="recipientKind" value={recipient.kind} /><input type="hidden" name="composeKey" value={composeKey} /><input type="hidden" name="crmConversationId" value={crmConversationId || ""} /></> : null}<input type="hidden" name="numberId" value={number.id} /><input type="hidden" name="conversationId" value={conversationId || ""} /><input type="hidden" name="requestId" value={requestId} />
     <fieldset className="inbox-composer-fields" disabled={readOnly || busy}>{compact && conversationId ? <input type="hidden" name="to" value={to} /> : envelopeFields}<label className="inbox-field inbox-message-field"><span>Text message *</span><textarea name="text" required maxLength={1600} value={text} readOnly={unresolved} onChange={(event) => setText(event.target.value)} placeholder="Write a personal text message…" /></label><div className="sms-character-count"><span>Long messages may use multiple billable SMS segments.</span><strong>{text.length.toLocaleString()} / 1,600</strong></div>
     </fieldset>
     {blocked ? <p className="sms-recipient-optout"><ShieldAlert size={16} aria-hidden="true" />Sending is blocked because this recipient has opted out.</p> : null}
