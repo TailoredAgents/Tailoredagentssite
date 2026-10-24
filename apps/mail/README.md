@@ -2,7 +2,7 @@
 
 A separate, private team inbox for `@tailoredagents.com` at https://mail.tailoredagents.com. This application lives beside the existing Next.js website and builds and deploys separately.
 
-**Status: deployed at the final address for controlled team testing on October 15, 2026.** The production application uses its own Cloudflare database, private file bucket and queues. Resend has verified all five production sending/receiving DNS records, and the signed incoming-mail webhook is connected. The existing website's DNS records are preserved. Staging remains at https://tailored-mail-staging.jeffrey-78e.workers.dev with separate `@mail-test.tailoredagents.com` accounts and storage.
+**Status, October 24, 2026: deployed at the final address, with the shared Sales bridge connected to the dashboard.** [Jeffrey's handoff](../../new%20jeffrey.md) records current deployments, verified delivery and remaining team checks. The production application uses its own Cloudflare database, private file bucket and queues. Resend's production sending/receiving records and signed incoming-mail webhook were verified during launch. The existing website's DNS records are preserved. Staging remains at https://tailored-mail-staging.jeffrey-78e.workers.dev with separate `@mail-test.tailoredagents.com` accounts and storage. Older dated test/deployment sections below are historical evidence.
 
 Internal sending, receiving, replies and forwarding have passed staging checks. Gmail and Hotmail text replies also passed, including Reply All and conversation matching. **The incoming attachment failure was fixed on October 15:** previously stalled photos and files are saved, production image downloads match the original bytes, embedded images display, forwarding preserves files, and complete original MIME is retained in private R2. Inbox versus Spam/Junk placement still needs confirmation. Do not copy local or staging accounts into production.
 
@@ -33,7 +33,7 @@ Validated on October 15, 2026: 375 automated tests, 9 browser tests, type checks
 
 ## For the owner
 
-The production owner is **Jeffrey, `jeffrey@tailoredagents.com`**. The account was created through protected production setup with the owner's privately chosen password. Production sign-in is verified, setup is closed, and the one-time `SETUP_SECRET` has been removed.
+The original production owner is **Jeffrey, `jeffrey@tailoredagents.com`**, who retains access. **Austin, `austin@tailoredagents.com`, also has Mail owner-management permission** following the authorized October 24 update. Devon remains a regular teammate with dashboard approval. Initial protected setup is closed and the one-time `SETUP_SECRET` has been removed. The [communications guide](../../docs/COMMUNICATIONS_SETUP.md#mail-management-and-recovery) records management and recovery boundaries.
 
 Open your account menu → **Manage team** to create accounts, add addresses, disable access, or reset passwords. Give temporary passwords to teammates privately. Passwords must be 12–128 characters; a memorable phrase works well.
 
@@ -303,7 +303,7 @@ Evidence is kept privately in `~/.config/tailored-mail/production-attachment-fix
 - [x] Perform the staging Time Travel restoration above and verify bodies/files, then record the evidence and restore bookmark privately.
 - [x] Run all local mail and website checks before the production deployment.
 
-No MFA, CRM, calendars, AI, external-agent access, public account registration or native email-client connections are enabled in this release. Logs use generic operation names and IDs, not message bodies or passwords.
+The private CRM bridge is enabled for explicitly shared addresses. MFA, calendars, Mail AI, external-agent access, public account registration and native email-client connections remain outside this release. Logs use generic operation names and IDs, not message bodies or passwords.
 
 
 ## October 21 shared sign-in validation
@@ -314,8 +314,6 @@ All **382 backend tests**, **10 browser tests**, type/Svelte checks and the prod
 
 ## October 24 shared Sales acceptance and dependency review
 
-Migration 0037 and the private CRM bridge are live. Jeffrey owns Sales; explicit address-specific grants permit Jeffrey, Austin and Devon to read/send Sales without exposing other addresses. Austin has Mail management access, and Devon has regular dashboard approval. Jeffrey confirmed Sales appears in Team Inbox.
-
-The approved Sales → Gmail test was delivered. Its Gmail reply arrived at Sales on October 24 at 21:15 UTC with `Tailored-Agents-Google-Logo.png` (9,186 bytes). The full incoming message completed ingestion; the attachment was downloaded from private R2 and visually checked successfully. Teammates' own sign-ins and the separate Hotmail acceptance remain pending.
+The shared Sales delivery result, deployed versions, exact approved accounts and remaining live checks are maintained in [Jeffrey's current handoff](../../new%20jeffrey.md#shared-sales-inbox--remaining-work) and its [release evidence](../../new%20jeffrey.md#release-evidence). This replaces repeated acceptance checklists here; the broader native-Mail launch checklist above remains separate.
 
 Updated postal-mime, Zod, Undici and compatible transitive dependencies. All 406 Mail tests, 12 browser checks, Svelte/type checks and the production build pass. The audit has no moderate/high/critical findings; three low dependency entries remain for two SvelteKit 2 advisories. The application uses neither `use:enhance` nor prerendered pages with untrusted cache headers, the prerequisites described in the [enhanced-form advisory](https://github.com/sveltejs/kit/security/advisories/GHSA-pfhg-q3qv-9q6r) and [prerender advisory](https://github.com/sveltejs/kit/security/advisories/GHSA-27mw-82g8-phjj). A SvelteKit 3/adapters migration remains a separate compatibility upgrade; do not use an unreviewed forced major upgrade. These current audit results supersede the October 21 zero-findings snapshot.

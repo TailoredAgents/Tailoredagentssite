@@ -6,6 +6,8 @@ The business uses premium websites and managed local SEO as the primary client e
 
 Read [the product plan](docs/PRODUCT_PLAN.md) and [active agency OS sequence](docs/AGENCY_OS_ROADMAP.md) before making architectural or roadmap changes. It is the source of truth for the current state, delivery phases, security boundaries, deferred decisions, and eventual SEO-agent scope.
 
+For the latest verified Meta, shared Sales inbox and SEO activation status, use [Jeffrey's current checklist](new%20jeffrey.md). It separates completed setup, remaining live checks and future work; the linked setup guides contain reusable technical procedures.
+
 ## Agency operating-system expansion
 
 The owner has prioritized the internal sales CRM around researched calling lists, Devon's BatchDialer outreach, personalized Factory previews and website sales. The first source release adds Sales, My day, Calling lists and Mockups inside this existing dashboard, using canonical businesses and the existing contacts/clients/projects. It includes reviewed CSV imports, visual sales stages, list attribution, manual/imported communications, evidence-backed channel restrictions, explicit appointments/follow-ups, mockup handoffs and repeat-safe client/project conversion. Public package prices are unchanged; a promotional $800 offer is entered on its individual opportunity.
@@ -47,7 +49,7 @@ The existing operations and measurement releases are active. The agency sales fo
 - Read-only Google Search Console connection, encrypted credentials, resumable daily imports, coverage records, and reporting. Jeffrey connected Google on October 21; the automatic worker completed the initial 90-day import without failures. See [activation evidence and remaining checks](docs/CONNECTION_ACTIVATION.md).
 - Safe setup behavior: the marketing site remains operational when dashboard infrastructure is absent.
 
-The Blueprint provisions the persistent database. Production dashboard access uses the existing Mail account and password, with approval controlled by the mail owner. Resend notifications and the Google Search Console connection are active in production. The next daily refresh remains a separate acceptance check. GA4, client accounts, SEO tooling, the SEO agent, and a generally available standardized-agent catalog are not implemented yet; the public agent prices describe a limited founding-client rollout rather than universal availability.
+The Blueprint provisions the persistent database. Production dashboard access uses the existing Mail account and password, with approval controlled by a Mail owner. Resend notifications and the Google Search Console connection are active in production. Shared Sales mail is connected, and free SEO monitoring has completed its first production scan. Paid SEO recommendations remain paused pending the dedicated key, business-facts review and model pilot. GA4, client accounts, broader automated SEO publishing and a generally available standardized-agent catalog remain future work. Recorded acceptance and outstanding daily-refresh/team checks are in [Jeffrey's checklist](new%20jeffrey.md) and [Google activation evidence](docs/CONNECTION_ACTIVATION.md).
 
 ### Tailored Mail
 
@@ -208,7 +210,7 @@ For private account checks/provisioning, preview steps, recovery instructions, e
 
 ## Checks
 
-The shared Sales Inbox release adds `/dashboard/inbox` and a separately deployed, address-scoped Mail bridge. For email-only live setup, approved teammate access and verification, follow [new jeffrey.md](new%20jeffrey.md) and [the communications runbook](docs/COMMUNICATIONS_SETUP.md). The isolated email browser suite is `npm run test:inbox:browser`; it uses synthetic Mail on loopback and requires the disposable `ta_inbox_browser_test` PostgreSQL database.
+The shared Sales Inbox is connected at `/dashboard/inbox` through the separately deployed, address-scoped Mail bridge. [Jeffrey's checklist](new%20jeffrey.md#shared-sales-inbox--remaining-work) tracks the remaining teammate and delivery checks; [the communications runbook](docs/COMMUNICATIONS_SETUP.md) holds setup/recovery procedures. The isolated email browser suite is `npm run test:inbox:browser`; it uses synthetic Mail on loopback and requires the disposable `ta_inbox_browser_test` PostgreSQL database.
 
 The SMS channel at `/dashboard/inbox?channel=sms` adds text conversations and a separate owner-managed Twilio connection in Settings. The project owner handles Twilio activation using [the communications runbook](docs/COMMUNICATIONS_SETUP.md); email activation remains Jeffrey's assignment. `npm run test:sms:browser` uses the exact disposable `ta_sms_browser_test` database and intercepts the SDK transport only inside the guarded test process. It sends no real texts. Production sending defaults off until configuration, verified number access and recipient permission are ready.
 
@@ -274,4 +276,4 @@ Do not add another proxy or CDN until certificate, forwarding-header, authentica
 
 See [the launch checklist](docs/LAUNCH_CHECKLIST.md) for the complete production gate.
 
-The internal **Dashboard → SEO manager** scans the public site, prepares strategies and content briefs, and publishes fact-reviewed search metadata with verification, rollback and outcome tracking. See [SEO manager setup](docs/SEO_MANAGER_SETUP.md) for DataForSEO, the separate cron worker, costs and the initial live pilot. It starts paused; full article and technical repair publishing are later stages.
+The internal **Dashboard → SEO manager** has live free monitoring and implemented tools for reviewed search-title/description changes, verification, rollback and outcome tracking. Paid recommendations remain paused for the live model pilot. The allowance is capped at **$10/month**, the existing reporting job is reused, and DataForSEO/city-ranking checks are off. See [SEO manager setup](docs/SEO_MANAGER_SETUP.md) for configuration and recovery. Full article and technical repair publishing remain later stages.

@@ -2,6 +2,12 @@
 
 Use this checklist for the public website and private dashboard. The mail application has a separate live-test checklist in `apps/mail/README.md` and a separate Cloudflare deployment process.
 
+## Current activation work — October 24
+
+[Jeffrey's handoff](../new%20jeffrey.md) is the single current checklist for Meta, shared Sales email and the internal SEO manager. It records exact deployed versions and test evidence. Sales setup/grants and Gmail delivery are verified; the remaining team checks are still open. Free SEO monitoring and the existing shared worker are live; paid AI remains paused pending the dedicated key, facts review and model pilot. Meta website events are owner-confirmed, while real advertising-form imports remain unverified.
+
+Use the handoff to update those remaining items instead of duplicating them below. Dated release sections retain historical evidence; an earlier unchecked setup item must not override later recorded completion. Other public-site and product gates below remain separate.
+
 ## Product and documentation
 
 - [ ] Review `docs/PRODUCT_PLAN.md` and update phase status when capabilities change.
@@ -40,7 +46,7 @@ Use this checklist for the public website and private dashboard. The mail applic
 
 ## Authentication and authorization
 
-- [ ] Complete the mail owner’s dashboard login and confirm the expected owner/admin membership.
+- [x] Jeffrey confirmed his live dashboard login and access on October 21. Austin/Devon acceptance remains in the current handoff.
 - [ ] Confirm public email/password sign-up is unavailable.
 - [ ] Confirm an unapproved or disabled Mail account cannot access the dashboard.
 - [ ] Confirm `/dashboard`, `/dashboard/activity`, and `/dashboard/settings` redirect without a valid session.
@@ -149,7 +155,7 @@ Local verification and production acceptance are separate. See [release evidence
 - [x] Test actual Better Auth cookies against isolated PostgreSQL and Mail reset/disable/revocation behavior against isolated SQLite.
 - [x] Exercise the real staging identity service with a temporary account and the built website.
 - [x] Deploy Mail migration 0036 and website migration 0007, with matching private production service secrets. Website deployment `dep-dbcec30n74is7389b480` went live October 21 at 16:20:55 UTC.
-- [x] Jeffrey confirmed his own live Mail/dashboard sign-in and access on October 21. Austin’s approval remains owner-controlled through Manage team.
+- [x] Jeffrey confirmed his own live Mail/dashboard sign-in and access on October 21. Austin's Mail management and Devon's regular dashboard approval were applied October 24; their own sign-in checks remain in the handoff.
 - [x] Google authorization and initial/manual imports completed October 21; the remaining daily-refresh and production operational checks are listed above.
 
 
@@ -176,4 +182,4 @@ Active sequence: [agency roadmap](AGENCY_OS_ROADMAP.md). Verification results be
 - [x] Pass 151 code/database tests, 27 browser checks (one intentional phone skip), strict types, lint, build, dependency audit and desktop/phone screenshot inspection. Evidence and local reproduction commands are in the agency roadmap.
 - [x] Verify Render deployment of code commit `18bd092` and the new route's sign-in boundary on www and the Render origin. Deployment `dep-dbcj6h0u01pc73bcqtrg` succeeded October 21 at 21:50:28 UTC. The configured build includes migrations and retention; direct production-data acceptance remains below. Evidence is in the agency roadmap.
 - [ ] Accept the first real production calling-list import, Devon assignment, mockup handoff and client/project conversion using the approved Mail account.
-- [ ] Prepare Mail grants, Twilio registration/number/routing/recording decisions before Release 2; never activate from a mockup alone.
+- Mail grants and provider acceptance now have later records: use [Jeffrey's checklist](../new%20jeffrey.md) for Sales and [the roadmap](AGENCY_OS_ROADMAP.md) for owner-confirmed SMS/calling/recording operation and remaining refinements.

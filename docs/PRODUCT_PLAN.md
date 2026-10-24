@@ -1,8 +1,10 @@
 # Tailored Agents product plan
 
-Last updated: October 21, 2026
+Last updated: October 24, 2026
 
 This document is the durable product and implementation plan for the Tailored Agents website, internal dashboard, future client Growth Hub, analytics platform, SEO workspace, and eventual SEO agent. It records the intended sequence, boundaries, data model, security posture, and completion criteria so future work does not drift from the business goals.
+
+[Jeffrey's handoff](../new%20jeffrey.md) is the current activation record for Meta leads, shared Sales email and the internal SEO manager. Its October 24 choices supersede earlier budgets and setup assumptions in historical decisions below; roadmap phases do not by themselves establish live acceptance.
 
 ## Product direction
 
@@ -55,6 +57,8 @@ The immediate goal is not to launch a broad autonomous-agent platform. It is to 
 - Shared Mail/dashboard credentials for owner-approved teammates; Jeffrey confirmed live sign-in on October 21.
 - Readable, responsive internal dashboard screens and a daily-work overview showing open inquiries, follow-ups and project deadlines. Release evidence is in `DASHBOARD_USABILITY.md`.
 - A separate Tailored Mail application under `apps/mail`, deployed independently to Cloudflare Workers.
+- A shared Sales address with explicit team grants and verified Gmail send/reply/attachment storage. Teammates' own access and remaining production workflow checks are listed in the handoff.
+- Free monitoring of the 14 registered public pages, using the existing scheduled reporting job. The first production scan and scheduled checks passed; the next complete daily scan remains an observation task.
 - Conceptual Growth Hub and analytics visuals that are explicitly presented as illustrative.
 
 ### Not yet operational
@@ -62,7 +66,7 @@ The immediate goal is not to launch a broad autonomous-agent platform. It is to 
 - Client accounts or a client-facing Growth Hub.
 - A public interactive product demo.
 - A generally available standardized website-agent or operations-agent catalog; the public site describes a limited founding-client rollout without claiming that every listed capability is operational.
-- Automated SEO auditing, recommendations, content generation, or publishing.
+- Paid SEO recommendations and the first real reviewed metadata publication: the implementation exists, but activation awaits the dedicated key, business-facts review and model pilot. Broader content generation/publishing, city-ranking measurements and client-site SEO remain later work.
 
 
 ### October 21 agency operating-system expansion
@@ -239,17 +243,23 @@ Future integrations must use server-only environment variables or encrypted data
 - Whether client workspaces require SSO or MFA beyond the internal password flow.
 - The primary analytics stack beyond first-party conversion events and authorized Google integrations.
 - The crawler/runtime used for large SEO scans.
-- The model provider and orchestration framework for the SEO agent.
-- Automated publishing. It is not part of the initial SEO-agent scope.
+- Broader agent orchestration beyond the implemented internal SEO worker. OpenAI/Sol is configured for the current bounded release, with live pilot approval still pending.
+- Unattended public-wording publication. The implemented metadata publisher requires owner/admin review; broader automatic publishing remains deferred.
 - A separate backend service. The Next.js backend-for-frontend remains sufficient until background workload, scaling, or organizational boundaries justify separation.
 
 ## Decision log
+
+### October 24, 2026 — Finish shared Sales and cap the internal SEO release at $10
+
+The approved current release uses existing Google reporting and website scans, with **at most $10/month for SEO AI/data** and **up to $5 of that allowance for the real model pilot**. Free monitoring and paid AI have separate controls. Evaluate Sol for regular planning/review against Astra before activation; paid work remains paused until the dedicated project/key, reviewed facts and quality checks are complete. Reuse the existing Render job; DataForSEO and city-ranking measurements stay off. Hosting, unrelated call analysis and taxes are separate. Owner/admin approval is required for public titles/descriptions and matching social metadata. New articles, broader repairs, Business Profile and client-site SEO are deferred. The [setup guide](SEO_MANAGER_SETUP.md) is the current technical reference.
+
+Shared Sales setup is complete: Jeffrey owns the address, Jeffrey/Austin/Devon have explicit read/send grants, Austin has Mail management access and Devon has regular dashboard approval. The [handoff](../new%20jeffrey.md) records verified delivery and the remaining team checks.
 
 ### October 22, 2026 — An ongoing SEO manager for Tailored Agents
 
 The owner clarified that the SEO AI agent must manage Tailored Agents' SEO continuously: observe performance, maintain a strategy, choose work, carry out improvements, verify changes and measure outcomes across repeated runs. The dashboard is its oversight interface. An audit/recommendation tool alone does not fulfill the goal. Start with tailoredagents.com and the existing internal reporting foundation; multi-client reporting and a client portal are later extensions. The earlier advisory-only agent scope describes an intermediate stage, not the final product. Define the exact standing execution permissions, deployment/rollback tools, factual-content review, budgets and evaluation windows before activating live automated changes. The active scope is recorded in `AGENCY_OS_ROADMAP.md` under the SEO manager track.
 
-The owner further requested the strongest practical quality, targeting **both national and local customers**, with **recurring AI/SEO-data costs below $100 per month**. The roadmap now defines the evidence, execution, evaluation and budget gates. Its proposed $90 paid-work reservation stop leaves headroom under that ceiling; all provider/tool/retry/evaluation costs count. Specific local markets remain unconfirmed. No subscription, new hosting service, paid evaluation or live automated publisher is activated by recording these requirements.
+This earlier direction sought the strongest practical quality for national and local customers under a broader spending ceiling. Its budget and provider assumptions were replaced by the October 24 decision above. The five configured Georgia service areas are Woodstock, Canton, Marietta, Acworth and Roswell; the pending factual review must confirm the business context, and none is an automatic office-location claim.
 
 ### October 15, 2026 — Sequence the product around evidence
 

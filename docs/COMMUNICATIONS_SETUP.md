@@ -1,10 +1,12 @@
 # Communications setup and activation
 
-Release 2's email, business SMS, unified Inbox, browser calling and voicemail increments are implemented in source. Production deployment, mailbox/number approval and authorized delivery acceptance are separate steps below; this document does not record them as completed. BatchDialer remains the current campaign dialer. Connected-call recordings and transcripts remain later increments. The owner-led calling activation checklist is [VOICE_SETUP.md](VOICE_SETUP.md), including migration 0013, separate voice grants, hours and voicemail retention.
+Updated October 24, 2026. This is the technical setup/recovery guide for shared email and business SMS. [Jeffrey's handoff](../new%20jeffrey.md) holds the current Sales acceptance checklist and deployment evidence; avoid maintaining a second status checklist here. Shared Sales setup is complete, with verified Gmail send/reply/attachment storage. The remaining teammate and production workflow checks are listed in the handoff.
 
-The first unified relationship Inbox is implemented in source at `/dashboard/inbox`; the existing separate provider workspaces remain compatible at `?channel=email` and `?channel=sms`. Apply website migration **0012_unified_inbox.sql** and deploy the latest Mail code for the address-scoped discovery and history APIs. Mail uses the existing migration **0037** and `CRM_MAIL_SECRET`; this increment adds no Mail migration or secret. See [Unified Inbox](UNIFIED_INBOX.md) for current behavior, verification and remaining refinements. The provider activation instructions below still apply.
+Business SMS, unified Inbox, browser calling, voicemail and connected-call recording/transcript features are implemented. SMS/calling/recording operation is owner-confirmed in [the roadmap](AGENCY_OS_ROADMAP.md), with feature-specific evidence in [calling setup](VOICE_SETUP.md) and [recordings](CALL_RECORDINGS.md). BatchDialer remains the campaign dialer. Older implementation and activation observations below retain their dates; they are not requests to repeat completed setup.
 
-Ownership: Jeffrey handles the email activation checklist only. The project owner handles Twilio account/number setup, registration, secrets, SMS, calling, recording, transcripts and the remaining development with Codex. The Twilio sections below are the project owner's working checklist. The email-only handoff is [new jeffrey.md](../new%20jeffrey.md).
+The unified relationship Inbox is live at `/dashboard/inbox`; provider workspaces remain compatible at `?channel=email` and `?channel=sms`. Website migrations through **0018** and Mail through **0037** are applied. The separately deployed Mail code includes address-scoped discovery/history, with the installed `CRM_MAIL_SECRET`. See [Unified Inbox](UNIFIED_INBOX.md) for behavior and remaining refinements.
+
+Ownership: Jeffrey handles shared Sales acceptance, the SEO connection/pilot and the Meta connection. The project owner handles Twilio and wider calling/agency development with Codex. The Twilio procedures below remain operator references for that separate workstream.
 
 ## First email increment
 
@@ -12,13 +14,15 @@ Ownership: Jeffrey handles the email activation checklist only. The project owne
 
 Mail remains the system of record for message bodies, attachments and provider delivery state. PostgreSQL stores CRM collaboration metadata, private drafts and content-free idempotency receipts. Saving a note or draft never sends email. Notes expire after 24 months; private drafts expire after 90 days through the existing retention command. Compact send receipts retain their keys so an old request cannot send another copy. A provider-accepted or queued message is not proof of delivery or reading.
 
-The approved shared address is **sales@tailoredagents.com**, with read and reply access for **Devon, Jeffrey and Austin**. Use their confirmed existing Mail accounts. Their names do not establish an email address; do not guess login emails or grant the address to every dashboard teammate. Sharing includes existing address-scoped messages. Personal aliases and other messages in the address owner's mailbox remain outside this grant.
+The approved shared address is **sales@tailoredagents.com**, owned by Jeffrey, with installed read/send grants for **devon@tailoredagents.com**, **jeffrey@tailoredagents.com** and **austin@tailoredagents.com**. Sharing includes existing address-scoped messages. Personal aliases and other messages in the address owner's mailbox remain outside this grant. New grants require explicit approval for the actual account/address; dashboard membership alone is insufficient.
 
 ## Activate the two services
 
-Generate a new high-entropy **CRM_MAIL_SECRET** of at least 32 characters before the commands below. Its value must match between the website and Mail for the same environment and must differ from the existing website `MAIL_AUTH_SECRET` / Mail `DASHBOARD_AUTH_SECRET`. Store it only in Cloudflare's secret store and the Render web service's environment. It is an additional capability, not a replacement for existing Mail login credentials.
+**Reference for a new environment or deliberate recovery: production already completed these steps.** Back up the intended Mail D1 database, record the recovery bookmark/current grants and confirm private R2 retention before changing permissions or schema. Preserve a private website PostgreSQL export and test restoration; follow [Mail recovery](../apps/mail/README.md) and [website recovery](SEARCH_CONSOLE_READINESS.md).
 
-1. Apply the ordered website migrations through **0010_inbox.sql** to PostgreSQL. The existing Render build command runs `npm run db:migrate`, `npm run db:retention` and the production build. Migration 0010 adds Inbox metadata; it does not copy Mail messages into PostgreSQL or grant access.
+For a new environment, generate a high-entropy **CRM_MAIL_SECRET** of at least 32 characters. Preserve production's installed secret unless deliberately rotating it in both services. Its value must match between the website and Mail for the same environment and must differ from the existing website `MAIL_AUTH_SECRET` / Mail `DASHBOARD_AUTH_SECRET`. Store it only in Cloudflare's secret store and the Render web service's environment. It does not replace existing Mail login credentials.
+
+1. Apply the complete ordered website migration set, currently through **0018_affordable_seo.sql**, to PostgreSQL. The existing Render build runs `npm run db:migrate`, `npm run db:retention` and the production build. Migration 0010 adds email collaboration metadata and 0012 adds the unified Inbox; neither copies Mail messages into PostgreSQL or grants access.
 2. Apply Mail's ordered D1 migrations through **0037_crm_mail.sql** in the intended Cloudflare environment, then deploy the separate Mail application. A push to the website's `main` does not deploy Mail. From the repository root, the production commands are:
 
    ```powershell
@@ -29,18 +33,50 @@ Generate a new high-entropy **CRM_MAIL_SECRET** of at least 32 characters before
    Pop-Location
    ```
 
-   Enter the new secret at Wrangler's prompt. For staging, use `--env staging` and `npm run deploy:staging` with that environment's own resources and secret. Keep the existing `DASHBOARD_AUTH_SECRET`, Resend, webhook, D1, R2 and queue settings intact.
-3. On the Render **web service**, add the matching `CRM_MAIL_SECRET`. Keep `DASHBOARD_AUTH_MODE=mail`, `MAIL_AUTH_URL=https://mail.tailoredagents.com/api/dashboard-auth` and the existing `MAIL_AUTH_SECRET`. Deploy the verified website build with migration 0010. No CRM secret is required by the existing Search Console cron.
+   Enter the intended secret at Wrangler's prompt. For staging, use `--env staging` and `npm run deploy:staging` with that environment's own resources and secret. Keep the existing `DASHBOARD_AUTH_SECRET`, Resend, webhook, D1, R2 and queue settings intact. Do not run a secret replacement merely because it appears in this reusable example.
+3. On the Render **web service**, install the matching `CRM_MAIL_SECRET` if it is absent or part of the coordinated rotation. Keep `DASHBOARD_AUTH_MODE=mail`, `MAIL_AUTH_URL=https://mail.tailoredagents.com/api/dashboard-auth` and the existing `MAIL_AUTH_SECRET`. Deploy the verified website build with the ordered migrations. No CRM secret is required by the existing reporting/SEO cron.
 4. In **Mail → Manage team**, an active Mail owner confirms the existing Devon, Jeffrey and Austin accounts, their dashboard approval and the exact **sales@tailoredagents.com** address. Grant that address **Read + send** to each of those three accounts, including Jeffrey even if he owns the address. Do not grant personal aliases, create guessed accounts or expand access to additional teammates. A dashboard login grant alone permits no mailbox reading or sending. Read-only mailbox grants cannot send, and dashboard viewers cannot change shared records or send even with a Mail send grant.
 5. Sign in to the website with each approved Mail account and open `/dashboard/inbox`. The bridge verifies the current identity and explicit address grant on every call. Missing configuration shows setup state; missing/revoked approval shows an access state and hides local notes, drafts and conversation metadata. Record authenticated production acceptance separately from the deployment.
 
 There is no reason to set `API_SEND_ENABLED=true` or enable Mail's disabled public APIs. The new private endpoint uses its own secret, live identity grant and explicit address approval. Incoming attachment downloads use the same scope and force a file download; there is no public attachment URL.
 
+## Mail management and recovery
+
+Jeffrey and Austin currently have Mail owner-management permission (`users.is_admin=1`); Devon has regular dashboard approval. The October 24 additional-owner update was explicitly authorized and completed through Cloudflare. The account API does not provide routine role promotion. Mail management permits account/password administration and address grants; it does not implicitly share every mailbox with the CRM.
+
+For a deliberate permission repair, first verify the production database **tailored-mail-production**, take a backup, and inspect the existing accounts:
+
+```sql
+SELECT email, is_admin, dashboard_access, must_change_password, disabled_at
+FROM users
+WHERE email IN ('jeffrey@tailoredagents.com', 'austin@tailoredagents.com', 'devon@tailoredagents.com');
+```
+
+The guarded update used for Austin's approved additional-owner access is retained as a recovery reference, not an outstanding setup step:
+
+```sql
+UPDATE users
+SET is_admin = 1, dashboard_access = 1
+WHERE email = 'austin@tailoredagents.com'
+  AND disabled_at IS NULL
+  AND must_change_password = 0
+  AND EXISTS (
+    SELECT 1 FROM users
+    WHERE email = 'jeffrey@tailoredagents.com'
+      AND is_admin = 1
+      AND disabled_at IS NULL
+  );
+```
+
+Check the resulting roles and use each person's own login. This update does not reset passwords or give Devon management permission. Future teammates receive dashboard approval through **Mail → Manage team**, then explicit address grants separately. Do not reopen initial owner setup.
+
+Rollback must preserve messages, additive migrations and Jeffrey's owner access. Restore a compatible Mail build; if permissions need reverting, restore only the intended account's recorded previous values. Keep the website's reporting/SEO worker and unrelated mail routes intact. Use Mail's documented owner-recovery command for a forgotten owner password.
+
 ## Email acceptance and recovery
 
 Local PostgreSQL tests use only the guarded disposable `ta_inbox_test` database on loopback port 55433 and a mocked Mail transport. Browser fixtures and Mail's isolated tests use synthetic messages. Passing them establishes local behavior; it does not prove that production credentials, routing or delivery are active.
 
-For production acceptance, use explicitly authorized test correspondents and record:
+The [handoff](../new%20jeffrey.md#shared-sales-inbox--remaining-work) records which production checks are still open. Use explicitly authorized test correspondents for the technical acceptance procedure below; previously verified delivery does not need repeating solely for this documentation cleanup:
 
 - Devon, Jeffrey and Austin can open the approved address; another unapproved account cannot. Confirm that personal aliases, drafts in Mail, trash and unrelated messages remain unavailable. Remove one test approval and confirm the next request hides messages and local collaboration data.
 - An authorized incoming test email appears in the correct conversation. Read state is personal; a new message becomes unread again. Internal notes are shared only with approved readers, while a saved draft is visible only to its author.
@@ -84,7 +120,7 @@ Fixed the composer diagnostic that incorrectly described every unavailable send 
 
 The owner's follow-up removes the **Text details** disclosure from unified Inbox SMS replies. The composer submits the existing recipient as a hidden field so drafts, replies and uncertain-send recovery retain their original destination. New-message entry still provides the recipient field. Lint, TypeScript, production build and four desktop/phone unified Inbox checks passed, including absence of the disclosure, channel-switch drafts, replies and uncertain-send recovery.
 
-The project owner handles these steps with Codex. Jeffrey's handoff remains email-only.
+The project owner handles these Twilio steps with Codex. Jeffrey's Meta/SEO/shared-email checklist is separate. Treat initial SMS setup as a recovery reference following the owner's October 22 two-way SMS confirmation above.
 
 1. Apply the website's ordered PostgreSQL migrations through **0011_sms_inbox.sql** before serving the SMS routes. The migration adds number bindings, explicit grants, conversations, message metadata/content, drafts, notes, read receipts and durable send intents. It grants no existing teammate automatic SMS access.
 2. In the existing Twilio account, confirm the exact account/subaccount owning **+16785417725**, the number's SMS capability, account/trial restrictions and the relevant messaging registration. Do not purchase a replacement or reuse Wholesale's Stonegate account. For a US local application sender, verify the Tailored Agents brand/campaign and opt-in use case with [Twilio's A2P 10DLC guidance](https://www.twilio.com/docs/messaging/compliance/a2p-10dlc). A successful read-only capability check does not establish registration approval or deliverability.

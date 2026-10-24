@@ -87,6 +87,14 @@ Use Meta's URL preview to confirm replacement values. The CRM displays received 
 
 ## Follow-on work
 
+### Interim lead alerts
+
+Until form imports and any selected alerts are verified, have the assigned teammate check Meta's own lead queue. Inspect the business account for native notification options and test the intended recipients; availability and timing must be verified in that account. If native alerts are insufficient, the earlier handoff identified [Facebook Lead Ads → email through Zapier](https://zapier.com/apps/facebook-lead-ads/integrations) as an optional paid fallback, with [plan and account-access requirements](https://help.zapier.com/hc/en-us/articles/8496061306253-How-to-get-started-with-Facebook-Lead-Ads-on-Zapier). No Zapier subscription or automation has been authorized or activated by this documentation. Confirm any new cost before setup and avoid duplicate alerts.
+
+The existing Resend notifications for saved **website** inquiries are independent of Meta Instant Forms. This connector currently creates unassigned CRM leads without automatic team email alerts or customer outreach. Record who checks/assigns leads and how older submissions will be reconciled; historical backfill is not automatic.
+
+### Deferred capabilities
+
 - Conversions API for server-confirmed website events, sharing the same event ID/name with the Pixel to deduplicate browser/server delivery. This release only sends the browser event.
 - Feedback of qualified/won outcomes to Meta after agreeing on the exact sales-stage meaning and permitted event fields. A CRM `won` status is not a paid purchase.
 - Owner routing rules, team alerts, historical form backfill/reconciliation, and optional multi-Page/client isolation. The current connector receives new submissions for one internal business Page; it does not import old leads automatically.
