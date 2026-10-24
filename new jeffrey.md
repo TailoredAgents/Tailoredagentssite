@@ -60,10 +60,14 @@ Jeffrey approved finishing the existing features first, using **at most $10/mont
 - Search Console remains active for `sc-domain:tailoredagents.com`; coverage reached October 21 at the baseline check.
 - A private PostgreSQL export was saved. Temporary backup access was removed and the original external access restriction restored.
 - Mail security update deployed as Worker `df7992d5-4d35-4d59-bacb-9155610bec63` (source `d68637f`). No domain or email-provider settings changed.
+- SEO source `3c044b0` went live on the website at 21:20:34 UTC (`dep-dbei1ess728c73ckuku0`), with migration 0018 applied. The existing cron deployed the same source (`dep-dbei1f4s728c73ckulh0`); its matching SEO secret/URL are configured, with no additional service.
+- A genuine scheduled check at 21:20:37 UTC attempted **both Reporting and SEO**, with zero errors. The subsequent manual invocation completed all **14 public pages** in **31.31 seconds**; the saved scan finished at 21:21:31 UTC. Free daily monitoring is enabled. Paid AI and the model pilot remain off; production has **zero AI cost receipts and $0 charged by this integration**.
+- During the first free scan, Render's sampled web-service CPU stayed below 0.04 CPU, memory below 114 MB and reported 95th-percentile HTTP latency about 0.213 seconds. This short sample supports free monitoring on the current service; it does not establish paid-model runtime or a monthly hosting bill. Reusing the cron avoids another minimum service charge; extra active runtime remains billable.
+- Public health, contact, sign-in and Mail pages return successfully. Anonymous SEO access redirects to sign-in. Database external access was restored to its original blocked setting after verification.
 
 ### Release verification
 
-The full website suite passed 444 tests; the final targeted SEO suite passed 67 tests after adding two further pilot checks. Mail passed 406 tests and 12 browser checks. Team Inbox passed 10 browser checks; SEO passed four desktop/phone checks in each of light and dark appearances, including accessible controls, publication verification and rollback against synthetic providers. Lint, strict types and production builds passed. The populated PostgreSQL upgrade/restore test preserves prior reports, credentials, collaboration, Meta records, SEO publications and uncertain charges while applying the $10 migration.
+The final full website suite passed **446 tests**. The subsequent worker-deadline guard passed nine targeted scheduler/command checks. Mail passed 406 tests and 12 browser checks. Team Inbox passed 10 browser checks; SEO passed four desktop/phone checks in each of light and dark appearances, including accessible controls, publication verification and rollback against synthetic providers. Lint, strict types and production builds passed. The populated PostgreSQL upgrade/restore test preserves prior reports, credentials, collaboration, Meta records, SEO publications and uncertain charges while applying the $10 migration.
 
 Website dependency audit: zero findings. Mail: zero moderate/high/critical findings; three low dependency entries affect SvelteKit capabilities this app does not use. See [Mail's current dependency assessment](apps/mail/README.md#october-24-shared-sales-acceptance-and-dependency-review). These automated checks do not replace the pending real model and teammate acceptance below.
 
@@ -76,6 +80,7 @@ Website dependency audit: zero findings. Mail: zero moderate/high/critical findi
 - [ ] Jeffrey reviews the business facts in SEO settings.
 - [ ] Sol/Astra pilot and controlled safety cases pass; actual costs are reconciled within the $5 pilot / $10 monthly limits.
 - [ ] Paid automation is enabled only after review; natural daily and weekly runs are observed.
+- [ ] Observe the next day's complete free scan; the first completed scan above was manually triggered, and the first scheduled check was idle.
 - [ ] First justified reviewed metadata change is published and verified, or a valid no-change pilot is documented with publishing still unverified.
 - [ ] Outcome review is completed after 28 finalized Google dates.
 

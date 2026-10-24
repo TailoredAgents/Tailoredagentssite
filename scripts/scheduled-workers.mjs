@@ -20,6 +20,7 @@ export async function runScheduledWorkers(env, { fetcher = fetch, now = Date.now
       if (!result.more) break;
       const delay = Number(result.retryAfterMs || 0);
       if (!Number.isFinite(delay) || delay < 0 || delay > 2500) break;
+      if (now() + delay + 50 > deadline) break;
       if (delay) await sleep(delay + 50);
     }
     if (failed) throw new Error(`${name}: some work needs review; see the dashboard.`);

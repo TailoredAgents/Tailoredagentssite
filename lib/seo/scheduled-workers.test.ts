@@ -24,3 +24,9 @@ it("can disable SEO without interrupting existing reporting",async()=>{
   expect(await runScheduledWorkers({...env,SEO_WORKER_URL:''},{fetcher,log})).toBe(true);
   expect(fetcher).toHaveBeenCalledTimes(1);expect(log.mock.calls).toHaveLength(4);
 });
+it("does not let a retry delay run beyond the overall deadline",async()=>{
+  let elapsed=0;const sleep=vi.fn(async()=>{});
+  const fetcher=vi.fn(async()=>{elapsed=209000;return Response.json({ok:true,more:true,retryAfterMs:2000});});
+  await runScheduledWorkers({...env,SEARCH_CONSOLE_SYNC_URL:'bad'},{fetcher,now:()=>elapsed,sleep,log:()=>{}});
+  expect(sleep).not.toHaveBeenCalled();expect(fetcher).toHaveBeenCalledTimes(1);
+});
