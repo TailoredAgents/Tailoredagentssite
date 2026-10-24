@@ -20,7 +20,7 @@ for (const filename of (await readdir("db/migrations")).filter(n => n.endsWith("
     await pool.query("INSERT INTO schema_migrations(filename) VALUES($1)", [filename]);
   }
 }
-let threads, smsMessages, emailSends, smsCreates, emailAttempts, tokens, revokedMail, unknownMail, unknownSms;
+let aiRequests, failAi, threads, smsMessages, emailSends, smsCreates, emailAttempts, tokens, revokedMail, unknownMail, unknownSms;
 const stamp = (minutes = 0) => new Date(Date.now() - 3600000 + minutes * 60000).toISOString();
 function mailMessage(id, text, options = {}) {
   return { id, direction: "inbound", from_addr: "customer@example.test", from_name: "Jordan Example", to_addr: "sales@example.test", cc_addr: null, subject: "Website project", body_text: text,
@@ -53,7 +53,7 @@ async function reset() {
     ["thread-general", { threadId: "thread-general", subject: "General company inquiry", messages: [mailMessage("message-general", "General correspondence without a lead.", { from_addr: "general@example.test", from_name: "General Example", reply_target: ["general@example.test"], created_at: stamp(-5) })] }],
     ["thread-taylor", { threadId: "thread-taylor", subject: "Separate contact", messages: [mailMessage("message-taylor", "Taylor has a separate request.", { from_addr: "taylor@example.test", from_name: "Taylor Example", reply_target: ["taylor@example.test"], created_at: stamp(-10) })] }],
   ]);
-  smsMessages = new Map(); emailSends = new Map(); smsCreates = []; emailAttempts = []; tokens = new Map(); revokedMail = new Set(); unknownMail = false; unknownSms = false;
+  aiRequests = []; failAi = false; smsMessages = new Map(); emailSends = new Map(); smsCreates = []; emailAttempts = []; tokens = new Map(); revokedMail = new Set(); unknownMail = false; unknownSms = false;
 }
 await reset();
 function reply(response, data, status = 200) { response.writeHead(status, { "content-type": "application/json", "cache-control": "no-store" }); response.end(JSON.stringify(data)); }
@@ -68,10 +68,19 @@ createServer(async (request, response) => {
     let raw = "";
     for await (const chunk of request) { raw += chunk; if (raw.length > 200000) return reply(response, {}, 413); }
     const body = JSON.parse(raw || "{}");
+    if (request.url === "/ai-draft") {
+      if (request.headers.authorization !== "Bearer conversations-synthetic-control") return reply(response, {}, 403);
+      aiRequests.push(body);
+      await new Promise(resolve => setTimeout(resolve, 700));
+      if (failAi) return reply(response, {}, 503);
+      const context = JSON.parse(body.input[0].content);
+      return reply(response, {status:"completed",output:[{type:"message",content:[{type:"output_text",text:JSON.stringify({subject:"Your website project",text:`Hi ${context.client?.name || "there"}, thanks for reaching out to Tailored Agents. What would you like your new website to do?`})}]}]});
+    }
     if (["/control", "/transport"].includes(request.url)) {
       if (request.headers.authorization !== "Bearer conversations-synthetic-control") return reply(response, {}, 403);
       if (request.url === "/control") {
         if (body.action === "reset") await reset();
+        if (body.action === "failAi") failAi = true;
         if (body.action === "newLead") {
           const id = randomUUID();
           await pool.query("INSERT INTO leads(id,workspace_id,name,organization,email,phone,description,source) VALUES($1,$2,'Morgan New','','morgan@example.test','+16785550103','','manual')",[id,workspace]);
@@ -105,7 +114,7 @@ createServer(async (request, response) => {
           return reply(response, await callback(path.pathname + path.search, { AccountSid: account, MessageSid: message.sid, From: message.from, To: message.to, MessageStatus: message.status, ErrorCode: "" }));
         }
         const sources = (await pool.query("SELECT id,conversation_id,channel,thread_id,sms_conversation_id FROM crm_conversation_sources WHERE workspace_id=$1", [workspace])).rows;
-        return reply(response, { emailSends: emailSends.size, emailAttempts, smsCreates, threads: [...threads.values()], sources, numberId, smsId, businessId, contactId, leadId });
+        return reply(response, { aiRequests, emailSends: emailSends.size, emailAttempts, smsCreates, threads: [...threads.values()], sources, numberId, smsId, businessId, contactId, leadId });
       }
       const target = new URL(body.uri);
       const envelope = (data, statusCode = 200) => reply(response, { statusCode, body: data, headers: {} });

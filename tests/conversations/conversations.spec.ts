@@ -261,6 +261,7 @@ test("uncertain sends keep their original request across channel switches and re
   await page.getByRole("tab",{name:"SMS",exact:true}).click();await page.reload();
   await page.getByRole("tab",{name:"Email",exact:true}).click();email=page.getByRole("tabpanel",{name:"Email",exact:true});
   await expect(email.getByRole("textbox",{name:"Message *",exact:true})).toHaveAttribute("readonly","");
+  await expect(email.getByRole("button",{name:"Suggest message",exact:true})).toBeDisabled();
   await email.getByRole("button",{name:"Check send status",exact:true}).click();
   await expect(email.getByRole("button",{name:"Send reply",exact:true})).toBeEnabled();
   await expect(email.getByRole("textbox",{name:"Message *",exact:true})).toHaveValue("");
@@ -315,4 +316,70 @@ test("discovers more than one Mail page and searches indexed customer addresses"
   await page.getByRole("searchbox",{name:"Search people, businesses or addresses",exact:true}).fill("person131@example.test");
   await page.getByRole("button",{name:"Apply conversation search",exact:true}).click();
   await expect(page.getByRole("region",{name:"Customer conversations",exact:true}).getByText("person131@example.test",{exact:true})).toBeVisible();
+});
+
+
+test("AI drafts use client context and both channels without sending or overwriting edits", async ({page,request}, info) => {
+  await signIn(page); await combine(page,request);
+  await page.getByRole("tab",{name:"SMS",exact:true}).click();
+  const sms=page.getByRole("tabpanel",{name:"SMS",exact:true});
+  const message=sms.getByRole("textbox",{name:"Text message *",exact:true});
+  await message.fill("My existing draft");
+  await sms.getByRole("button",{name:"Suggest message",exact:true}).click();
+  await sms.getByRole("button",{name:"Set up a meeting",exact:true}).click();
+  await sms.getByLabel("Message direction").fill("Initial message after lead came in, looking for their first site");
+  await sms.getByRole("button",{name:"Generate draft",exact:true}).click();
+  const preview=sms.getByRole("region",{name:"Suggested message",exact:true});
+  await expect(preview).toContainText("Jordan Example");
+  await expect(message).toHaveValue("My existing draft");
+  const state=await control(request,"inspect");
+  expect(state.emailSends).toBe(0); expect(state.smsCreates).toHaveLength(0);
+  const context=JSON.parse(state.aiRequests[0].input[0].content);
+  expect(context.staffDirection).toContain("first site");
+  expect(JSON.stringify(context.history)).toContain("Could you build our website");
+  expect(JSON.stringify(context.history)).toContain("Tuesday morning");
+  expect(JSON.stringify(context)).not.toContain("legacy note");
+  expect(state.aiRequests[0].store).toBe(false);
+  await expect(page.locator("body")).toBeVisible();
+  expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa"]).analyze()).violations).toEqual([]);
+  await preview.scrollIntoViewIfNeeded();
+  await page.screenshot({path:`test-results/ai-draft-${info.project.name}.png`,fullPage:info.project.name==="phone",style:"nextjs-portal{display:none!important;}"});
+  await sms.getByRole("button",{name:"Use draft",exact:true}).click();
+  await expect(message).toHaveValue(/Jordan Example/);
+  await message.fill("Edited by me before sending");
+  await page.getByRole("tab",{name:"Email",exact:true}).click();
+  const email=page.getByRole("tabpanel",{name:"Email",exact:true});
+  const subject=await email.locator('[name="subject"]').inputValue();
+  await email.getByRole("button",{name:"Suggest message",exact:true}).click();
+  await email.getByRole("button",{name:"Generate draft",exact:true}).click();
+  await expect(email.getByRole("button",{name:"Use draft",exact:true})).toBeEnabled();
+  await email.getByRole("button",{name:"Use draft",exact:true}).click();
+  await expect(email.locator('[name="subject"]')).toHaveValue(subject);
+  await page.getByRole("tab",{name:"SMS",exact:true}).click();
+  await expect(message).toHaveValue("Edited by me before sending");
+  await sms.getByRole("button",{name:"Suggest message",exact:true}).click();
+  await sms.getByRole("button",{name:"Generate draft",exact:true}).click();
+  await message.fill("Keep my newer edit");
+  await expect(sms.getByRole("alert")).toContainText("changed");
+  await expect(message).toHaveValue("Keep my newer edit");
+  const final=await control(request,"inspect"); expect(final.smsCreates).toHaveLength(0); expect(final.emailSends).toBe(0);
+});
+
+test("AI drafts cover a new lead and preserve manual writing when the provider fails", async ({page,request}) => {
+  const lead=await control(request,"newLead"); await signIn(page);
+  await page.goto(`/dashboard/inbox?lead=${lead.id}`);
+  await page.getByRole("tab",{name:"Email",exact:true}).click();
+  const email=page.getByRole("tabpanel",{name:"Email",exact:true});
+  await email.getByRole("button",{name:"Suggest message",exact:true}).click();
+  await email.getByRole("button",{name:"Introduce us",exact:true}).click();
+  await email.getByRole("button",{name:"Generate draft",exact:true}).click();
+  await expect(email.getByRole("region",{name:"Suggested message"})).toContainText("Morgan New");
+  await email.getByRole("button",{name:"Use draft",exact:true}).click();
+  await expect(email.locator('[name="subject"]')).toHaveValue("Your website project");
+  await control(request,"failAi");
+  await email.getByRole("button",{name:"Suggest message",exact:true}).click();
+  await email.getByRole("button",{name:"Generate draft",exact:true}).click();
+  await expect(email.getByRole("alert")).toContainText("temporarily unavailable");
+  await expect(email.getByRole("textbox",{name:"Message *",exact:true})).toHaveValue(/Morgan New/);
+  expect((await control(request,"inspect")).emailSends).toBe(0);
 });

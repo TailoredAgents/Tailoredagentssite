@@ -8,3 +8,13 @@ require("twilio").RequestClient.prototype.request = async function(options) {
   if (!response.ok) throw new Error("Synthetic transport unavailable.");
   return await response.json();
 };
+
+const originalFetch = globalThis.fetch;
+globalThis.fetch = function(input, options) {
+  const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+  if (url.startsWith("https://api.openai.com/")) {
+    if (url !== "https://api.openai.com/v1/responses" || options?.headers?.authorization !== "Bearer conversations-synthetic-openai-key") throw new Error("Unexpected AI fixture request.");
+    return originalFetch("http://127.0.0.1:3151/ai-draft", { ...options, headers: { "content-type": "application/json", authorization: "Bearer conversations-synthetic-control" } });
+  }
+  return originalFetch(input, options);
+};

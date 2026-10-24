@@ -1,3 +1,6 @@
+import { generateClientDraft } from "./draft-service";
+import { reserveDraftRequest } from "./draft-rate-limit";
+import { writeSuggestedDraft } from "./draft-provider";
 import { randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import type { Pool } from "pg";
@@ -29,6 +32,7 @@ import { bindSentRecipient } from "./service";
 import { getConversationRecipient, listConversationRecipients } from "./recipients";
 import type { InboxMailbox, InboxMessage } from "@/lib/inbox/types";
 vi.mock("server-only", () => ({}));
+vi.mock("./draft-provider", async importOriginal => ({ ...await importOriginal<typeof import("./draft-provider")>(), writeSuggestedDraft: vi.fn() }));
 vi.mock('@/lib/voice-provider/config',()=>({getVoiceConfiguration:()=>({ready:false,webhookReady:false,enabled:false,missing:['TWILIO_VOICE_APP_SID'],phoneNumber:''})}));
 const gateway = vi.hoisted(() => ({
   smsEnabled: true,
@@ -195,6 +199,9 @@ describe.skipIf(!databaseUrl)(
     }, 30000);
     beforeEach(async () => {
       gateway.smsEnabled = true;
+      vi.stubEnv("OPENAI_API_KEY", "synthetic-drafts-only");
+      vi.stubEnv("CRM_AI_DRAFTS_ENABLED", "true");
+      await pool.query("DELETE FROM request_rate_limits WHERE scope LIKE 'crm-ai-draft-%'");
       await pool.query(
         'TRUNCATE crm_conversations,crm_conversation_sync,sms_numbers,inbox_conversations,inbox_drafts,crm_channel_preferences,contacts,projects,clients,crm_businesses,leads,audit_logs,"user" CASCADE',
       );
@@ -253,6 +260,7 @@ describe.skipIf(!databaseUrl)(
         [randomUUID(), workspace, smsId, base],
       );
       vi.resetAllMocks();
+      vi.mocked(writeSuggestedDraft).mockResolvedValue({ subject: "Your website", text: "Hi Alice, what would you like your website to do?" });
       mailMessages = [message("mail-1")];
       gateway.mailboxes.mockImplementation(async (ctx: DashboardContext) =>
         ctx.user.id === smsOnlyId ? [] : [mailbox],
@@ -970,6 +978,63 @@ describe.skipIf(!databaseUrl)(
           )
         ).rows[0].n,
       ).toBe(0);
+    });
+
+    it("drafts from client facts and only permitted history, excluding internal notes", async () => {
+      const ids = await identities();
+      await mergeConversations(owner, { conversationId: ids.email.id, targetConversationId: ids.sms.id, confirmConflict: true });
+      const result = await generateClientDraft(smsOnly, { channel: "sms", accountId: numberId, to: "2125550123", threadId: smsId, direction: "Ask about their first website" });
+      expect(result.draft.text).toContain("Alice");
+      const supplied = JSON.stringify(vi.mocked(writeSuggestedDraft).mock.calls[0][1]);
+      expect(supplied).toContain("SMS from Alice");
+      expect(supplied).not.toContain("Provider body");
+      expect(supplied).not.toContain("legacy note");
+      expect(supplied).toContain("Ask about their first website");
+    });
+    it("rejects viewers, foreign accounts, mismatched recipients and changed grants before generating", async () => {
+      const input = { channel: "sms", accountId: numberId, to: "2125550123", threadId: smsId };
+      await expect(generateClientDraft(viewer, input)).rejects.toThrow();
+      await expect(generateClientDraft(context(otherId, otherWorkspace), input)).rejects.toThrow();
+      await expect(generateClientDraft(owner, { ...input, to: "21255550199" })).rejects.toThrow();
+      await expect(generateClientDraft(owner, { ...input, recipient: {kind:"contact",id:secondContactId} })).rejects.toThrow();
+      await pool.query("UPDATE sms_number_grants SET can_send=false WHERE user_id=$1", [ownerId]);
+      await expect(generateClientDraft(owner, input)).rejects.toThrow();
+      expect(writeSuggestedDraft).not.toHaveBeenCalled();
+    });
+    it("discards generated content when source access is revoked while AI runs", async () => {
+      vi.mocked(writeSuggestedDraft).mockImplementationOnce(async () => {
+        await pool.query("DELETE FROM sms_number_grants WHERE user_id=$1", [ownerId]);
+        return { subject: "", text: "Private derived content" };
+      });
+      await expect(generateClientDraft(owner, {channel:"sms",accountId:numberId,to:"2125550123",threadId:smsId})).rejects.toThrow();
+      expect(writeSuggestedDraft).toHaveBeenCalledOnce();
+    });
+    it("hides a draft when a different channel used in its context loses access", async () => {
+      const ids = await identities();
+      await mergeConversations(owner, {conversationId:ids.email.id,targetConversationId:ids.sms.id,confirmConflict:true});
+      vi.mocked(writeSuggestedDraft).mockImplementationOnce(async () => {
+        gateway.mailboxes.mockResolvedValue([]);
+        return {subject:"",text:"Derived from email while replying by SMS"};
+      });
+      await expect(generateClientDraft(owner, {channel:"sms",accountId:numberId,to:"2125550123",threadId:smsId})).rejects.toThrow("Conversation access changed");
+      expect(writeSuggestedDraft).toHaveBeenCalledOnce();
+    });
+    it("uses new lead inquiry details without requiring conversation history", async () => {
+      const lead = randomUUID();
+      await pool.query("INSERT INTO leads(id,workspace_id,name,organization,email,phone,interest,description) VALUES($1,$2,'New Person','','new@example.test','+12125550199','First website','Need appointment booking')", [lead,workspace]);
+      const result = await generateClientDraft(owner, {channel:"sms",accountId:numberId,to:"2125550199",recipient:{kind:"lead",id:lead}});
+      expect(result.contextNote).toContain("no conversation history");
+      const supplied = JSON.stringify(vi.mocked(writeSuggestedDraft).mock.calls[0][1]);
+      expect(supplied).toContain("First website"); expect(supplied).toContain("Need appointment booking");
+    });
+    it("enforces shared atomic draft quotas across simultaneous requests", async () => {
+      const results = await Promise.allSettled(Array.from({length:7}, () => reserveDraftRequest(owner)));
+      expect(results.filter(r => r.status === "fulfilled")).toHaveLength(3);
+      await pool.query("DELETE FROM request_rate_limits WHERE scope='crm-ai-draft-burst'");
+      await pool.query("UPDATE request_rate_limits SET count=300 WHERE scope='crm-ai-draft-workspace'");
+      await expect(reserveDraftRequest(member)).rejects.toThrow("daily AI draft allowance");
+      await pool.query("UPDATE request_rate_limits SET expires_at=now()-interval '1 second' WHERE scope LIKE 'crm-ai-draft-%'");
+      await expect(reserveDraftRequest(owner)).resolves.toBeUndefined();
     });
   },
 );

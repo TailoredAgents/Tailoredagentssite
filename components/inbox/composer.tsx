@@ -1,5 +1,6 @@
 "use client";
 
+import { DraftAssistant } from "@/components/conversations/draft-assistant";
 import type { ConversationRecipient } from "@/lib/conversations/types";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -101,7 +102,7 @@ export function InboxComposer({ mailbox, threadId, subject: threadSubject = "", 
       {recipient ? <><input type="hidden" name="recipientId" value={recipient.id} /><input type="hidden" name="recipientKind" value={recipient.kind} /><input type="hidden" name="composeKey" value={composeKey} /><input type="hidden" name="crmConversationId" value={crmConversationId || ""} /></> : null}<input type="hidden" name="mailboxId" value={mailbox.id} /><input type="hidden" name="threadId" value={unresolved ? originalThreadId : threadId || ""} /><input type="hidden" name="replyToMessageId" value={replyToMessageId} /><input type="hidden" name="requestId" value={requestId} />
       <fieldset disabled={readOnly || busy} className="inbox-composer-fields">
         {compact && threadId ? <details className="conversation-reply-details"><summary>Reply details<span>{to || "Recipient unavailable"}</span></summary><div>{envelopeFields}</div></details> : envelopeFields}
-        <label className="inbox-field inbox-message-field"><span>Message *</span><textarea name="text" required maxLength={12000} value={text} readOnly={unresolved} placeholder={threadId ? "Write your reply…" : "Write your email…"} onChange={(event) => setText(event.target.value)} /></label>
+        <DraftAssistant key={`${storageKey}:${requestId}`} disabled={sendDisabled || unresolved} request={{ channel: "email", accountId: mailbox.id, to, threadId, conversationId: crmConversationId, recipient: recipient ? { kind: recipient.kind, id: recipient.id } : undefined, currentText: text, subject }} onApply={draft => { setText(draft.text); if (!threadId && draft.subject) setSubject(draft.subject); }} /><label className="inbox-field inbox-message-field"><span>Message *</span><textarea name="text" required maxLength={12000} value={text} readOnly={unresolved} placeholder={threadId ? "Write your reply…" : "Write your email…"} onChange={(event) => setText(event.target.value)} /></label>
       </fieldset>
       {readOnly ? <p className="inbox-form-help">Your dashboard access is read-only.</p> : !mailbox.canSend ? <p className="inbox-form-help">Your Mail grant allows reading this address. Sending requires send permission from a Tailored Mail administrator.</p> : null}
       {replyUnavailable ? <p className="inbox-form-help">Tailored Mail did not provide a valid reply target for this conversation.</p> : null}
