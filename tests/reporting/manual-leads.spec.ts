@@ -141,6 +141,29 @@ test("adds a person without a business and shows their name in Leads", async ({ 
   await expect(page.locator("strong").filter({ hasText: name })).toBeVisible();
 });
 
+test("confirms deletion, supports cancel and removes a lead from the list", async ({ page }, info) => {
+  const name = `Delete fixture ${info.project.name} ${run}`;
+  const [lead] = await rows("INSERT INTO leads(id,workspace_id,name,organization,email,source,delivery_status) VALUES(gen_random_uuid(),'00000000-0000-4000-8000-000000000001',$1,'','delete@example.test','manual','not_configured') RETURNING id", [name]);
+  await signIn(page);
+  await page.goto(`/dashboard/leads/${lead.id}`);
+  await page.getByRole("button", { name: "Delete lead", exact: true }).click();
+  const confirmation = page.getByRole("form", { name: "Confirm lead deletion" });
+  await expect(confirmation).toContainText(name);
+  await expect(confirmation.getByRole("button", { name: "Cancel", exact: true })).toBeFocused();
+  await confirmation.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(confirmation).toHaveCount(0);
+  expect(await rows("SELECT id FROM leads WHERE id=$1", [lead.id])).toHaveLength(1);
+  await page.getByRole("button", { name: "Delete lead", exact: true }).click();
+  const axe = await new AxeBuilder({ page }).include('[aria-label="Confirm lead deletion"]').withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+  expect(axe.violations).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  await confirmation.screenshot({ path: `test-results/delete-lead-${info.project.name}.png` });
+  await confirmation.getByRole("button", { name: "Permanently delete lead", exact: true }).click();
+  await expect(page).toHaveURL(/\/dashboard\/leads$/);
+  expect(await rows("SELECT id FROM leads WHERE id=$1", [lead.id])).toHaveLength(0);
+  await expect(page.getByText(name, { exact: true })).toHaveCount(0);
+});
+
 test("retains manual lead fields after server validation and keeps entry accessible at narrow widths", async ({
   page,
 }, info) => {

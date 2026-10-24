@@ -63,6 +63,11 @@ export const createLeadSchema = z.object({
   });
 });
 
+export const deleteLeadSchema = z.object({
+  leadId: identifier,
+  confirmed: z.literal("yes", { error: "Confirm that you want to delete this lead." }),
+});
+
 export const updateLeadSchema = z.object({
   leadId: identifier,
   status: z.enum(leadStatuses),

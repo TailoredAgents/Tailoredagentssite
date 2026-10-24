@@ -1,0 +1,8 @@
+.panel { margin-bottom: 64px; padding: 18px; border: 1px solid var(--workspace-line); border-radius: 8px; background: var(--workspace-surface); overflow-wrap: anywhere; }
+.panel p { margin: 10px 0 14px; color: var(--workspace-muted); font-size: .875rem; line-height: 1.6; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.panel button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 10px 14px; border: 1px solid var(--workspace-line); border-radius: 6px; background: var(--workspace-surface); color: var(--workspace-ink); font: inherit; font-size: .875rem; font-weight: 600; cursor: pointer; }
+.panel .danger { color: var(--workspace-danger); background: var(--workspace-danger-soft); }
+.panel button:disabled { opacity: .6; cursor: wait; }
+.panel button:focus-visible { outline: 2px solid var(--workspace-focus); outline-offset: 3px; }
+.panel .error { color: var(--workspace-danger); }

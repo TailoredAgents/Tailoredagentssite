@@ -10,6 +10,7 @@ import { getDatabasePool, insertAuditLog } from "@/lib/dashboard/db";
 import { ZodError } from "zod";
 import { SalesAccessError } from "@/lib/sales/data";
 import { createManualLead } from "./manual-leads";
+import { deleteLead } from "./delete-lead";
 import {
   asDatabaseDate,
   clientSchema,
@@ -99,6 +100,21 @@ export async function createLeadAction(
   }
   for (const path of ["/dashboard", "/dashboard/leads", "/dashboard/sales"]) revalidatePath(path);
   redirect(`/dashboard/leads/${leadId}`);
+}
+
+export async function deleteLeadAction(_previous: OperationActionState, formData: FormData): Promise<OperationActionState> {
+  const context = await mutationContext();
+  if (!context) return denied();
+  try {
+    const deleted = await deleteLead(context, formValues(formData, ["leadId", "confirmed"]));
+    if (!deleted) return missing();
+  } catch (error) {
+    if (error instanceof ZodError) return validationState(error);
+    if (error instanceof SalesAccessError) return { status: "error", message: error.message };
+    return genericFailure;
+  }
+  revalidatePath("/dashboard", "layout");
+  redirect("/dashboard/leads");
 }
 
 export async function updateLeadAction(

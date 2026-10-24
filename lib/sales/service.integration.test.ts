@@ -13,6 +13,7 @@ import {
 import type { DashboardContext } from "@/lib/dashboard/data";
 import { getDatabasePool } from "@/lib/dashboard/db";
 import { createManualLead } from "@/lib/operations/manual-leads";
+import { deleteLead } from "@/lib/operations/delete-lead";
 import { exportLeads, getLead, listLeads } from "@/lib/operations/data";
 import {
   convertLeadAction,
@@ -454,6 +455,57 @@ describe.skipIf(!databaseUrl)(
       expect(await getLead(member, leadId)).toMatchObject({ organization: "", phone: "7705550135" });
       const linked = await record(await linkInquiry(member, leadId));
       expect(linked.business.name).toBe("7705550135");
+    });
+
+    it("deletes a lead and its notes once, with a content-free audit record", async () => {
+      const { leadId } = await createManualLead(member, { submissionId: randomUUID(), name: "Deletion fixture", phone: "7705550136" });
+      await pool.query("INSERT INTO lead_notes(id,workspace_id,lead_id,body) VALUES($1,$2,$3,'Private fixture note')", [randomUUID(), workspaceId, leadId]);
+      expect(await deleteLead(member, { leadId, confirmed: "yes" })).toBe(true);
+      expect(await getLead(owner, leadId)).toBeNull();
+      expect((await listLeads(owner, {})).total).toBe(0);
+      expect((await pool.query("SELECT id FROM lead_notes")).rowCount).toBe(0);
+      expect(await deleteLead(owner, { leadId, confirmed: "yes" })).toBe(false);
+      const audit = await pool.query("SELECT target_id,metadata FROM audit_logs WHERE action='lead.deleted'");
+      expect(audit.rows).toHaveLength(1);
+      expect(audit.rows[0].target_id).toBe(leadId);
+      expect(JSON.stringify(audit.rows)).not.toContain("Deletion fixture");
+    });
+
+    it("preserves converted records, Inbox histories and Meta replay receipts when deleting a lead", async () => {
+      const { leadId } = await createManualLead(member, { submissionId: randomUUID(), name: "Converted deletion fixture", phone: "7705550137" });
+      const opportunityId = await linkInquiry(member, leadId);
+      const sale = await convertOpportunity(owner, { opportunityId, projectName: "Keep this project" });
+      const emailId = randomUUID(), smsId = randomUUID(), numberId = randomUUID(), conversationId = randomUUID();
+      await pool.query("INSERT INTO inbox_conversations(id,workspace_id,mailbox_id,thread_id,lead_id) VALUES($1,$2,'fixture-mailbox','fixture-thread',$3)", [emailId, workspaceId, leadId]);
+      await pool.query("INSERT INTO inbox_notes(id,workspace_id,conversation_id,body) VALUES($1,$2,$3,'Keep this conversation note')", [randomUUID(), workspaceId, emailId]);
+      await pool.query("INSERT INTO sms_numbers(id,workspace_id,account_sid,provider_sid,phone) VALUES($1,$2,$3,$4,'+17705550138')", [numberId, workspaceId, 'AC'+'1'.repeat(32), 'PN'+'1'.repeat(32)]);
+      await pool.query("INSERT INTO sms_conversations(id,workspace_id,number_id,remote_phone,lead_id) VALUES($1,$2,$3,'+17705550137',$4)", [smsId, workspaceId, numberId, leadId]);
+      await pool.query("INSERT INTO sms_messages(id,workspace_id,conversation_id,direction,body,status) VALUES($1,$2,$3,'inbound','Keep this text','received')", [randomUUID(), workspaceId, smsId]);
+      await pool.query("INSERT INTO crm_conversations(id,workspace_id,lead_id) VALUES($1,$2,$3)", [conversationId, workspaceId, leadId]);
+      await pool.query("INSERT INTO meta_lead_events(id,workspace_id,page_id,provider_lead_id,form_id,status,lead_id) VALUES($1,$2,'123456','234567','345678','imported',$3)", [randomUUID(), workspaceId, leadId]);
+      expect(await deleteLead(owner, { leadId, confirmed: "yes" })).toBe(true);
+      expect(await getLead(owner, leadId)).toBeNull();
+      expect((await pool.query("SELECT id,lead_id FROM clients WHERE id=$1", [sale.clientId])).rows).toEqual([{ id: sale.clientId, lead_id: null }]);
+      expect(await count("projects")).toBe(1);
+      expect(await count("contacts")).toBe(1);
+      expect((await record(opportunityId)).leadId).toBeNull();
+      for (const table of ['inbox_conversations','sms_conversations','crm_conversations']) {
+        expect((await pool.query(`SELECT lead_id FROM ${table}`)).rows).toEqual([{ lead_id: null }]);
+      }
+      expect((await pool.query("SELECT body FROM inbox_notes")).rows[0].body).toBe("Keep this conversation note");
+      expect((await pool.query("SELECT body FROM sms_messages")).rows[0].body).toBe("Keep this text");
+      expect((await pool.query("SELECT status,lead_id FROM meta_lead_events")).rows).toEqual([{ status: "imported", lead_id: null }]);
+    });
+
+    it("requires confirmation and real active write access in the lead's workspace", async () => {
+      const { leadId } = await createManualLead(owner, { submissionId: randomUUID(), email: "delete-access@example.test" });
+      await expect(deleteLead(owner, { leadId })).rejects.toThrow();
+      await expect(deleteLead({ ...viewer, role: "owner" }, { leadId, confirmed: "yes" })).rejects.toThrow(SalesAccessError);
+      expect(await deleteLead(otherOwner, { leadId, confirmed: "yes" })).toBe(false);
+      await pool.query("UPDATE workspace_memberships SET status='suspended' WHERE workspace_id=$1 AND user_id=$2", [workspaceId, memberId]);
+      await expect(deleteLead({ ...member, role: "owner" }, { leadId, confirmed: "yes" })).rejects.toThrow(SalesAccessError);
+      expect(await getLead(owner, leadId)).not.toBeNull();
+      expect((await pool.query("SELECT id FROM audit_logs WHERE action='lead.deleted'")).rowCount).toBe(0);
     });
 
     it("rejects missing contact methods and unsafe website addresses without storing a lead", async () => {

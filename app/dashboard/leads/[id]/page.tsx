@@ -1,5 +1,6 @@
 import { leadDisplayName } from "@/lib/operations/format";
 import { RecordFacts } from "@/components/dashboard/record-facts";
+import { DeleteLeadButton } from "@/components/dashboard/delete-lead-button";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
@@ -382,6 +383,7 @@ export default async function LeadPage({
                 </p>
               </section>
             )}
+            {mutable ? <DeleteLeadButton leadId={lead.id} name={leadDisplayName(lead)} /> : null}
           </aside>
         </div>
       </div>
