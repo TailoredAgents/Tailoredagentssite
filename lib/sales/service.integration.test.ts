@@ -438,6 +438,24 @@ describe.skipIf(!databaseUrl)(
       ).toHaveLength(3);
     });
 
+    it.each([undefined, "", "   "])("creates and links a lead with no business name (%j)", async (organization) => {
+      const { leadId } = await createManualLead(member, {
+        submissionId: randomUUID(), organization, name: "Jordan Referral", phone: "7705550134",
+      });
+      expect(await getLead(member, leadId)).toMatchObject({ organization: "", name: "Jordan Referral" });
+      const opportunityId = await linkInquiry(member, leadId);
+      const linked = await record(opportunityId);
+      expect(linked.business.name).toBe("Jordan Referral");
+      expect(linked.title).toBe("Lead — Jordan Referral");
+    });
+
+    it("keeps a phone-only lead identifiable without inventing a business name", async () => {
+      const { leadId } = await createManualLead(member, { submissionId: randomUUID(), phone: "7705550135" });
+      expect(await getLead(member, leadId)).toMatchObject({ organization: "", phone: "7705550135" });
+      const linked = await record(await linkInquiry(member, leadId));
+      expect(linked.business.name).toBe("7705550135");
+    });
+
     it("rejects missing contact methods and unsafe website addresses without storing a lead", async () => {
       const input = {
         submissionId: randomUUID(),

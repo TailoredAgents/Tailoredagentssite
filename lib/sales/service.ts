@@ -1,3 +1,4 @@
+import { leadDisplayName } from "@/lib/operations/format";
 import "server-only";
 import { randomUUID, createHash } from "node:crypto";
 import type { PoolClient } from "pg";
@@ -735,7 +736,7 @@ export async function linkInquiry(context: DashboardContext, leadId: string) {
     if (!business)
       business = (
         await ensureBusiness(db, context, {
-          businessName: l.organization,
+          businessName: leadDisplayName(l),
           email: l.email ?? undefined,
           phone: l.phone ?? undefined,
           websiteUrl: l.website_url ?? undefined,
@@ -748,7 +749,7 @@ export async function linkInquiry(context: DashboardContext, leadId: string) {
         phone: l.phone ?? undefined,
       }),
       id = await insertOpportunity(db, context, business, contactId, {
-        title: `${l.source === "manual" ? "Lead" : "Website inquiry"} — ${l.organization}`,
+        title: `${l.source === "manual" ? "Lead" : "Website inquiry"} — ${leadDisplayName(l)}`,
         stage:
           l.status === "won"
             ? "won"
@@ -774,7 +775,7 @@ export async function linkInquiry(context: DashboardContext, leadId: string) {
         stage: "interested",
         client_id: l.client_id,
         project_id: null,
-        title: l.organization,
+        title: leadDisplayName(l),
       },
       {
         kind: "note",

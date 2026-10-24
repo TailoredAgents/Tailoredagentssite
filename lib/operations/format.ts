@@ -1,3 +1,8 @@
+/** Keep an unknown business blank in storage while giving the lead a useful title. */
+export function leadDisplayName(lead: { organization?: string | null; name?: string | null; phone?: string | null; email?: string | null }) {
+  return lead.organization?.trim() || (lead.name?.trim() !== "Business contact" ? lead.name?.trim() : "") || lead.phone?.trim() || lead.email?.trim() || "Unnamed lead";
+}
+
 export function formatOperationalDate(value: string | null | undefined, options?: { dateOnly?: boolean }) {
   if (!value) return "Not set";
   return new Intl.DateTimeFormat("en-US", options?.dateOnly

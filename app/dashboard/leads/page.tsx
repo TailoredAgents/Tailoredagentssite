@@ -1,3 +1,4 @@
+import { leadDisplayName } from "@/lib/operations/format";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
@@ -119,7 +120,7 @@ export default async function LeadsPage({
                   key={lead.id}
                 >
                   <span data-label="Lead">
-                    <strong>{lead.organization}</strong>
+                    <strong>{leadDisplayName(lead)}</strong>
                     <small>
                       {lead.name || "Business contact"} ·{" "}
                       {lead.email || lead.phone || "No contact details"}

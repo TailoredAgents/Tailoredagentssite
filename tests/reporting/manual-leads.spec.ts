@@ -55,7 +55,7 @@ test("adds a phone-only lead directly from Leads and retains useful sales contex
   await trigger.click();
   const form = page.getByRole("form", { name: "Add lead", exact: true });
   const business = form.getByRole("textbox", {
-    name: "Business name",
+    name: "Business name (optional)",
     exact: true,
   });
   await expect(business).toBeFocused();
@@ -125,6 +125,22 @@ test("adds a phone-only lead directly from Leads and retains useful sales contex
   expect(errors).toEqual([]);
 });
 
+test("adds a person without a business and shows their name in Leads", async ({ page }, info) => {
+  const name = `Personal referral ${info.project.name} ${run}`;
+  await signIn(page);
+  await page.goto("/dashboard/leads");
+  await page.getByRole("button", { name: "Add lead", exact: true }).click();
+  const form = page.getByRole("form", { name: "Add lead", exact: true });
+  await expect(form.getByRole("textbox", { name: "Business name (optional)", exact: true })).not.toHaveAttribute("required", "");
+  await form.getByRole("textbox", { name: "Contact name (optional)", exact: true }).fill(name);
+  await form.getByRole("textbox", { name: "Email", exact: true }).fill(`person-${info.project.name}-${run}@example.test`);
+  await form.getByRole("button", { name: "Save lead", exact: true }).click();
+  await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+  expect(await rows("SELECT organization FROM leads WHERE name=$1", [name])).toEqual([{ organization: "" }]);
+  await page.getByRole("link", { name: "Back to leads", exact: true }).click();
+  await expect(page.locator("strong").filter({ hasText: name })).toBeVisible();
+});
+
 test("retains manual lead fields after server validation and keeps entry accessible at narrow widths", async ({
   page,
 }, info) => {
@@ -135,7 +151,7 @@ test("retains manual lead fields after server validation and keeps entry accessi
   const form = page.getByRole("form", { name: "Add lead", exact: true });
   const organization = `Manual validation ${info.project.name} ${run}`;
   await form
-    .getByRole("textbox", { name: "Business name", exact: true })
+    .getByRole("textbox", { name: "Business name (optional)", exact: true })
     .fill(organization);
   await form
     .getByRole("textbox", { name: "Phone", exact: true })
@@ -150,7 +166,7 @@ test("retains manual lead fields after server validation and keeps entry accessi
   await form.getByRole("button", { name: "Save lead", exact: true }).click();
   await expect(form.getByRole("alert")).toBeVisible();
   await expect(
-    form.getByRole("textbox", { name: "Business name", exact: true }),
+    form.getByRole("textbox", { name: "Business name (optional)", exact: true }),
   ).toHaveValue(organization);
   await expect(
     form.getByRole("textbox", { name: "Phone", exact: true }),

@@ -1,3 +1,4 @@
+import { leadDisplayName } from "@/lib/operations/format";
 import { RecordFacts } from "@/components/dashboard/record-facts";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -51,7 +52,7 @@ export default async function LeadPage({
       <header className="dashboard-topbar">
         <div>
           <span>Leads</span>
-          <strong>{lead.organization}</strong>
+          <strong>{leadDisplayName(lead)}</strong>
         </div>
         <span className="dashboard-secure">
           <ShieldCheck size={15} />
@@ -72,7 +73,7 @@ export default async function LeadPage({
                   ? "Website review"
                   : "Project inquiry"}
             </span>
-            <h1>{lead.organization}</h1>
+            <h1>{leadDisplayName(lead)}</h1>
             <p>
               {meta ? `Received in the CRM on ${formatOperationalDate(lead.createdAt)}.` : manual
                 ? `Added manually on ${formatOperationalDate(lead.createdAt)}.`
@@ -336,7 +337,7 @@ export default async function LeadPage({
                       <span>Client name</span>
                       <input
                         name="clientName"
-                        defaultValue={lead.organization}
+                        defaultValue={leadDisplayName(lead)}
                         required
                         minLength={2}
                         maxLength={160}
@@ -346,7 +347,7 @@ export default async function LeadPage({
                       <span>Initial project</span>
                       <input
                         name="projectName"
-                        defaultValue={`${lead.organization} — Initial engagement`}
+                        defaultValue={`${leadDisplayName(lead)} — Initial engagement`}
                         required
                         minLength={2}
                         maxLength={180}

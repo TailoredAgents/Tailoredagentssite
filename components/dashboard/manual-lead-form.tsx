@@ -128,13 +128,11 @@ export function ManualLeadForm() {
               <div className="dashboard-form-grid">
                 <label className="dashboard-field">
                   <span id="manual-lead-organization-label">
-                    Business name <span aria-hidden="true">*</span>
+                    Business name <small>(optional)</small>
                   </span>
                   <input
                     {...fieldProps("organization")}
                     ref={businessRef}
-                    required
-                    minLength={2}
                     maxLength={140}
                     autoComplete="organization"
                     placeholder="Business or organization"

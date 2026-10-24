@@ -32,7 +32,7 @@ export const recordKinds = ["deliverable", "decision", "note"] as const;
 
 export const createLeadSchema = z.object({
   submissionId: identifier,
-  organization: z.string().trim().min(2, "Enter a business name.").max(140),
+  organization: optionalText(140),
   name: optionalText(100),
   email: optionalEmail,
   phone: optionalText(40).transform((value, context) => {

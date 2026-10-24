@@ -38,7 +38,7 @@ export async function createManualLead(context: DashboardContext, input: unknown
       `INSERT INTO leads(id,workspace_id,submission_id,source,status,name,organization,email,phone,
         website_url,interest,description,owner_user_id,delivery_status)
        VALUES($1,$2,$3,'manual','new',$4,$5,$6,$7,$8,$9,$10,$11,'not_configured')`,
-      [leadId, context.workspace.id, submissionId, data.name ?? "Business contact", data.organization,
+      [leadId, context.workspace.id, submissionId, data.name ?? "Business contact", data.organization ?? "",
         data.email ?? null, data.phone ?? null, data.websiteUrl ?? null,
         data.interest ?? null, data.description ?? null, context.user.id],
     );

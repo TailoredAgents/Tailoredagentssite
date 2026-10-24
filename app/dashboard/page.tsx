@@ -1,3 +1,4 @@
+import { leadDisplayName } from "@/lib/operations/format";
 import Link from "next/link";
 import { Activity, ArrowRight, Building2, CalendarCheck2, CalendarClock, Columns3, FolderKanban, Globe2, Inbox, ShieldCheck } from "lucide-react";
 import { getDashboardOverview, requireDashboardContext } from "@/lib/dashboard/data";
@@ -52,11 +53,11 @@ export default async function DashboardPage() {
       <div className="dashboard-overview-grid">
         <section className="dashboard-panel">
           <div className="dashboard-panel-heading"><div><span>New relationships</span><h2>Recent open leads</h2></div><Link href="/dashboard/leads">All leads<ArrowRight size={16} aria-hidden="true" /></Link></div>
-          {overview.recentLeads.length ? <ul className="dashboard-task-list">{overview.recentLeads.map(lead => <li key={lead.id}><Link href={`/dashboard/leads/${lead.id}`}><div><strong>{lead.organization}</strong><small>{lead.name} · {formatOperationalDate(lead.createdAt, { dateOnly: true })}</small></div><ArrowRight size={18} aria-hidden="true" /></Link></li>)}</ul> : <div className="dashboard-empty"><Inbox size={24} aria-hidden="true" /><strong>No open leads</strong><p>Website inquiries and manually added leads appear here. Closed records remain in Leads.</p></div>}
+          {overview.recentLeads.length ? <ul className="dashboard-task-list">{overview.recentLeads.map(lead => <li key={lead.id}><Link href={`/dashboard/leads/${lead.id}`}><div><strong>{leadDisplayName(lead)}</strong><small>{lead.name} · {formatOperationalDate(lead.createdAt, { dateOnly: true })}</small></div><ArrowRight size={18} aria-hidden="true" /></Link></li>)}</ul> : <div className="dashboard-empty"><Inbox size={24} aria-hidden="true" /><strong>No open leads</strong><p>Website inquiries and manually added leads appear here. Closed records remain in Leads.</p></div>}
         </section>
         <section className="dashboard-panel">
           <div className="dashboard-panel-heading"><div><span>Next seven days and overdue</span><h2>Lead follow-ups</h2></div><CalendarClock size={21} aria-hidden="true" /></div>
-          {overview.followUps.length ? <ul className="dashboard-task-list">{overview.followUps.map(lead => <li key={lead.id}><Link href={`/dashboard/leads/${lead.id}`}><div><strong>{lead.organization}</strong><small>{lead.nextAction}</small><small>Due {formatOperationalDate(lead.dueAt, { dateOnly: true })}</small></div><ArrowRight size={18} aria-hidden="true" /></Link></li>)}</ul> : <div className="dashboard-empty"><CalendarClock size={24} aria-hidden="true" /><strong>No lead follow-ups due</strong><p>Add a next action and date to a lead. Your sales appointments and follow-ups are in My day.</p><Link href="/dashboard/sales/today">Open My day<ArrowRight size={16} aria-hidden="true" /></Link></div>}
+          {overview.followUps.length ? <ul className="dashboard-task-list">{overview.followUps.map(lead => <li key={lead.id}><Link href={`/dashboard/leads/${lead.id}`}><div><strong>{leadDisplayName(lead)}</strong><small>{lead.nextAction}</small><small>Due {formatOperationalDate(lead.dueAt, { dateOnly: true })}</small></div><ArrowRight size={18} aria-hidden="true" /></Link></li>)}</ul> : <div className="dashboard-empty"><CalendarClock size={24} aria-hidden="true" /><strong>No lead follow-ups due</strong><p>Add a next action and date to a lead. Your sales appointments and follow-ups are in My day.</p><Link href="/dashboard/sales/today">Open My day<ArrowRight size={16} aria-hidden="true" /></Link></div>}
         </section>
       </div>
       <div className="dashboard-secondary-grid">
