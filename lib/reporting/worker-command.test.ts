@@ -9,7 +9,7 @@ function run(url: string, responseStatus = 200) {
   return spawnSync(process.execPath, ["--input-type=module", "--eval", `
     import assert from "node:assert/strict";
     globalThis.fetch = async (url, options) => {
-      assert.equal(url, ${JSON.stringify(endpoint)});
+      assert.equal(String(url), ${JSON.stringify(endpoint)});
       assert.equal(options.method, "POST");
       assert.equal(options.redirect, "manual");
       assert.equal(options.headers.Authorization, "Bearer " + process.env.SEARCH_CONSOLE_SYNC_SECRET);
@@ -33,7 +33,7 @@ describe("deployed reporting command", () => {
   it("posts to www directly and completes an idle worker check", () => {
     const result = run(endpoint);
     expect(result.status).toBe(0);
-    expect(result.stdout).toContain("Worker check 1: 0 date updates, 0 stopped imports.");
+    expect(result.stdout).toContain("Reporting: 0 checked; 0 need review.");
   });
 
   it("rejects an apex job URL before making a network request", () => {

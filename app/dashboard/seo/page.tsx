@@ -36,9 +36,7 @@ export const metadata: Metadata = { title: "SEO manager" };
 export default async function SeoPage() {
   const data = await getSeoDashboard(await requireDashboardContext()),
     m = data.manager;
-  const plan = data.runs.find(
-    (r) => r.kind === "strategy" && r.status === "succeeded",
-  )?.result as Partial<Proposal> | undefined;
+  const plan = data.strategy?.result as Partial<Proposal> | undefined;
   const ready = data.changes.filter((c) => c.status === "ready"),
     issues = data.pages.reduce(
       (n, p) => n + (p.snapshot.issues?.length || 0),
@@ -69,13 +67,13 @@ export default async function SeoPage() {
         </div>
         <div>
           <SalesStatus value={m.enabled ? "active" : "paused"}>
-            {m.enabled ? "Running on schedule" : "Paused"}
+            {data.health.status}
           </SalesStatus>
-          {m.enabled && data.canManage ? (
+          {(m.ai_enabled || m.pilot_enabled) && data.canManage ? (
             <form action={pauseSeoAction}>
               <button type="submit" className="sales-button">
                 <Pause size={15} aria-hidden="true" />
-                Pause manager
+                Pause paid AI
               </button>
             </form>
           ) : null}
@@ -98,7 +96,7 @@ export default async function SeoPage() {
           <SalesMetric
             label="This month's usage"
             value={dollars(data.spent)}
-            detail={`Includes unresolved reservations · ${dollars(limit)} limit · UTC billing month`}
+            detail={`${dollars(Number(data.health.settled))} spent · ${dollars(Number(data.health.reserved))} reserved · ${dollars(data.health.remaining)} remaining · UTC month`}
             tone="blue"
           />
           <SalesMetric
@@ -131,14 +129,13 @@ export default async function SeoPage() {
           </span>
           <span>
             <Search size={16} aria-hidden="true" />
-            Search data{" "}
-            {data.configuration.research ? "configured" : "not connected yet"}
+            City ranking checks: {data.configuration.research ? "on" : "off"}
           </span>
           <span>
             <Activity size={16} aria-hidden="true" />
             Worker{" "}
-            {m.last_worker_at ? (
-              <LocalTime value={m.last_worker_at.toISOString()} />
+            {m.last_worker_success_at ? (
+              <LocalTime value={m.last_worker_success_at.toISOString()} />
             ) : (
               "awaiting first check"
             )}
@@ -150,33 +147,20 @@ export default async function SeoPage() {
               : `${data.metrics.coverageDays} of ${data.metrics.expectedDays} Google dates covered`}
           </span>
         </div>
-        {!m.last_worker_at || !data.configuration.research ? (
-          <SalesPanel
-            title="Finish the connections"
-            eyebrow="One-time activation"
-          >
-            <div className="seo-box">
-              <p>
-                {!m.last_worker_at
-                  ? "The separate SEO worker needs its first scheduled check. Its deployment instructions are in the repository's SEO_MANAGER_SETUP.md runbook."
-                  : "The worker is checking for work. Scanning and strategy can run with the existing Google connection."}
-              </p>
-              {!data.configuration.research ? (
-                <p>
-                  DataForSEO adds national/local keyword observations and
-                  competitor evidence. Create the account, add its API login and
-                  password to the web service and SEO worker, then redeploy.
-                  Credentials stay in Render.
-                </p>
-              ) : null}
-              <p className="seo-muted">
-                This release publishes reviewed page titles and descriptions.
-                Content briefs remain in the strategy for the next delivery
-                step.
-              </p>
-            </div>
-          </SalesPanel>
-        ) : null}
+        <SalesPanel title="Connection & update status" eyebrow="Free checks and paid recommendations are separate">
+          <div className="seo-box">
+            <p>Website monitoring: {m.enabled ? "on" : "paused"}. Paid AI: {m.ai_enabled ? "on" : "paused"}. Model: GPT-6.1 Sol.</p>
+            <p>Last completed scan: {data.health.last_scan ? <LocalTime value={data.health.last_scan.toISOString()} /> : "Awaiting a full scan"}. Last strategy: {data.health.last_strategy ? <LocalTime value={data.health.last_strategy.toISOString()} /> : "Awaiting the first strategy"}.</p>
+            {data.health.stale ? <p role="status">The background worker has not completed a check in the last 20 minutes. Review the scheduled job connection.</p> : <p>The background worker is checking for work.</p>}
+            {!data.configuration.ai ? <p>Connect the separate SEO API key to prepare paid recommendations. Free website scans remain available.</p> : null}
+            {!m.ai_reviewed_at ? <p>Paid automation stays off until the real model pilot has been reviewed.</p> : null}
+            {data.health.uncertain ? <p role="alert">A provider charge needs review. Paid work is stopped; review the receipt below before requesting another run.</p> : null}
+            {data.health.remaining === 0 ? <p role="status">The monthly budget is reached. Free monitoring and publication checks can continue.</p> : null}
+            <p className="seo-muted">City ranking checks are optional and off for this release. Existing Google reports describe your own website; they do not measure rankings in individual cities.</p>
+            <Link className="sales-button" href="/dashboard/analytics">Review Google connection</Link>
+            <a className="sales-button" href="#controls">Review business details</a>
+          </div>
+        </SalesPanel>
         {data.canManage ? (
           <SalesPanel
             title="Keep the work moving"
@@ -205,11 +189,12 @@ export default async function SeoPage() {
                     "Collect keyword observations by market and device through your connected data account.",
                   label: "Queue keyword research",
                 },
-              ].map((item) => (
+              ].filter((item) => item.kind !== "research" || data.configuration.research).map((item) => (
                 <OperationForm
                   key={item.kind}
                   action={queueSeoAction}
-                  submitLabel={item.label}
+                  submitLabel={data.runs.some(r => r.kind === item.kind && r.status === "blocked") ? "Retry update" : item.label}
+                  disabled={data.runs.some(r => r.kind === item.kind && ["queued","running"].includes(r.status)) || (item.kind !== "monitor" && (!m.ai_enabled || !m.ai_reviewed_at || !data.configuration.ai || data.health.uncertain))}
                 >
                   <input type="hidden" name="kind" value={item.kind} />
                   <h3>{item.title}</h3>
@@ -422,9 +407,7 @@ export default async function SeoPage() {
           ) : (
             <div className="seo-box">
               <p className="seo-muted">
-                Connect DataForSEO to collect national and local search
-                observations. Missing observations are not reported as zero
-                rankings.
+                City ranking checks are off. Your existing Google connection supplies website search evidence without a paid ranking-data service.
               </p>
             </div>
           )}
@@ -446,14 +429,13 @@ export default async function SeoPage() {
                   name="budget"
                   type="number"
                   min={1}
-                  max={90}
+                  max={10}
                   step="0.01"
                   required
                   defaultValue={limit / 1_000_000}
                 />
                 <small>
-                  The current usage estimate is $30–$40/month. The ledger
-                  reserves costs before paid requests.
+                  Maximum $10 per month, including tests and manual runs. Typical weekly planning is budgeted at $3–$4 for five cycles. Hosting and call analysis are separate.
                 </small>
               </label>
               <label className="dashboard-field">
@@ -465,8 +447,7 @@ export default async function SeoPage() {
                   defaultValue={m.local_markets.join("\n")}
                 />
                 <small>
-                  One provider location per line. Service areas do not imply
-                  local offices.
+                  One service area per line. These guide recommendations; they do not imply local offices or city-ranking measurements.
                 </small>
               </label>
               <label className="dashboard-field">
@@ -540,9 +521,12 @@ export default async function SeoPage() {
                 defaultChecked={m.enabled}
               />
               <span>
-                Run daily monitoring, weekly strategy and connected keyword
-                research within this monthly limit.
+                Run free daily website checks.
               </span>
+            </label>
+            <label className="seo-checkbox">
+              <input type="checkbox" name="aiEnabled" defaultChecked={m.ai_enabled} disabled={!m.ai_reviewed_at || !data.configuration.ai}/>
+              <span>Run weekly paid AI recommendations within this monthly limit. Public changes still require your review.</span>
             </label>
           </OperationForm>
         </SalesPanel>
@@ -557,7 +541,7 @@ export default async function SeoPage() {
                 <div>
                   <SalesStatus value={r.status}>{r.status}</SalesStatus>
                   <h3>
-                    {r.kind.charAt(0).toUpperCase() + r.kind.slice(1)} ·{" "}
+                    {r.context.safetyCase ? "Model safety test" : r.kind.charAt(0).toUpperCase() + r.kind.slice(1)} ·{" "}
                     {r.stage}
                   </h3>
                   <p>

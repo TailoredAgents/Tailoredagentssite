@@ -44,7 +44,7 @@ async function reset() {
     [site, ws],
   );
   await pool.query(
-    "INSERT INTO seo_managers(site_id,workspace_id) VALUES($1,$2)",
+    "INSERT INTO seo_managers(site_id,workspace_id,ai_reviewed_at) VALUES($1,$2,now())",
     [site, ws],
   );
   for (const role of ["owner", "viewer"]) {

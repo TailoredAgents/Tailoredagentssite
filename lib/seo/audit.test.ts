@@ -68,9 +68,9 @@ describe("SEO evidence and request boundaries", () => {
     );
   });
   it("calculates conservative model costs including billable reasoning output", () => {
-    expect(modelCost("gpt-6.1-sol", 2_000_000, 400_000)).toBe(8_000_000);
-    expect(modelCost("gpt-6-astra", 500_000, 100_000)).toBe(10_000_000);
-    expect(modelCost("gpt-6-luna", 1_000_000, 200_000)).toBe(200_000);
+    expect(modelCost("gpt-6.1-sol", 100_000, 4_000)).toBe(290_000);
+    expect(modelCost("gpt-6-astra", 50_000, 1_000)).toBe(675_000);
+    expect(modelCost("gpt-6-luna", 100_000, 20_000)).toBe(22_500);
   });
   it("rejects executable/control characters in proposed public wording", () => {
     expect(() =>

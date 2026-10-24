@@ -17,6 +17,10 @@ export type SeoManager = {
   site_id: string;
   workspace_id: string;
   enabled: boolean;
+  ai_enabled: boolean;
+  pilot_enabled: boolean;
+  ai_reviewed_at: Date | null;
+  last_worker_success_at: Date | null;
   monthly_limit_micros: string;
   local_markets: string[];
   keywords: string[];

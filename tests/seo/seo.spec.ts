@@ -48,7 +48,7 @@ test("scans, plans, reviews, publishes, verifies and rolls back actual public me
     page.getByRole("heading", { name: "SEO manager", exact: true }),
   ).toBeVisible();
   await expect(page.getByLabel("Monthly AI & data limit ($)")).toHaveValue(
-    "40",
+    "10",
   );
   await expect(page.getByLabel("Local service areas")).toContainText(
     "Woodstock",
@@ -66,7 +66,8 @@ test("scans, plans, reviews, publishes, verifies and rolls back actual public me
     }),
   ).toBeVisible();
   await page.getByLabel("I have reviewed the business knowledge").check();
-  await page.getByLabel("Run daily monitoring").check();
+  await page.getByLabel("Run free daily website checks").check();
+  await page.getByLabel("Run weekly paid AI recommendations").check();
   await page
     .getByRole("button", { name: "Save SEO settings", exact: true })
     .click();
@@ -88,9 +89,8 @@ test("scans, plans, reviews, publishes, verifies and rolls back actual public me
   await step(request);
   await step(request);
   await page.reload();
-  await expect(
-    page.getByRole("cell", { name: "7", exact: true }).first(),
-  ).toBeVisible();
+  await expect(page.getByText("City ranking checks: off")).toBeVisible();
+  await expect(page.getByRole("button",{name:"Queue keyword research"})).toHaveCount(0);
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   expect(
     (

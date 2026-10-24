@@ -11,6 +11,7 @@ import {
   SEO_ORIGIN,
   managedPath,
   seoConfiguration,
+  SEO_MONTHLY_MAX,
 } from "./config";
 import {
   SeoInputError,
@@ -55,7 +56,7 @@ export async function getSeoDashboard(context: DashboardContext) {
   await authorize(context);
   const pool = getDatabasePool(),
     scope = [context.workspace.id, SEO_SITE_ID];
-  const [m, pages, runs, changes, costs, research, metrics] = await Promise.all(
+  const [m, pages, runs, changes, costs, research, metrics, strategy] = await Promise.all(
     [
       pool.query<SeoManager>(
         "SELECT * FROM seo_managers WHERE workspace_id=$1 AND site_id=$2",
@@ -82,6 +83,7 @@ export async function getSeoDashboard(context: DashboardContext) {
         scope,
       ),
       seoMetrics(scope[0], scope[1]),
+      pool.query<SeoRun>("SELECT * FROM seo_runs WHERE workspace_id=$1 AND site_id=$2 AND kind='strategy' AND status='succeeded' AND context->>'safetyCase' IS NULL ORDER BY finished_at DESC LIMIT 1",scope),
     ],
   );
   const manager = m.rows[0];
@@ -101,8 +103,22 @@ export async function getSeoDashboard(context: DashboardContext) {
       )
     ).rowCount,
   );
+  const health = (await pool.query(`SELECT
+    (SELECT max(finished_at) FROM seo_runs WHERE workspace_id=$1 AND site_id=$2 AND kind='monitor' AND status='succeeded') AS last_scan,
+    (SELECT max(finished_at) FROM seo_runs WHERE workspace_id=$1 AND site_id=$2 AND kind='strategy' AND status='succeeded' AND context->>'safetyCase' IS NULL) AS last_strategy,
+    EXISTS(SELECT 1 FROM seo_costs WHERE workspace_id=$1 AND site_id=$2 AND status='uncertain') AS uncertain,
+    EXISTS(SELECT 1 FROM seo_runs WHERE workspace_id=$1 AND site_id=$2 AND status IN ('queued','running')) AS working,
+    COALESCE(sum(actual_micros) FILTER(WHERE status='settled'),0)::text AS settled,
+    COALESCE(sum(reserved_micros) FILTER(WHERE status IN ('reserved','uncertain')),0)::text AS reserved
+    FROM seo_costs WHERE workspace_id=$1 AND site_id=$2 AND period=date_trunc('month',now() AT TIME ZONE 'UTC')::date`,scope)).rows[0];
+  const stale = !manager.last_worker_success_at || Date.now()-manager.last_worker_success_at.getTime()>20*60_000;
+  const remaining = Math.max(0,Math.min(Number(manager.monthly_limit_micros),SEO_MONTHLY_MAX)-Number(spent));
+  const status = health.uncertain ? "Needs attention" : stale && (manager.enabled || manager.ai_enabled) ? "Needs attention" :
+    manager.pilot_enabled ? "Model pilot" : !manager.ai_enabled ? "Paid AI paused" : !seoConfiguration().ai ? "Needs connection" : remaining === 0 ? "Budget reached" : runs.rows.some(r=>["failed","blocked","uncertain"].includes(r.status)) ? "Needs attention" : health.working ? "Working" : "Ready";
   return {
+    health: {...health, stale, remaining, status},
     manager,
+    strategy: strategy.rows[0],
     profile: businessProfile(manager.local_markets),
     pages: pages.rows,
     runs: runs.rows,
@@ -117,7 +133,8 @@ export async function getSeoDashboard(context: DashboardContext) {
 }
 const settingsSchema = z.object({
   enabled: z.boolean(),
-  budget: z.coerce.number().finite().min(1).max(90),
+  aiEnabled: z.boolean().default(false),
+  budget: z.coerce.number().finite().min(1).max(10),
   localMarkets: z.string().max(2000),
   keywords: z.string().max(7000),
   instructions: z.string().trim().max(6000),
@@ -151,13 +168,17 @@ export async function saveSeoSettings(
     throw new SeoInputError(
       "Use up to eight service areas and 1–50 keywords, one per line.",
     );
-  if (p.enabled && !p.profileReviewed)
+  if (p.aiEnabled && !p.profileReviewed)
     throw new SeoInputError(
       "Review the business facts and service areas before starting paid SEO work.",
     );
   await seoTransaction(SEO_SITE_ID, async (db) => {
+    if (p.aiEnabled) {
+      const reviewed = await db.query("SELECT 1 FROM seo_managers WHERE site_id=$1 AND workspace_id=$2 AND ai_reviewed_at IS NOT NULL",[SEO_SITE_ID,context.workspace.id]);
+      if (!reviewed.rowCount || !seoConfiguration().ai) throw new SeoInputError("Finish the model pilot and connect the SEO API key before enabling paid recommendations.");
+    }
     await db.query(
-      "UPDATE seo_managers SET enabled=$3,monthly_limit_micros=$4,local_markets=$5,keywords=$6,instructions=$7,profile_reviewed_at=CASE WHEN $8 THEN now() ELSE profile_reviewed_at END,updated_at=now() WHERE workspace_id=$1 AND site_id=$2",
+      "UPDATE seo_managers SET enabled=$3,monthly_limit_micros=$4,local_markets=$5,keywords=$6,instructions=$7,profile_reviewed_at=CASE WHEN $8 THEN now() ELSE NULL END,ai_enabled=$9,updated_at=now() WHERE workspace_id=$1 AND site_id=$2",
       [
         context.workspace.id,
         SEO_SITE_ID,
@@ -167,6 +188,7 @@ export async function saveSeoSettings(
         keywords,
         p.instructions,
         p.profileReviewed,
+        p.aiEnabled,
       ],
     );
     await insertAuditLog(db, {
@@ -185,7 +207,7 @@ export async function saveSeoSettings(
 export async function pauseSeo(context: DashboardContext) {
   await authorize(context, true);
   await getDatabasePool().query(
-    "UPDATE seo_managers SET enabled=false,updated_at=now() WHERE site_id=$1 AND workspace_id=$2",
+    "UPDATE seo_managers SET ai_enabled=false,pilot_enabled=false,updated_at=now() WHERE site_id=$1 AND workspace_id=$2",
     [SEO_SITE_ID, context.workspace.id],
   );
 }
@@ -194,7 +216,15 @@ export async function queueSeoRun(
   kind: "monitor" | "strategy" | "research",
 ) {
   await authorize(context, true);
+  if (kind === "research" && !seoConfiguration().research) throw new SeoInputError("City ranking checks are off. No external data account is needed.");
   return seoTransaction(SEO_SITE_ID, async (db) => {
+    const manager = (await db.query("SELECT * FROM seo_managers WHERE site_id=$1 AND workspace_id=$2",[SEO_SITE_ID,context.workspace.id])).rows[0];
+    if (kind !== "monitor" && (!manager?.ai_enabled || !manager?.ai_reviewed_at || !manager?.profile_reviewed_at || !seoConfiguration().ai))
+      throw new SeoInputError("Connect the SEO key, complete the model pilot and enable paid recommendations first.");
+    if (kind !== "monitor" && (await db.query("SELECT 1 FROM seo_costs WHERE site_id=$1 AND workspace_id=$2 AND status='uncertain' LIMIT 1",[SEO_SITE_ID,context.workspace.id])).rowCount)
+      throw new SeoInputError("Review the uncertain provider charge before requesting more paid work.");
+    const retry = await db.query("UPDATE seo_runs r SET status='queued',error_code=NULL,finished_at=NULL,next_attempt_at=now() WHERE r.id=(SELECT id FROM seo_runs WHERE site_id=$1 AND workspace_id=$2 AND kind=$3 AND status IN ('blocked','failed') ORDER BY created_at DESC LIMIT 1) AND NOT EXISTS(SELECT 1 FROM seo_costs c WHERE c.run_id=r.id AND (c.status='uncertain' OR (c.operation=r.stage AND c.attempted_at IS NOT NULL))) AND NOT EXISTS(SELECT 1 FROM seo_runs active WHERE active.site_id=r.site_id AND active.kind=r.kind AND active.status IN ('queued','running')) RETURNING r.id",[SEO_SITE_ID,context.workspace.id,kind]);
+    if (retry.rowCount) return retry.rows[0].id;
     const existing = (
       await db.query<{ id: string }>(
         "SELECT id FROM seo_runs WHERE workspace_id=$1 AND site_id=$2 AND kind=$3 AND status IN ('queued','running') ORDER BY created_at LIMIT 1",

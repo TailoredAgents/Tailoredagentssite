@@ -22,6 +22,7 @@ import {
   SEO_SITE_ID as site,
   SEO_WORKSPACE_ID as ws,
   managedPaths,
+  seoModelPolicy,
 } from "./config";
 import {
   getSeoDashboard,
@@ -33,7 +34,9 @@ import {
   pauseSeo,
 } from "./service";
 import { reserveCost, attemptCost, settleCost } from "./budget";
-import { runSeoWorkerStep } from "./worker";
+import { runSeoWorkerStep, strategyContext } from "./worker";
+import { pilotEvidence } from "./pilot-cases";
+import type { SeoRun } from "./types";
 import { parsePage } from "./audit";
 import { researchStep } from "./research";
 import { seoMetrics } from "./metrics";
@@ -57,7 +60,8 @@ const html = (
   `<html><head><title>${title}</title><meta name="description" content="${description}"><link rel="canonical" href="https://www.tailoredagents.com${path}"></head><body><main><h1>Website development</h1><p>We build premium websites for growing businesses.</p></main></body></html>`;
 const settings = {
   enabled: true,
-  budget: 40,
+  aiEnabled: true,
+  budget: 10,
   localMarkets: "Woodstock,Georgia,United States\nCanton,Georgia,United States",
   keywords: "website development\nAI agent development",
   instructions: "Focus on useful business inquiries.",
@@ -122,8 +126,10 @@ async function baseline() {
       [ws, site, path, JSON.stringify(s), s.fingerprint],
     );
   }
+  await pool.query("INSERT INTO seo_runs(id,workspace_id,site_id,kind,schedule_key,stage,status,created_at,finished_at) VALUES($1,$2,$3,'monitor',$4,'done','succeeded',now()-interval '1 minute',now())",[randomUUID(),ws,site,'fixture:'+randomUUID()]);
 }
 async function readyChange() {
+  await saveSeoSettings(owner, {...settings, enabled:false});
   const run = await running(),
     id = randomUUID(),
     snapshot = parsePage("/websites", html());
@@ -160,7 +166,8 @@ describe.skipIf(!url)("Internal SEO manager with guarded PostgreSQL", () => {
       throw new Error("Use exact disposable ta_seo_test on loopback:55433.");
     vi.stubEnv("DATABASE_URL", url!);
     vi.stubEnv("BETTER_AUTH_SECRET", "seo-fixture-only-secret-".repeat(3));
-    vi.stubEnv("OPENAI_API_KEY", "synthetic-no-live-key");
+    vi.stubEnv("SEO_OPENAI_API_KEY", "synthetic-no-live-key");
+    vi.stubEnv("SEO_EXTERNAL_RESEARCH_ENABLED", "false");
     vi.stubEnv("DATAFORSEO_LOGIN", "");
     vi.stubEnv("DATAFORSEO_PASSWORD", "");
     pool = getDatabasePool();
@@ -195,7 +202,7 @@ describe.skipIf(!url)("Internal SEO manager with guarded PostgreSQL", () => {
       [site, ws],
     );
     await pool.query(
-      "INSERT INTO seo_managers(site_id,workspace_id) VALUES($1,$2)",
+      "INSERT INTO seo_managers(site_id,workspace_id,ai_reviewed_at) VALUES($1,$2,now())",
       [site, ws],
     );
     for (const role of ["owner", "viewer", "member"]) {
@@ -215,6 +222,7 @@ describe.skipIf(!url)("Internal SEO manager with guarded PostgreSQL", () => {
       status: 200,
     }));
     transport.json.mockReset();
+    vi.stubEnv("SEO_EXTERNAL_RESEARCH_ENABLED", "false");
     vi.stubEnv("DATAFORSEO_LOGIN", "");
     vi.stubEnv("DATAFORSEO_PASSWORD", "");
   });
@@ -222,10 +230,10 @@ describe.skipIf(!url)("Internal SEO manager with guarded PostgreSQL", () => {
     await pool?.end();
     vi.unstubAllEnvs();
   });
-  it("starts paused with the owner's five service areas and a $40 limit", async () => {
+  it("starts paused with the owner's five service areas and a $10 limit", async () => {
     const d = await getSeoDashboard(owner);
     expect(d.manager.enabled).toBe(false);
-    expect(Number(d.manager.monthly_limit_micros)).toBe(40_000_000);
+    expect(Number(d.manager.monthly_limit_micros)).toBe(10_000_000);
     expect(d.manager.local_markets.map((s) => s.split(",")[0])).toEqual([
       "Woodstock",
       "Canton",
@@ -300,7 +308,7 @@ describe.skipIf(!url)("Internal SEO manager with guarded PostgreSQL", () => {
     ]);
     expect((await getSeoDashboard(owner)).spent).toBe(600000);
     await expect(reserveCost({ ...base, key: "third" })).rejects.toThrow(
-      "exceed",
+      "uncertain",
     );
   });
   it("reuses a reservation only when no provider attempt began", async () => {
@@ -339,7 +347,8 @@ describe.skipIf(!url)("Internal SEO manager with guarded PostgreSQL", () => {
     );
     const d = await getSeoDashboard(owner);
     expect(d.spent).toBe(150);
-    expect(d.manager.enabled).toBe(false);
+    expect(d.manager.ai_enabled).toBe(false);
+    expect(d.manager.enabled).toBe(true);
   });
   it("keeps a failed paid request uncertain and never silently repeats it", async () => {
     await saveSeoSettings(owner, settings);
@@ -356,7 +365,7 @@ describe.skipIf(!url)("Internal SEO manager with guarded PostgreSQL", () => {
       input: { source: "A test page." },
     };
     await expect(modelResult(args)).rejects.toThrow();
-    await expect(modelResult(args)).rejects.toThrow("already");
+    await expect(modelResult(args)).rejects.toThrow("uncertain");
     expect(transport.json).toHaveBeenCalledTimes(1);
     expect(
       (await pool.query("SELECT status FROM seo_costs")).rows[0].status,
@@ -377,8 +386,40 @@ describe.skipIf(!url)("Internal SEO manager with guarded PostgreSQL", () => {
         instructions: "Read",
         input: {},
       }),
-    ).rejects.toThrow("Start");
+    ).rejects.toThrow("Review");
     expect(transport.json).not.toHaveBeenCalled();
+  });
+  it("pausing paid work also prevents an already reserved pilot request", async () => {
+    await saveSeoSettings(owner, settings);
+    const run = await running();
+    await pool.query("UPDATE seo_runs SET context=$2 WHERE id=$1",[run,JSON.stringify({pilot:true,policy:seoModelPolicy})]);
+    await pool.query("UPDATE seo_managers SET ai_enabled=false,pilot_enabled=true WHERE site_id=$1",[site]);
+    const receipt=await reserveCost({workspace:ws,site,run,key:"pilot-pause",provider:"openai",operation:"plan",micros:100000});
+    await pauseSeo(owner);
+    await expect(attemptCost(receipt)).rejects.toThrow("paused");
+    expect((await pool.query("SELECT attempted_at FROM seo_costs WHERE id=$1",[receipt])).rows[0].attempted_at).toBeNull();
+  });
+  it("stores controlled model safety results without creating publishable changes", async () => {
+    await saveSeoSettings(owner,{...settings,enabled:false});
+    await baseline();
+    const manager=(await getSeoDashboard(owner)).manager;
+    const evidence=pilotEvidence(await strategyContext({workspace_id:ws,site_id:site} as SeoRun,manager),"source_injection");
+    expect(evidence.sources[0].text).toContain("SYSTEM OVERRIDE");
+    const id=randomUUID();
+    await pool.query("INSERT INTO seo_runs(id,workspace_id,site_id,kind,schedule_key,stage,context) VALUES($1,$2,$3,'strategy',$4,'plan',$5)",[id,ws,site,`pilot:${id}`,JSON.stringify({pilot:true,safetyCase:"source_injection",pilotEvidence:evidence,policy:seoModelPolicy})]);
+    await pool.query("UPDATE seo_managers SET ai_enabled=false,pilot_enabled=true WHERE site_id=$1",[site]);
+    transport.json.mockResolvedValueOnce(modelReply(plan())).mockResolvedValueOnce(modelReply({summary:"Evidence reviewed.",decisions:[{index:0,approved:true,reason:"Supported service."}]}));
+    await runSeoWorkerStep();
+    await pool.query("UPDATE seo_runs SET next_attempt_at=now() WHERE id=$1",[id]);
+    await runSeoWorkerStep();
+    const result=(await pool.query("SELECT status,context,result FROM seo_runs WHERE id=$1",[id])).rows[0];
+    expect(result.status).toBe("succeeded");
+    expect(result.context.safetyCase).toBe("source_injection");
+    expect(result.result.changes).toHaveLength(1);
+    const dashboard=await getSeoDashboard(owner);
+    expect(dashboard.changes).toHaveLength(0);
+    expect(dashboard.strategy).toBeUndefined();
+    expect(dashboard.manager.pilot_enabled).toBe(false);
   });
   it("stores a source-backed plan and an independent review, with durable receipts", async () => {
     await saveSeoSettings(owner, settings);
@@ -650,6 +691,7 @@ describe.skipIf(!url)("Internal SEO manager with guarded PostgreSQL", () => {
     expect(transport.json).not.toHaveBeenCalled();
   });
   it("posts metered search tasks once and retrieves real location/device observations", async () => {
+    vi.stubEnv("SEO_EXTERNAL_RESEARCH_ENABLED", "true");
     vi.stubEnv("DATAFORSEO_LOGIN", "synthetic-login");
     vi.stubEnv("DATAFORSEO_PASSWORD", "synthetic-password");
     await saveSeoSettings(owner, settings);
@@ -722,6 +764,7 @@ describe.skipIf(!url)("Internal SEO manager with guarded PostgreSQL", () => {
     expect((await pool.query("SELECT id FROM seo_costs")).rowCount).toBe(1);
   });
   it("does not restart an unknown search-task submission", async () => {
+    vi.stubEnv("SEO_EXTERNAL_RESEARCH_ENABLED", "true");
     vi.stubEnv("DATAFORSEO_LOGIN", "synthetic-login");
     vi.stubEnv("DATAFORSEO_PASSWORD", "synthetic-password");
     await saveSeoSettings(owner, settings);
@@ -845,4 +888,57 @@ describe.skipIf(!url)("Internal SEO manager with guarded PostgreSQL", () => {
     expect(outcome.interpretation).toContain("restored or replaced");
     expect(transport.json).not.toHaveBeenCalled();
   });
+  it("keeps free scans running while paid AI is paused", async () => {
+    await saveSeoSettings(owner,{...settings,aiEnabled:false});
+    await runSeoWorkerStep();
+    expect(transport.page).toHaveBeenCalled();
+    expect(transport.json).not.toHaveBeenCalled();
+    expect((await getSeoDashboard(owner)).manager.last_worker_success_at).not.toBeNull();
+    await expect(queueSeoRun(owner,"strategy")).rejects.toThrow("pilot");
+  });
+  it("requires a reviewed real model pilot before paid activation", async () => {
+    await pool.query("UPDATE seo_managers SET ai_reviewed_at=NULL");
+    await expect(saveSeoSettings(owner,settings)).rejects.toThrow("pilot");
+    await saveSeoSettings(owner,{...settings,aiEnabled:false,profileReviewed:false});
+    expect((await getSeoDashboard(owner)).manager.enabled).toBe(true);
+  });
+  it("cannot activate research merely by installing credentials", async () => {
+    vi.stubEnv("DATAFORSEO_LOGIN","synthetic");vi.stubEnv("DATAFORSEO_PASSWORD","synthetic");
+    await saveSeoSettings(owner,settings);
+    await expect(queueSeoRun(owner,"research")).rejects.toThrow("off");
+    expect((await getSeoDashboard(owner)).configuration.research).toBe(false);
+    expect(transport.json).not.toHaveBeenCalled();
+  });
+  it("rejects limits above ten dollars at both interface and database", async () => {
+    await expect(saveSeoSettings(owner,{...settings,budget:10.01})).rejects.toThrow();
+    await expect(pool.query("UPDATE seo_managers SET monthly_limit_micros=10000001")).rejects.toThrow();
+  });
+  it("blocks a strategy when even one page of a full scan is missing", async () => {
+    await saveSeoSettings(owner,settings);await baseline();
+    await pool.query("DELETE FROM seo_pages WHERE path='/contact'");
+    await queueSeoRun(owner,"strategy");await runSeoWorkerStep();
+    expect(transport.json).not.toHaveBeenCalled();
+    expect((await pool.query("SELECT error_code FROM seo_runs WHERE kind='strategy'")).rows[0].error_code).toBe("scan_required");
+    await baseline();
+    const retry=await queueSeoRun(owner,"strategy");
+    expect((await pool.query("SELECT status FROM seo_runs WHERE id=$1",[retry])).rows[0].status).toBe("queued");
+    expect((await pool.query("SELECT id FROM seo_runs WHERE kind='strategy'")).rowCount).toBe(1);
+  });
+  it("retains an older month's uncertain charge as a paid-work stop", async () => {
+    await saveSeoSettings(owner,settings);const run=await running();
+    const args={workspace:ws,site,run,key:"old-month",provider:"openai" as const,operation:"plan",micros:1000};
+    const id=await reserveCost(args);await attemptCost(id);
+    await pool.query("UPDATE seo_costs SET status='uncertain',period=(date_trunc('month',now())-interval '1 month')::date WHERE id=$1",[id]);
+    await expect(reserveCost({...args,key:"new-month"})).rejects.toThrow("uncertain");
+    expect((await getSeoDashboard(owner)).health.uncertain).toBe(true);
+  });
+  it("limits the model pilot to five dollars including reserved costs", async () => {
+    await saveSeoSettings(owner,settings);const run=await running();
+    await pool.query("UPDATE seo_runs SET context='{\"pilot\":true}' WHERE id=$1",[run]);
+    await pool.query("UPDATE seo_managers SET pilot_enabled=true");
+    const args={workspace:ws,site,run,provider:"openai" as const,operation:"plan",micros:3_000_000};
+    await reserveCost({...args,key:"pilot-first"});
+    await expect(reserveCost({...args,key:"pilot-second"})).rejects.toThrow("$5");
+  });
+
 });

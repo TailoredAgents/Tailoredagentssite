@@ -39,6 +39,7 @@ export async function saveSeoSettingsAction(
   try {
     await saveSeoSettings(context, {
       enabled: form.get("enabled") === "on",
+      aiEnabled: form.get("aiEnabled") === "on",
       budget: form.get("budget"),
       localMarkets: form.get("localMarkets"),
       keywords: form.get("keywords"),

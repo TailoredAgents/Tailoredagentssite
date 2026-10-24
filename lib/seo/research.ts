@@ -1,3 +1,4 @@
+import { seoConfiguration } from "./config";
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { getDatabasePool } from "@/lib/dashboard/db";
@@ -29,6 +30,7 @@ function authorization() {
   };
 }
 export async function researchStep(run: SeoRun, manager: SeoManager) {
+  if (!seoConfiguration().research) throw new Error("research_not_configured");
   const pool = getDatabasePool();
   for (const keyword of manager.keywords.slice(0, 50))
     for (const location of ["United States", ...manager.local_markets])

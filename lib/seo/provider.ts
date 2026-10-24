@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import { managedPaths, modelCost, type SeoModel } from "./config";
+import { managedPaths, modelCost, usageCost, seoModelPolicy, type SeoModel } from "./config";
 import { providerJson } from "./http";
 import { reserveCost, attemptCost, settleCost, uncertainCost } from "./budget";
 const copy = z.string().trim().min(1);
@@ -76,6 +76,11 @@ const responseSchema = z.object({
   usage: z.object({
     input_tokens: z.number().int().nonnegative(),
     output_tokens: z.number().int().nonnegative(),
+    input_tokens_details: z.object({
+      cached_tokens: z.number().int().nonnegative().optional(),
+      cache_write_tokens: z.number().int().nonnegative().optional(),
+      cache_write_tokens_details: z.object({ttl_30m_tokens:z.number().int().nonnegative(),ttl_12h_tokens:z.number().int().nonnegative()}).optional(),
+    }).optional(),
   }),
   output: z.array(
     z.object({
@@ -96,7 +101,7 @@ export async function modelResult<T>(args: {
   instructions: string;
   input: unknown;
 }) {
-  const key = process.env.OPENAI_API_KEY?.trim();
+  const key = process.env.SEO_OPENAI_API_KEY?.trim();
   if (!key) throw new Error("openai_not_configured");
   const input = JSON.stringify(args.input),
     schema = z.toJSONSchema(args.schema, { target: "draft-7" });
@@ -128,6 +133,8 @@ export async function modelResult<T>(args: {
       },
       body: JSON.stringify({
         model: args.model,
+        service_tier: "default",
+        prompt_cache_options: { mode: "implicit", ttl: "30m" },
         store: false,
         reasoning: { effort: "medium" },
         max_output_tokens: outputBound,
@@ -146,16 +153,12 @@ export async function modelResult<T>(args: {
     const response = responseSchema.parse(raw);
     await settleCost(
       cost,
-      modelCost(
-        args.model,
-        response.usage.input_tokens,
-        response.usage.output_tokens,
-      ),
+      usageCost(args.model, response.usage),
       response.id,
       {
         ...response.usage,
         model: args.model,
-        pricing: "2026-10-22-standard-v1",
+        pricing: seoModelPolicy.version,
       },
     );
     if (response.status !== "completed")

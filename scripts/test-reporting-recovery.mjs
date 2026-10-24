@@ -82,7 +82,7 @@ try {
     await pool.query(`INSERT INTO inbox_notes(id,workspace_id,conversation_id,author_user_id,body) VALUES('00000000-0000-4000-8000-000000000907',$1,'00000000-0000-4000-8000-000000000906','recovery-sms-user','Synthetic mailbox-scoped note')`, [workspace]);
     await pool.query(`INSERT INTO inbox_drafts(id,workspace_id,mailbox_id,thread_key,author_user_id,body) VALUES('00000000-0000-4000-8000-000000000908',$1,'recovery-sales-address','recovery-mail-thread','recovery-sms-user','Synthetic private email draft')`, [workspace]);
     // Upgrade populated provider conversations instead of testing only empty DDL.
-    for (const file of (await readdir("db/migrations")).filter(file => file.endsWith(".sql") && file >= "0012").sort())
+    for (const file of (await readdir("db/migrations")).filter(file => file.endsWith(".sql") && file >= "0012" && file < "0018").sort())
       await pool.query(await readFile("db/migrations/" + file, "utf8"));
     // Preserve voice grants, durable redemption and a scoped voicemail reference.
     await pool.query(`INSERT INTO leads(id,workspace_id,submission_id,source,name,organization,email,meta_context) VALUES('00000000-0000-4000-8000-000000000950',$1,'meta:111111111:333333333','facebook','Meta recovery fixture','Fixture business','meta-recovery@example.test','{"formId":"222222222"}')`,[workspace]);
@@ -100,6 +100,14 @@ try {
     await pool.query(`INSERT INTO seo_changes(id,workspace_id,site_id,run_id,path,title,description,rationale,evidence,baseline,review,status,human_reviewed_at,reviewed_by_user_id) VALUES('00000000-0000-4000-8000-000000000941',$1,$2,'00000000-0000-4000-8000-000000000940','/websites','Reviewed recovery title','Reviewed synthetic search description for a real recovery test.','Synthetic recovery rationale','[]','{}','{"approved":true}','verified',now(),'recovery-sms-user')`,[workspace,site]);
     await pool.query(`INSERT INTO seo_publications(workspace_id,site_id,path,change_id) VALUES($1,$2,'/websites','00000000-0000-4000-8000-000000000941')`,[workspace,site]);
     await pool.query(`INSERT INTO seo_costs(id,workspace_id,site_id,run_id,request_key,provider,operation,reserved_micros,status,attempted_at) VALUES('00000000-0000-4000-8000-000000000942',$1,$2,'00000000-0000-4000-8000-000000000940','recovery-charge','openai','plan',250000,'uncertain',now())`,[workspace,site]);
+    // Apply the spending migration to real populated SEO history, not empty tables.
+    await pool.query("UPDATE seo_managers SET monthly_limit_micros=40000000 WHERE site_id=$1",[site]);
+    for (const file of (await readdir("db/migrations")).filter(file=>file.endsWith(".sql") && file >= "0018").sort())
+      await pool.query(await readFile("db/migrations/"+file,"utf8"));
+    const migrated=(await pool.query("SELECT monthly_limit_micros,ai_enabled,pilot_enabled FROM seo_managers WHERE site_id=$1",[site])).rows[0];
+    assert.equal(Number(migrated.monthly_limit_micros),10000000);
+    assert.equal(migrated.ai_enabled,false);
+    assert.equal(migrated.pilot_enabled,false);
     assert.equal(
       (await pool.query("SELECT url FROM sites WHERE id=$1", [site])).rows[0]
         .url,

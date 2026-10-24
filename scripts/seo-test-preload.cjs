@@ -5,7 +5,7 @@ if (
   url.pathname !== "/ta_seo_browser_test" ||
   url.search ||
   url.hash ||
-  process.env.OPENAI_API_KEY !== "seo-synthetic-no-live-key"
+  process.env.SEO_OPENAI_API_KEY !== "seo-synthetic-no-live-key"
 )
   throw new Error("SEO transport requires exact local fixture configuration.");
 const https = require("node:https"),
