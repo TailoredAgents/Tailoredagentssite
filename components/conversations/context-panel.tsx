@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ClientBrief } from "./client-brief";
 import { ArrowUpRight, CalendarClock, ChevronDown, CircleCheck, ExternalLink, FolderKanban, Link2, Mail, MessageSquareText, Phone, UserRound } from "lucide-react";
 import { linkConversationContextAction, mergeConversationsAction, saveConversationWorkAction } from "@/lib/conversations/actions";
 import type { ConversationWorkspace, ConversationRecord } from "@/lib/conversations/types";
@@ -33,6 +34,8 @@ export function ConversationContextPanel({ record, data, readOnly }: { record: C
       {context.mockup ? <div className="conversation-context-pair"><span>Mockup</span><strong>{context.mockup.status.replaceAll("_", " ")}</strong></div> : null}
       <div className="conversation-record-links">{context.opportunityId ? <Link href={`/dashboard/sales/${context.opportunityId}`}>Sales record<ArrowUpRight size={14} aria-hidden="true" /></Link> : null}{context.clientId ? <Link href={`/dashboard/clients/${context.clientId}`}>Client<ArrowUpRight size={14} aria-hidden="true" /></Link> : null}{context.projectId ? <Link href={`/dashboard/projects/${context.projectId}`}>Project<ArrowUpRight size={14} aria-hidden="true" /></Link> : null}{previewUrl ? <a href={previewUrl} target="_blank" rel="noreferrer">Mockup preview<ExternalLink size={14} aria-hidden="true" /><span className="sr-only"> (new tab)</span></a> : null}</div>
     </section> : null}
+
+    <ClientBrief key={conversation.id} record={record} readOnly={readOnly} />
 
     <details className="conversation-context-section conversation-disclosure" open><summary><span><UserRound size={16} aria-hidden="true" />Ownership & follow-up</span><ChevronDown size={15} aria-hidden="true" /></summary>
       <ConversationActionForm action={saveConversationWorkAction} label="Save ownership and follow-up" disabled={readOnly}>

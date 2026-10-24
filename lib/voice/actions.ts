@@ -94,6 +94,7 @@ export async function createVoiceIntentAction(input: {
   lineId: string;
   to: string;
   conversationId?: string;
+  recipient?: { kind: "contact" | "lead"; id: string };
   requestId: string;
 }) {
   return service.createVoiceIntent(await requireDashboardContext(), input);

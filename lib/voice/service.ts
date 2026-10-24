@@ -1,3 +1,4 @@
+import { getConversationRecipient, recipientMatchesAddress, recipientMatchesConversation } from "@/lib/conversations/recipients";
 import "server-only";
 import {
   createHash,
@@ -318,19 +319,20 @@ async function ensureConversation(
     canonical = randomUUID();
     const contacts = remote.startsWith("+")
       ? (
-          await db.query<{ id: string; business_id: string | null }>(
-            `SELECT p.id,p.business_id FROM contacts p LEFT JOIN crm_businesses b ON b.id=p.business_id AND b.workspace_id=p.workspace_id WHERE p.workspace_id=$1 AND crm_normalized_phone(p.phone)=$2 AND b.anonymized_at IS NULL LIMIT 2`,
+          await db.query<{ id: string; kind: string; business_id: string | null }>(
+            `SELECT p.id,'contact' kind,p.business_id FROM contacts p LEFT JOIN crm_businesses b ON b.id=p.business_id AND b.workspace_id=p.workspace_id WHERE p.workspace_id=$1 AND crm_normalized_phone(p.phone)=$2 AND b.anonymized_at IS NULL UNION ALL SELECT l.id,'lead' kind,l.business_id FROM leads l LEFT JOIN crm_businesses b ON b.id=l.business_id AND b.workspace_id=l.workspace_id WHERE l.workspace_id=$1 AND crm_normalized_phone(l.phone)=$2 AND l.anonymized_at IS NULL AND b.anonymized_at IS NULL LIMIT 2`,
             [workspaceId, remote],
           )
         ).rows
       : [];
     await db.query(
-      "INSERT INTO crm_conversations(id,workspace_id,contact_id,business_id) VALUES($1,$2,$3,$4)",
+      "INSERT INTO crm_conversations(id,workspace_id,contact_id,business_id,lead_id) VALUES($1,$2,$3,$4,$5)",
       [
         canonical,
         workspaceId,
-        contacts.length === 1 ? contacts[0].id : null,
+        contacts.length === 1 && contacts[0].kind === "contact" ? contacts[0].id : null,
         contacts.length === 1 ? contacts[0].business_id : null,
+        contacts.length === 1 && contacts[0].kind === "lead" ? contacts[0].id : null,
       ],
     );
   }
@@ -393,6 +395,17 @@ export async function createVoiceIntent(
   const hash = createHash("sha256").update(JSON.stringify(i)).digest("hex");
   return tx(context.workspace.id, context, async (db) => {
     const { row: line } = await lineAccess(db, context, i.lineId, "call");
+    if (i.recipient) await db.query(`SELECT id FROM ${i.recipient.kind === "lead" ? "leads" : "contacts"} WHERE workspace_id=$1 AND id=$2 FOR SHARE`, [context.workspace.id,i.recipient.id]);
+    const recipient = i.recipient ? await getConversationRecipient(context, i.recipient.kind, i.recipient.id) : null;
+    if (i.recipient && (!recipient || !recipientMatchesAddress(recipient, i.to)))
+      throw new VoiceInputError("The phone number must match the selected customer. Refresh their contact details first.");
+    async function linkRecipient(conversationId: string) {
+      if (!recipient) return;
+      const row = (await db.query<{contact_id:string|null;lead_id:string|null;business_id:string|null}>("SELECT contact_id,lead_id,business_id FROM crm_conversations WHERE workspace_id=$1 AND id=$2 AND merged_into_id IS NULL FOR UPDATE", [context.workspace.id, conversationId])).rows[0];
+      if (!row || !recipientMatchesConversation(recipient, row, [i.to]))
+        throw new VoiceInputError("This phone history belongs to another CRM record. Review its customer link before calling.");
+      await db.query(`UPDATE crm_conversations SET ${recipient.kind === "lead" ? "lead_id" : "contact_id"}=$3,business_id=COALESCE(business_id,$4),updated_at=now() WHERE workspace_id=$1 AND id=$2`, [context.workspace.id, conversationId, recipient.id, recipient.businessId]);
+    }
     if (await blocked(db, context.workspace.id, i.to))
       throw new VoiceInputError(
         "Calling this phone is blocked in CRM channel preferences.",
@@ -425,6 +438,7 @@ export async function createVoiceIntent(
           [context.workspace.id, c.voice_conversation_id],
         )
       ).rows[0];
+      await linkRecipient(source.conversation_id);
       return {
         intentId: old.id,
         intentToken: intentToken(
@@ -477,6 +491,7 @@ export async function createVoiceIntent(
       callId = randomUUID(),
       id = randomUUID(),
       expires = new Date(Date.now() + 120000);
+    await linkRecipient(binding.conversationId);
     await db.query(
       "INSERT INTO voice_calls(id,workspace_id,line_id,voice_conversation_id,actor_user_id,direction,from_phone,to_phone) VALUES($1,$2,$3,$4,$5,'outbound',$6,$7)",
       [

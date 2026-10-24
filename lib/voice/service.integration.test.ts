@@ -1,3 +1,4 @@
+import { captureCallMemory, loadClientMemory } from "@/lib/conversations/memory";
 import { randomUUID, createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import type { Pool } from "pg";
@@ -281,6 +282,37 @@ describe.skipIf(!url)(
       await pool.query("UPDATE voice_call_recordings SET transcript=$2,summary=$3,analysis_status='ready' WHERE id=$1",[r.id,quote,JSON.stringify({summary:"Website proposal requested.",highlights:[],followUps:[{text:"Prepare the website proposal.",quote}]})]);
       return {...r,input:{recordingId:r.id,suggestionIndex:0,title:"Review the website proposal",ownerUserId:member.user.id,dueAt:new Date(Date.now()+86400000).toISOString(),notes:"Review the site scope first."}};
     }
+    it("links a first call to the chosen lead and rejects mismatched or conflicting identities",async()=>{
+      const lead=randomUUID(),other=randomUUID();
+      await pool.query("INSERT INTO leads(id,workspace_id,name,organization,phone) VALUES($1,$2,'First caller','',$3),($4,$2,'Different lead','',$3)",[lead,ws,remote,other]);
+      const input={lineId,to:remote,requestId:randomUUID(),recipient:{kind:"lead",id:lead}};
+      const call=await createVoiceIntent(owner,input);
+      expect((await pool.query("SELECT lead_id FROM crm_conversations WHERE id=$1",[call.conversationId])).rows[0].lead_id).toBe(lead);
+      expect((await createVoiceIntent(owner,input)).callId).toBe(call.callId);
+      await expect(createVoiceIntent(owner,{...input,requestId:randomUUID(),recipient:{kind:"lead",id:other}})).rejects.toThrow("another CRM record");
+      await expect(createVoiceIntent(owner,{...input,requestId:randomUUID(),to:"+14045550102"})).rejects.toThrow("phone number must match");
+      await expect(createVoiceIntent(actor("voice-other",otherWs),input)).rejects.toThrow();
+      expect((await pool.query("SELECT id FROM voice_calls")).rowCount).toBe(1);
+    });
+    it("links an incoming call to a unique lead, leaving ambiguous new callers unlinked",async()=>{
+      const lead=randomUUID();await pool.query("INSERT INTO leads(id,workspace_id,name,organization,phone) VALUES($1,$2,'Inbound lead','',$3)",[lead,ws,remote]);
+      const call=await incoming();
+      expect((await pool.query("SELECT lead_id FROM crm_conversations c JOIN crm_conversation_sources s ON s.conversation_id=c.id JOIN voice_calls v ON v.voice_conversation_id=s.voice_conversation_id WHERE v.id=$1",[call.callId])).rows[0].lead_id).toBe(lead);
+      const shared="+14045550109";
+      await pool.query("INSERT INTO leads(id,workspace_id,name,organization,phone) VALUES(gen_random_uuid(),$1,'Shared A','',$2),(gen_random_uuid(),$1,'Shared B','',$2)",[ws,shared]);
+      const ambiguous=await incoming(11,shared);
+      expect((await pool.query("SELECT lead_id,contact_id FROM crm_conversations c JOIN crm_conversation_sources s ON s.conversation_id=c.id JOIN voice_calls v ON v.voice_conversation_id=s.voice_conversation_id WHERE v.id=$1",[ambiguous.callId])).rows[0]).toEqual({lead_id:null,contact_id:null});
+    });
+    it("remembers call takeaways once, respects grants, and separates normal expiry from explicit deletion",async()=>{
+      const r=await suggestedCall();const call=await getVoiceCall(owner,r.callId);
+      await Promise.all([captureCallMemory(),captureCallMemory()]);
+      const memory=await loadClientMemory(owner,call.conversationId!);expect(memory).toHaveLength(1);expect(memory[0].text).toContain("Prepare the website proposal");
+      expect(await loadClientMemory(member,call.conversationId!)).toEqual([]);
+      await pool.query("UPDATE voice_call_recordings SET expires_at=now()-interval '1 day' WHERE id=$1",[r.id]);
+      await runCallRecordingWorker();expect(await loadClientMemory(owner,call.conversationId!)).toHaveLength(1);
+      await deleteCallRecording(owner,r.id);expect(await loadClientMemory(owner,call.conversationId!)).toEqual([]);
+      await captureCallMemory();expect((await pool.query("SELECT id FROM crm_client_memory")).rowCount).toBe(0);
+    });
     it("creates only reviewed tasks, saves edited details and schedules them in the assignee's My Day",async()=>{
       await grant(member.user.id);const r=await suggestedCall();
       expect((await pool.query("SELECT id FROM crm_tasks")).rowCount).toBe(0);

@@ -1,4 +1,5 @@
 import "server-only";
+import { loadClientMemory } from "./memory";
 import type { DashboardContext } from "@/lib/dashboard/data";
 import { getDatabasePool } from "@/lib/dashboard/db";
 import { authorizedSources, permitted, scopes } from "./access";
@@ -307,6 +308,7 @@ export async function listConversationWorkspace(
           )
         ).rows[0]?.interest ?? null;
     selected = {
+      clientMemory: await loadClientMemory(context, summary.id, sources),
       recipient,
       conversation: summary,
       sources: selectedSources.map((h) => h.source),

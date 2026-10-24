@@ -82,6 +82,7 @@ export type ConversationContext = {
   mockup: { status: string; previewUrl: string | null } | null;
 };
 export type ConversationRecord = {
+  clientMemory?: import("./memory-types").ClientMemory[];
   recipient?: ConversationRecipient | null;
   conversation: ConversationSummary;
   sources: ConversationSource[];

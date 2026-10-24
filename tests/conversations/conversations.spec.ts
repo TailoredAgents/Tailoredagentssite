@@ -383,3 +383,39 @@ test("AI drafts cover a new lead and preserve manual writing when the provider f
   await expect(email.getByRole("textbox",{name:"Message *",exact:true})).toHaveValue(/Morgan New/);
   expect((await control(request,"inspect")).emailSends).toBe(0);
 });
+
+
+test("client brief saves edits, controls draft context, and removes remembered facts",async({page,request},info)=>{
+  await signIn(page);await combine(page,request);await pane(page,"Details");
+  const brief=page.getByRole("region",{name:"Client brief",exact:true});
+  await brief.getByRole("button",{name:"Add client fact"}).click();
+  await brief.getByLabel("Remembered detail",{exact:true}).fill("Prefers a short text before a meeting.");
+  await brief.getByLabel("Use in client message suggestions",{exact:true}).check();
+  await brief.getByRole("button",{name:"Save fact",exact:true}).click();
+  await expect(brief.getByText("Prefers a short text before a meeting.",{exact:true})).toBeVisible();
+  await page.reload();await pane(page,"Details");
+  await expect(brief.getByText("Prefers a short text before a meeting.",{exact:true})).toBeVisible();
+  await pane(page,"Thread");await page.getByRole("tab",{name:"SMS",exact:true}).click();
+  const sms=page.getByRole("tabpanel",{name:"SMS",exact:true});
+  await sms.getByRole("button",{name:"Suggest message",exact:true}).click();
+  await sms.getByRole("button",{name:"Generate draft",exact:true}).click();
+  await expect(sms.getByRole("textbox",{name:"Text message *",exact:true})).toHaveValue(/Hi Jordan/);
+  const state=await control(request,"inspect");
+  expect(JSON.stringify(state.aiRequests[0])).toContain("Prefers a short text before a meeting.");
+  expect(state.smsCreates).toHaveLength(0);expect(state.emailSends).toBe(0);
+  await pane(page,"Details");
+  await expect(brief.getByText("Interested in a website and an AI receptionist.",{exact:true})).toBeVisible();
+  await brief.getByText("Source evidence",{exact:true}).click();
+  expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa"]).analyze()).violations).toEqual([]);
+  await brief.scrollIntoViewIfNeeded();
+  await page.screenshot({path:`test-results/client-brief-${info.project.name}.png`,fullPage:true,style:"nextjs-portal{display:none!important;}"});
+  await brief.getByRole("button",{name:"Edit fact: Prefers a short text before a meeting."}).click();
+  await brief.getByLabel("Remembered detail",{exact:true}).fill("Prefers email before meetings.");
+  await brief.getByLabel("Use in client message suggestions",{exact:true}).uncheck();
+  await brief.getByRole("button",{name:"Save fact",exact:true}).click();
+  await expect(brief.getByText("Prefers email before meetings.",{exact:true})).toBeVisible();
+  await expect(brief.getByText("Internal only",{exact:true})).toBeVisible();
+  await brief.getByRole("button",{name:"Edit fact: Prefers email before meetings."}).click();
+  await brief.getByRole("button",{name:"Remove fact",exact:true}).click();
+  await expect(brief.getByText("Prefers email before meetings.",{exact:true})).toHaveCount(0);
+});

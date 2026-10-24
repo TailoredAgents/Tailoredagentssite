@@ -1,4 +1,5 @@
 import "server-only";
+import { loadClientMemory, memoryEvidence, rememberSuggestions } from "./memory";
 import type { DashboardContext } from "@/lib/dashboard/data";
 import { getDatabasePool } from "@/lib/dashboard/db";
 import { normalizePhone } from "@/lib/sales/import";
@@ -38,6 +39,8 @@ export async function generateClientDraft(context: DashboardContext, raw: unknow
   if (recipient && !recipientMatchesAddress(recipient, input.to)) throw new DraftError("The recipient has changed. Open their conversation to generate a matching draft.");
   const matchesAddress = (address: string) => input.channel === "email" ? address.toLowerCase() === input.to.toLowerCase() : !!normalizePhone(address) && normalizePhone(address) === normalizePhone(input.to);
   if (record && !recipient && !record.sources.some(s => s.externalAddresses.some(matchesAddress))) throw new DraftError("The recipient does not match this conversation.");
+  const memory = record ? (await loadClientMemory(context, record.conversation.id)).filter(m => m.useInDrafts).slice(0,20) : [];
+  const evidence = memoryEvidence(record);
   const history = (record?.timeline || []).filter(item => item.channel !== "note" && !["failed", "undelivered", "rejected"].includes(item.status || ""))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt)).slice(-24).map(item => ({
       channel: item.channel, direction: item.direction, date: item.createdAt, subject: item.subject?.slice(0, 200),
@@ -54,6 +57,10 @@ export async function generateClientDraft(context: DashboardContext, raw: unknow
     [context.workspace.id, businessId],
   )).rows[0] : null;
   const verify = async () => {
+    if (record && memory.length) {
+      const current = await loadClientMemory(context, record.conversation.id);
+      if (memory.some(m => !current.some(c => c.id === m.id && c.revision === m.revision && c.useInDrafts))) throw new DraftError("The client brief or its access changed. Generate again using the current details.");
+    }
     const fresh = await scopes(context);
     assertSending(fresh);
     if (recipient) {
@@ -72,9 +79,14 @@ export async function generateClientDraft(context: DashboardContext, raw: unknow
     currentDraft: input.currentText, subject: input.subject, senderName: context.user.name,
     client: recipient ? { name: recipient.name, businessName: recipient.businessName, business, inquiry: facts } : null,
     serviceInterest: record?.context.serviceInterest || facts?.interest || null,
+    clientMemory: memory.map(m => ({ category: m.category, text: m.text, date: m.occurredAt })),
+    memoryEvidence: evidence.map(e => ({ id: e.id, text: e.text, date: e.date, direction: e.direction })),
     history, historyScope: "Recent accessible messages only. Internal notes and attachments are excluded.",
   });
   // A grant revoked during the provider call must also hide derived content.
   await verify();
-  return { draft, contextNote: `${recipient ? "Client details" : "Your direction"}${history.length ? ` + ${history.length} recent message${history.length === 1 ? "" : "s"}` : " · no conversation history yet"}` };
+  let memorySaved = true;
+  try { await rememberSuggestions(context, evidence, draft.memories || []); } catch { memorySaved = false; }
+  await verify();
+  return { draft: { subject: draft.subject, text: draft.text }, contextNote: `${recipient ? "Client details" : "Your direction"}${history.length ? ` + ${history.length} recent message${history.length === 1 ? "" : "s"}` : " · no conversation history yet"}${memory.length ? ` + ${memory.length} saved client facts` : ""}${memorySaved ? "" : " · brief update unavailable"}` };
 }

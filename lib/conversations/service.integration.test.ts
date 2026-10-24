@@ -1,3 +1,5 @@
+import { deleteLead } from "@/lib/operations/delete-lead";
+import { loadClientMemory, saveClientMemory, rememberSuggestions, memoryEvidence } from "./memory";
 import { generateClientDraft } from "./draft-service";
 import { reserveDraftRequest } from "./draft-rate-limit";
 import { writeSuggestedDraft } from "./draft-provider";
@@ -260,7 +262,7 @@ describe.skipIf(!databaseUrl)(
         [randomUUID(), workspace, smsId, base],
       );
       vi.resetAllMocks();
-      vi.mocked(writeSuggestedDraft).mockResolvedValue({ subject: "Your website", text: "Hi Alice, what would you like your website to do?" });
+      vi.mocked(writeSuggestedDraft).mockResolvedValue({ memories: [], subject: "Your website", text: "Hi Alice, what would you like your website to do?" });
       mailMessages = [message("mail-1")];
       gateway.mailboxes.mockImplementation(async (ctx: DashboardContext) =>
         ctx.user.id === smsOnlyId ? [] : [mailbox],
@@ -1004,7 +1006,7 @@ describe.skipIf(!databaseUrl)(
     it("discards generated content when source access is revoked while AI runs", async () => {
       vi.mocked(writeSuggestedDraft).mockImplementationOnce(async () => {
         await pool.query("DELETE FROM sms_number_grants WHERE user_id=$1", [ownerId]);
-        return { subject: "", text: "Private derived content" };
+        return { subject: "", text: "Private derived content", memories: [] };
       });
       await expect(generateClientDraft(owner, {channel:"sms",accountId:numberId,to:"2125550123",threadId:smsId})).rejects.toThrow();
       expect(writeSuggestedDraft).toHaveBeenCalledOnce();
@@ -1014,7 +1016,7 @@ describe.skipIf(!databaseUrl)(
       await mergeConversations(owner, {conversationId:ids.email.id,targetConversationId:ids.sms.id,confirmConflict:true});
       vi.mocked(writeSuggestedDraft).mockImplementationOnce(async () => {
         gateway.mailboxes.mockResolvedValue([]);
-        return {subject:"",text:"Derived from email while replying by SMS"};
+        return {subject:"",text:"Derived from email while replying by SMS",memories:[]};
       });
       await expect(generateClientDraft(owner, {channel:"sms",accountId:numberId,to:"2125550123",threadId:smsId})).rejects.toThrow("Conversation access changed");
       expect(writeSuggestedDraft).toHaveBeenCalledOnce();
@@ -1026,6 +1028,77 @@ describe.skipIf(!databaseUrl)(
       expect(result.contextNote).toContain("no conversation history");
       const supplied = JSON.stringify(vi.mocked(writeSuggestedDraft).mock.calls[0][1]);
       expect(supplied).toContain("First website"); expect(supplied).toContain("Need appointment booking");
+    });
+    it("keeps source-scoped memory private, editable and independent of recent history", async () => {
+      const ids=await identities();
+      const source=(await workspaceView(owner,{conversation:ids.email.id})).selected!.sources[0];
+      await saveClientMemory(owner,{sourceId:source.id,category:"preference",text:"Prefers a short agenda before meetings.",useInDrafts:true});
+      await mergeConversations(owner,{conversationId:ids.email.id,targetConversationId:ids.sms.id,confirmConflict:true});
+      const facts=await loadClientMemory(owner,ids.sms.id);expect(facts).toHaveLength(1);
+      expect(await loadClientMemory(smsOnly,ids.sms.id)).toEqual([]);
+      const fact=facts[0];
+      await saveClientMemory(owner,{sourceId:source.id,id:fact.id,revision:fact.revision,category:"preference",text:"Prefers written agendas.",useInDrafts:false});
+      await expect(saveClientMemory(member,{sourceId:source.id,id:fact.id,revision:fact.revision,category:"preference",text:"Stale edit",useInDrafts:true})).rejects.toThrow("another session");
+      await generateClientDraft(owner,{channel:"sms",accountId:numberId,to:"2125550123",threadId:smsId});
+      expect(JSON.stringify(vi.mocked(writeSuggestedDraft).mock.calls.at(-1)![1])).not.toContain("Prefers written agendas");
+      await expect(saveClientMemory(viewer,{sourceId:source.id,category:"context",text:"No viewer writes",useInDrafts:true})).rejects.toThrow();
+      await expect(saveClientMemory(context(otherId,otherWorkspace),{sourceId:source.id,category:"context",text:"Foreign workspace",useInDrafts:true})).rejects.toThrow();
+    });
+    it("saves only grounded suggestions and preserves corrections and removals across retries",async()=>{
+      const ids=await identities(),record=(await workspaceView(owner,{conversation:ids.sms.id})).selected!;
+      const evidence=memoryEvidence(record),entry=evidence.find(e=>e.text.includes("SMS from Alice"))!;
+      const fact={evidenceId:entry.id,category:"context",text:"Alice sent a text.",quote:"SMS from Alice"};
+      await rememberSuggestions(owner,evidence,[{...fact,quote:"An invented quotation"},{...fact,evidenceId:"forged"},fact]);
+      let saved=await loadClientMemory(owner,record.conversation.id);expect(saved).toHaveLength(1);
+      await saveClientMemory(owner,{id:saved[0].id,revision:saved[0].revision,sourceId:entry.sourceId,category:"context",text:"Corrected by team",useInDrafts:true});
+      await rememberSuggestions(owner,evidence,[fact]);saved=await loadClientMemory(owner,record.conversation.id);
+      expect(saved[0].text).toBe("Corrected by team");
+      await saveClientMemory(owner,{id:saved[0].id,revision:saved[0].revision,sourceId:entry.sourceId,category:"context",text:saved[0].text,useInDrafts:true,dismiss:true});
+      await rememberSuggestions(owner,evidence,[fact]);expect(await loadClientMemory(owner,record.conversation.id)).toEqual([]);
+      const tombstone=(await pool.query("SELECT body,quote,dismissed FROM crm_client_memory")).rows[0];expect(tombstone).toEqual({body:"",quote:"",dismissed:true});
+    });
+    it("feeds saved client context into drafts and stores new facts from the same AI request",async()=>{
+      const ids=await identities(),record=(await workspaceView(owner,{conversation:ids.sms.id})).selected!;
+      const source=record.sources[0],evidence=memoryEvidence(record)[0];
+      await saveClientMemory(owner,{sourceId:source.id,category:"preference",text:"Always include a meeting agenda",useInDrafts:true});
+      vi.mocked(writeSuggestedDraft).mockResolvedValueOnce({subject:"",text:"Here is an agenda, Alice.",memories:[{category:"context",text:"Alice sent a text",quote:evidence.text,evidenceId:evidence.id}]});
+      await generateClientDraft(owner,{channel:"sms",accountId:numberId,to:"2125550123",threadId:smsId});
+      expect(JSON.stringify(vi.mocked(writeSuggestedDraft).mock.calls[0][1])).toContain("Always include a meeting agenda");
+      expect(await loadClientMemory(owner,record.conversation.id)).toHaveLength(2);
+      expect(writeSuggestedDraft).toHaveBeenCalledOnce();
+    });
+    it("discards drafts if saved memory is corrected or its separate source loses access during generation",async()=>{
+      const ids=await identities();
+      // Deliberately separate threads, linked to one person.
+      await pool.query("UPDATE crm_conversations SET contact_id=$2 WHERE workspace_id=$1",[workspace,contactId]);
+      const source=(await workspaceView(owner,{conversation:ids.email.id})).selected!.sources[0];
+      await saveClientMemory(owner,{sourceId:source.id,category:"context",text:"Email-only project detail",useInDrafts:true});
+      vi.mocked(writeSuggestedDraft).mockImplementationOnce(async()=>{gateway.mailboxes.mockResolvedValue([]);return{subject:"",text:"Must not expose email detail",memories:[]};});
+      await expect(generateClientDraft(owner,{channel:"sms",accountId:numberId,to:"2125550123",threadId:smsId})).rejects.toThrow("client brief");
+    });
+    it("never combines different people at the same business and erases memory on anonymization",async()=>{
+      const ids=await identities(),source=(await workspaceView(owner,{conversation:ids.sms.id})).selected!.sources[0];
+      await pool.query("UPDATE crm_conversations SET contact_id=$2 WHERE id=$1",[ids.sms.id,contactId]);
+      await pool.query("UPDATE crm_conversations SET contact_id=$2 WHERE id=$1",[ids.email.id,secondContactId]);
+      await saveClientMemory(owner,{sourceId:source.id,category:"context",text:"Alice's private project",useInDrafts:true});
+      expect(await loadClientMemory(owner,ids.email.id)).toEqual([]);
+      await pool.query("UPDATE crm_businesses SET anonymized_at=now() WHERE id=$1",[businessId]);
+      expect((await pool.query("SELECT id FROM crm_client_memory")).rowCount).toBe(0);
+      expect((await pool.query("SELECT anonymized_at FROM crm_businesses WHERE id=$1",[businessId])).rows[0].anonymized_at).not.toBeNull();
+    });
+    it("clears saved facts before lead deletion detaches its conversation",async()=>{
+      const ids=await identities(),source=(await workspaceView(owner,{conversation:ids.sms.id})).selected!.sources[0];
+      const lead=randomUUID();await pool.query("INSERT INTO leads(id,workspace_id,name,organization) VALUES($1,$2,'Delete this lead','')",[lead,workspace]);
+      await pool.query("UPDATE crm_conversations SET lead_id=$2 WHERE id=$1",[ids.sms.id,lead]);
+      await saveClientMemory(owner,{sourceId:source.id,category:"context",text:"Lead detail to erase",useInDrafts:true});
+      await deleteLead(owner,{leadId:lead,confirmed:"yes"});expect((await pool.query("SELECT id FROM crm_client_memory")).rowCount).toBe(0);
+    });
+    it("hides expired memory immediately and clears it in retention",async()=>{
+      const ids=await identities(),source=(await workspaceView(owner,{conversation:ids.sms.id})).selected!.sources[0];
+      await saveClientMemory(owner,{sourceId:source.id,category:"context",text:"Old project detail",useInDrafts:true});
+      await pool.query("UPDATE crm_client_memory SET expires_at=now()-interval '1 second'");
+      expect(await loadClientMemory(owner,ids.sms.id)).toEqual([]);
+      await pool.query("SELECT perform_reporting_retention()");expect((await pool.query("SELECT id FROM crm_client_memory")).rowCount).toBe(0);
     });
     it("enforces shared atomic draft quotas across simultaneous requests", async () => {
       const results = await Promise.allSettled(Array.from({length:7}, () => reserveDraftRequest(owner)));

@@ -80,6 +80,7 @@ export async function deleteCallRecording(context: DashboardContext, id: string)
   const row = await transaction(async db => {
     const {row} = await authorizedRecording(db,context,id,"voicemail",true);
     if (!row.recording_sid) throw new VoiceInputError("The provider has not returned a recording yet.");
+    await db.query("DELETE FROM crm_client_memory WHERE workspace_id=$1 AND recording_id=$2", [context.workspace.id,id]);
     // Content and analysis are removed immediately; provider deletion retries separately.
     await db.query("UPDATE voice_call_recordings SET status='deleting',transcript=NULL,summary=NULL,analysis_status='idle',analysis_lease=NULL,analysis_lease_until=NULL,analysis_error=NULL,delete_after=now(),deletion_attempts=0 WHERE id=$1 AND status<>'deleted'",[id]);
     await insertAuditLog(db,{workspaceId:context.workspace.id,actorUserId:context.user.id,action:"voice.recording.delete_requested",targetType:"call_recording",targetId:id,metadata:{}});

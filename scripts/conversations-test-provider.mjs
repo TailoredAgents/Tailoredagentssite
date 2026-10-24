@@ -74,7 +74,7 @@ createServer(async (request, response) => {
       await new Promise(resolve => setTimeout(resolve, 700));
       if (failAi) return reply(response, {}, 503);
       const context = JSON.parse(body.input[0].content);
-      return reply(response, {status:"completed",output:[{type:"message",content:[{type:"output_text",text:JSON.stringify({subject:"Your website project",text:`Hi ${context.client?.name || "there"}, thanks for reaching out to Tailored Agents. What would you like your new website to do?`})}]}]});
+      return reply(response, {status:"completed",output:[{type:"message",content:[{type:"output_text",text:JSON.stringify({memories:context.memoryEvidence?.length ? [{evidenceId:context.memoryEvidence[0].id,category:"context",text:"Interested in a website and an AI receptionist.",quote:context.memoryEvidence[0].text}] : [],subject:"Your website project",text:`Hi ${context.client?.name || "there"}, thanks for reaching out to Tailored Agents. What would you like your new website to do?`})}]}]});
     }
     if (["/control", "/transport"].includes(request.url)) {
       if (request.headers.authorization !== "Bearer conversations-synthetic-control") return reply(response, {}, 403);

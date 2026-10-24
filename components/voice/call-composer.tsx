@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { LoaderCircle, Phone } from "lucide-react";
-import type { ConversationRecord } from "@/lib/conversations/types";
+import type { ConversationRecord, ConversationRecipient } from "@/lib/conversations/types";
 import { useBrowserPhone } from "./phone-provider";
 
 function displayPhone(value: string) {
@@ -13,7 +13,7 @@ function displayPhone(value: string) {
   return `(${local.slice(0, 3)}) ${local.slice(3, 6)}-${local.slice(6)}`;
 }
 
-export function VoiceCallComposer({ record, recipient }: { record?: ConversationRecord; recipient?: { name: string; phone: string | null } | null }) {
+export function VoiceCallComposer({ record, recipient }: { record?: ConversationRecord; recipient?: ConversationRecipient | null }) {
   const phone = useBrowserPhone();
   const targets = [...new Set([...(recipient?.phone ? [recipient.phone] : []), ...(record?.sources || []).flatMap((source) => source.externalAddresses)].filter((value) => /^\+?[\d\s().-]{7,}$/.test(value)))];
   const [to, setTo] = useState(displayPhone(targets[0] || ""));
@@ -33,7 +33,7 @@ export function VoiceCallComposer({ record, recipient }: { record?: Conversation
 
       {phone.workspace.state !== "ready" ? <div className="voice-setup-notice"><p>{phone.workspace.message}</p><Link href="/dashboard/settings#calling">Review calling setup</Link></div> : <form aria-label="Start browser call" onSubmit={(event) => {
         event.preventDefault();
-        if (ready && !busy && to.trim()) void phone.startCall({ lineId: phone.lineId, to: to.trim(), conversationId: record?.conversation.id, name });
+        if (ready && !busy && to.trim()) void phone.startCall({ lineId: phone.lineId, to: to.trim(), conversationId: record?.conversation.id, recipient: (recipient || record?.recipient) ? { kind: (recipient || record!.recipient)!.kind, id: (recipient || record!.recipient)!.id } : undefined, name });
       }}>
         {phone.workspace.lines.length > 1 ? <label className="voice-call-origin voice-call-line-picker"><span>Calling line</span><select aria-label="Calling line" value={phone.lineId} disabled={phone.readOnly || busy || phone.connection === "connecting"} onChange={(event) => phone.setLineId(event.target.value)}>{phone.workspace.lines.map((item) => <option key={item.id} value={item.id}>{displayPhone(item.phone)}{item.status === "paused" ? " · Paused" : ""}{!item.canCall ? " · Outbound access required" : ""}</option>)}</select></label> : <p className="voice-call-origin"><span>Calling from</span><strong>{line ? displayPhone(line.phone) : "No calling line"}</strong></p>}
 

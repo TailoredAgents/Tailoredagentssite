@@ -25,6 +25,25 @@
 .conversation-workspace button { cursor: pointer; }
 .conversation-workspace button:disabled { cursor: default; opacity: .55; }
 .conversation-workspace [hidden] { display: none !important; }
+.client-brief-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.client-brief-heading h3 { margin:0; display:flex; align-items:center; gap:7px; font-size:14px; font-weight:650; }
+.client-brief-list { list-style:none; padding:0; margin:14px 0 0; display:grid; gap:10px; }
+.client-brief-list > li { min-width:0; padding:12px; border:1px solid var(--conversation-line); border-radius:9px; background:var(--conversation-incoming); }
+.client-brief-label { display:flex; align-items:center; justify-content:space-between; color:var(--conversation-blue); font-size:12px; font-weight:650; }
+.client-brief-label button { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border:0; border-radius:5px; background:var(--conversation-panel); color:var(--conversation-muted); }
+.client-brief-list p { margin:7px 0 10px; color:var(--conversation-ink); line-height:1.55; overflow-wrap:anywhere; white-space:pre-wrap; }
+.client-brief-meta { display:flex; flex-wrap:wrap; gap:4px 8px; color:var(--conversation-muted); font-size:11px; }
+.client-brief-visibility { display:block; margin-top:5px; color:var(--conversation-muted); font-size:11px; }
+.client-brief-empty { padding:12px; border:1px dashed var(--conversation-line); border-radius:8px; color:var(--conversation-muted); line-height:1.6; }
+.client-brief-evidence { margin-top:9px; font-size:12px; color:var(--conversation-muted); }
+.client-brief-evidence summary { cursor:pointer; min-height:30px; padding:5px 0; }
+.client-brief-evidence blockquote { margin:4px 0 8px; padding-left:10px; border-left:2px solid var(--conversation-outgoing-line); overflow-wrap:anywhere; }
+.client-brief-evidence a { color:var(--conversation-blue); }
+.client-brief-editor { margin-top:14px; padding-top:14px; border-top:1px solid var(--conversation-line); }
+.client-brief-editor fieldset { display:grid; gap:12px; padding:0; margin:8px 0 0; border:0; min-width:0; }
+.client-brief-editor textarea { resize:vertical; min-height:110px; }
+.client-brief-buttons { display:flex; align-items:center; flex-wrap:wrap; gap:10px; }
+.client-brief button.conversation-text-link { padding:8px 0; border:0; background:transparent; }
 .conversation-page-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex: 0 0 auto; }
 .conversation-page-header > div:first-child { min-width: 0; }
 .conversation-eyebrow { color: var(--workspace-muted); font-size: 14px; font-weight: 550; }

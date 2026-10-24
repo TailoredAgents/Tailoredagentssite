@@ -57,6 +57,7 @@ export const intentSchema = z.object({
   lineId: z.uuid(),
   to: phoneSchema,
   conversationId: z.uuid().optional(),
+  recipient: z.object({ kind: z.enum(["contact", "lead"]), id: z.uuid() }).optional(),
   requestId: z.uuid(),
 });
 export const callSchema = z.object({ callId: z.uuid() });

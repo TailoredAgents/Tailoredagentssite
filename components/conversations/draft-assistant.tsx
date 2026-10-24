@@ -1,4 +1,5 @@
 "use client";
+import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { LoaderCircle, Sparkles, X } from "lucide-react";
 import { suggestClientMessageAction } from "@/lib/conversations/draft-actions";
@@ -8,6 +9,7 @@ export function DraftAssistant({ request, disabled, onApply }: {
   request: Omit<DraftRequest, "direction">; disabled: boolean; onApply: (draft: SuggestedDraft) => void;
 }) {
   const id = useId();
+  const router = useRouter();
   const [open, setOpen] = useState(false), [direction, setDirection] = useState("");
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
   const container = useRef<HTMLDivElement>(null);
@@ -30,7 +32,7 @@ export function DraftAssistant({ request, disabled, onApply }: {
       } else if ("error" in next) {
         setError(next.error);
       } else {
-        onApply(next.draft); setOpen(false); setApplied(true);
+        onApply(next.draft); setOpen(false); setApplied(true); router.refresh();
         requestAnimationFrame(() => {
           const message = container.current?.closest("form")?.querySelector<HTMLTextAreaElement>('textarea[name="text"]');
           if (message && !message.readOnly && !message.disabled) {
@@ -45,7 +47,7 @@ export function DraftAssistant({ request, disabled, onApply }: {
     <div className="ai-draft-toolbar"><button type="button" className="inbox-button ai-draft-toggle" disabled={disabled} aria-expanded={open} aria-controls={id} onClick={() => { setOpen(!open); setApplied(false); }}><Sparkles size={14} aria-hidden="true" />Suggest message</button>{applied ? <span role="status">Draft added. Edit it below, then send.</span> : null}</div>
     {open ? <div className="ai-draft-panel" id={id} aria-busy={busy}>
       <div className="ai-draft-heading"><strong>What would you like to say?</strong><button type="button" className="ai-draft-close" aria-label="Close draft assistant" onClick={() => setOpen(false)}><X size={16} aria-hidden="true" /></button></div>
-      <p>Use the client’s details and recent history, or add a direction. The draft goes straight into your message box for editing.</p>
+      <p>Use the client’s saved brief, details and recent history, or add a direction. The draft goes straight into your message box for editing.</p>
       <div className="ai-draft-presets">{[
         ["Introduce us", "Initial message after the lead came in. Introduce Tailored Agents and ask about what they need."],
         ["Suggest a reply", "Reply to their latest message and suggest a useful next step."],

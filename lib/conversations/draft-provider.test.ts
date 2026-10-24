@@ -19,6 +19,13 @@ describe("client message draft provider", () => {
     expect(body.text.format.strict).toBe(true); expect(body.max_output_tokens).toBe(2200);
     expect(body.instructions).toContain("untrusted reference data");
   });
+  it("returns bounded memory proposals with the draft, in one request",async()=>{
+    const fact={evidenceId:"sms:example",category:"preference",text:"Prefers morning appointments",quote:"Mornings work better for me"};
+    request.mockResolvedValue(new Response(JSON.stringify({status:"completed",output:[{type:"message",content:[{type:"output_text",text:JSON.stringify({subject:"",text:"What morning works for you?",memories:[fact]})}]}]})));
+    expect((await writeSuggestedDraft("sms",{})).memories).toEqual([fact]);
+    expect(request).toHaveBeenCalledOnce();
+    expect(JSON.parse(request.mock.calls[0][1].body).text.format.schema.required).toContain("memories");
+  });
   it("keeps provider errors generic and rejects refusals, incomplete and invalid output", async () => {
     request.mockResolvedValueOnce(new Response("Sensitive provider error",{status:429}));
     await expect(writeSuggestedDraft("email",{})).rejects.toThrow("temporarily unavailable");

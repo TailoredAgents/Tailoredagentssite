@@ -9,7 +9,7 @@ import { loadVoiceSdk } from "./sdk";
 import { BrowserPhonePanel } from "./phone-panel";
 
 type Phase = "idle" | "incoming" | "connecting" | "ringing" | "active" | "reconnecting" | "ending" | "uncertain";
-type CallTarget = { lineId: string; to: string; conversationId?: string; name?: string };
+type CallTarget = { lineId: string; to: string; conversationId?: string; recipient?: { kind: "contact" | "lead"; id: string }; name?: string };
 type PhoneContext = {
   workspace: VoiceWorkspace; readOnly: boolean; lineId: string; setLineId: (id: string) => void;
   connection: "disconnected" | "connecting" | "ready"; receiving: boolean; phase: Phase; error: string;
@@ -167,13 +167,13 @@ export function VoicePhoneProvider({ workspace, readOnly, children }: { workspac
     const line = workspace.lines.find((item) => item.id === target.lineId);
     const device = deviceRef.current;
     if (readOnly || !line?.canCall || line.status !== "active" || !device || deviceLineRef.current !== target.lineId || connection !== "ready") { setError("Connect an approved calling line before starting a call."); return; }
-    const key = JSON.stringify([target.lineId, target.to, target.conversationId]);
+    const key = JSON.stringify([target.lineId, target.to, target.conversationId, target.recipient]);
     if (!intentRequest.current || intentRequest.current.key !== key) intentRequest.current = { key, requestId: crypto.randomUUID() };
     const attempt = ++generation.current;
     let ownCallId: string | null = null;
     setPhase("connecting"); setCallerName(target.name || target.to);
     try {
-      const intent = await createVoiceIntentAction({ lineId: target.lineId, to: target.to, conversationId: target.conversationId, requestId: intentRequest.current.requestId });
+      const intent = await createVoiceIntentAction({ lineId: target.lineId, to: target.to, conversationId: target.conversationId, recipient: target.recipient, requestId: intentRequest.current.requestId });
       ownCallId = intent.callId;
       if (generation.current !== attempt || deviceRef.current !== device) { await endVoiceCallAction({ callId: intent.callId }); return; }
       callIdRef.current = intent.callId;

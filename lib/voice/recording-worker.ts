@@ -1,4 +1,5 @@
 import "server-only";
+import { captureCallMemory } from "@/lib/conversations/memory";
 import { randomUUID } from "node:crypto";
 import { getDatabasePool } from "@/lib/dashboard/db";
 import { getVoiceConfiguration } from "@/lib/voice-provider/config";
@@ -50,6 +51,7 @@ export async function runCallRecordingWorker() {
       } catch { failed++; await pool.query("UPDATE voice_call_recordings SET analysis_status='failed',analysis_error='Analysis could not finish. Check the service connection and review before retrying.',analysis_lease=NULL,analysis_lease_until=NULL WHERE id=$1 AND analysis_lease=$2 AND status='ready' AND expires_at>now()",[job.id,lease]); }
     }
   }
+  try { await captureCallMemory(); } catch { failed++; }
   const due=await pool.query(`SELECT 1 FROM voice_call_recordings r JOIN voice_calls c ON c.id=r.call_id AND c.workspace_id=r.workspace_id JOIN voice_lines l ON l.id=c.line_id AND l.workspace_id=c.workspace_id JOIN workspaces w ON w.id=c.workspace_id WHERE l.account_sid=$1 AND l.phone=$2 AND ((r.status<>'deleted' AND r.recording_sid IS NOT NULL AND (r.status='deleting' OR r.expires_at<=now()) AND r.deletion_attempts<10 AND r.delete_after<=now() AND (r.delete_lease_until IS NULL OR r.delete_lease_until<now())) OR ($3 AND w.status='active' AND r.analysis_status='queued' AND r.analysis_attempts<3 AND r.status='ready' AND r.expires_at>now())) LIMIT 1`,[config.accountSid,config.phoneNumber,analysisConfigured()]);
   return {checked,failed,more:Boolean(due.rowCount)};
 }
