@@ -6,17 +6,18 @@ Updated after the October 24, 2026 live Meta form test. Mail and SEO figures ret
 
 | Area | What is working | What is still unfinished |
 | --- | --- | --- |
-| Facebook / Instagram | The app is published, the Facebook Page is connected, and Jeffrey confirmed a Meta test-form submission appeared in CRM Leads. Austin previously confirmed website PageView and Lead tracking. | Verify an ordinary public submission, Instagram delivery if used, duplicate/recovery behavior and teammate access. Decide who checks and assigns incoming leads. |
+| Facebook / Instagram | The app is published, the Facebook Page is connected, and Jeffrey confirmed a Meta test-form submission appeared in CRM Leads. Austin previously confirmed website PageView and Lead tracking. | Resolve production permission/App Review requirements, then verify an ordinary public submission, Instagram delivery if used, duplicate/recovery behavior and teammate access. Decide who checks and assigns incoming leads. |
 | Shared Sales inbox | Sales is live. Jeffrey sees it; sending to Gmail, receiving the reply and saving/opening the image from mail storage were verified. | Austin and Devon's own sign-ins, opening the image inside Team Inbox, Hotmail delivery and the remaining team workflow checks. |
 | SEO monitoring | Free daily checks are enabled. All 14 registered pages were scanned successfully; scheduled background checks work. Google remains connected. | Observe the next day's complete scheduled scan. A scheduled check finding no work is different from completing a daily scan. |
 | SEO recommendations | The spending controls, proposal/review tools and publishing safeguards are implemented. | Connect the dedicated OpenAI key, review business facts, complete the model pilot and approve paid operation. Paid AI is still paused. |
 
 ## Meta leads — connection and remaining checks
 
-Austin assigned this connection to Jeffrey on October 23. Setup is now complete: **Tailored Agents New** is published, the **Tailored Agents** Facebook Page is connected, and incoming-form imports are enabled. The existing Pixel **1785858192683666** remains in place. On October 24, Jeffrey submitted a Meta test lead and confirmed it appeared in the dashboard's Leads list. The existing five-minute worker also continues to complete successfully. [Verified connection details](docs/META_SETUP.md#verified-live-connection--october-24-2026).
+Austin assigned this connection to Jeffrey on October 23. The technical connection and initial test are complete: **Tailored Agents New** is published, the **Tailored Agents** Facebook Page is connected, and incoming-form imports are enabled. Production permission approval is still unconfirmed; publication and a successful test do not establish that App Review is complete or unnecessary. The existing Pixel **1785858192683666** remains in place. On October 24, Jeffrey submitted a Meta test lead and confirmed it appeared in the dashboard's Leads list. The existing five-minute worker also continues to complete successfully. [Verified connection details](docs/META_SETUP.md#verified-live-connection--october-24-2026).
 
 Remaining work:
 
+- [ ] **Jeffrey with Codex:** inspect the actual permission/access statuses in Meta, starting with `leads_retrieval`, and resolve the App Review requirements for this own-business integration. Complete any required usage explanations, demonstrations and submissions. Meta's MCP review fields conflict; no completed review appears in its history. Do not infer approval or exemption from publication, token scopes or the successful test.
 - [ ] **Together:** submit an authorized ordinary public form and verify its saved answers. The successful Meta test-tool submission does not establish access to every customer or Instagram placement lead.
 - [ ] **Austin and Devon:** use their own accounts to open the received lead and confirm the details are useful for follow-up.
 - [ ] **Together:** check Instagram placement delivery and phone-only submissions if those are used.

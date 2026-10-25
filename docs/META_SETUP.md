@@ -2,7 +2,7 @@
 
 Connection owner: Jeffrey, assigned by Austin October 23, 2026. See [new jeffrey.md](../new%20jeffrey.md#meta-leads--connection-and-remaining-checks) for remaining acceptance checks. Austin retains business-account ownership and can supply needed asset access. Jeffrey's SEO and shared-email handoffs continue alongside this work.
 
-**Current acceptance:** the app is published, the Facebook Page and both webhook subscriptions are connected, and imports are enabled. Jeffrey confirmed a Meta test-form submission appeared in CRM Leads on October 24. Ordinary public submissions, Instagram placement delivery and the remaining live checks are still unverified. Austin previously confirmed website PageView and Lead events after a saved website-review inquiry. Pixel/Dataset ID is **1785858192683666**. Preserve this working installation; the setup sections below are reference, not a request to create duplicate assets. Conversions API is not implemented.
+**Current acceptance:** the app is published, the Facebook Page and both webhook subscriptions are connected, and imports are enabled. Jeffrey confirmed a Meta test-form submission appeared in CRM Leads on October 24. Production permission/App Review requirements remain unresolved; ordinary public submissions, Instagram placement delivery and the remaining live checks are still unverified. Austin previously confirmed website PageView and Lead events after a saved website-review inquiry. Pixel/Dataset ID is **1785858192683666**. Preserve this working installation; the setup sections below are reference, not a request to create duplicate assets. Conversions API is not implemented.
 
 ## Verified live connection — October 24, 2026
 
@@ -20,6 +20,10 @@ Connection owner: Jeffrey, assigned by Austin October 23, 2026. See [new jeffrey
 | Availability | Website, website sign-in and Mail sign-in returned 200 after the configuration deployment. |
 
 This establishes delivery from Meta's live testing tool into the CRM. It does not establish ordinary-public or Instagram-placement permission acceptance, an independent database duplicate count, or live interruption/recovery behavior. Remaining checks are maintained in [Jeffrey's checklist](../new%20jeffrey.md#meta-leads--connection-and-remaining-checks).
+
+**Permission review is an open gate.** After publication, Meta's MCP reports `UNSUBMITTED` and no previous review history, while other fields simultaneously report approval, rejection and a pending-submission restriction. These conflicting fields do not establish an actual rejection or completed approval. Inspect the permission statuses in the app dashboard, especially `leads_retrieval`, and record the applicable review outcome or confirmed own-business eligibility before declaring production permission readiness.
+
+Meta's [Marketing API use-case guide](https://developers.facebook.com/documentation/development/create-an-app/marketing-api-use-cases) distinguishes own/managed business data from other businesses' data and says webhooks themselves do not require App Review. Its [Lead Ads guide](https://developers.facebook.com/documentation/ads-commerce/marketing-api/guides/lead-ads) separately calls for App Review including `leads_retrieval` and `pages_manage_ads`. The generic own-business rules alone do not settle this app's lead-retrieval requirements. Prepare truthful usage explanations and demonstrations for permissions that Meta requires; do not request unrelated capabilities or represent a granted token scope as reviewed production access.
 
 The Page token was derived from a long-lived User token and reports no scheduled token expiry. It can still lose access following account, permission or security changes; keep monitoring failed imports and replace it privately when needed. Meta's contact-email verification flag remained false when publication was checked; Jeffrey should verify that contact address if Meta requests it. Publication itself is confirmed.
 
