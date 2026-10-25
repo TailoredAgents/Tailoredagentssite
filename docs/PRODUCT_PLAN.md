@@ -1,6 +1,6 @@
 # Tailored Agents product plan
 
-Last updated: October 24, 2026
+Last updated: October 25, 2026
 
 This document is the durable product and implementation plan for the Tailored Agents website, internal dashboard, future client Growth Hub, analytics platform, SEO workspace, and eventual SEO agent. It records the intended sequence, boundaries, data model, security posture, and completion criteria so future work does not drift from the business goals.
 
@@ -67,6 +67,18 @@ The immediate goal is not to launch a broad autonomous-agent platform. It is to 
 - A public interactive product demo.
 - A generally available standardized website-agent or operations-agent catalog; the public site describes a limited founding-client rollout without claiming that every listed capability is operational.
 - Paid SEO recommendations and the first real reviewed metadata publication: the implementation exists, but activation awaits the dedicated key, business-facts review and model pilot. Broader content generation/publishing, city-ranking measurements and client-site SEO remain later work.
+
+### Current source capabilities — October 24
+
+The following extends the earlier operations/measurement summary. Implementation and recorded production acceptance remain distinct:
+
+- Manual leads require phone or email; business/contact names are optional. Confirmed deletion removes the lead and its derived memory while preserving linked sales, client, project and conversation records.
+- The unified Inbox combines permitted email, SMS, calls and internal notes with assignment, reminders and private drafts. New conversation chooses a contact or lead, reuses authorized history and prefills missing channels. Migration **0019** supports separate recipient drafts.
+- Browser calling, voicemail, connected-call recordings, transcripts, summaries and reviewed follow-up tasks are implemented. The owner has confirmed working SMS/calling and recording/analysis setup; the [recording guide](CALL_RECORDINGS.md) distinguishes that confirmation from independent live checks.
+- AI email/SMS suggestions go into the editable composer; sending remains a separate human action. Source-backed client briefs support manual edits, call takeaways and fact extraction during message generation. Migration **0020** adds permission-scoped, 24-month memory. See [Inbox behavior](UNIFIED_INBOX.md).
+- The private iPhone companion provides Mail and Dashboard tabs using the existing deployments; installation/sign-in and selected attachment checks have owner confirmation. It requires internet access. See [the iPhone guide](../apps/ios/README.md).
+
+General-email-to-lead conversion, richer dashboard email composing, team coverage and the next account-assistant phase remain development work. Client briefs do not enable autonomous customer outreach, automatic scheduling or project/billing changes. Follow the [active roadmap](AGENCY_OS_ROADMAP.md) for sequence; dated decisions below are historical context, not current activation instructions.
 
 
 ### October 21 agency operating-system expansion

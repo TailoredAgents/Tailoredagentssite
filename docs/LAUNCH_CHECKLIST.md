@@ -4,6 +4,8 @@ Use this checklist for the public website and private dashboard. The mail applic
 
 ## Current activation work — October 24
 
+Documentation reconciliation on October 25 aligned the overview and guides with optional lead business names, confirmed lead deletion, contact-first Inbox entry, call recordings/follow-ups, AI drafts and client briefs through migration **0020**. This was a source/documentation check, not a new deployment acceptance or test-suite run; no open production checks were marked complete. The current development queue is in [the active roadmap](AGENCY_OS_ROADMAP.md), and [JEFFREY.md](../JEFFREY.md) is historical.
+
 [Jeffrey's handoff](../new%20jeffrey.md) is the single current checklist for Meta, shared Sales email and the internal SEO manager. It records exact deployed versions and test evidence. Sales setup/grants and Gmail delivery are verified; the remaining team checks are still open. Free SEO monitoring and the existing shared worker are live; paid AI remains paused pending the dedicated key, facts review and model pilot. Meta is published and connected, and Jeffrey confirmed a live test-form submission appeared in CRM Leads. Ordinary public/Instagram delivery and the remaining production checks are still open.
 
 Use the handoff to update those remaining items instead of duplicating them below. Dated release sections retain historical evidence; an earlier unchecked setup item must not override later recorded completion. Other public-site and product gates below remain separate.
@@ -12,7 +14,7 @@ Use the handoff to update those remaining items instead of duplicating them belo
 
 - [ ] Review `docs/PRODUCT_PLAN.md` and update phase status when capabilities change.
 - [ ] Confirm public copy distinguishes current production features from illustrative or planned product direction.
-- [ ] Confirm the Growth Hub is not described as included client access until Phase 4 is operational.
+- [ ] Confirm the Growth Hub is not described as included client access until the active roadmap's Release 5 client-access gates pass.
 - [ ] Confirm the SEO agent is not described as active until its evaluation, approval, and audit controls pass.
 - [ ] Confirm founding-client agent pricing is described as a limited rollout rather than general availability, and that $0 setup is limited to the approved standard configuration.
 - [ ] Confirm usage, outside software, nonstandard integrations, compliance work, and custom development are not implied to be included in the introductory monthly price.
@@ -122,6 +124,7 @@ Use the handoff to update those remaining items instead of duplicating them belo
 
 ## After each release
 
+- [ ] Update the current overview, behavior and setup instructions in the same change as the implementation; reconcile superseded statements rather than only appending release notes. Keep test/deployment evidence dated and link to the single current acceptance checklist.
 - [ ] Monitor Render health, migration output, authentication errors, database capacity, and failed email delivery without logging message contents or secrets.
 - [ ] Review dependency advisories and rerun the full verification gate.
 - [ ] Confirm an owner for content, dependency, privacy, data-retention, case-study, and dashboard-access updates.

@@ -1,16 +1,18 @@
-# Jeffrey technical handoff: production closeout and product roadmap
+# Historical Jeffrey technical handoff
 
-## Current ownership — October 21 clarification
+## Current routing — October 25, 2026
 
-Jeffrey's current assignment is **email activation only**, using [new jeffrey.md](new%20jeffrey.md). The project owner handles Twilio setup, SMS, calling, recordings, transcripts and the remaining agency development with Codex. Earlier broad technical assignments and execution instructions below are historical where they conflict with this scope. They do not assign the remaining roadmap or Twilio account configuration to Jeffrey. Follow [the active roadmap](docs/AGENCY_OS_ROADMAP.md) for the development resume point.
+Use [new jeffrey.md](new%20jeffrey.md) for Jeffrey's current Meta permission/delivery checks, shared Sales acceptance and SEO activation work. Use the opening of [the active roadmap](docs/AGENCY_OS_ROADMAP.md) for the development resume point and [AGENTS.md](AGENTS.md) for repository workflow. The owner has confirmed working SMS, calling and recording/analysis setup; do not repeat initial activation based on older checklists.
 
-## Active agency OS direction — October21
+Everything below is the retained historical handoff. Its assignments, setup tasks, roadmap order, verification totals and execution instructions describe earlier releases; they do not authorize new work or override the current documents. If asked to read or follow this file, resolve the current task through the references above. Preserve the historical evidence when maintaining these documents.
+
+## Historical agency OS direction — October 21
 
 The owner's new brief authorizes the internal CRM expansion and changes the priorities below. Follow `docs/AGENCY_OS_ROADMAP.md` for the active sequence: prospecting/sales foundation, unified communications, Factory/proposals/delivery, recurring services and bounded SEO assistance, then client Growth Hub. SEO/internal-AI architecture is planned alongside sales. Preserve BatchDialer, standalone Factory output, public pricing, Mail and current integrations. The first sales source release is implemented; see that roadmap for actual release acceptance and remaining provider actions. Older Google activation and portal-first instructions below are historical where superseded, not authority to redo completed activation or delay authorized CRM work.
 
-## Instructions to Jeffrey's Codex IDE
+## Historical instructions to Jeffrey's Codex IDE
 
-If Jeffrey asks you only to read or follow `JEFFREY.md`, treat this file as the full task brief and begin the workflow below. Do not require him to restate the roadmap in chat.
+The following workflow was part of the earlier assignment and is retained for context. It is superseded by the current routing above; do not start its master execution sequence from this archived brief.
 
 1. Read this entire file before taking action. Do not stop after the Search Console section; the later sections define the complete product roadmap and safety gates.
 2. Read `AGENTS.md`, `README.md`, `docs/PRODUCT_PLAN.md`, and `docs/LAUNCH_CHECKLIST.md` completely.
