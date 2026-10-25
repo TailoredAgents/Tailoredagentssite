@@ -168,3 +168,16 @@ Local verification: the full application/database suite passed 420 checks before
 - Browser acceptance: `npm run test:meta:browser`. Uses the existing disposable reporting browser fixture, a production build and intercepted synthetic Meta script. It makes no requests to a real Pixel or lead account.
 - [Meta Lead object fields — official Business SDK](https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/lead.py), [official API version](https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/apiconfig.py), [Page subscriptions — official Business SDK](https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/page.py).
 - Setup references: [Meta lead retrieval](https://developers.facebook.com/docs/marketing-api/guides/lead-ads/retrieving/), [Page webhooks](https://developers.facebook.com/docs/graph-api/webhooks/), [Pixel implementation](https://developers.facebook.com/docs/meta-pixel/implementation/), [Lead Ads Testing Tool](https://developers.facebook.com/tools/lead-ads-testing/). Meta's documentation site rate-limited automated retrieval during development; verify current app UI access/review requirements during activation.
+
+
+## Team SMS alerts (October 25, 2026)
+
+Owners and admins can manage **Settings → Lead SMS alerts**. Enable alerts and add each teammate's name and mobile number (10-digit US entry is supported). The existing connected, active Twilio SMS number sends the alerts. No new provider credentials or webhook URL are needed.
+
+Only newly imported Facebook/Instagram Instant Form leads enqueue alerts; saving settings does not notify for old leads. The alert contains the lead's name and an authenticated CRM link, not their form answers. Each import and receiving number has one durable receipt. Webhook retries and overlapping workers do not duplicate sends. Alerts do not create customer Inbox conversations.
+
+The signed Meta webhook imports and dispatches alerts after acknowledging the durable receipt; the existing five-minute worker recovers queued work. Twilio's signed SMS status endpoint records delivery. Settings shows recent results. Paused or unavailable sending can delay alerts; queued alerts older than 24 hours are cancelled. Removing a recipient or disabling alerts cancels their unsent jobs. An already-started send may finish. Blocked recipients are not sent to.
+
+A provider rejection is shown as failed. A timeout or interrupted send is shown as unconfirmed and is **not automatically resent**, because Twilio may have accepted it. Check the Twilio message log before any manual follow-up. Lead imports remain saved even if SMS fails.
+
+Acceptance check: submit a new Meta test lead, confirm one CRM lead, one SMS per enabled teammate, and a delivered status in Settings. Never put personal recipient numbers or live credentials into repository files.

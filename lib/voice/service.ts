@@ -277,7 +277,7 @@ async function ensureConversation(
 ) {
   let v = (
     await db.query<{ id: string }>(
-      "SELECT id FROM voice_conversations WHERE workspace_id=$1 AND line_id=$2 AND remote_phone=$3",
+      "SELECT id FROM voice_conversations WHERE workspace_id=$1 AND line_id=$2 AND remote_phone=$3 AND deleted_at IS NULL",
       [workspaceId, lineId, remote],
     )
   ).rows[0];
@@ -309,7 +309,7 @@ async function ensureConversation(
   if (!canonical && remote.startsWith("+")) {
     const matches = (
       await db.query<{ id: string }>(
-        `SELECT DISTINCT c.id FROM crm_conversations c LEFT JOIN contacts p ON p.id=c.contact_id AND p.workspace_id=c.workspace_id LEFT JOIN leads l ON l.id=c.lead_id AND l.workspace_id=c.workspace_id LEFT JOIN crm_conversation_sources s ON s.conversation_id=c.id AND s.workspace_id=c.workspace_id LEFT JOIN sms_conversations sc ON sc.id=s.sms_conversation_id AND sc.workspace_id=s.workspace_id WHERE c.workspace_id=$1 AND c.merged_into_id IS NULL AND (crm_normalized_phone(p.phone)=$2 OR crm_normalized_phone(l.phone)=$2 OR sc.remote_phone=$2) LIMIT 2`,
+        `SELECT DISTINCT c.id FROM crm_conversations c LEFT JOIN contacts p ON p.id=c.contact_id AND p.workspace_id=c.workspace_id LEFT JOIN leads l ON l.id=c.lead_id AND l.workspace_id=c.workspace_id LEFT JOIN crm_conversation_sources s ON s.conversation_id=c.id AND s.workspace_id=c.workspace_id LEFT JOIN sms_conversations sc ON sc.id=s.sms_conversation_id AND sc.workspace_id=s.workspace_id WHERE c.workspace_id=$1 AND c.merged_into_id IS NULL AND c.deleted_at IS NULL AND (crm_normalized_phone(p.phone)=$2 OR crm_normalized_phone(l.phone)=$2 OR sc.remote_phone=$2) LIMIT 2`,
         [workspaceId, remote],
       )
     ).rows;
@@ -401,7 +401,7 @@ export async function createVoiceIntent(
       throw new VoiceInputError("The phone number must match the selected customer. Refresh their contact details first.");
     async function linkRecipient(conversationId: string) {
       if (!recipient) return;
-      const row = (await db.query<{contact_id:string|null;lead_id:string|null;business_id:string|null}>("SELECT contact_id,lead_id,business_id FROM crm_conversations WHERE workspace_id=$1 AND id=$2 AND merged_into_id IS NULL FOR UPDATE", [context.workspace.id, conversationId])).rows[0];
+      const row = (await db.query<{contact_id:string|null;lead_id:string|null;business_id:string|null}>("SELECT contact_id,lead_id,business_id FROM crm_conversations WHERE workspace_id=$1 AND id=$2 AND merged_into_id IS NULL AND deleted_at IS NULL FOR UPDATE", [context.workspace.id, conversationId])).rows[0];
       if (!row || !recipientMatchesConversation(recipient, row, [i.to]))
         throw new VoiceInputError("This phone history belongs to another CRM record. Review its customer link before calling.");
       await db.query(`UPDATE crm_conversations SET ${recipient.kind === "lead" ? "lead_id" : "contact_id"}=$3,business_id=COALESCE(business_id,$4),updated_at=now() WHERE workspace_id=$1 AND id=$2`, [context.workspace.id, conversationId, recipient.id, recipient.businessId]);
@@ -1145,6 +1145,8 @@ export async function receiveVoicemailStatus(
       "INSERT INTO voice_voicemails(id,workspace_id,call_id,recording_sid,status,duration) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(recording_sid) DO UPDATE SET status=EXCLUDED.status,duration=EXCLUDED.duration",
       [randomUUID(), c.workspace_id, c.id, recording, status, duration],
     );
+    await db.query(`UPDATE voice_voicemails m SET expires_at=now(),status='deleting',delete_after=now() FROM voice_conversations v
+      WHERE m.workspace_id=$1 AND m.call_id=$2 AND v.workspace_id=m.workspace_id AND v.id=$3 AND v.deleted_at IS NOT NULL AND m.status<>'deleted'`, [c.workspace_id,c.id,c.voice_conversation_id]);
     await refreshSource(db, c.workspace_id, c.voice_conversation_id);
   });
 }

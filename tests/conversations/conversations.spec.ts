@@ -419,3 +419,22 @@ test("client brief saves edits, controls draft context, and removes remembered f
   await brief.getByRole("button",{name:"Remove fact",exact:true}).click();
   await expect(brief.getByText("Prefers email before meetings.",{exact:true})).toHaveCount(0);
 });
+
+
+test("saves team lead alert recipients and shows the settings on desktop and phone", async ({page}, info) => {
+  await signIn(page);
+  await page.goto("/dashboard/settings#lead-alerts");
+  const section=page.getByRole("region",{name:"Lead SMS alerts",exact:true});
+  await section.getByLabel("Recipient 1 name",{exact:true}).fill("Fixture Owner");
+  await section.getByLabel("Recipient 1 mobile number",{exact:true}).fill("2125550123");
+  await section.getByRole("checkbox").check();
+  await section.getByRole("button",{name:"Save lead alerts",exact:true}).click();
+  await expect(section.getByRole("status")).toContainText("Lead alerts saved");
+  await page.reload();
+  await expect(section.getByLabel("Recipient 1 mobile number",{exact:true})).toHaveValue("+12125550123");
+  await expect(section.getByRole("checkbox")).toBeChecked();
+  await section.scrollIntoViewIfNeeded();
+  expect((await new AxeBuilder({page}).include('#lead-alerts').withTags(["wcag2a","wcag2aa"]).analyze()).violations).toEqual([]);
+  await page.screenshot({path:`test-results/lead-alerts-${info.project.name}.png`,fullPage:false,style:"nextjs-portal{display:none!important;}"});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+});

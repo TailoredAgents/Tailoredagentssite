@@ -1,3 +1,4 @@
+import { runLeadAlertWorker } from "@/lib/meta/lead-alerts";
 import { timingSafeEqual } from "node:crypto";
 import { after } from "next/server";
 import { ZodError } from "zod";
@@ -66,6 +67,7 @@ export async function POST(request: Request) {
     after(async () => {
       try {
         await runMetaLeadWorker();
+        await runLeadAlertWorker();
       } catch {
         console.error("meta_lead_worker_failed");
       }

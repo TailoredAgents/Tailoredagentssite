@@ -1,4 +1,5 @@
 import "server-only";
+import { enqueueLeadAlerts } from "./lead-alerts";
 import { randomUUID } from "node:crypto";
 import { getDatabasePool, insertAuditLog } from "@/lib/dashboard/db";
 import type { DashboardContext } from "@/lib/dashboard/data";
@@ -108,6 +109,7 @@ export async function runMetaLeadWorker() {
         "UPDATE meta_lead_events SET status='imported',lead_id=$3,imported_at=now(),error_code=NULL,lease_token=NULL,lease_expires_at=NULL WHERE id=$1 AND lease_token=$2",
         [job.id, lease, leadId],
       );
+      await enqueueLeadAlerts(client, workspaceId, job.id, leadId);
       await insertAuditLog(client, {
         workspaceId,
         action: "lead.received",

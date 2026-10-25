@@ -127,7 +127,7 @@ async function conversationRow(
 ) {
   const row = (
     await db.query<{ id: string; remote_phone: string }>(
-      "SELECT id,remote_phone FROM sms_conversations WHERE workspace_id=$1 AND number_id=$2 AND id=$3",
+      "SELECT id,remote_phone FROM sms_conversations WHERE workspace_id=$1 AND number_id=$2 AND id=$3 AND deleted_at IS NULL",
       [context.workspace.id, numberId, id],
     )
   ).rows[0];
@@ -143,7 +143,7 @@ async function ensureConversation(
 ) {
   return (
     await db.query<{ id: string; remote_phone: string }>(
-      "INSERT INTO sms_conversations(id,workspace_id,number_id,remote_phone) VALUES($1,$2,$3,$4) ON CONFLICT(workspace_id,number_id,remote_phone) DO UPDATE SET remote_phone=EXCLUDED.remote_phone RETURNING id,remote_phone",
+      "INSERT INTO sms_conversations(id,workspace_id,number_id,remote_phone) VALUES($1,$2,$3,$4) ON CONFLICT(workspace_id,number_id,remote_phone) WHERE deleted_at IS NULL DO UPDATE SET remote_phone=EXCLUDED.remote_phone RETURNING id,remote_phone",
       [randomUUID(), workspaceId, numberId, phone],
     )
   ).rows[0];
