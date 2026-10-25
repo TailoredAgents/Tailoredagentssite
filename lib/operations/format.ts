@@ -1,6 +1,29 @@
-/** Keep an unknown business blank in storage while giving the lead a useful title. */
-export function leadDisplayName(lead: { organization?: string | null; name?: string | null; phone?: string | null; email?: string | null }) {
-  return lead.organization?.trim() || (lead.name?.trim() !== "Business contact" ? lead.name?.trim() : "") || lead.phone?.trim() || lead.email?.trim() || "Unnamed lead";
+type LeadIdentity = { organization?: string | null; name?: string | null; phone?: string | null; email?: string | null };
+
+/** Exact placeholder answers only: real names such as "None Such Studio" survive. */
+export function cleanLeadCompany(value?: string | null) {
+  const company = value?.trim() || "";
+  return /^(?:none|n\s*[/.]?\s*a\.?|null|not applicable|not available|no company|no business|not yet|[-–—]+)$/i.test(company) ? "" : company;
+}
+
+/** Leads represent people; the company is supporting context. */
+export function leadDisplayName(lead: LeadIdentity) {
+  const person = lead.name?.trim();
+  return (person && person !== "Business contact" ? person : "") || cleanLeadCompany(lead.organization) || lead.phone?.trim() || lead.email?.trim() || "Unnamed lead";
+}
+
+export function leadCompanyName(lead: LeadIdentity) {
+  const company = cleanLeadCompany(lead.organization);
+  return company.toLowerCase() === leadDisplayName(lead).toLowerCase() ? "" : company;
+}
+
+/** Business/client creation still prefers a real company when supplied. */
+export function leadBusinessName(lead: LeadIdentity) {
+  return cleanLeadCompany(lead.organization) || leadDisplayName(lead);
+}
+
+export function leadOptionLabel(lead: LeadIdentity) {
+  return [leadDisplayName(lead), leadCompanyName(lead)].filter(Boolean).join(" — ");
 }
 
 export function formatOperationalDate(value: string | null | undefined, options?: { dateOnly?: boolean }) {

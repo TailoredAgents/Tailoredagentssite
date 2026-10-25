@@ -1,4 +1,4 @@
-import { leadDisplayName } from "@/lib/operations/format";
+import { leadDisplayName, leadBusinessName } from "@/lib/operations/format";
 import "server-only";
 import { randomUUID, createHash } from "node:crypto";
 import type { PoolClient } from "pg";
@@ -736,7 +736,7 @@ export async function linkInquiry(context: DashboardContext, leadId: string) {
     if (!business)
       business = (
         await ensureBusiness(db, context, {
-          businessName: leadDisplayName(l),
+          businessName: leadBusinessName(l),
           email: l.email ?? undefined,
           phone: l.phone ?? undefined,
           websiteUrl: l.website_url ?? undefined,

@@ -1,4 +1,4 @@
-import { leadDisplayName } from "@/lib/operations/format";
+import { leadDisplayName, leadCompanyName, leadBusinessName } from "@/lib/operations/format";
 import { RecordFacts } from "@/components/dashboard/record-facts";
 import { DeleteLeadButton } from "@/components/dashboard/delete-lead-button";
 import type { Metadata } from "next";
@@ -75,6 +75,7 @@ export default async function LeadPage({
                   : "Project inquiry"}
             </span>
             <h1>{leadDisplayName(lead)}</h1>
+            {leadCompanyName(lead) && <p>{leadCompanyName(lead)}</p>}
             <p>
               {meta ? `Received in the CRM on ${formatOperationalDate(lead.createdAt)}.` : manual
                 ? `Added manually on ${formatOperationalDate(lead.createdAt)}.`
@@ -339,7 +340,7 @@ export default async function LeadPage({
                       <span>Client name</span>
                       <input
                         name="clientName"
-                        defaultValue={leadDisplayName(lead)}
+                        defaultValue={leadBusinessName(lead)}
                         required
                         minLength={2}
                         maxLength={160}
@@ -349,7 +350,7 @@ export default async function LeadPage({
                       <span>Initial project</span>
                       <input
                         name="projectName"
-                        defaultValue={`${leadDisplayName(lead)} — Initial engagement`}
+                        defaultValue={`${leadBusinessName(lead)} — Initial engagement`}
                         required
                         minLength={2}
                         maxLength={180}

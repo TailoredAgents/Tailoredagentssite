@@ -1,3 +1,4 @@
+import { leadDisplayName, leadCompanyName, leadBusinessName } from "@/lib/operations/format";
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { boundedBody, mapMetaLead, signedMetaBody } from "./validation";
@@ -36,12 +37,25 @@ describe("Meta payload boundaries", () => {
     });
     expect(lead).toMatchObject({
       name: "Example Person",
-      organization: "Example Person",
+      organization: "",
       email: null,
       phone: "+16785550101",
       context: { platform: "instagram" },
     });
     expect(lead.description).toContain("your goal: Improve my website");
+  });
+  it.each(["None", " NONE ", "N/A", "n.a.", "Not applicable", "No company", "Not yet", "—"])("keeps a person's identity when the company answer is %s", company => {
+    const lead=mapMetaLead({id:"111111",form_id:"222222",created_time:"2026-10-23T16:00:00Z",field_data:[{name:"full_name",values:["Jordan Smith"]},{name:"company_name",values:[company]}]});
+    expect(lead.organization).toBe("");
+    expect(leadDisplayName({...lead,organization:company})).toBe("Jordan Smith");
+    expect(leadCompanyName({...lead,organization:company})).toBe("");
+    expect(lead.description).toContain(company);
+  });
+  it("shows a real business second but preserves it for business conversion", () => {
+    const lead={name:"Jordan Smith",organization:"None Such Studio"};
+    expect(leadDisplayName(lead)).toBe("Jordan Smith");
+    expect(leadCompanyName(lead)).toBe("None Such Studio");
+    expect(leadBusinessName(lead)).toBe("None Such Studio");
   });
   it("retains malformed contact answers as context without turning them into links", () => {
     const lead = mapMetaLead({

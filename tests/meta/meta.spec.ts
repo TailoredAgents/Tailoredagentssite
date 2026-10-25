@@ -158,7 +158,7 @@ test("Meta leads and source details fit the CRM and connection status is honest"
   await pool.query(
     `INSERT INTO leads(id,workspace_id,name,organization,email,source,description,delivery_status,meta_context)
     VALUES($1,'00000000-0000-4000-8000-000000000001','Example contact','Meta browser lead','meta-browser@example.test','facebook','What do you need: A business website','not_configured',$2::jsonb)
-    ON CONFLICT(id) DO NOTHING`,
+    ON CONFLICT(id) DO UPDATE SET organization=EXCLUDED.organization`,
     [
       fixtureId,
       JSON.stringify({
@@ -181,7 +181,11 @@ test("Meta leads and source details fit the CRM and connection status is honest"
   await expect(page.getByLabel("Filter leads by source")).toHaveValue(
     "facebook",
   );
-  await page.getByRole("link", { name: /Meta browser lead/ }).click();
+  const leadRow = page.getByRole("link", { name: /Meta browser lead/ });
+  await expect(leadRow.locator('strong').first()).toHaveText("Example contact");
+  await expect(leadRow.locator('small').first()).toHaveText("Meta browser lead");
+  await leadRow.click();
+  await expect(page.getByRole("heading",{name:"Example contact",exact:true})).toBeVisible();
   await expect(
     page.getByText("Website launch campaign", { exact: true }),
   ).toBeVisible();
@@ -200,6 +204,13 @@ test("Meta leads and source details fit the CRM and connection status is honest"
   await page.screenshot({
     path: `test-results/meta-previews/lead-${info.project.name}.png`,
   });
+  await pool.query("UPDATE leads SET organization='None' WHERE id=$1", [fixtureId]);
+  await page.goto("/dashboard/leads?source=facebook");
+  const personRow = page.getByRole("link", { name: /Example contact/ });
+  await expect(personRow.locator('strong').first()).toHaveText("Example contact");
+  await expect(personRow).not.toContainText("None");
+  await personRow.click();
+  await expect(page.getByRole("heading", { name: "Example contact", exact: true })).toBeVisible();
   await page.goto("/dashboard/settings#meta");
   await expect(
     page.getByRole("heading", { name: "Facebook & Instagram", exact: true }),

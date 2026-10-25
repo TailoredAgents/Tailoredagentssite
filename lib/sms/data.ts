@@ -1,3 +1,4 @@
+import { leadOptionLabel } from "@/lib/operations/format";
 import "server-only";
 import type { DashboardContext } from "@/lib/dashboard/data";
 import { getDatabasePool } from "@/lib/dashboard/db";
@@ -266,8 +267,8 @@ export async function listSmsWorkspace(
       `SELECT id,name,client_id AS "clientId" FROM crm_businesses WHERE workspace_id=$1 AND anonymized_at IS NULL ORDER BY name LIMIT 500`,
       [context.workspace.id],
     ),
-    pool.query<{ id: string; name: string }>(
-      `SELECT id,organization || ' — ' || name AS name FROM leads WHERE workspace_id=$1 AND status<>'archived' ORDER BY created_at DESC LIMIT 500`,
+    pool.query<{ id: string; name: string; organization: string; phone: string | null; email: string | null }>(
+      `SELECT id,name,organization,phone,email FROM leads WHERE workspace_id=$1 AND status<>'archived' ORDER BY created_at DESC LIMIT 500`,
       [context.workspace.id],
     ),
     privateDraft(context, number.id),
@@ -293,7 +294,7 @@ export async function listSmsWorkspace(
     selected,
     composeDraft,
     members: members.rows,
-    links: { businesses: businesses.rows, leads: leads.rows },
+    links: { businesses: businesses.rows, leads: leads.rows.map(lead => ({ id: lead.id, name: leadOptionLabel(lead) })) },
   };
 }
 export async function listSmsSettings(

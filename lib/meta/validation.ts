@@ -1,3 +1,4 @@
+import { cleanLeadCompany } from "@/lib/operations/format";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { normalizePhone } from "@/lib/sales/import";
@@ -104,11 +105,7 @@ export function mapMetaLead(raw: unknown) {
   const phone = fields.get("phone_number") || fields.get("phone") || null;
   return {
     name: name.slice(0, 200),
-    organization: (
-      fields.get("company_name") ||
-      fields.get("business_name") ||
-      name
-    ).slice(0, 200),
+    organization: (cleanLeadCompany(fields.get("company_name")) || cleanLeadCompany(fields.get("business_name"))).slice(0, 200),
     email,
     phone: phone ? normalizePhone(phone) : null,
     description: lead.field_data

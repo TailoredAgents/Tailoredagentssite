@@ -1,3 +1,4 @@
+import { leadOptionLabel } from "@/lib/operations/format";
 import "server-only";
 import { loadClientMemory } from "./memory";
 import type { DashboardContext } from "@/lib/dashboard/data";
@@ -74,8 +75,8 @@ export async function listConversationWorkspace(
         `SELECT id,name,client_id AS "clientId" FROM crm_businesses WHERE workspace_id=$1 AND anonymized_at IS NULL ORDER BY name LIMIT 500`,
         [context.workspace.id],
       ),
-      pool.query<{ id: string; name: string }>(
-        `SELECT id,concat_ws(' — ',NULLIF(organization,''),name) AS name FROM leads WHERE workspace_id=$1 AND anonymized_at IS NULL AND status<>'archived' ORDER BY created_at DESC LIMIT 500`,
+      pool.query<{ id: string; name: string; organization: string; phone: string | null; email: string | null }>(
+        `SELECT id,name,organization,phone,email FROM leads WHERE workspace_id=$1 AND anonymized_at IS NULL AND status<>'archived' ORDER BY created_at DESC LIMIT 500`,
         [context.workspace.id],
       ),
       pool.query<{ id: string; name: string; businessId: string | null }>(
@@ -425,7 +426,7 @@ export async function listConversationWorkspace(
     members: members.rows,
     links: {
       businesses: businesses.rows,
-      leads: leads.rows,
+      leads: leads.rows.map(lead => ({ id: lead.id, name: leadOptionLabel(lead) })),
       contacts: contacts.rows,
     },
     mergeTargets: all
