@@ -4,7 +4,7 @@ Use this checklist for the public website and private dashboard. The mail applic
 
 ## Current activation work — October 24
 
-[Jeffrey's handoff](../new%20jeffrey.md) is the single current checklist for Meta, shared Sales email and the internal SEO manager. It records exact deployed versions and test evidence. Sales setup/grants and Gmail delivery are verified; the remaining team checks are still open. Free SEO monitoring and the existing shared worker are live; paid AI remains paused pending the dedicated key, facts review and model pilot. Meta website events are owner-confirmed, while real advertising-form imports remain unverified.
+[Jeffrey's handoff](../new%20jeffrey.md) is the single current checklist for Meta, shared Sales email and the internal SEO manager. It records exact deployed versions and test evidence. Sales setup/grants and Gmail delivery are verified; the remaining team checks are still open. Free SEO monitoring and the existing shared worker are live; paid AI remains paused pending the dedicated key, facts review and model pilot. Meta is published and connected, and Jeffrey confirmed a live test-form submission appeared in CRM Leads. Ordinary public/Instagram delivery and the remaining production checks are still open.
 
 Use the handoff to update those remaining items instead of duplicating them below. Dated release sections retain historical evidence; an earlier unchecked setup item must not override later recorded completion. Other public-site and product gates below remain separate.
 

@@ -1,26 +1,26 @@
 # Jeffrey — current status and remaining work
 
-Updated October 24, 2026. Production evidence below was last checked at **21:25 UTC**. This is the main status checklist for Jeffrey's Meta, shared Sales email and SEO work. Setup commands live in the linked guides. Older release records describe what was true on their recorded dates; completed setup does not need repeating.
+Updated after the October 24, 2026 live Meta form test. Mail and SEO figures retain their recorded verification times below. This is the main status checklist for Jeffrey's Meta, shared Sales email and SEO work. Setup commands live in the linked guides. Older release records describe what was true on their recorded dates; completed setup does not need repeating.
 
 ## Current state
 
 | Area | What is working | What is still unfinished |
 | --- | --- | --- |
-| Facebook / Instagram | Austin confirmed website PageView and Lead tracking. The form-import code is deployed. | Connect the business Page to the CRM and prove real advertising-form submissions arrive. Website tracking alone does not import those forms. |
+| Facebook / Instagram | The app is published, the Facebook Page is connected, and Jeffrey confirmed a Meta test-form submission appeared in CRM Leads. Austin previously confirmed website PageView and Lead tracking. | Verify an ordinary public submission, Instagram delivery if used, duplicate/recovery behavior and teammate access. Decide who checks and assigns incoming leads. |
 | Shared Sales inbox | Sales is live. Jeffrey sees it; sending to Gmail, receiving the reply and saving/opening the image from mail storage were verified. | Austin and Devon's own sign-ins, opening the image inside Team Inbox, Hotmail delivery and the remaining team workflow checks. |
 | SEO monitoring | Free daily checks are enabled. All 14 registered pages were scanned successfully; scheduled background checks work. Google remains connected. | Observe the next day's complete scheduled scan. A scheduled check finding no work is different from completing a daily scan. |
 | SEO recommendations | The spending controls, proposal/review tools and publishing safeguards are implemented. | Connect the dedicated OpenAI key, review business facts, complete the model pilot and approve paid operation. Paid AI is still paused. |
 
-## Meta leads — remaining connection assigned to Jeffrey
+## Meta leads — connection and remaining checks
 
-Austin assigned this connection to Jeffrey on October 23. Coordinate business-account access with Austin. Reuse the existing business portfolio, Facebook Page, ad account and Pixel **1785858192683666**; do not install another tracking snippet.
+Austin assigned this connection to Jeffrey on October 23. Setup is now complete: **Tailored Agents New** is published, the **Tailored Agents** Facebook Page is connected, and incoming-form imports are enabled. The existing Pixel **1785858192683666** remains in place. On October 24, Jeffrey submitted a Meta test lead and confirmed it appeared in the dashboard's Leads list. The existing five-minute worker also continues to complete successfully. [Verified connection details](docs/META_SETUP.md#verified-live-connection--october-24-2026).
 
 Remaining work:
 
-- [ ] **Jeffrey with Austin:** identify the correct Facebook Page and arrange access to its Meta developer app and leads.
-- [ ] **Jeffrey with Codex:** securely connect the app/Page credentials and incoming-form notifications to the existing website. Complete any permissions or publishing requirements shown in Meta.
-- [ ] **Together:** submit a test form, then an authorized ordinary public form. Verify one CRM lead with the correct details, no duplicates and access for Austin/Devon. Check Instagram too if it is used.
-- [ ] **Codex:** verify interrupted imports resume and failed imports can be retried after fixing access.
+- [ ] **Together:** submit an authorized ordinary public form and verify its saved answers. The successful Meta test-tool submission does not establish access to every customer or Instagram placement lead.
+- [ ] **Austin and Devon:** use their own accounts to open the received lead and confirm the details are useful for follow-up.
+- [ ] **Together:** check Instagram placement delivery and phone-only submissions if those are used.
+- [ ] **Codex:** complete live duplicate/recovery checks: replay the same provider lead without creating another CRM record, resume interrupted imports and retry failed imports after fixing access. Existing automated coverage is separate from these production checks.
 - [ ] **Jeffrey with Austin:** decide who checks and assigns new leads, and verify any chosen alert method. Imported Meta leads currently arrive unassigned and do **not** automatically email the team or contact the customer. Older form submissions are not imported automatically.
 
 Technical steps and interim alert options: [Meta setup](docs/META_SETUP.md). Website inquiry emails are a separate, working Resend feature; they do not prove Meta alerts work. No new paid alert service has been activated.
@@ -58,7 +58,11 @@ The next complete daily scan also needs observation while paid AI remains paused
 
 ## Release evidence
 
-These are recorded results, not a new production test performed during this documentation cleanup. Credentials, backups and private verification files remain outside Git.
+The Meta connection was verified separately after the earlier Sales/SEO release. Credentials, backups and private verification files remain outside Git.
+
+- **Meta activation:** website source `91d6d55`, configuration deployment `dep-dbek4o7b9u1s73a0c830`, live October 24 at **23:42:58 UTC**. App publication, credentials, both webhook subscriptions and receiver verification were checked. Meta records the test submission at **23:56:36 UTC**; Jeffrey confirmed it appeared in CRM Leads. Scheduled runs completed successfully at **23:45:25**, **23:50:21** and **23:55:17 UTC**. See the [Meta evidence](docs/META_SETUP.md#verified-live-connection--october-24-2026) for scope and remaining checks.
+
+The table and automated test totals below describe the **earlier October 24 Sales/SEO release, checked through 21:25 UTC**. They are historical evidence, not a claim that its application version or migration count is still the latest after collaborators' subsequent work.
 
 | Item | Last verified result |
 | --- | --- |

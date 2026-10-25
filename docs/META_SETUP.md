@@ -1,8 +1,27 @@
 # Meta Pixel and Facebook / Instagram leads
 
-Remaining connection owner: Jeffrey, assigned by Austin October 23, 2026. See [new jeffrey.md](../new%20jeffrey.md#meta-leads--remaining-connection-assigned-to-jeffrey). Austin retains business-account ownership and can supply needed asset access. Jeffrey's SEO and shared-email handoffs continue alongside this work.
+Connection owner: Jeffrey, assigned by Austin October 23, 2026. See [new jeffrey.md](../new%20jeffrey.md#meta-leads--connection-and-remaining-checks) for remaining acceptance checks. Austin retains business-account ownership and can supply needed asset access. Jeffrey's SEO and shared-email handoffs continue alongside this work.
 
-**Current acceptance:** Austin reports the business assets already exist and has confirmed website PageView and Lead events after a saved website-review inquiry. Pixel/Dataset ID is **1785858192683666**. Preserve this working installation; steps 1–2 below are reference, not a request to create duplicate assets. Facebook/Instagram Instant Form connection and real delivery acceptance remain outstanding for Jeffrey. Conversions API is not implemented.
+**Current acceptance:** the app is published, the Facebook Page and both webhook subscriptions are connected, and imports are enabled. Jeffrey confirmed a Meta test-form submission appeared in CRM Leads on October 24. Ordinary public submissions, Instagram placement delivery and the remaining live checks are still unverified. Austin previously confirmed website PageView and Lead events after a saved website-review inquiry. Pixel/Dataset ID is **1785858192683666**. Preserve this working installation; the setup sections below are reference, not a request to create duplicate assets. Conversions API is not implemented.
+
+## Verified live connection — October 24, 2026
+
+| Item | Verified result |
+| --- | --- |
+| Meta app | **Tailored Agents New**, `1589418445729577`; Meta reports `is_live: true` and `live_mode` after Jeffrey published it. |
+| Facebook Page | **Tailored Agents**, `539290305941060`; Graph API returns the Page and its lead-management access. |
+| Credentials | App Secret, Page access token and random verification secret were installed privately in the website's Render environment. API version is `v26.0`; `META_LEADS_ENABLED=true`. |
+| Token permissions | The validated Page token includes `leads_retrieval`, `pages_show_list`, `pages_read_engagement`, `pages_manage_metadata`, `pages_manage_ads` and `ads_management`, and belongs to the configured app/Page. |
+| Notifications | App-level Page webhook and Page-level `subscribed_apps` both include `leadgen`. Meta accepted the callback at `https://www.tailoredagents.com/api/integrations/meta/leads`. |
+| Receiver checks | Valid verification challenge: 200; wrong verification token: 403; unsigned payload: 401; correctly signed empty payload: 200. Empty-payload checks created no leads. |
+| Deployment | Source `91d6d55`; configuration deployment `dep-dbek4o7b9u1s73a0c830` became live at **23:42:58 UTC**. No application-code or schema changes were needed for this activation. |
+| Live test | Form `1134620332864524` (**Generated form 10/23/2026 5:45pm-copy**) produced test lead `2248731112346341` at **23:56:36 UTC**. Graph API confirms the test lead exists; Jeffrey confirmed it appeared in CRM Leads. |
+| Background operation | Existing scheduled runs finished successfully at **23:45:25**, **23:50:21** and **23:55:17 UTC**, after activation. No separate job was created. |
+| Availability | Website, website sign-in and Mail sign-in returned 200 after the configuration deployment. |
+
+This establishes delivery from Meta's live testing tool into the CRM. It does not establish ordinary-public or Instagram-placement permission acceptance, an independent database duplicate count, or live interruption/recovery behavior. Remaining checks are maintained in [Jeffrey's checklist](../new%20jeffrey.md#meta-leads--connection-and-remaining-checks).
+
+The Page token was derived from a long-lived User token and reports no scheduled token expiry. It can still lose access following account, permission or security changes; keep monitoring failed imports and replace it privately when needed. Meta's contact-email verification flag remained false when publication was checked; Jeffrey should verify that contact address if Meta requests it. Publication itself is confirmed.
 
 ## What this release does
 
@@ -12,7 +31,7 @@ Remaining connection owner: Jeffrey, assigned by Austin October 23, 2026. See [n
 - Settings → Facebook & Instagram: setup state, imported/queued/failed totals, and owner/admin retry of exhausted imports. A configured Pixel is explicitly awaiting verification in Meta Test Events; it is not claimed to be live merely because an ID exists.
 - Failures: immediate work runs after webhook acknowledgement; the existing five-minute reporting/call worker resumes pending imports. Leases recover interrupted jobs. Up to 12 attempts use bounded backoff, then Settings shows a failure requiring attention. Pausing imports still retains signed receipts.
 
-**Instant Form activation still requires Page/app credentials, permissions and real delivery acceptance.** No account, Page, Dataset, app, token, campaign or ad spend is created by this code. Synthetic tests do not establish live credential/permission acceptance. Website Pixel acceptance is separately owner-confirmed above.
+**Initial connection and the live test are complete; the remaining acceptance checks are listed above.** This code does not create Meta accounts, Pages, Datasets, apps, campaigns or ad spend. Historical local tests are separate from the live evidence above. Website Pixel acceptance is separately owner-confirmed.
 
 ## 1. Finish the Meta assets
 
@@ -62,6 +81,12 @@ Redeploy after configuration. Configure the app's **Page** webhook:
 Keep token values out of URLs/screenshots/logs where possible. Renew or replace tokens through the Meta identity that owns these assets when needed, then update Render. Webhook signatures use the App Secret, not the verification token. Only the configured Page's events are imported.
 
 The existing `tailored-agents-search-console-sync` cron calls the shared worker every five minutes. Confirm that job is running successfully. It needs no new Meta secret: the website worker reads the server environment. Do not create another paid service just for this intake path.
+
+### Pause and recover imports
+
+Set `META_LEADS_ENABLED=false` on the website service and redeploy to pause Graph retrieval while retaining signed incoming receipts. Preserve the app secret, verification token, Page ID and subscriptions so the receiver can continue saving notifications. Reporting, calls and SEO keep using the existing shared worker; do not pause that job just to pause Meta imports.
+
+After correcting Page permissions or replacing the Page token privately, set the flag back to `true` and redeploy. Pending receipts resume through the shared worker; owner/admin retry in Settings → Facebook & Instagram makes exhausted imports eligible again. Preserve `meta_lead_events` and existing Leads during rollback. A successful configuration check alone does not prove queued leads have imported; verify their status and the saved CRM record.
 
 ## 4. Publish useful forms and tagged ads
 
