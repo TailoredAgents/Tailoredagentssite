@@ -50,6 +50,7 @@ async function ensureConversation(
   mailboxId: string,
   threadId: string,
 ) {
+  if ((await db.query("SELECT 1 FROM inbox_conversations WHERE workspace_id=$1 AND mailbox_id=$2 AND thread_id=$3 AND deleted_at IS NOT NULL", [context.workspace.id, mailboxId, threadId])).rowCount) throw new InboxInputError("This conversation was deleted from the CRM.");
   const found = await db.query<{ id: string }>(
     `INSERT INTO inbox_conversations(id,workspace_id,mailbox_id,thread_id) VALUES($1,$2,$3,$4) ON CONFLICT(workspace_id,mailbox_id,thread_id) DO UPDATE SET thread_id=EXCLUDED.thread_id RETURNING id`,
     [randomUUID(), context.workspace.id, mailboxId, threadId],

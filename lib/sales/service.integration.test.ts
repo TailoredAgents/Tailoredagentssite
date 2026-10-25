@@ -471,7 +471,7 @@ describe.skipIf(!databaseUrl)(
       expect(JSON.stringify(audit.rows)).not.toContain("Deletion fixture");
     });
 
-    it("preserves converted records, Inbox histories and Meta replay receipts when deleting a lead", async () => {
+    it("removes Inbox history while preserving converted records and Meta replay receipts", async () => {
       const { leadId } = await createManualLead(member, { submissionId: randomUUID(), name: "Converted deletion fixture", phone: "7705550137" });
       const opportunityId = await linkInquiry(member, leadId);
       const sale = await convertOpportunity(owner, { opportunityId, projectName: "Keep this project" });
@@ -492,8 +492,10 @@ describe.skipIf(!databaseUrl)(
       for (const table of ['inbox_conversations','sms_conversations','crm_conversations']) {
         expect((await pool.query(`SELECT lead_id FROM ${table}`)).rows).toEqual([{ lead_id: null }]);
       }
-      expect((await pool.query("SELECT body FROM inbox_notes")).rows[0].body).toBe("Keep this conversation note");
-      expect((await pool.query("SELECT body FROM sms_messages")).rows[0].body).toBe("Keep this text");
+      expect((await pool.query("SELECT body FROM inbox_notes")).rowCount).toBe(0);
+      expect((await pool.query("SELECT deleted_at FROM inbox_conversations")).rows[0].deleted_at).not.toBeNull();
+      expect((await pool.query("SELECT body FROM sms_messages")).rows[0].body).toBe("");
+      expect((await pool.query("SELECT deleted_at FROM sms_conversations")).rows[0].deleted_at).not.toBeNull();
       expect((await pool.query("SELECT status,lead_id FROM meta_lead_events")).rows).toEqual([{ status: "imported", lead_id: null }]);
     });
 

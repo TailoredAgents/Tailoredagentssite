@@ -1,4 +1,5 @@
 import "server-only";
+import { getDatabasePool } from "@/lib/dashboard/db";
 import { headers } from "next/headers";
 import { z } from "zod";
 import type { DashboardContext } from "@/lib/dashboard/data";
@@ -177,6 +178,10 @@ async function request(
   body: Record<string, unknown>,
   binary = false,
 ) {
+  if (typeof body.threadId === "string" && typeof body.mailboxId === "string" &&
+      (await getDatabasePool().query("SELECT 1 FROM inbox_conversations WHERE workspace_id=$1 AND mailbox_id=$2 AND thread_id=$3 AND deleted_at IS NOT NULL", [context.workspace.id, body.mailboxId, body.threadId])).rowCount) {
+    throw new MailProviderError("grant_required", "This conversation was deleted from the CRM.");
+  }
   const config = inboxConfiguration();
   if (!config.ready) throw new MailProviderError("setup", config.message);
   const auth = getDashboardAuth();

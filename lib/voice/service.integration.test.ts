@@ -1,3 +1,4 @@
+import { deleteLead } from "@/lib/operations/delete-lead";
 import { captureCallMemory, loadClientMemory } from "@/lib/conversations/memory";
 import { randomUUID, createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
@@ -311,6 +312,25 @@ describe.skipIf(!url)(
       await pool.query("UPDATE voice_call_recordings SET expires_at=now()-interval '1 day' WHERE id=$1",[r.id]);
       await runCallRecordingWorker();expect(await loadClientMemory(owner,call.conversationId!)).toHaveLength(1);
       await deleteCallRecording(owner,r.id);expect(await loadClientMemory(owner,call.conversationId!)).toEqual([]);
+      await captureCallMemory();expect((await pool.query("SELECT id FROM crm_client_memory")).rowCount).toBe(0);
+    });
+    it("deletes linked call history, reviewed tasks and memory, then purges recording media",async()=>{
+      await grant(member.user.id);const r=await suggestedCall();
+      const call=await getVoiceCall(owner,r.callId);
+      await createCallFollowUpTask(owner,r.input);
+      const lead=randomUUID();
+      await pool.query("INSERT INTO leads(id,workspace_id,name,organization) VALUES($1,$2,'Delete recorded lead','')",[lead,ws]);
+      await pool.query("UPDATE crm_conversations SET lead_id=$2 WHERE id=$1",[call.conversationId,lead]);
+      await pool.query("UPDATE voice_calls SET status='completed',ended_at=now() WHERE id=$1",[r.callId]);
+      await deleteLead(owner,{leadId:lead,confirmed:'yes'});
+      expect((await pool.query("SELECT id FROM crm_tasks")).rowCount).toBe(0);
+      expect((await pool.query("SELECT id FROM crm_client_memory")).rowCount).toBe(0);
+      expect((await pool.query("SELECT status,transcript,summary FROM voice_call_recordings WHERE id=$1",[r.id])).rows[0]).toEqual({status:'deleting',transcript:null,summary:null});
+      await expect(getVoiceCall(owner,r.callId)).rejects.toThrow();
+      await expect(getCallRecordingDownload(owner,r.id)).rejects.toThrow();
+      await runCallRecordingWorker();
+      expect(provider.deleteRecording).toHaveBeenCalledTimes(1);
+      expect((await pool.query("SELECT status FROM voice_call_recordings WHERE id=$1",[r.id])).rows[0].status).toBe('deleted');
       await captureCallMemory();expect((await pool.query("SELECT id FROM crm_client_memory")).rowCount).toBe(0);
     });
     it("creates only reviewed tasks, saves edited details and schedules them in the assignee's My Day",async()=>{

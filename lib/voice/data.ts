@@ -216,7 +216,7 @@ export async function readCalls(
       endedAt: Date | null;
       voicemail: VoiceCall["voicemail"];
     }>(
-      `SELECT c.id,c.line_id AS "lineId",s.conversation_id AS "conversationId",s.id AS "sourceId",c.direction,c.from_phone AS "from",c.to_phone AS "to",c.status,c.duration,c.created_at AS "createdAt",c.answered_at AS "answeredAt",c.ended_at AS "endedAt",(SELECT jsonb_build_object('id',v.id,'status',CASE WHEN v.expires_at<=now() AND v.status<>'deleted' THEN 'expired' ELSE v.status END,'duration',v.duration,'expiresAt',v.expires_at,'canPlay',v.status='ready' AND v.expires_at>now(),'canDelete',$3::boolean AND v.status NOT IN ('deleted','deleting')) FROM voice_voicemails v WHERE v.workspace_id=c.workspace_id AND v.call_id=c.id ORDER BY v.created_at DESC LIMIT 1) voicemail FROM voice_calls c JOIN crm_conversation_sources s ON s.workspace_id=c.workspace_id AND s.voice_conversation_id=c.voice_conversation_id WHERE c.workspace_id=$1 AND c.id=ANY($2::uuid[]) ORDER BY c.created_at,c.id`,
+      `SELECT c.id,c.line_id AS "lineId",s.conversation_id AS "conversationId",s.id AS "sourceId",c.direction,c.from_phone AS "from",c.to_phone AS "to",c.status,c.duration,c.created_at AS "createdAt",c.answered_at AS "answeredAt",c.ended_at AS "endedAt",(SELECT jsonb_build_object('id',v.id,'status',CASE WHEN v.expires_at<=now() AND v.status<>'deleted' THEN 'expired' ELSE v.status END,'duration',v.duration,'expiresAt',v.expires_at,'canPlay',v.status='ready' AND v.expires_at>now(),'canDelete',$3::boolean AND v.status NOT IN ('deleted','deleting')) FROM voice_voicemails v WHERE v.workspace_id=c.workspace_id AND v.call_id=c.id ORDER BY v.created_at DESC LIMIT 1) voicemail FROM voice_calls c JOIN crm_conversation_sources s ON s.workspace_id=c.workspace_id AND s.voice_conversation_id=c.voice_conversation_id WHERE c.workspace_id=$1 AND s.deleted_at IS NULL AND c.id=ANY($2::uuid[]) ORDER BY c.created_at,c.id`,
       [workspaceId, ids, manage],
     )
   ).rows;
@@ -238,7 +238,7 @@ export async function listVoiceCalls(
   const pool = getDatabasePool(),
     row = (
       await pool.query<{ line_id: string }>(
-        `SELECT line_id FROM voice_conversations WHERE workspace_id=$1 AND id=$2`,
+        `SELECT line_id FROM voice_conversations WHERE workspace_id=$1 AND id=$2 AND deleted_at IS NULL`,
         [context.workspace.id, voiceConversationId],
       )
     ).rows[0];

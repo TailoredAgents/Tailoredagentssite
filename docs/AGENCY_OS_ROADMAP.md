@@ -278,3 +278,12 @@ npm run test:conversations:browser -- --reporter=line
 ```
 
 For an interactive synthetic workspace, run `npm run reporting:preview` with those final two `REPORTING_TEST_*` variables. This intentionally reseeds the disposable browser database. Open `http://127.0.0.1:3120/dashboard/sales` and sign in as `owner@example.test` or `viewer@example.test`, password `Reporting-test-password-2026`. These fixture credentials grant no production access. Import a small synthetic CSV through Calling lists to exercise the workflow; production uses the existing Mail login and approved dashboard grants.
+
+
+### October 25, 2026 — Lead lifecycle and team alerts
+
+- New Facebook/Instagram Instant Form leads can notify configured teammates by SMS from the existing business number. Manage recipients and delivery results in Settings → Lead SMS alerts. Durable per-recipient receipts prevent webhook retries from repeating sends; unknown provider outcomes are not blindly retried.
+- Delete lead now removes explicitly linked conversations from both the unified Inbox and legacy channel workspaces, clears local SMS content, notes, drafts, conversation follow-up tasks and derived memory, and queues call recording/voicemail media cleanup. In-progress calls must end first.
+- Deleted provider IDs remain as non-display receipts to prevent webhook replay and Mail discovery from bringing back old history. A genuinely new SMS or call gets a fresh conversation. Deleted email threads remain suppressed in CRM; original emails and provider SMS records are retained in Mail/Twilio. This is CRM deletion, not a provider-wide erasure tool.
+- Converted customers, contact records, businesses, sales opportunities and projects remain intact. Only explicit lead relationships select history for deletion; shared business names, email domains or phone numbers alone do not authorize deleting someone else's records. Existing orphaned history from earlier deletions is not automatically bulk-purged.
+- Follow-up: a separate provider-wide erasure workflow and deletion of converted customer/contact records need their own explicit scope and review. They are not implemented by the lead delete button.

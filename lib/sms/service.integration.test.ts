@@ -1,3 +1,4 @@
+import { deleteLead } from "@/lib/operations/delete-lead";
 import { randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import type { Pool } from "pg";
@@ -266,6 +267,18 @@ describe.skipIf(!databaseUrl)(
       delete (globalThis as { tailoredAgentsDatabasePool?: Pool })
         .tailoredAgentsDatabasePool;
       vi.unstubAllEnvs();
+    });
+    it("keeps deleted SMS history gone on replay but opens a fresh conversation for a new message", async () => {
+      const event=incoming("Old private text");const old=await receiveSmsWebhook(event);
+      const lead=randomUUID();await pool.query("INSERT INTO leads(id,workspace_id,name,organization) VALUES($1,$2,'Delete SMS lead','')",[lead,workspace]);
+      await pool.query("UPDATE sms_conversations SET lead_id=$2 WHERE id=$1",[old.conversationId,lead]);
+      await deleteLead(owner,{leadId:lead,confirmed:'yes'});
+      expect((await listSmsWorkspace(owner,{number:numberId})).items).toHaveLength(0);
+      expect((await receiveSmsWebhook(event)).duplicate).toBe(true);
+      const fresh=await receiveSmsWebhook(incoming("A new inquiry"));expect(fresh.conversationId).not.toBe(old.conversationId);
+      const view=await listSmsWorkspace(owner,{number:numberId});expect(view.items).toHaveLength(1);
+      expect(view.items[0].id).toBe(fresh.conversationId);
+      expect((await pool.query("SELECT body FROM sms_messages WHERE conversation_id=$1",[old.conversationId])).rows[0].body).toBe('');
     });
     it("verifies configured account ownership and capability, granting only the connector", async () => {
       expect(await count("sms_numbers")).toBe(1);

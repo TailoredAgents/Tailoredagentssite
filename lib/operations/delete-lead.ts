@@ -1,4 +1,5 @@
 import "server-only";
+import { deleteLeadHistory } from "./delete-lead-history";
 import type { DashboardContext } from "@/lib/dashboard/data";
 import { getDatabasePool, insertAuditLog } from "@/lib/dashboard/db";
 import { authorizeSales, SalesAccessError } from "@/lib/sales/data";
@@ -25,17 +26,14 @@ export async function deleteLead(context: DashboardContext, input: unknown) {
       await db.query("COMMIT");
       return false;
     }
-    // Clear derived memory before detaching the source's customer identity. Lock
-    // recordings first so an in-flight capture cannot restore these takeaways.
-    await db.query(`UPDATE voice_call_recordings r SET memory_captured_at=now()
-      FROM voice_calls v,crm_conversation_sources s,crm_conversations c
-      WHERE r.workspace_id=$2 AND v.id=r.call_id AND v.workspace_id=r.workspace_id
-      AND s.voice_conversation_id=v.voice_conversation_id AND s.workspace_id=v.workspace_id
-      AND c.id=s.conversation_id AND c.workspace_id=s.workspace_id AND c.lead_id=$1`, [leadId,context.workspace.id]);
-    await db.query(`DELETE FROM crm_client_memory m USING crm_conversation_sources s,crm_conversations c
-      WHERE m.workspace_id=$2 AND s.id=m.source_id AND s.workspace_id=m.workspace_id
-      AND c.id=s.conversation_id AND c.workspace_id=s.workspace_id AND c.lead_id=$1`,[leadId,context.workspace.id]);
-    // Detach composite foreign keys while preserving conversations and sales history.
+    await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`agency-sms:${context.workspace.id}`]);
+    await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`agency-inbox:${context.workspace.id}`]);
+    const locks = await db.query<{key:string}>(`SELECT 'unified-sms:'||workspace_id||':'||id AS key FROM sms_numbers WHERE workspace_id=$1
+      UNION SELECT 'unified-mail:'||workspace_id||':'||mailbox_id FROM inbox_conversations WHERE workspace_id=$1
+      UNION SELECT 'unified-mail:'||workspace_id||':'||mailbox_id FROM crm_conversation_sources WHERE workspace_id=$1 AND mailbox_id IS NOT NULL ORDER BY key`, [context.workspace.id]);
+    for (const row of locks.rows) await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [row.key]);
+    await deleteLeadHistory(db, context.workspace.id, leadId);
+    // Detach composite foreign keys while preserving converted customers and sales history.
     for (const table of ["inbox_conversations", "sms_conversations", "crm_conversations", "crm_opportunities"]) {
       await db.query(`UPDATE ${table} SET lead_id=NULL,updated_at=now() WHERE lead_id=$1 AND workspace_id=$2`, [leadId, context.workspace.id]);
     }

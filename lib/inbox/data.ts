@@ -55,6 +55,7 @@ export async function requireInboxMailbox(
 const one = (value: string | string[] | undefined) =>
   (Array.isArray(value) ? value[0] : value)?.trim() ?? "";
 type Metadata = {
+  deleted_at: Date | null;
   thread_id: string;
   status: "open" | "waiting" | "done";
   owner_id: string | null;
@@ -170,7 +171,7 @@ export async function listInboxWorkspace(
     const pool = getDatabasePool();
     const [metadata, members, businesses, leads] = await Promise.all([
       pool.query<Metadata>(
-        `SELECT c.thread_id,c.status,c.owner_user_id AS owner_id,u.name AS owner_name,c.business_id,c.lead_id,r.latest_message_id FROM inbox_conversations c LEFT JOIN "user" u ON u.id=c.owner_user_id LEFT JOIN inbox_read_receipts r ON r.conversation_id=c.id AND r.workspace_id=c.workspace_id AND r.user_id=$4 WHERE c.workspace_id=$1 AND c.mailbox_id=$2 AND c.thread_id=ANY($3::text[])`,
+        `SELECT c.deleted_at,c.thread_id,c.status,c.owner_user_id AS owner_id,u.name AS owner_name,c.business_id,c.lead_id,r.latest_message_id FROM inbox_conversations c LEFT JOIN "user" u ON u.id=c.owner_user_id LEFT JOIN inbox_read_receipts r ON r.conversation_id=c.id AND r.workspace_id=c.workspace_id AND r.user_id=$4 WHERE c.workspace_id=$1 AND c.mailbox_id=$2 AND c.thread_id=ANY($3::text[])`,
         [context.workspace.id, mailbox.id, ids, context.user.id],
       ),
       pool.query<{ id: string; name: string; email: string }>(
@@ -187,11 +188,11 @@ export async function listInboxWorkspace(
       ),
     ]);
     const rows = new Map(metadata.rows.map((row) => [row.thread_id, row]));
-    const items = listed.items.map((item) =>
+    const items = listed.items.filter(item => !rows.get(item.id)?.deleted_at).map((item) =>
       conversation(item, mailbox.id, rows.get(item.id)),
     );
     let selected: InboxRecord | null = null;
-    if (selectedThread) {
+    if (selectedThread && !rows.get(selectedThread.threadId)?.deleted_at) {
       const latest = selectedThread.messages.at(-1);
       const listItem = listed.items.find(
         (item) => item.id === selectedThread.threadId,

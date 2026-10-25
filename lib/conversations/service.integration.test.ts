@@ -1086,12 +1086,21 @@ describe.skipIf(!databaseUrl)(
       expect((await pool.query("SELECT id FROM crm_client_memory")).rowCount).toBe(0);
       expect((await pool.query("SELECT anonymized_at FROM crm_businesses WHERE id=$1",[businessId])).rows[0].anonymized_at).not.toBeNull();
     });
-    it("clears saved facts before lead deletion detaches its conversation",async()=>{
+    it("deletes lead history without discovery restoring it or affecting another person",async()=>{
       const ids=await identities(),source=(await workspaceView(owner,{conversation:ids.sms.id})).selected!.sources[0];
       const lead=randomUUID();await pool.query("INSERT INTO leads(id,workspace_id,name,organization) VALUES($1,$2,'Delete this lead','')",[lead,workspace]);
       await pool.query("UPDATE crm_conversations SET lead_id=$2 WHERE id=$1",[ids.sms.id,lead]);
       await saveClientMemory(owner,{sourceId:source.id,category:"context",text:"Lead detail to erase",useInDrafts:true});
       await deleteLead(owner,{leadId:lead,confirmed:"yes"});expect((await pool.query("SELECT id FROM crm_client_memory")).rowCount).toBe(0);
+      await expireCheckpoint();
+      const after=await workspaceView(owner,{});
+      expect(after.items.some(c=>c.id===ids.sms.id)).toBe(false);
+      expect(after.items.some(c=>c.id===ids.email.id)).toBe(true);
+      await expect(loadConversationSourceHistory(owner,{sourceId:source.id})).rejects.toThrow();
+      await pool.query("UPDATE crm_conversation_sources SET visible=true WHERE id=$1",[source.id]);
+      expect((await pool.query("SELECT visible FROM crm_conversation_sources WHERE id=$1",[source.id])).rows[0].visible).toBe(false);
+      expect((await pool.query("SELECT body FROM sms_messages WHERE conversation_id=$1",[smsId])).rows.every(r=>r.body==='')).toBe(true);
+
     });
     it("hides expired memory immediately and clears it in retention",async()=>{
       const ids=await identities(),source=(await workspaceView(owner,{conversation:ids.sms.id})).selected!.sources[0];

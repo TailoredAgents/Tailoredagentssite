@@ -28,7 +28,7 @@ export async function discover(context: DashboardContext, scope: Scopes) {
         created_at: Date;
         updated_at: Date;
       }>(
-        `SELECT c.* FROM sms_conversations c WHERE c.workspace_id=$1 AND c.number_id=$2 AND NOT EXISTS(SELECT 1 FROM crm_conversation_sources s WHERE s.workspace_id=c.workspace_id AND s.sms_conversation_id=c.id) ORDER BY c.id LIMIT 201`,
+        `SELECT c.* FROM sms_conversations c WHERE c.workspace_id=$1 AND c.deleted_at IS NULL AND c.number_id=$2 AND NOT EXISTS(SELECT 1 FROM crm_conversation_sources s WHERE s.workspace_id=c.workspace_id AND s.sms_conversation_id=c.id) ORDER BY c.id LIMIT 201`,
         [context.workspace.id, number.id],
       );
       for (const c of rows.rows.slice(0, 200)) {
@@ -141,6 +141,7 @@ export async function discover(context: DashboardContext, scope: Scopes) {
         limit: 100,
       });
       for (const item of page.items) {
+        if ((await db.query("SELECT 1 FROM inbox_conversations WHERE workspace_id=$1 AND mailbox_id=$2 AND thread_id=$3 AND deleted_at IS NOT NULL", [context.workspace.id, mailbox.id, item.threadId])).rowCount) continue;
         const existing = (
           await db.query<{ id: string }>(
             "SELECT id FROM crm_conversation_sources WHERE workspace_id=$1 AND mailbox_id=$2 AND thread_id=$3",

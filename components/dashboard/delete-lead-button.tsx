@@ -17,7 +17,7 @@ export function DeleteLeadButton({ leadId, name }: { leadId: string; name: strin
       <input type="hidden" name="leadId" value={leadId} />
       <input type="hidden" name="confirmed" value="yes" />
       <strong>Delete {name}?</strong>
-      <p>This permanently removes this lead and its internal notes. Linked customers, projects, sales records and conversations are kept.</p>
+      <p>This permanently removes the lead, its linked Inbox history, notes, drafts, follow-up tasks and AI memory from the CRM. Call recordings are queued for deletion. Converted customers, projects and sales records are kept. Original email and SMS records in Mail and Twilio are separate.</p>
       {state.status === "error" ? <p role="alert" className={styles.error}>{state.message}</p> : null}
       <div className={styles.actions}>
         <button ref={cancel} type="button" disabled={pending} onClick={() => { setConfirming(false); requestAnimationFrame(() => trigger.current?.focus()); }}>Cancel</button>

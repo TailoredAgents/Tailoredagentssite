@@ -59,7 +59,7 @@ export async function listConversationWorkspace(
         person_name: string | null;
         business_name: string | null;
       }>(
-        `SELECT c.*,u.name AS owner_name,COALESCE(p.name,l.name) AS person_name,b.name AS business_name FROM crm_conversations c LEFT JOIN contacts p ON p.id=c.contact_id AND p.workspace_id=c.workspace_id LEFT JOIN leads l ON l.id=c.lead_id AND l.workspace_id=c.workspace_id LEFT JOIN crm_businesses b ON b.id=c.business_id AND b.workspace_id=c.workspace_id LEFT JOIN "user" u ON u.id=c.owner_user_id WHERE c.workspace_id=$1 AND c.merged_into_id IS NULL`,
+        `SELECT c.*,u.name AS owner_name,COALESCE(p.name,l.name) AS person_name,b.name AS business_name FROM crm_conversations c LEFT JOIN contacts p ON p.id=c.contact_id AND p.workspace_id=c.workspace_id LEFT JOIN leads l ON l.id=c.lead_id AND l.workspace_id=c.workspace_id LEFT JOIN crm_businesses b ON b.id=c.business_id AND b.workspace_id=c.workspace_id LEFT JOIN "user" u ON u.id=c.owner_user_id WHERE c.workspace_id=$1 AND c.merged_into_id IS NULL AND c.deleted_at IS NULL`,
         [context.workspace.id],
       ),
       pool.query<{ source_id: string; latest_message_id: string }>(

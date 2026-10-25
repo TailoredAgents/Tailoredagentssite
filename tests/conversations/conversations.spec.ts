@@ -438,3 +438,20 @@ test("saves team lead alert recipients and shows the settings on desktop and pho
   await page.screenshot({path:`test-results/lead-alerts-${info.project.name}.png`,fullPage:false,style:"nextjs-portal{display:none!important;}"});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
 });
+
+
+test("deleting a linked lead removes its Inbox history after refresh", async ({page,request}) => {
+  await signIn(page);
+  const conversation=await combine(page,request);
+  const state=await control(request,"inspect");
+  await page.goto(`/dashboard/leads/${state.leadId}`);
+  await page.getByRole("button",{name:"Delete lead",exact:true}).click();
+  await expect(page.getByRole("form",{name:"Confirm lead deletion"})).toContainText("linked Inbox history");
+  await page.getByRole("button",{name:"Permanently delete lead",exact:true}).click();
+  await expect(page).toHaveURL(/\/dashboard\/leads$/);
+  await page.goto(`/dashboard/inbox?conversation=${conversation}`);
+  await expect(page.getByRole("region",{name:"Conversation timeline",exact:true})).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByText("Email: Could you build our website and an AI receptionist?",{exact:true})).toHaveCount(0);
+  await expect(page.getByText("Text: Tuesday morning works for our website review.",{exact:true})).toHaveCount(0);
+});

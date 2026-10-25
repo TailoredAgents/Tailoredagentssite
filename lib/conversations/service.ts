@@ -77,13 +77,13 @@ export async function bindSentRecipient(
     // source can join the conversation from which the user started the send.
     if (!canonicalId && target) {
       await available(context, target, true);
-      const row = (await db.query<{contact_id:string|null;lead_id:string|null;business_id:string|null}>("SELECT contact_id,lead_id,business_id FROM crm_conversations WHERE workspace_id=$1 AND id=$2 AND merged_into_id IS NULL FOR UPDATE", [context.workspace.id,target])).rows[0];
+      const row = (await db.query<{contact_id:string|null;lead_id:string|null;business_id:string|null}>("SELECT contact_id,lead_id,business_id FROM crm_conversations WHERE workspace_id=$1 AND id=$2 AND merged_into_id IS NULL AND deleted_at IS NULL FOR UPDATE", [context.workspace.id,target])).rows[0];
       const sources = await authorizedSources(context, fresh, target);
       if (row && recipientMatchesConversation(recipient,row,sources.flatMap(s => s.external_addresses))) canonicalId = target;
     }
     if (canonicalId) {
       if (existing) await available(context, canonicalId, true);
-      const row = (await db.query<{contact_id:string|null;lead_id:string|null;business_id:string|null}>("SELECT contact_id,lead_id,business_id FROM crm_conversations WHERE workspace_id=$1 AND id=$2 AND merged_into_id IS NULL FOR UPDATE", [context.workspace.id,canonicalId])).rows[0];
+      const row = (await db.query<{contact_id:string|null;lead_id:string|null;business_id:string|null}>("SELECT contact_id,lead_id,business_id FROM crm_conversations WHERE workspace_id=$1 AND id=$2 AND merged_into_id IS NULL AND deleted_at IS NULL FOR UPDATE", [context.workspace.id,canonicalId])).rows[0];
       if (!row || !recipientMatchesConversation(recipient,row,addresses)) throw new ConversationInputError("This history is linked to another CRM record.");
       await db.query(`UPDATE crm_conversations SET ${recipient.kind === "lead" ? "lead_id" : "contact_id"}=$3,business_id=COALESCE(business_id,$4),updated_at=now() WHERE workspace_id=$1 AND id=$2`,[context.workspace.id,canonicalId,recipient.id,recipient.businessId]);
     } else {
@@ -375,7 +375,7 @@ async function merge(
       lead_id: string | null;
       business_id: string | null;
     }>(
-      "SELECT * FROM crm_conversations WHERE workspace_id=$1 AND id=ANY($2::uuid[]) AND merged_into_id IS NULL FOR UPDATE",
+      "SELECT * FROM crm_conversations WHERE workspace_id=$1 AND id=ANY($2::uuid[]) AND merged_into_id IS NULL AND deleted_at IS NULL FOR UPDATE",
       [context.workspace.id, [fromId, toId]],
     );
     const from = rows.rows.find((r) => r.id === fromId),

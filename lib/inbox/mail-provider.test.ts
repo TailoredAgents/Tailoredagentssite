@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DashboardContext } from "@/lib/dashboard/data";
 vi.mock("server-only", () => ({}));
+const deletedThread = vi.hoisted(() => ({ query: vi.fn(async () => ({rowCount:0,rows:[]})) }));
+vi.mock("@/lib/dashboard/db", () => ({ getDatabasePool: () => deletedThread }));
 const session = vi.hoisted(() => ({
   user: { id: "fixture-user" },
   session: { id: "fixture-session" },
@@ -50,9 +52,15 @@ describe("CRM Mail transport and privacy", () => {
     vi.stubEnv("MAIL_AUTH_SECRET", "b".repeat(40));
     vi.stubEnv("CRM_MAIL_SECRET", "c".repeat(40));
     vi.stubGlobal("fetch", fetchMock);
+    deletedThread.query.mockResolvedValue({rowCount:0,rows:[]});
     fetchMock.mockReset();
     token.mockReset().mockResolvedValue("fixture-grant-token");
     session.user.id = context.user.id;
+  });
+  it("blocks direct access to a deleted CRM email thread before fetching Mail", async () => {
+    deletedThread.query.mockResolvedValue({rowCount:1,rows:[]});
+    await expect(getMailThread(context,"mailbox-sales","deleted-thread")).rejects.toThrow("deleted from the CRM");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
   afterEach(() => {
     vi.unstubAllGlobals();

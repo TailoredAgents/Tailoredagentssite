@@ -110,7 +110,7 @@ export async function captureCallMemory() {
       LEFT JOIN contacts p ON p.id=cc.contact_id AND p.workspace_id=cc.workspace_id
       LEFT JOIN leads l ON l.id=cc.lead_id AND l.workspace_id=cc.workspace_id
       LEFT JOIN crm_businesses b ON b.id=COALESCE(cc.business_id,p.business_id,l.business_id) AND b.workspace_id=cc.workspace_id
-      WHERE l.anonymized_at IS NULL AND b.anonymized_at IS NULL AND r.memory_captured_at IS NULL AND r.analysis_status='ready' AND r.status='ready' AND r.expires_at>now()
+      WHERE s.deleted_at IS NULL AND l.anonymized_at IS NULL AND b.anonymized_at IS NULL AND r.memory_captured_at IS NULL AND r.analysis_status='ready' AND r.status='ready' AND r.expires_at>now()
       ORDER BY r.created_at LIMIT 20 FOR UPDATE OF r SKIP LOCKED`);
     for (const job of jobs.rows) {
       for (const [category, facts] of [["context",job.summary?.highlights || []],["commitment",job.summary?.followUps || []]] as const) {
