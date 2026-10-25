@@ -17,7 +17,7 @@ Austin assigned this connection to Jeffrey on October 23. The technical connecti
 
 Remaining work:
 
-- [ ] **Jeffrey with Codex:** inspect the actual permission/access statuses in Meta, starting with `leads_retrieval`, and resolve the App Review requirements for this own-business integration. Complete any required usage explanations, demonstrations and submissions. Meta's MCP review fields conflict; no completed review appears in its history. Do not infer approval or exemption from publication, token scopes or the successful test.
+- [ ] **Jeffrey with Codex:** `leads_retrieval` shows **Ready for testing** in Meta's dashboard. Open **Review → App Review** to identify the remaining requirements for this own-business integration. Complete any required usage explanations, demonstrations and submissions; [a truthful review draft is prepared](docs/META_SETUP.md#app-review-preparation). Meta's MCP review fields conflict; no completed review appears in its history. Do not infer approval or exemption from publication, token scopes, “Requirements: 0” or the successful test.
 - [ ] **Together:** submit an authorized ordinary public form and verify its saved answers. The successful Meta test-tool submission does not establish access to every customer or Instagram placement lead.
 - [ ] **Austin and Devon:** use their own accounts to open the received lead and confirm the details are useful for follow-up.
 - [ ] **Together:** check Instagram placement delivery and phone-only submissions if those are used.

@@ -21,9 +21,39 @@ Connection owner: Jeffrey, assigned by Austin October 23, 2026. See [new jeffrey
 
 This establishes delivery from Meta's live testing tool into the CRM. It does not establish ordinary-public or Instagram-placement permission acceptance, an independent database duplicate count, or live interruption/recovery behavior. Remaining checks are maintained in [Jeffrey's checklist](../new%20jeffrey.md#meta-leads--connection-and-remaining-checks).
 
-**Permission review is an open gate.** After publication, Meta's MCP reports `UNSUBMITTED` and no previous review history, while other fields simultaneously report approval, rejection and a pending-submission restriction. These conflicting fields do not establish an actual rejection or completed approval. Inspect the permission statuses in the app dashboard, especially `leads_retrieval`, and record the applicable review outcome or confirmed own-business eligibility before declaring production permission readiness.
+**Permission review is an open gate.** Jeffrey inspected the actual app dashboard after publication: `leads_retrieval` shows **Ready for testing**, with **Requirements: 0**. That is not evidence of completed App Review or an own-business exemption. Meta's MCP reports `UNSUBMITTED` and no previous review history, while other fields simultaneously report approval, rejection and a pending-submission restriction. These conflicting tool fields do not establish an actual rejection or completed approval. Next, inspect **Review → App Review** and record the applicable requirements and review outcome or confirmed own-business eligibility before declaring production permission readiness.
 
 Meta's [Marketing API use-case guide](https://developers.facebook.com/documentation/development/create-an-app/marketing-api-use-cases) distinguishes own/managed business data from other businesses' data and says webhooks themselves do not require App Review. Its [Lead Ads guide](https://developers.facebook.com/documentation/ads-commerce/marketing-api/guides/lead-ads) separately calls for App Review including `leads_retrieval` and `pages_manage_ads`. The generic own-business rules alone do not settle this app's lead-retrieval requirements. Prepare truthful usage explanations and demonstrations for permissions that Meta requires; do not request unrelated capabilities or represent a granted token scope as reviewed production access.
+
+### App Review preparation
+
+These are draft explanations, not a submitted or approved application. Confirm which permissions Meta requires for this own-business app before submitting. Becoming a Tech Provider for other businesses is outside this release.
+
+**App purpose / `leads_retrieval` draft:**
+
+> Tailored Agents New connects our own business's Facebook and Instagram Instant Forms to our private Tailored Agents CRM. When our Facebook Page receives a lead notification, our server retrieves the submitted contact details and form answers and saves them in our team's Leads screen. Authorized teammates use those details to review and follow up on the person's inquiry. This app serves Tailored Agents' own Page; it does not connect other businesses' Pages.
+
+Use the following facts for other permission questions **only when the dashboard requires them**:
+
+| Permission | Actual use or dependency to explain |
+| --- | --- |
+| `pages_manage_metadata` | Subscribe the Tailored Agents Page to lead notifications so the server knows when to retrieve a form submission. |
+| `pages_show_list` | During owner setup, identify and select the Page the owner manages. Page selection is currently through Meta's tools, not a website connection screen. |
+| `pages_read_engagement` | Page access used by the lead-retrieval setup. The CRM does not display a Page feed or engagement report. |
+| `pages_manage_ads` | Listed by Meta's Lead Ads guide for lead retrieval/review. Explain the lead-reading dependency; the CRM has no ad-creation or editing tools. |
+| `ads_management` | Present on the current token; optional ad/campaign context is requested with a lead. Check whether this broad permission is required before requesting review. The CRM does not manage campaigns or spending. |
+
+If Meta requires a demonstration of functionality that this app does not have, resolve the permission/dependency question rather than inventing a feature or submitting a misleading video. A token containing a permission does not itself justify requesting broader access.
+
+**Recording and reviewer instructions to prepare:**
+
+1. Show the actual email/password sign-in and the private Leads screen using synthetic records. This application does not have a Facebook Login button; owner authorization currently happens separately through Meta's tools.
+2. Demonstrate the required owner authorization/Page-selection steps without exposing tokens, secrets or real customer details. Explain the server connection with on-screen captions.
+3. Submit a clearly identified synthetic lead for the connected Page/form, then show its matching answers in CRM Leads. Demonstrate each permission actually requested; webhook delivery alone does not demonstrate every permission.
+4. Explain that imported leads are unassigned for the team to review; importing does not automatically email or message the person.
+5. Supply exact reproduction steps and any reviewer access Meta requests through its private submission form. Reviewer access is **not yet provisioned**. If needed, arrange isolated test data and dedicated access first; do not share a teammate's account or expose production customer records.
+
+Meta's [screen-recording instructions](https://developers.facebook.com/docs/app-review/submission-guide/screen-recordings/) call for the actual login, permission-granting and data-use flows. Use readable English captions; do not rely on spoken narration. Before submitting, Jeffrey must verify the business/data-handling answers, confirm reviewer access works and review the final permission list. Record the submission identifier and outcome here once known.
 
 The Page token was derived from a long-lived User token and reports no scheduled token expiry. It can still lose access following account, permission or security changes; keep monitoring failed imports and replace it privately when needed. Meta's contact-email verification flag remained false when publication was checked; Jeffrey should verify that contact address if Meta requests it. Publication itself is confirmed.
 
