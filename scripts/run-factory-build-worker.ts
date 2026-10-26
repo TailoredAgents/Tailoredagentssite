@@ -6,7 +6,7 @@ let stopping=false;
 process.on("SIGTERM",()=>{stopping=true;});process.on("SIGINT",()=>{stopping=true;});
 const once=process.argv.includes("--once");
 const drain=process.argv.includes("--drain"),started=Date.now();let stages=0;
-try{
+async function main(){try{
   do{
     const result=await runFactoryBuildWorkerStep();console.log(JSON.stringify({worker:"website-builder",...result}));
     stages++;
@@ -16,4 +16,5 @@ try{
     if(!result.more)await delay(15000);
   }while(!stopping);
 }catch{console.error("Website builder unavailable. Check its database, AI, storage and browser runtime configuration.");process.exitCode=1;}
-finally{await getDatabasePool().end();}
+finally{await getDatabasePool().end();}}
+void main().catch(()=>{console.error("Website builder could not initialize its database connection.");process.exitCode=1;});

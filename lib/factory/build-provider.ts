@@ -5,7 +5,7 @@ import type {FactoryClaimedBuild} from "./build-types";
 import {reserveFactoryBuildCost,attemptFactoryBuildCost,settleFactoryBuildCost,uncertainFactoryBuildCost} from "./build-budget";
 import {siteUsage} from "./site/provider";
 import type {SiteModelExecutor} from "./site/types";
-import {normalizeFactoryImage} from "./build-http";
+import {normalizeFactoryImage} from "./build-images";
 
 export const buildImagePolicy={model:"gpt-image-2.5-flare",size:"1536x1024",quality:"medium",reservationMicros:2_000_000,pricing:"2026-10-26"} as const;
 async function providerJson(path:"responses"|"images/generations",body:unknown,maximum:number){

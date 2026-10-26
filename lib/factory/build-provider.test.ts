@@ -3,7 +3,7 @@ import type {FactoryClaimedBuild} from "./build-types";
 const mocks=vi.hoisted(()=>({reserve:vi.fn(async()=>"cost-1"),attempt:vi.fn(async()=>{}),settle:vi.fn(async()=>{}),uncertain:vi.fn(async()=>{}),normalize:vi.fn(async()=>Buffer.from("normalized-png"))}));
 vi.mock("server-only",()=>({}));
 vi.mock("./build-budget",()=>({reserveFactoryBuildCost:mocks.reserve,attemptFactoryBuildCost:mocks.attempt,settleFactoryBuildCost:mocks.settle,uncertainFactoryBuildCost:mocks.uncertain}));
-vi.mock("./build-http",()=>({normalizeFactoryImage:mocks.normalize}));
+vi.mock("./build-images",()=>({normalizeFactoryImage:mocks.normalize}));
 import {factorySiteExecutor,generateFactoryHero,factoryImageUsageMicros,buildImagePolicy} from "./build-provider";
 const build={id:"build",leaseToken:"lease",stage:"generate"} as FactoryClaimedBuild;
 describe("Website provider cost and request bounds",()=>{
