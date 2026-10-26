@@ -4,7 +4,7 @@ October 26, 2026. This guide covers milestone 1 of the [build plan](AI_WEBSITE_F
 
 This guide does not establish production deployment, paid activation, live model quality, or a verified provider bill. Implementation checks use synthetic responses. No paid provider calls or new infrastructure were activated while implementing this milestone.
 
-**Current status:** Austin explicitly approved **$25 per month for research and planning** on October 26, 2026. Saved settings were read back in the live UI under Austin's Owner account: research enabled, automatic new-lead research off, monthly limit $25, zero workspaces and $0 estimated/reserved usage. The paused banner was removed. This enables manually selected pilot work; cron configuration, authenticated scheduled processing, provider access/model quality and the paid pilot remain unverified. Builder/image spending is separate and has not been approved.
+**Current status:** Austin explicitly approved **$25 per month for research and planning** on October 26, 2026. Saved settings were read back in the live UI under Austin's Owner account: research enabled, automatic new-lead research off and monthly limit $25. At that activation checkpoint, the queue contained zero workspaces and $0 estimated/reserved usage, and the paused banner was removed. Austin subsequently confirmed the first live research-to-plan result, with a screenshot showing plan v1 **Ready to review** at **5:56 PM EDT**, two research sources, submitted details, possible matches and unknowns. This establishes the first live provider workflow result; it does not establish measured cost, inspected cron configuration/logs, live chat revisions, human approval or a build. The broader pilot remains unfinished. Builder/image spending is separate and has not been approved.
 
 ## What this release does
 
@@ -38,6 +38,8 @@ Adding a key **does not enable paid work**. Research settings live in PostgreSQL
 
 ## Scheduled processing
 
+The background research worker is already implemented and has produced a live plan. There is no requirement for Jeffrey specifically: a hosting administrator with Render access can inspect the recurring schedule or fix a scheduling issue if one appears. Do not treat uninspected scheduler logs as evidence that the working feature still needs a new worker.
+
 The existing `tailored-agents-search-console-sync` cron is configured in `render.yaml` to run every five minutes. `scripts/scheduled-workers.mjs` runs reporting, optional SEO, and optional Website planning as independent lanes. A failure in one lane does not prevent the others from running.
 
 For Website planning it sends an authenticated `POST` to `/api/cron/factory`, refuses redirects or a different origin/path, and repeats while the endpoint reports more work and the invocation budget allows. Each HTTP invocation handles at most one provider stage. The provider timeout is 65 seconds, the cron HTTP deadline is 110 seconds, and the route's declared maximum is 120 seconds. The overall scheduled invocation budget is 210 seconds. Work still queued afterward continues on a later scheduled run.
@@ -48,6 +50,10 @@ No separate paid cron service or always-running builder was added. Additional ac
 
 ## Pilot and activation
 
+- [x] **First live research and plan, October 26 at 5:56 PM EDT:** Austin confirmed success and supplied a screenshot showing version 1 Ready to review, two sources, and separate submitted details, possible matches and unknowns. No client identity or contact details are retained in this guide. Actual cost, cron environment/log inspection, live chat revision and exact-version approval remain to be checked.
+
+The sequence below is the setup and pilot procedure; completed deployment, allowance activation and the first live plan are recorded above and in the implementation log.
+
 1. Deploy the additive migrations and website changes; keep research disabled.
 2. Verify that the Website planning queue opens for an authorized teammate and that a sparse existing lead can start a workspace. Its research should remain queued while disabled. Viewers can read but cannot start work, change settings, send planning chat or approve plans.
 3. Confirm the cron URL/secret configuration. An authenticated worker invocation while research is disabled should find no paid work. An unauthenticated request must be rejected. This confirms routing, not model quality.
@@ -57,7 +63,7 @@ No separate paid cron service or always-running builder was added. Additional ac
 7. Approve the latest plan and verify that exactly that version enters `awaiting_builder`. There is no build or URL to validate yet. Check that further discussion preserves the already approved snapshot.
 8. Compare observed quality, timing, conservative usage estimates and OpenAI project usage. Then enable automatic research for new leads if the owner wants it. This does not authorize any automatic website construction.
 
-No paid pilot has been performed merely by writing or deploying this code. Record actual live acceptance and model quality separately from local fixtures in the build plan's resume log.
+The first live result above is separate from the synthetic implementation tests. Continue the remaining pilot checks and record actual cost, broader model quality, chat revision and approval evidence separately in the build plan's resume log.
 
 ## Model, sources and estimated spending
 
