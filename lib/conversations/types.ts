@@ -11,6 +11,7 @@ import type { VoiceLine, VoiceCall } from "@/lib/voice/types";
 export type ConversationStatus =
   "needs_reply" | "waiting" | "done" | "archived";
 export type ConversationFilters = {
+  text?: string | string[];
   contact?: string | string[];
   lead?: string | string[];
   conversation?: string | string[];

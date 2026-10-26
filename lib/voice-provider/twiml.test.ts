@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
-import { inboundCallTwiml, outboundCallTwiml, voicemailTwiml } from "./twiml";
+import { inboundCallTwiml, outboundCallTwiml, voicemailTwiml, forwardScreenTwiml } from "./twiml";
 const callId = "00000000-0000-4000-8000-000000000123",
   identity = "ta_" + "f".repeat(48),
   origin = "https://agency.example.test";
@@ -25,6 +25,13 @@ describe("bounded voice TwiML", () => {
     const inbound=inboundCallTwiml({callId,targets:[{identity,userId:"actor:123"}],voicemail:true,recordCalls:true,recordingAnnouncement:false});
     for(const xml of [outbound,inbound]) {expect(xml).toContain('record="record-from-answer-dual"');expect(xml).toContain(`/recordings?call=${callId}`);expect(xml).not.toContain("<Say");}
     const announced=outboundCallTwiml({callId,intentId:callId,from:"+15555550123",to:"+15555550456",recordCalls:true,recordingAnnouncement:true});expect(announced).toContain("This call will be recorded");expect(announced).toContain("customer-answer?call=");
+  });
+  it("rings only the cell with press-one screening and preserves recording callbacks",()=>{
+    const xml=inboundCallTwiml({callId,targets:[],forwardPhone:"+15555550456",voicemail:false,recordCalls:true});
+    expect(xml).not.toContain("<Client");expect(xml).toContain('callerId="+15555550123"');expect(xml).toContain('answerOnBridge="true"');
+    expect(xml).toContain("forward-answer?call=");expect(xml).toContain('record="record-from-answer-dual"');
+    expect(forwardScreenTwiml(callId)).toContain('<Gather input="dtmf" numDigits="1"');expect(forwardScreenTwiml(callId)).toContain("Press 1 to accept.");expect(forwardScreenTwiml(callId)).toContain("<Hangup/>");
+    expect(()=>inboundCallTwiml({callId,targets:[],forwardPhone:"+15555550123",voicemail:false})).toThrow();
   });
   it("dials only the authorized phone with fixed callbacks and explicit no connected-call recording", () => {
     const xml = outboundCallTwiml({

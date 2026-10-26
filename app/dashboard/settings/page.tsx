@@ -1,3 +1,5 @@
+import { SmsAlertSettings } from "@/components/sms/alert-settings";
+import { getSmsAlertSettings } from "@/lib/sms/alerts";
 import { LeadAlertSettings } from "@/components/lead-alert-settings";
 import { getLeadAlertSettings } from "@/lib/meta/lead-alerts";
 import type { Metadata } from "next";
@@ -22,13 +24,14 @@ export const metadata: Metadata = { title: "Settings" };
 export default async function SettingsPage() {
   const context = await requireDashboardContext();
   const mailLogin = resolveDashboardConfiguration().authMode === "mail";
-  const [google, inbox, sms, voice, meta, leadAlerts] = await Promise.all([
+  const [google, inbox, sms, voice, meta, leadAlerts, textAlerts] = await Promise.all([
     getSearchConsoleConnection(context).catch(() => null),
     listMailboxes(context).then(mailboxes => ({ connected: mailboxes.length > 0, detail: mailboxes.length ? `${mailboxes.length} approved address${mailboxes.length === 1 ? "" : "es"}. Mail → Manage team controls who can read and send. Dashboard roles also apply.` : "Ask the Mail owner to approve your account for the shared sales address." })).catch(error => ({ connected: false, detail: error instanceof MailProviderError ? error.message : "The email connection could not be checked. Open Inbox to try again." })),
     listSmsSettings(context),
     getVoiceWorkspace(context),
     getMetaStatus(context).catch(() => null),
     getLeadAlertSettings(context),
+    getSmsAlertSettings(context),
   ]);
   const googleStatus = !google ? "Unable to check" : !google.configured ? "Setup needed" : google.connection?.status === "active" ? "Connected" : google.connection?.status === "error" ? "Needs attention" : "Not connected";
   const notifications = getInquiryNotificationConfiguration();
@@ -47,13 +50,14 @@ export default async function SettingsPage() {
     <header className="dashboard-topbar"><div><span>Your workspace</span><strong>Settings</strong></div><span className="dashboard-secure"><ShieldCheck size={16} />Private team workspace</span></header>
     <div className="dashboard-content">
       <section className="dashboard-page-heading dashboard-page-heading-compact"><div><span>Account and connections</span><h1>Settings</h1><p>Check your access, manage your password, and see which services are connected.</p></div></section>
-      <nav className="workspace-section-links" aria-label="Settings shortcuts"><a href="#connections">Connections & access</a><a href="#sms">SMS settings</a><a href="#lead-alerts">Lead alerts</a><a href="#calling">Calling & voicemail</a><a href="https://mail.tailoredagents.com/settings" target="_blank" rel="noreferrer">Email and password settings<span className="sr-only"> (new tab)</span></a></nav>
+      <nav className="workspace-section-links" aria-label="Settings shortcuts"><a href="#connections">Connections & access</a><a href="#sms">SMS settings</a><a href="#lead-alerts">Lead alerts</a><a href="#text-alerts">Text alerts</a><a href="#calling">Calling & voicemail</a><a href="https://mail.tailoredagents.com/settings" target="_blank" rel="noreferrer">Email and password settings<span className="sr-only"> (new tab)</span></a></nav>
       <section className="workspace-profile" aria-label="Your workspace"><i aria-hidden="true">TA</i><div><h2>{context.workspace.name}</h2><p>{context.user.email} · {context.role.charAt(0).toUpperCase() + context.role.slice(1)}</p></div><span className="dashboard-status status-active"><CheckCircle2 size={15} aria-hidden="true" />Active workspace</span></section>
       <DashboardAppearance />
       <div className="dashboard-section-heading" id="connections"><h2>Connections & access</h2><Link href="/dashboard/analytics">Google connection and reports</Link></div>
       <section className="workspace-connections" aria-label="Service connections">{settings.map(({ icon: Icon, label, value, detail, healthy }) => <article className="workspace-connection" key={label}><header><span><Icon size={19} aria-hidden="true" /></span><div><h3>{label}</h3><em className={healthy ? "" : "is-neutral"}>{value}</em></div></header><p>{detail}</p></article>)}</section>
       <SettingsSection id="messaging-settings" target="sms" title="Business SMS" description="Verify your number, manage teammate access and control sending."><SmsSettingsPanel settings={sms} /></SettingsSection>
       <SettingsSection id="voice-settings" target="calling" title="Calling & voicemail" description="Manage voice permissions, business hours, routing and voicemail."><VoiceSettingsPanel workspace={voice} /></SettingsSection>
+      <SmsAlertSettings settings={textAlerts} />
       <LeadAlertSettings settings={leadAlerts} />
       <MetaSettingsPanel state={meta} admin={context.role === "owner" || context.role === "admin"} />
       <section className="dashboard-panel dashboard-boundary-card"><ShieldCheck size={22} /><div><h2>This workspace is private to your team</h2><p>Clients cannot sign in to this dashboard. If you need a password reset or someone has left the team, contact the mail owner.</p></div></section>

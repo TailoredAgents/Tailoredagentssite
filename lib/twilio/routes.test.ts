@@ -2,6 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import twilio from "twilio";
 import { z } from "zod";
 vi.mock("server-only", () => ({}));
+vi.mock("next/server", () => ({after:vi.fn()}));
+vi.mock("@/lib/sms/alerts", () => ({runIncomingSmsAlertWorker:vi.fn(),receiveIncomingSmsAlertStatus:vi.fn().mockResolvedValue(false)}));
+vi.mock("@/lib/meta/lead-alerts", () => ({receiveLeadAlertStatus:vi.fn().mockResolvedValue(false)}));
 const handlers = vi.hoisted(() => ({ incoming: vi.fn(), status: vi.fn() }));
 vi.mock("@/lib/sms/service", () => ({
   receiveSmsWebhook: handlers.incoming,

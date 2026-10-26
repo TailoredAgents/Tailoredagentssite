@@ -23,12 +23,12 @@ export async function listConversationWorkspace(
 ): Promise<ConversationWorkspace> {
   const pool = getDatabasePool(),
     scope = await scopes(context);
-  await discover(context, scope);
+  await discover(context, scope, one(filters.text));
   let sources = await authorizedSources(context, scope);
   let recipient = one(filters.contact) || one(filters.lead)
     ? await getConversationRecipient(context, one(filters.contact) ? "contact" : "lead", one(filters.contact) || one(filters.lead))
     : null;
-  let requested = one(filters.conversation) || one(filters.thread);
+  let requested = one(filters.text) ? sources.find(s=>s.channel === "sms" && s.sms_conversation_id === one(filters.text))?.conversation_id || "unavailable" : one(filters.conversation) || one(filters.thread);
   const
     q = one(filters.q).slice(0, 120),
     view = [

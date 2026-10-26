@@ -296,6 +296,13 @@ describe.skipIf(!databaseUrl)(
       }));
     });
 
+    it("opens text-alert links only into an authorized live SMS conversation",async()=>{
+      const opened=await listConversationWorkspace(owner,{text:smsId});
+      expect(opened.selected?.sources.some(s=>s.smsConversationId===smsId)).toBe(true);
+      await pool.query("DELETE FROM sms_number_grants WHERE workspace_id=$1 AND user_id=$2",[workspace,ownerId]);
+      expect((await listConversationWorkspace(owner,{text:smsId})).selected).toBeNull();
+      expect((await listConversationWorkspace(owner,{text:randomUUID()})).selected).toBeNull();
+    });
     it("finds contacts by name and formatted phone, without crossing workspaces", async () => {
       expect((await listConversationRecipients(owner, "Alice")).map(p=>p.id)).toEqual([contactId]);
       expect((await listConversationRecipients(owner, "(212) 555-0123")).map(p=>p.id)).toEqual([contactId]);

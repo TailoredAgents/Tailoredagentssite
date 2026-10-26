@@ -7,7 +7,7 @@ import {
   MailProviderError,
 } from "@/lib/inbox/mail-provider";
 import type { Scopes } from "./access";
-export async function discover(context: DashboardContext, scope: Scopes) {
+export async function discover(context: DashboardContext, scope: Scopes, smsConversationId = "") {
   const pool = getDatabasePool();
   // Local SMS discovery covers the complete granted dataset, independent of the
   // channel workspace's display page. Existing rows remain untouched.
@@ -28,8 +28,8 @@ export async function discover(context: DashboardContext, scope: Scopes) {
         created_at: Date;
         updated_at: Date;
       }>(
-        `SELECT c.* FROM sms_conversations c WHERE c.workspace_id=$1 AND c.deleted_at IS NULL AND c.number_id=$2 AND NOT EXISTS(SELECT 1 FROM crm_conversation_sources s WHERE s.workspace_id=c.workspace_id AND s.sms_conversation_id=c.id) ORDER BY c.id LIMIT 201`,
-        [context.workspace.id, number.id],
+        `SELECT c.* FROM sms_conversations c WHERE c.workspace_id=$1 AND c.deleted_at IS NULL AND c.number_id=$2 AND NOT EXISTS(SELECT 1 FROM crm_conversation_sources s WHERE s.workspace_id=c.workspace_id AND s.sms_conversation_id=c.id) ORDER BY (c.id::text=$3) DESC,c.id LIMIT 201`,
+        [context.workspace.id, number.id, smsConversationId],
       );
       for (const c of rows.rows.slice(0, 200)) {
         let source = (

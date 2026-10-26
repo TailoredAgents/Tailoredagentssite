@@ -58,6 +58,14 @@ describe("signed voice callbacks", () => {
       vi.stubEnv(key, value);
   });
   afterEach(() => vi.unstubAllEnvs());
+  it("binds signed forwarding screens and digit acceptance to the call",async()=>{
+    for(const kind of ["forwardAnswer","forwardAccept"] as const) {
+      const p={...incoming,Digits:"1"};
+      expect((await validateVoiceWebhook(signed(kind,p,`?call=${callId}`),kind)).context.callId).toBe(callId);
+      await expect(validateVoiceWebhook(signed(kind,p),kind)).rejects.toThrow();
+      await expect(validateVoiceWebhook(signed(kind,p,`?call=${callId}`,{body:new URLSearchParams({...p,Digits:"2"}).toString()}),kind)).rejects.toThrow();
+    }
+  });
   it("authenticates every unknown field with the exact configured URL and ignores forged proxy origins", async () => {
     expect(
       (await validateVoiceWebhook(signed("incoming"), "incoming")).params

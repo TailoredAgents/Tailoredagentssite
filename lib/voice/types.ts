@@ -10,6 +10,10 @@ export type VoiceLine = {
   timezone: string;
   businessHours: { start: string; end: string; days: number[] };
   ringSeconds: number;
+  inboundMode?: "browser" | "forward";
+  forwardPhone?: string | null;
+  forwardUserId?: string | null;
+  forwardAlways?: boolean;
   recordCalls: boolean;
   recordingAnnouncement: boolean;
   autoTranscribe: boolean;

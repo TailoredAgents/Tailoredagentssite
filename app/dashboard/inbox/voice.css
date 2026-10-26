@@ -151,7 +151,7 @@
 .voice-grant-list strong { display: block; color: var(--workspace-muted); font-size: 14px; font-weight: 600; }
 .voice-grant-list small { display: block; margin-top: 5px; color: var(--workspace-muted); font-size: 14px; line-height: 1.5; }
 .voice-revoke-form .dashboard-form-footer { margin: 0; }
-.voice-revoke-form .dashboard-form-footer button { min-height: 36px; max-width: 190px; padding: 7px 9px; border: 1px solid var(--workspace-line); border-radius: 6px; background: var(--workspace-surface); color: var(--workspace-muted); font-size: 14px; }
+.dashboard-shell .voice-revoke-form .dashboard-form-footer button, .dashboard-shell .voice-revoke-form .dashboard-form-footer button:hover { min-height: 36px; max-width: 190px; padding: 7px 9px; border: 1px solid var(--workspace-line); border-radius: 6px; background: var(--workspace-surface); color: var(--workspace-muted); font-size: 14px; }
 .voice-grant-options { display: grid; gap: 12px; }
 .voice-checkbox { display: flex; align-items: flex-start; gap: 8px; color: var(--workspace-muted); font-size: 14px; line-height: 1.6; }
 .voice-checkbox input { flex-shrink: 0; width: 18px; height: 18px; margin-top: 2px; accent-color: var(--workspace-blue); }

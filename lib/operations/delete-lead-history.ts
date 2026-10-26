@@ -38,5 +38,6 @@ export async function deleteLeadHistory(db: PoolClient, workspaceId: string, lea
     await db.query(`DELETE FROM ${channel}_notes n USING ${channel}_conversations c WHERE n.workspace_id=$1 AND c.workspace_id=n.workspace_id AND c.id=n.conversation_id AND c.deleted_at IS NOT NULL`, [workspaceId]);
     await db.query(`DELETE FROM ${channel}_drafts d WHERE d.workspace_id=$1 AND (d.thread_key=$2 OR EXISTS(SELECT 1 FROM ${channel}_conversations c WHERE c.workspace_id=d.workspace_id AND c.deleted_at IS NOT NULL AND ${channel === "sms" ? "c.id::text=d.thread_key AND c.number_id=d.number_id" : "c.thread_id=d.thread_key AND c.mailbox_id=d.mailbox_id"}))`, [workspaceId, `lead:${leadId}`]);
   }
+  await db.query("UPDATE incoming_sms_alerts a SET status='cancelled',updated_at=now() FROM sms_conversations c WHERE a.workspace_id=$1 AND a.status='queued' AND c.id=a.conversation_id AND c.workspace_id=a.workspace_id AND c.deleted_at IS NOT NULL", [workspaceId]);
   await db.query("UPDATE lead_sms_alerts SET status='cancelled',updated_at=now() WHERE workspace_id=$1 AND lead_id=$2 AND status='queued'", args);
 }

@@ -18,6 +18,8 @@ import {
   connectVoiceLine,
   saveVoiceGrant,
   saveVoiceRouting,
+  saveVoiceForwarding,
+  receiveVoiceForwardAnswer,
   updateVoicePresence,
   createVoiceIntent,
   receiveVoiceOutbound,
@@ -565,6 +567,60 @@ describe.skipIf(!url)(
       await grant(owner.user.id, true, true, true);
       for (let n = 1; n < 20; n++) await reserve("+1404555" + String(1000 + n));
       await expect(reserve("+14045559999")).rejects.toThrow("hourly");
+    });
+    it("forwards only to the approved mobile without browser presence and retains call recording policy", async () => {
+      vi.stubEnv("CALL_ANALYSIS_ENABLED","true");vi.stubEnv("OPENAI_API_KEY","synthetic-test-key");
+      await allHours();
+      await saveRecordingPreferences(owner,{lineId,recordCalls:true,recordingAnnouncement:false,autoTranscribe:true});
+      await saveVoiceForwarding(owner,{lineId,mode:"forward",userId:owner.user.id,phone:"4045550199",always:true});
+      const c=await incoming();
+      expect(c.targets).toEqual([]);expect(c.forwardPhone).toBe("+14045550199");expect(c.voicemail).toBe(false);expect(c.recordCalls).toBe(true);
+      expect((await incoming()).forwardPhone).toBe(c.forwardPhone);
+      provider.fetch.mockResolvedValue({accountSid:account,parentCallSid:sid(10),from:phone,to:c.forwardPhone});
+      const params={AccountSid:account,CallSid:sid(11),ParentCallSid:sid(10),From:phone,To:c.forwardPhone!};
+      await receiveVoiceForwardAnswer(c.callId,params);
+      await receiveVoiceStatus({...params,CallStatus:"in-progress"},{callId:c.callId,leg:"staff"});
+      expect((await pool.query("SELECT answered_at FROM voice_calls WHERE id=$1",[c.callId])).rows[0].answered_at).toBeNull();
+      expect((await receiveVoiceForwardAnswer(c.callId,{...params,Digits:"1"},true)).accepted).toBe(true);
+      const answered=(await pool.query("SELECT * FROM voice_calls WHERE id=$1",[c.callId])).rows[0];
+      expect(answered.staff_user_id).toBe(owner.user.id);expect(answered.answered_at).not.toBeNull();
+      expect((await receiveVoiceDialAction(c.callId,{AccountSid:account,CallSid:sid(10),From:remote,To:phone,DialCallSid:sid(11),DialCallStatus:"completed",DialCallDuration:"30"})).voicemail).toBe(false);
+      expect((await getVoiceCall(owner,c.callId)).duration).toBe(30);
+      provider.recording.mockResolvedValue({recordingSid:rec(10),callSid:sid(10),status:"completed",duration:30,channels:2});
+      await receiveCallRecording(c.callId,{AccountSid:account,CallSid:sid(10),RecordingSid:rec(10),RecordingStatus:"completed"});
+      const recording=(await getVoiceCall(owner,c.callId)).recording!;
+      expect(recording.status).toBe("ready");
+      expect(await getCallRecordingDownload(owner,recording.id)).toEqual({recordingSid:rec(10),callSid:sid(10)});
+      expect((await pool.query("SELECT analysis_status FROM voice_call_recordings WHERE id=$1",[recording.id])).rows[0].analysis_status).toBe("queued");
+    });
+    it("returns unanswered mobile calls to CRM voicemail even when a personal voicemail picks up", async () => {
+      await saveVoiceForwarding(owner,{lineId,mode:"forward",userId:owner.user.id,phone:"4045550199",always:true});
+      const c=await incoming();
+      provider.fetch.mockResolvedValue({accountSid:account,parentCallSid:sid(10),from:phone,to:c.forwardPhone});
+      expect((await receiveVoiceForwardAnswer(c.callId,{AccountSid:account,CallSid:sid(11),Digits:"2"},true)).accepted).toBe(false);
+      const outcome=await receiveVoiceDialAction(c.callId,{AccountSid:account,CallSid:sid(10),DialCallSid:sid(11),DialCallStatus:"completed",DialCallDuration:"8"});
+      expect(outcome.voicemail).toBe(true);
+      const call=(await pool.query("SELECT answered_at,status FROM voice_calls WHERE id=$1",[c.callId])).rows[0];
+      expect(call.answered_at).toBeNull();expect(call.status).toBe("no-answer");
+    });
+    it("checks forwarding grants, business hours, changed destinations, loops, and provider identity", async () => {
+      await expect(saveVoiceForwarding(member,{lineId,mode:"forward",userId:member.user.id,phone:"4045550199"})).rejects.toThrow();
+      await expect(saveVoiceForwarding(owner,{lineId,mode:"forward",userId:reader.user.id,phone:"4045550199"})).rejects.toThrow();
+      await expect(saveVoiceForwarding(owner,{lineId,mode:"forward",userId:owner.user.id,phone})).rejects.toThrow();
+      await saveVoiceForwarding(owner,{lineId,mode:"forward",userId:owner.user.id,phone:"4045550199",always:false});
+      await pool.query("UPDATE voice_lines SET hours_days='{}' WHERE id=$1",[lineId]);
+      expect((await incoming()).voicemail).toBe(true);
+      await saveVoiceForwarding(owner,{lineId,mode:"forward",userId:owner.user.id,phone:"4045550199",always:true});
+      const c=await incoming(20);
+      expect(c.forwardPhone).toBe("+14045550199");
+      expect((await incoming(30,"+14045550199")).voicemail).toBe(true);
+      provider.fetch.mockResolvedValue({accountSid:account,parentCallSid:sid(99),from:phone,to:c.forwardPhone});
+      await expect(receiveVoiceForwardAnswer(c.callId,{AccountSid:account,CallSid:sid(21),Digits:"1"},true)).rejects.toThrow();
+      provider.fetch.mockResolvedValue({accountSid:account,parentCallSid:sid(20),from:phone,to:c.forwardPhone});
+      await saveVoiceForwarding(owner,{lineId,mode:"forward",userId:owner.user.id,phone:"4045550198",always:true});
+      await expect(receiveVoiceForwardAnswer(c.callId,{AccountSid:account,CallSid:sid(21),Digits:"1"},true)).rejects.toThrow();
+      await grant(owner.user.id,true,false);
+      expect((await incoming(40)).voicemail).toBe(true);
     });
     it("rings only fresh approved presence, hours and pause fall back, and duplicate incoming is stable", async () => {
       await grant(member.user.id, false, true);

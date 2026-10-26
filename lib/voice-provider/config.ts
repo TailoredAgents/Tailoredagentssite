@@ -8,6 +8,8 @@ export const VOICE_PATHS = {
   dial: "/api/integrations/twilio/voice/dial-result",
   voicemail: "/api/integrations/twilio/voice/voicemail",
   voicemailComplete: "/api/integrations/twilio/voice/voicemail-complete",
+  forwardAnswer: "/api/integrations/twilio/voice/forward-answer",
+  forwardAccept: "/api/integrations/twilio/voice/forward-accept",
   staffAnswer: "/api/integrations/twilio/voice/staff-answer",
   recording: "/api/integrations/twilio/voice/recordings",
   customerAnswer: "/api/integrations/twilio/voice/customer-answer",

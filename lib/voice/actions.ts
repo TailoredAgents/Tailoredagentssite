@@ -39,6 +39,7 @@ async function change(
       "recordCalls",
       "recordingAnnouncement",
       "autoTranscribe",
+      "always",
     ])
       i[key] = form.get(key) === "on" || form.get(key) === "true";
     if (form.has("days"))
@@ -119,4 +120,8 @@ export async function endVoiceCallAction(input: {
   } catch (e) {
     return failure(e);
   }
+}
+
+export async function saveVoiceForwardingAction(_: VoiceActionState, f: FormData) {
+  return change(f, service.saveVoiceForwarding, "Incoming call destination saved. Applies to new calls.");
 }

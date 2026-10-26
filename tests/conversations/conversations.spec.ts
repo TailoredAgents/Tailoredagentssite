@@ -455,3 +455,20 @@ test("deleting a linked lead removes its Inbox history after refresh", async ({p
   await expect(page.getByText("Email: Could you build our website and an AI receptionist?",{exact:true})).toHaveCount(0);
   await expect(page.getByText("Text: Tuesday morning works for our website review.",{exact:true})).toHaveCount(0);
 });
+
+ test("saves a single customer-text alert recipient and opens the alert into the right conversation",async({page,request},info)=>{
+  await signIn(page);const state=await control(request,"inspect");
+  const sms=(state.sources as Source[]).find(s=>s.channel==="sms")!;
+  await page.goto(`/dashboard/inbox?text=${sms.sms_conversation_id}`);await pane(page,"Thread");
+  await expect(page.getByRole("region",{name:"Conversation timeline",exact:true})).toContainText("Text: Tuesday morning works for our website review.");
+  await page.goto("/dashboard/settings#text-alerts");
+  const section=page.getByRole("region",{name:"Customer text alerts",exact:true});
+  await section.getByLabel("Alert mobile number",{exact:true}).fill("2125550199");
+  await section.getByLabel("Send customer-text alerts",{exact:true}).check();
+  await section.getByRole("button",{name:"Save customer text alerts",exact:true}).click();
+  await expect(section.getByRole("status")).toContainText("Customer-text alerts saved");
+  await page.reload();await expect(section.getByLabel("Alert mobile number",{exact:true})).toHaveValue("+12125550199");
+  await expect(section.getByLabel("Send customer-text alerts",{exact:true})).toBeChecked();
+  expect((await new AxeBuilder({page}).include('#text-alerts').withTags(["wcag2a","wcag2aa"]).analyze()).violations).toEqual([]);
+  await section.scrollIntoViewIfNeeded();await page.screenshot({path:`test-results/customer-text-alerts-${info.project.name}.png`,style:"nextjs-portal{display:none!important;}"});
+ });

@@ -1,3 +1,4 @@
+import { saveSmsAlertSettings, runIncomingSmsAlertWorker, receiveIncomingSmsAlertStatus } from "./alerts";
 import { deleteLead } from "@/lib/operations/delete-lead";
 import { randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
@@ -42,7 +43,9 @@ const gateway = vi.hoisted(() => ({
   phone: "+16785417725",
 }));
 vi.mock("@/lib/twilio/config", () => ({
+  TWILIO_MESSAGE_SID: /^SM[0-9a-f]{32}$/i,
   getTwilioConfiguration: () => ({
+    baseUrl: "https://www.tailoredagents.com",
     ready: gateway.ready,
     webhookReady: gateway.webhookReady,
     enabled: gateway.enabled,
@@ -267,6 +270,38 @@ describe.skipIf(!databaseUrl)(
       delete (globalThis as { tailoredAgentsDatabasePool?: Pool })
         .tailoredAgentsDatabasePool;
       vi.unstubAllEnvs();
+    });
+    it("sends one customer-text alert to the selected teammate, suppresses bursts and authenticates receipts",async()=>{
+      await saveSmsAlertSettings(owner,{enabled:true,userId:ownerId,phone:"2125550199"});
+      const msg=incoming("Customer question");
+      const first=await receiveSmsWebhook(msg);
+      await receiveSmsWebhook(msg);await receiveSmsWebhook(incoming("One more detail"));
+      expect((await pool.query("SELECT * FROM incoming_sms_alerts")).rowCount).toBe(1);
+      await runIncomingSmsAlertWorker();
+      expect(gateway.create).toHaveBeenCalledOnce();
+      const send=gateway.create.mock.calls[0][0];
+      expect(send.to).toBe("+12125550199");expect(send.text).toContain(`?text=${first.conversationId}`);expect(send.text.length).toBeLessThanOrEqual(160);
+      const job=(await pool.query("SELECT * FROM incoming_sms_alerts")).rows[0];
+      await expect(receiveIncomingSmsAlertStatus(job.id,{AccountSid:account,MessageSid:job.provider_sid,MessageStatus:"delivered",From:businessPhone,To:remote})).rejects.toThrow();
+      await receiveIncomingSmsAlertStatus(job.id,{AccountSid:account,MessageSid:job.provider_sid,MessageStatus:"delivered",From:businessPhone,To:send.to});
+      await receiveIncomingSmsAlertStatus(job.id,{AccountSid:account,MessageSid:job.provider_sid,MessageStatus:"sent",From:businessPhone,To:send.to});
+      expect((await pool.query("SELECT status FROM incoming_sms_alerts")).rows[0].status).toBe("delivered");
+      await pool.query("UPDATE incoming_sms_alerts SET created_at=now()-interval '3 minutes'");
+      await receiveSmsWebhook(incoming("Later reply"));await runIncomingSmsAlertWorker();expect(gateway.create).toHaveBeenCalledTimes(2);
+    });
+    it("does not alert for staff phones or send after revocation, disabling, or uncertain delivery",async()=>{
+      await expect(saveSmsAlertSettings(member,{enabled:true,userId:memberId,phone:"2125550199"})).rejects.toThrow();
+      await saveSmsAlertSettings(owner,{enabled:true,userId:ownerId,phone:"2125550199"});
+      await receiveSmsWebhook(incoming("Staff reply",{From:"+12125550199"}));
+      await pool.query("INSERT INTO lead_alert_settings(workspace_id,enabled,recipients) VALUES($1,true,$2::jsonb) ON CONFLICT(workspace_id) DO UPDATE SET recipients=EXCLUDED.recipients",[workspace,JSON.stringify([{name:"Teammate",phone:"+12125550198"}])]);
+      await receiveSmsWebhook(incoming("Other staff reply",{From:"+12125550198"}));expect((await pool.query("SELECT 1 FROM incoming_sms_alerts")).rowCount).toBe(0);
+      await receiveSmsWebhook(incoming());
+      await saveSmsAlertSettings(owner,{enabled:false,userId:ownerId,phone:"2125550199"});await runIncomingSmsAlertWorker();expect(gateway.create).not.toHaveBeenCalled();
+      await saveSmsAlertSettings(owner,{enabled:true,userId:ownerId,phone:"2125550199"});await receiveSmsWebhook(incoming());
+      gateway.create.mockRejectedValueOnce(new TwilioProviderError("unknown","Timeout"));await runIncomingSmsAlertWorker();await runIncomingSmsAlertWorker();expect(gateway.create).toHaveBeenCalledOnce();
+      expect((await pool.query("SELECT 1 FROM incoming_sms_alerts WHERE status='unknown'")).rowCount).toBe(1);
+      await pool.query("UPDATE incoming_sms_alerts SET created_at=now()-interval '3 minutes'");await receiveSmsWebhook(incoming());
+      await pool.query("DELETE FROM sms_number_grants WHERE workspace_id=$1 AND user_id=$2",[workspace,ownerId]);await runIncomingSmsAlertWorker();expect(gateway.create).toHaveBeenCalledOnce();
     });
     it("keeps deleted SMS history gone on replay but opens a fresh conversation for a new message", async () => {
       const event=incoming("Old private text");const old=await receiveSmsWebhook(event);

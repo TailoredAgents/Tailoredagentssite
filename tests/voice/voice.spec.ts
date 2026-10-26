@@ -246,3 +246,19 @@ test("handles denied microphones and keeps the public microphone policy restrict
   await page.getByRole("form", { name: "Start browser call", exact: true }).getByRole("button", { name: "Call now", exact: true }).click();
   await expect(panel.getByRole("alert")).toContainText("Microphone access was denied"); expect((await control(request, "inspect")).connects).toHaveLength(0);
 });
+
+ test("saves personal-phone-only routing without changing recording preferences",async({page},info)=>{
+  await signIn(page);await page.goto("/dashboard/settings#calling");
+  const form=page.getByRole("form",{name:"Save incoming call destination",exact:true});
+  await form.getByRole("combobox",{name:"Ring incoming calls on",exact:true}).selectOption("forward");
+  await form.getByRole("combobox",{name:"Receiving teammate",exact:true}).selectOption("voice-owner");
+  await form.getByLabel("Forwarding mobile number",{exact:true}).fill("4045550199");
+  await form.getByRole("button",{name:"Save incoming call destination",exact:true}).click();
+  await expect(form.getByRole("status")).toContainText("Incoming call destination saved");
+  await page.reload();await expect(form.getByLabel("Forwarding mobile number",{exact:true})).toHaveValue("+14045550199");
+  await expect(form.getByRole("combobox",{name:"Ring incoming calls on",exact:true})).toHaveValue("forward");
+  await expect(page.getByLabel("Automatically record answered calls",{exact:true})).toBeChecked();
+  expect((await new AxeBuilder({page}).include('#calling').withTags(["wcag2a","wcag2aa"]).analyze()).violations).toEqual([]);
+  await form.scrollIntoViewIfNeeded();await page.screenshot({path:`test-results/mobile-forwarding-${info.project.name}.png`,style:"nextjs-portal{display:none!important;}"});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ });

@@ -1,3 +1,4 @@
+import { receiveIncomingSmsAlertStatus } from "@/lib/sms/alerts";
 import { receiveLeadAlertStatus } from "@/lib/meta/lead-alerts";
 import { ZodError } from "zod";
 import { handleSmsWebhook, TwilioWebhookError } from "@/lib/twilio/webhook";
@@ -9,6 +10,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   return handleSmsWebhook(request, "status", async (params, attemptId) => {
     try {
+      if (await receiveIncomingSmsAlertStatus(attemptId!, params)) return;
       if (await receiveLeadAlertStatus(attemptId!, params)) return;
       return await receiveSmsStatus(attemptId!, params);
     } catch (error) {

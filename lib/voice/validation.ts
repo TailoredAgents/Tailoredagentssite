@@ -78,3 +78,14 @@ export const statusSchema = z.enum([
   "canceled",
   "failed",
 ]);
+
+export const forwardingSchema = z.object({
+  lineId: z.uuid(), mode: z.enum(["browser", "forward"]),
+  userId: z.string().max(200).default(""),
+  phone: z.string().trim().default(""), always: z.boolean().default(false),
+}).superRefine((v, ctx) => {
+  if (v.mode !== "forward") return;
+  const parsed = phoneSchema.safeParse(v.phone);
+  if (!parsed.success || !/^\+1[0-9]{10}$/.test(parsed.data)) ctx.addIssue({code:"custom",message:"Enter a 10-digit US mobile number."});
+  if (!v.userId) ctx.addIssue({code:"custom",message:"Choose the teammate receiving forwarded calls."});
+});

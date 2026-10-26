@@ -1,4 +1,5 @@
 import "server-only";
+import { enqueueIncomingSmsAlert } from "./alerts";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import type { PoolClient } from "pg";
@@ -872,6 +873,7 @@ export async function receiveSmsWebhook(params: Record<string, string>) {
         targetType: "sms_conversation",
         targetId: conversation.id,
       });
+    await enqueueIncomingSmsAlert(db, number.workspace_id, id, conversation.id);
     return { conversationId: conversation.id, duplicate: false };
   });
 }

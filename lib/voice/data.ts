@@ -21,6 +21,10 @@ export type LineRow = {
   hours_end: string;
   hours_days: number[];
   ring_seconds: number;
+  inbound_mode: "browser" | "forward";
+  forward_phone: string | null;
+  forward_user_id: string | null;
+  forward_always: boolean;
   greeting: string;
   record_calls: boolean;
   recording_announcement: boolean;
@@ -56,6 +60,10 @@ export function lineDto(n: LineRow, role: string): VoiceLine {
       days: n.hours_days,
     },
     ringSeconds: n.ring_seconds,
+    inboundMode: n.inbound_mode,
+    forwardPhone: ["owner", "admin"].includes(role) ? n.forward_phone : null,
+    forwardUserId: ["owner", "admin"].includes(role) ? n.forward_user_id : null,
+    forwardAlways: n.forward_always,
     recordCalls: n.record_calls,
     recordingAnnouncement: n.recording_announcement,
     autoTranscribe: n.auto_transcribe,

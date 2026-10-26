@@ -30,6 +30,8 @@ import {
   type LineRow,
 } from "./data";
 import {
+  forwardingSchema,
+  phoneSchema,
   connectSchema,
   grantSchema,
   routingSchema,
@@ -234,6 +236,21 @@ export async function saveVoiceRouting(
     },
     true,
   );
+}
+export async function saveVoiceForwarding(context: DashboardContext, raw: unknown) {
+  const i = forwardingSchema.parse(raw);
+  return tx(context.workspace.id, context, async db => {
+    const { row: line } = await lineAccess(db, context, i.lineId, "manage");
+    const phone = i.mode === "forward" ? phoneSchema.parse(i.phone) : null;
+    if (phone === line.phone) throw new VoiceInputError("Forward to a personal mobile number, not the business number.");
+    if (i.mode === "forward") {
+      const approved = await db.query(`SELECT 1 FROM voice_line_grants g JOIN workspace_memberships m ON m.workspace_id=g.workspace_id AND m.user_id=g.user_id
+        WHERE g.workspace_id=$1 AND g.line_id=$2 AND g.user_id=$3 AND g.can_read AND g.can_receive AND m.status='active' AND m.role<>'viewer'`, [context.workspace.id,i.lineId,i.userId]);
+      if (!approved.rowCount) throw new VoiceAccessError("Choose an active teammate with permission to receive this line's calls.");
+    }
+    await db.query("UPDATE voice_lines SET inbound_mode=$3,forward_phone=$4,forward_user_id=$5,forward_always=$6 WHERE workspace_id=$1 AND id=$2", [context.workspace.id,i.lineId,i.mode,phone,i.mode === "forward" ? i.userId : null,i.always]);
+    await audit(db,context,"voice.forwarding.updated",i.lineId,{mode:i.mode,always:i.always});
+  }, true);
 }
 export async function issueVoiceToken(
   context: DashboardContext,
@@ -548,6 +565,8 @@ type CallRow = {
   customer_sid: string | null;
   staff_sid: string | null;
   staff_user_id: string | null;
+  forward_phone: string | null;
+  forward_user_id: string | null;
   status: string;
   status_rank: number;
   duration: number | null;
@@ -767,6 +786,7 @@ export async function receiveVoiceIncoming(p: Record<string, string>) {
     if (
       config.enabled &&
       fresh.status === "active" &&
+      fresh.inbound_mode === "browser" &&
       inHours(fresh) &&
       call.status === "ringing"
     ) {
@@ -785,14 +805,27 @@ export async function receiveVoiceIncoming(p: Record<string, string>) {
         );
       }
     }
-    if (newCall && targets.length) {
+    let forwardPhone: string | null = null;
+    if (config.enabled && fresh.status === "active" && fresh.inbound_mode === "forward" &&
+        (fresh.forward_always || inHours(fresh)) && call.status === "ringing" &&
+        fresh.forward_phone !== p.From) {
+      const approved = await db.query(`SELECT 1 FROM voice_line_grants g JOIN workspace_memberships m ON m.workspace_id=g.workspace_id AND m.user_id=g.user_id
+        WHERE g.workspace_id=$1 AND g.line_id=$2 AND g.user_id=$3 AND g.can_read AND g.can_receive AND m.status='active' AND m.role<>'viewer'
+        AND NOT EXISTS(SELECT 1 FROM voice_calls busy WHERE busy.workspace_id=g.workspace_id AND busy.id<>$4 AND busy.status IN ('ringing','in-progress') AND (busy.staff_user_id=g.user_id OR busy.actor_user_id=g.user_id OR busy.forward_user_id=g.user_id))`,[line.workspace_id,line.id,fresh.forward_user_id,call.id]);
+      if (approved.rowCount && (newCall || (call.forward_phone === fresh.forward_phone && call.forward_user_id === fresh.forward_user_id))) {
+        forwardPhone = fresh.forward_phone;
+        if (newCall) await db.query("UPDATE voice_calls SET forward_phone=$3,forward_user_id=$4 WHERE workspace_id=$1 AND id=$2", [line.workspace_id,call.id,forwardPhone,fresh.forward_user_id]);
+      }
+    }
+    if (newCall && (targets.length || forwardPhone)) {
       await prepareCallRecording(db,line.workspace_id,call.id);
       call=await getCallDb(db,line.workspace_id,call.id);
     }
     return {
       callId: call.id,
       targets,
-      voicemail: targets.length === 0,
+      forwardPhone,
+      voicemail: targets.length === 0 && !forwardPhone,
       greeting: fresh.greeting,
       timeout: fresh.ring_seconds,
       recordCalls: call.recording_requested,
@@ -854,7 +887,7 @@ async function bindLeg(
   if (sid === c.staff_sid) {
     if (
       (p.To &&
-        p.To !== `client:${voiceIdentity(c.workspace_id, c.staff_user_id!)}`) ||
+        p.To !== (c.forward_phone || `client:${voiceIdentity(c.workspace_id, c.staff_user_id!)}`)) ||
       (p.ParentCallSid && p.ParentCallSid !== c.parent_sid)
     )
       throw new VoiceInputError("The staff call identity has changed.");
@@ -883,6 +916,7 @@ async function bindLeg(
     );
     return "customer";
   }
+  if (c.direction === "inbound" && c.forward_phone && actual.to === c.forward_phone && actual.from === c.to_phone && (leg === undefined || leg === "staff")) return "staff";
   if (
     c.direction === "inbound" &&
     actual.to.startsWith("client:") &&
@@ -1041,6 +1075,28 @@ export async function receiveVoiceStaffAnswer(
     return { announce: live.recording_requested && live.recording_announcement };
   });
 }
+/** Signed pre-bridge callbacks; answering the handset alone does not accept a call. */
+export async function receiveVoiceForwardAnswer(callId: string, p: Record<string,string>, accept = false) {
+  const c = await callForCallback(p, {callId});
+  return tx(c.workspace_id, null, async db => {
+    const live = await getCallDb(db,c.workspace_id,c.id);
+    if (live.direction !== "inbound" || !live.forward_phone || !live.forward_user_id || live.ended_at ||
+        (live.staff_sid && live.staff_sid !== p.CallSid)) throw new VoiceAccessError("This forwarded call is no longer available.");
+    await freshActor(db,live,"receive",live.forward_user_id);
+    const line = (await db.query<LineRow>("SELECT * FROM voice_lines WHERE workspace_id=$1 AND id=$2",[c.workspace_id,c.line_id])).rows[0];
+    if (line.inbound_mode !== "forward" || line.forward_phone !== live.forward_phone || line.forward_user_id !== live.forward_user_id) throw new VoiceAccessError("Call forwarding has changed.");
+    const child = sidSchema.parse(p.CallSid);
+    if (child === live.parent_sid) throw new VoiceInputError("A forwarded child call is required.");
+    const actual = await fetchVoiceCall(child);
+    if (actual.accountSid !== getVoiceConfiguration().accountSid || actual.parentCallSid !== live.parent_sid || actual.to !== live.forward_phone || actual.from !== live.to_phone ||
+        (p.To && p.To !== actual.to) || (p.ParentCallSid && p.ParentCallSid !== live.parent_sid)) throw new VoiceInputError("The forwarded call identity changed.");
+    if (accept && p.Digits === "1") {
+      await db.query("UPDATE voice_calls SET staff_sid=$3,staff_user_id=$4 WHERE workspace_id=$1 AND id=$2",[c.workspace_id,c.id,child,live.forward_user_id]);
+      await applyStatus(db,live,"in-progress",null,"staff");
+    }
+    return {accepted: accept && p.Digits === "1", announce: live.recording_requested && live.recording_announcement};
+  });
+}
 export async function acceptVoiceCall(context: DashboardContext, raw: unknown) {
   const i = callSchema.parse(raw);
   return tx(context.workspace.id, context, async (db) => {
@@ -1071,23 +1127,27 @@ export async function receiveVoiceDialAction(
       throw new VoiceInputError("The dial result does not match this call.");
     const status = statusSchema.parse(p.DialCallStatus),
       duration = durationOf(p.DialCallDuration);
-    if (["busy","no-answer","canceled","failed"].includes(status) && !live.answered_at) {
+    if ((["busy","no-answer","canceled","failed"].includes(status) || live.forward_phone) && !live.answered_at) {
       await db.query("UPDATE voice_call_recordings SET status='absent' WHERE workspace_id=$1 AND call_id=$2 AND status='pending' AND recording_sid IS NULL",[c.workspace_id,c.id]);
     }
     if (p.DialCallSid) {
+      const childParams: Record<string,string> = { ...p, CallSid: p.DialCallSid, ParentCallSid: live.parent_sid! };
+      // Dial action fields describe the parent; child identity is verified separately.
+      delete childParams.From; delete childParams.To;
       await bindLeg(
         db,
         live,
-        { ...p, CallSid: p.DialCallSid, ParentCallSid: live.parent_sid! },
+        childParams,
         live.direction === "outbound" ? "customer" : "staff",
       );
     }
+    const unacceptedForward = Boolean(live.forward_phone && !live.answered_at);
     await applyStatus(
       db,
       live,
-      status,
+      unacceptedForward ? "no-answer" : status,
       duration,
-      live.direction === "outbound"
+      unacceptedForward ? "parent" : live.direction === "outbound"
         ? "customer"
         : status === "completed"
           ? "staff"
@@ -1102,7 +1162,7 @@ export async function receiveVoiceDialAction(
     return {
       voicemail:
         live.direction === "inbound" &&
-        status !== "completed" &&
+        (status !== "completed" || unacceptedForward) &&
         !live.answered_at,
       greeting: line.greeting,
     };

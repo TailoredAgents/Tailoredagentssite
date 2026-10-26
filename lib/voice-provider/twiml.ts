@@ -94,6 +94,7 @@ export function voicemailTwiml(input: { callId: string; greeting?: string }) {
 export function inboundCallTwiml(input: {
   callId: string;
   targets: { identity: string; userId: string }[];
+  forwardPhone?: string | null;
   voicemail: boolean;
   greeting?: string;
   timeout?: number;
@@ -103,6 +104,7 @@ export function inboundCallTwiml(input: {
   if (
     !VOICE_UUID.test(input.callId) ||
     input.targets.length > 10 ||
+    (input.forwardPhone && (!/^\+1[0-9]{10}$/.test(input.forwardPhone) || input.forwardPhone === getVoiceConfiguration().phoneNumber || input.targets.length > 0)) ||
     input.targets.some((t) => !VOICE_IDENTITY.test(t.identity) || !t.userId) ||
     new Set(input.targets.map((t) => t.identity)).size !== input.targets.length
   )
@@ -111,11 +113,12 @@ export function inboundCallTwiml(input: {
     return hangupTwiml(
       "We are unable to take your call right now. Please try again later.",
     );
-  if (!input.targets.length)
+  if (!input.targets.length && !input.forwardPhone)
     return input.voicemail ? voicemailTwiml(input) : hangupTwiml();
   const response = new twilio.twiml.VoiceResponse();
   if (input.recordCalls && input.recordingAnnouncement) response.say(RECORDING_ANNOUNCEMENT);
   const dial = response.dial({
+    ...(input.forwardPhone ? {callerId: getVoiceConfiguration().phoneNumber} : {}),
     answerOnBridge: true,
     timeout: Math.min(
       30,
@@ -126,6 +129,11 @@ export function inboundCallTwiml(input: {
     action: voiceCallbackUrl("dial", { callId: input.callId }),
     method: "POST",
   });
+  if (input.forwardPhone) dial.number({
+    url: voiceCallbackUrl("forwardAnswer", {callId:input.callId}), method:"POST",
+    statusCallback: voiceCallbackUrl("status", {callId:input.callId,leg:"staff"}),
+    statusCallbackEvent:["initiated","ringing","answered","completed"], statusCallbackMethod:"POST",
+  }, input.forwardPhone);
   for (const target of input.targets) {
     const client = dial.client({
       url: voiceCallbackUrl("staffAnswer", {
@@ -158,5 +166,13 @@ export function recordingAnswerTwiml(announce: boolean) {
   if (!announce) return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
   const response = new twilio.twiml.VoiceResponse();
   if (announce) response.say(RECORDING_ANNOUNCEMENT);
+  return response.toString();
+}
+
+export function forwardScreenTwiml(callId: string) {
+  const response = new twilio.twiml.VoiceResponse();
+  const gather = response.gather({input:["dtmf"],numDigits:1,timeout:6,action:voiceCallbackUrl("forwardAccept",{callId}),method:"POST"});
+  gather.say("Tailored Agents call. Press 1 to accept.");
+  response.hangup();
   return response.toString();
 }
