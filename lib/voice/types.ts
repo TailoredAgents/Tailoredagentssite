@@ -1,4 +1,5 @@
 export type VoiceLine = {
+  callbackPhone?: string | null;
   id: string;
   phone: string;
   status: "active" | "paused";
@@ -53,6 +54,7 @@ export type VoiceIntent = {
   from: string;
 };
 export type VoiceCall = {
+  usingPhone?: boolean;
   id: string;
   lineId: string;
   conversationId: string;

@@ -149,7 +149,7 @@ export async function getVoiceWorkspace(
         config.phoneNumber,
       ],
     );
-  base.lines = rows.rows.map((n) => lineDto(n, role));
+  base.lines = rows.rows.map((n) => ({...lineDto(n, role), callbackPhone: n.can_call && n.forward_user_id === context.user.id ? n.forward_phone : null}));
   base.state = base.lines.length ? "ready" : "grant_required";
   base.message = base.lines.length
     ? config.enabled
@@ -171,6 +171,11 @@ export async function getVoiceWorkspace(
     ).rows;
   }
   return base;
+}
+export async function getOwnPhoneCall(context: DashboardContext): Promise<VoiceCall | null> {
+  await authorizeVoice(context);
+  const row = (await getDatabasePool().query<{id:string}>("SELECT id FROM voice_calls WHERE workspace_id=$1 AND actor_user_id=$2 AND callback_phone IS NOT NULL AND ended_at IS NULL AND created_at>now()-interval '65 minutes' ORDER BY created_at DESC LIMIT 1",[context.workspace.id,context.user.id])).rows[0];
+  return row ? getVoiceCall(context,row.id) : null;
 }
 export async function getVoiceCall(
   context: DashboardContext,
@@ -224,7 +229,7 @@ export async function readCalls(
       endedAt: Date | null;
       voicemail: VoiceCall["voicemail"];
     }>(
-      `SELECT c.id,c.line_id AS "lineId",s.conversation_id AS "conversationId",s.id AS "sourceId",c.direction,c.from_phone AS "from",c.to_phone AS "to",c.status,c.duration,c.created_at AS "createdAt",c.answered_at AS "answeredAt",c.ended_at AS "endedAt",(SELECT jsonb_build_object('id',v.id,'status',CASE WHEN v.expires_at<=now() AND v.status<>'deleted' THEN 'expired' ELSE v.status END,'duration',v.duration,'expiresAt',v.expires_at,'canPlay',v.status='ready' AND v.expires_at>now(),'canDelete',$3::boolean AND v.status NOT IN ('deleted','deleting')) FROM voice_voicemails v WHERE v.workspace_id=c.workspace_id AND v.call_id=c.id ORDER BY v.created_at DESC LIMIT 1) voicemail FROM voice_calls c JOIN crm_conversation_sources s ON s.workspace_id=c.workspace_id AND s.voice_conversation_id=c.voice_conversation_id WHERE c.workspace_id=$1 AND s.deleted_at IS NULL AND c.id=ANY($2::uuid[]) ORDER BY c.created_at,c.id`,
+      `SELECT c.id,c.line_id AS "lineId",s.conversation_id AS "conversationId",s.id AS "sourceId",c.direction,(c.callback_phone IS NOT NULL) AS "usingPhone",c.from_phone AS "from",c.to_phone AS "to",c.status,c.duration,c.created_at AS "createdAt",c.answered_at AS "answeredAt",c.ended_at AS "endedAt",(SELECT jsonb_build_object('id',v.id,'status',CASE WHEN v.expires_at<=now() AND v.status<>'deleted' THEN 'expired' ELSE v.status END,'duration',v.duration,'expiresAt',v.expires_at,'canPlay',v.status='ready' AND v.expires_at>now(),'canDelete',$3::boolean AND v.status NOT IN ('deleted','deleting')) FROM voice_voicemails v WHERE v.workspace_id=c.workspace_id AND v.call_id=c.id ORDER BY v.created_at DESC LIMIT 1) voicemail FROM voice_calls c JOIN crm_conversation_sources s ON s.workspace_id=c.workspace_id AND s.voice_conversation_id=c.voice_conversation_id WHERE c.workspace_id=$1 AND s.deleted_at IS NULL AND c.id=ANY($2::uuid[]) ORDER BY c.created_at,c.id`,
       [workspaceId, ids, manage],
     )
   ).rows;

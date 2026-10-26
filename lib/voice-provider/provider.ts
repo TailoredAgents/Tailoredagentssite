@@ -2,6 +2,8 @@ import "server-only";
 import twilio from "twilio";
 import { E164_PHONE } from "@/lib/twilio/config";
 import {
+  voiceCallbackUrl,
+  VOICE_UUID,
   CALL_SID,
   RECORDING_SID,
   VOICE_IDENTITY,
@@ -174,6 +176,24 @@ export async function fetchVoiceCall(sid: string): Promise<VoiceCallResult> {
   } catch (error) {
     throw providerError(error);
   }
+}
+/** Single attempt only. The service durably claims the request before calling this. */
+export async function createPhoneCall(input: {callId: string; phone: string}): Promise<VoiceCallResult> {
+  const {api, config} = client();
+  if (!config.enabled || !VOICE_UUID.test(input.callId) || !/^\+1[0-9]{10}$/.test(input.phone) || input.phone === config.phoneNumber)
+    throw new VoiceProviderError("rejected", "An approved personal phone is required.");
+  try {
+    const result = callResult(await api.calls.create({
+      from: config.phoneNumber, to: input.phone,
+      url: voiceCallbackUrl("callbackAnswer", {callId: input.callId}), method: "POST",
+      statusCallback: voiceCallbackUrl("status", {callId: input.callId, leg: "parent"}),
+      statusCallbackMethod: "POST", statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
+      timeout: 25, timeLimit: 3660,
+    }), config.accountSid, true);
+    if (result.parentCallSid || result.from !== config.phoneNumber || result.to !== input.phone || result.direction !== "outbound-api")
+      throw new VoiceProviderError("unknown", "The personal phone call could not be verified.");
+    return result;
+  } catch (error) { throw providerError(error, true); }
 }
 /** Ends one already-authorized call; never creates or redirects a call. */
 export async function endVoiceCall(sid: string): Promise<VoiceCallResult> {

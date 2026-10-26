@@ -86,6 +86,23 @@ createServer(async (request, response) => {
     if (request.url === "/control") {
       if (input.action === "reset") await reset();
       if (input.action === "revoke") await pool.query("DELETE FROM voice_line_grants WHERE user_id=$1", [`voice-${input.actor || "owner"}`]);
+      if (input.action === "enable-phone-calling") await pool.query("UPDATE voice_lines SET forward_phone='+16785550199',forward_user_id='voice-owner' WHERE id=$1",[lineId]);
+      if (input.action === "phone-answer" || input.action === "phone-accept") {
+        const parent = [...calls.values()].find(c=>c.direction === "outbound-api");
+        if (!parent) throw new Error("Start a synthetic handset call first");
+        const target = input.action === "phone-answer" ? parent.url : attr(parent.xml,"action");
+        const result = await callback(target,{AccountSid:account,CallSid:parent.sid,From:parent.from,To:parent.to,...(input.action === "phone-accept" ? {Digits:input.digit || "1"} : {})});
+        if (result.status !== 200) throw new Error(`Phone callback ${result.status}`);
+        parent.xml=result.body; parent.status="in-progress";
+        const number = result.body.match(/<Number[^>]*>([^<]+)<\/Number>/)?.[1];
+        if (number) {
+          const childSid=sid("CA"), child={sid:childSid,id:childSid,callId:parent.callId,account_sid:account,parent_call_sid:parent.sid,from:phone,to:number,status:"in-progress",direction:"outbound-dial",duration:"0"};
+          calls.set(childSid,child); connects.push({callId:parent.callId,to:number,keys:[]});
+          const cb=attr(result.body.match(/<Number([^>]*)>/)?.[1] || "","statusCallback");
+          await callback(cb,{AccountSid:account,CallSid:childSid,ParentCallSid:parent.sid,From:phone,To:number,CallStatus:"in-progress"});
+        }
+        return reply(response,result);
+      }
       if (input.action === "close-hours") await pool.query("UPDATE voice_lines SET hours_days=ARRAY[]::integer[] WHERE id=$1", [lineId]);
       if (input.action === "incoming") return reply(response, await incoming());
       if (input.action === "voicemail") return reply(response, await voicemail(await incoming()));
@@ -104,7 +121,7 @@ createServer(async (request, response) => {
       const stored = (await pool.query("SELECT c.id,c.status,c.direction,c.answered_at,v.id AS voicemail_id,v.status AS voicemail_status FROM voice_calls c LEFT JOIN voice_voicemails v ON v.call_id=c.id ORDER BY c.created_at")).rows;
       const presence = (await pool.query("SELECT user_id FROM voice_presence WHERE available AND updated_at>now()-interval '60 seconds'")).rows;
       const tasks=(await pool.query("SELECT id,title,owner_user_id,due_at,status FROM crm_tasks ORDER BY created_at")).rows;
-      return reply(response, { connects, devices: [...devices], presence, mediaReads, deletes, accepts, stored, lineId, tasks });
+      return reply(response, { calls: [...calls.values()].map(c=>({sid:c.sid,from:c.from,to:c.to,status:c.status,parent:c.parent_call_sid})), connects, devices: [...devices], presence, mediaReads, deletes, accepts, stored, lineId, tasks });
     }
     if (request.url === "/browser") {
       if (input.action === "register") devices.add(input.identity);
@@ -142,6 +159,12 @@ createServer(async (request, response) => {
     const target = new URL(input.uri);
     const envelope = (body, statusCode = 200) => reply(response, { statusCode, body, headers: {} });
     if (target.pathname.endsWith("/IncomingPhoneNumbers.json")) return envelope({ incoming_phone_numbers: [{ sid: numberSid, account_sid: account, phone_number: phone, capabilities: { sms: true, voice: true } }], next_page_uri: null });
+    if (target.pathname.endsWith("/Calls.json") && input.method.toUpperCase() === "POST") {
+      const fields = typeof input.data === "string" ? Object.fromEntries(new URLSearchParams(input.data)) : input.data;
+      const id=sid("CA"), callId=new URL(fields.Url).searchParams.get("call");
+      const parent={id,sid:id,callId,account_sid:account,parent_call_sid:null,from:fields.From,to:fields.To,direction:"outbound-api",status:"ringing",duration:"0",url:fields.Url,callback:fields.StatusCallback};
+      calls.set(id,parent);return envelope(parent,201);
+    }
     const callSid = target.pathname.match(/\/(CA[0-9a-f]{32})\.json$/i)?.[1];
     if (callSid && calls.has(callSid)) { const call = calls.get(callSid); if (input.method.toUpperCase() === "POST") { const fields = typeof input.data === "string" ? Object.fromEntries(new URLSearchParams(input.data)) : input.data; call.status = fields.Status; call.duration = "12"; } return envelope(call); }
     const recordingSid = target.pathname.match(/\/(RE[0-9a-f]{32})\.json$/i)?.[1];

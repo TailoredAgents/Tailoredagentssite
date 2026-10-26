@@ -3,13 +3,13 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Call, Device } from "@twilio/voice-sdk";
-import { acceptVoiceCallAction, createVoiceIntentAction, endVoiceCallAction, getVoiceCallAction, issueVoiceTokenAction, updateVoicePresenceAction } from "@/lib/voice/actions";
+import { startPhoneCallAction, getOwnPhoneCallAction, acceptVoiceCallAction, createVoiceIntentAction, endVoiceCallAction, getVoiceCallAction, issueVoiceTokenAction, updateVoicePresenceAction } from "@/lib/voice/actions";
 import type { VoiceCall, VoiceWorkspace } from "@/lib/voice/types";
 import { loadVoiceSdk } from "./sdk";
 import { BrowserPhonePanel } from "./phone-panel";
 
 type Phase = "idle" | "incoming" | "connecting" | "ringing" | "active" | "reconnecting" | "ending" | "uncertain";
-type CallTarget = { lineId: string; to: string; conversationId?: string; recipient?: { kind: "contact" | "lead"; id: string }; name?: string };
+type CallTarget = { mode?: "browser" | "phone"; lineId: string; to: string; conversationId?: string; recipient?: { kind: "contact" | "lead"; id: string }; name?: string };
 type PhoneContext = {
   workspace: VoiceWorkspace; readOnly: boolean; lineId: string; setLineId: (id: string) => void;
   connection: "disconnected" | "connecting" | "ready"; receiving: boolean; phase: Phase; error: string;
@@ -50,6 +50,7 @@ export function VoicePhoneProvider({ workspace, readOnly, children }: { workspac
   const deviceRef = useRef<Device | null>(null);
   const callRef = useRef<Call | null>(null);
   const callDirectionRef = useRef<"inbound" | "outbound" | null>(null);
+  const usingPhoneRef = useRef(false);
   const callIdRef = useRef<string | null>(null);
   const deviceLineRef = useRef("");
   const registeredRef = useRef(false);
@@ -61,7 +62,7 @@ export function VoicePhoneProvider({ workspace, readOnly, children }: { workspac
 
   function setPhase(next: Phase) { phaseRef.current = next; updatePhase(next); }
   function clearCall() {
-    callRef.current = null; callDirectionRef.current = null; callIdRef.current = null; acceptedAt.current = null;
+    usingPhoneRef.current = false; callRef.current = null; callDirectionRef.current = null; callIdRef.current = null; acceptedAt.current = null;
     intentRequest.current = null; setMuted(false); setElapsed(0); setActiveCall(null); setCallerName(""); setPhase("idle");
   }
   async function releaseDevice() {
@@ -161,7 +162,31 @@ export function VoicePhoneProvider({ workspace, readOnly, children }: { workspac
       if (generation.current === attempt) { await releaseDevice(); setError(friendlyError(reason, "Your phone could not connect. Check your calling access, browser support and network, then try again.")); }
     }
   }
+  async function startPhoneCall(target: CallTarget) {
+    if (phaseRef.current !== "idle" || readOnly) return;
+    setExpanded(true); setError(""); setCallerName(target.name || target.to); setPhase("connecting");
+    usingPhoneRef.current = true; callDirectionRef.current = "outbound";
+    const key = JSON.stringify(["phone", target.lineId,target.to,target.conversationId,target.recipient]);
+    if (!intentRequest.current || intentRequest.current.key !== key) intentRequest.current = {key,requestId:crypto.randomUUID()};
+    const attempt = ++generation.current;
+    try {
+      const intent = await createVoiceIntentAction({...target,mode:"phone",requestId:intentRequest.current.requestId});
+      if (generation.current !== attempt) { await endVoiceCallAction({callId:intent.callId}); return; }
+      callIdRef.current = intent.callId;
+      setActiveCall(await getVoiceCallAction(intent.callId));
+      if (generation.current !== attempt) return;
+      const result = await startPhoneCallAction(intent.callId);
+      if (generation.current !== attempt) return;
+      if (result.status === "error") { setError(result.message); setPhase("uncertain"); return; }
+      setPhase("ringing");
+    } catch {
+      if (generation.current !== attempt) return;
+      if (callIdRef.current) { setPhase("uncertain"); setError("Check your phone and call status. This request will not be dialed again automatically. You can end it below."); }
+      else { setPhase("idle"); usingPhoneRef.current = false; setError("The phone call could not start. Check your saved personal phone and calling access in Settings."); }
+    }
+  }
   async function startCall(target: CallTarget) {
+    if (target.mode === "phone") return startPhoneCall(target);
     if (phaseRef.current !== "idle") return;
     setExpanded(true); setError("");
     const line = workspace.lines.find((item) => item.id === target.lineId);
@@ -221,10 +246,36 @@ export function VoicePhoneProvider({ workspace, readOnly, children }: { workspac
       const localInvitation = callDirectionRef.current === "inbound" && acceptedAt.current === null;
       deviceRef.current?.destroy(); deviceRef.current = null;
       if (id) void updateVoicePresenceAction({ lineId: id, available: false }).catch(() => undefined);
-      if (callId && !localInvitation) void endVoiceCallAction({ callId }).catch(() => undefined);
+      if (callId && !localInvitation && !usingPhoneRef.current) void endVoiceCallAction({ callId }).catch(() => undefined);
     };
   // The dashboard layout keeps this provider mounted across route changes.
   // Its one heartbeat reads current device/call refs; it must not reconnect on renders.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    let disposed = false, polling = false, lastIdleCheck = 0;
+    async function refresh() {
+      if (polling || (phaseRef.current !== "idle" && !usingPhoneRef.current)) return;
+      if (document.hidden || (phaseRef.current === "idle" && Date.now()-lastIdleCheck < 30000)) return;
+      if (phaseRef.current === "idle") lastIdleCheck=Date.now();
+      polling = true;
+      try {
+        const id = callIdRef.current;
+        const detail = id && usingPhoneRef.current ? await getVoiceCallAction(id) : await getOwnPhoneCallAction();
+        if (disposed || (id && callIdRef.current !== id) || (!id && phaseRef.current !== "idle")) return;
+        if (!detail) return;
+        if (detail.endedAt) { clearCall(); router.refresh(); return; }
+        if (!id) { callIdRef.current=detail.id; usingPhoneRef.current=true; callDirectionRef.current="outbound"; setCallerName(detail.to); }
+        setActiveCall(detail);
+        acceptedAt.current = detail.answeredAt ? new Date(detail.answeredAt).getTime() : null;
+        setPhase(detail.answeredAt ? "active" : "ringing");
+      } catch { /* Keep the known call; a read failure must never redial it. */ }
+      finally { polling=false; }
+    }
+    void refresh();
+    const timer = window.setInterval(() => void refresh(),3000);
+    return () => {disposed=true;window.clearInterval(timer);};
+  // Polling reads refs so navigation and handset audio do not restart the call.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => { if (!["active", "reconnecting"].includes(phase)) return; const timer = window.setInterval(() => setElapsed(acceptedAt.current ? Math.floor((Date.now() - acceptedAt.current) / 1000) : 0), 1000); return () => window.clearInterval(timer); }, [phase]);

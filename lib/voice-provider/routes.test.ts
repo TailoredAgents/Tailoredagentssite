@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import twilio from "twilio";
 vi.mock("server-only", () => ({}));
 const service = vi.hoisted(() => ({
+  phone: vi.fn(),
   outbound: vi.fn(),
   incoming: vi.fn(),
   status: vi.fn(),
@@ -14,6 +15,7 @@ const service = vi.hoisted(() => ({
   media: vi.fn(),
 }));
 vi.mock("@/lib/voice/service", () => ({
+  receivePhoneAnswer: service.phone,
   receiveVoiceOutbound: service.outbound,
   receiveVoiceIncoming: service.incoming,
   receiveVoiceStatus: service.status,
@@ -33,6 +35,8 @@ vi.mock("@/lib/voice-provider/provider", async (importOriginal) => ({
 }));
 vi.mock("@/lib/voice/recordings",()=>({receiveCallRecording:service.record,getCallRecordingDownload:service.download}));
 import { VoiceAccessError, VoiceInputError } from "@/lib/voice/data";
+import { POST as phoneAnswer } from "@/app/api/integrations/twilio/voice/callback-answer/route";
+import { POST as phoneAccept } from "@/app/api/integrations/twilio/voice/callback-accept/route";
 import { POST as outbound } from "@/app/api/integrations/twilio/voice/outbound/route";
 import { POST as incoming } from "@/app/api/integrations/twilio/voice/incoming/route";
 import { POST as status } from "@/app/api/integrations/twilio/voice/status/route";
@@ -66,6 +70,19 @@ const signed = (path: string, p: Record<string, string> = params) =>
     body: new URLSearchParams(p),
   });
 describe("voice signed route boundaries and protected audio", () => {
+  it("screens signed handset answers and returns business caller ID only after authorized acceptance",async()=>{
+    service.phone.mockResolvedValue(null);
+    const screen=await phoneAnswer(signed(`callback-answer?call=${callId}`));
+    expect(screen.status).toBe(200);expect(await screen.text()).toContain("Press 1 to call your customer");
+    expect(service.phone).toHaveBeenCalledWith(callId,params,false);
+    const denied=await phoneAccept(signed(`callback-accept?call=${callId}`,{...params,Digits:"2"}));
+    expect(await denied.text()).toContain("<Hangup/>");
+    service.phone.mockResolvedValue({intentId:callId,callId,from:phone,to,recordCalls:true,recordingAnnouncement:false});
+    const accepted=await phoneAccept(signed(`callback-accept?call=${callId}`,{...params,Digits:"1"}));
+    const xml=await accepted.text();expect(xml).toContain(`callerId="${phone}"`);expect(xml).toContain(to);expect(xml).toContain('record="record-from-answer-dual"');expect(xml).toContain("/recordings?call=");
+    const unsigned=signed(`callback-accept?call=${callId}`);unsigned.headers.delete("x-twilio-signature");
+    service.phone.mockClear();expect((await phoneAccept(unsigned)).status).toBe(401);expect(service.phone).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     for (const [key, value] of Object.entries({

@@ -54,6 +54,7 @@ export const routingSchema = z
   })
   .refine((v) => v.start < v.end, "Business hours must end after they start.");
 export const intentSchema = z.object({
+  mode: z.enum(["browser", "phone"]).default("browser"),
   lineId: z.uuid(),
   to: phoneSchema,
   conversationId: z.uuid().optional(),

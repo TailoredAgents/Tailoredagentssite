@@ -59,7 +59,7 @@ describe("signed voice callbacks", () => {
   });
   afterEach(() => vi.unstubAllEnvs());
   it("binds signed forwarding screens and digit acceptance to the call",async()=>{
-    for(const kind of ["forwardAnswer","forwardAccept"] as const) {
+    for(const kind of ["forwardAnswer","forwardAccept","callbackAnswer","callbackAccept"] as const) {
       const p={...incoming,Digits:"1"};
       expect((await validateVoiceWebhook(signed(kind,p,`?call=${callId}`),kind)).context.callId).toBe(callId);
       await expect(validateVoiceWebhook(signed(kind,p),kind)).rejects.toThrow();

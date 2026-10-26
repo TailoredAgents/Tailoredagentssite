@@ -203,3 +203,8 @@
   .voice-call-connection { font-size: 11px; }
 }
 @media (max-width: 370px) { .conversation-workspace .conversation-page-header h1 { font-size: 22px; } }
+
+.voice-call-method { display: inline-flex; gap: 4px; padding: 4px; margin: 2px 0 8px; border: 1px solid var(--workspace-line); border-radius: 10px; background: var(--workspace-field); }
+.voice-call-method button { min-height: 36px; padding: 7px 14px; border: 0; border-radius: 7px; background: transparent; color: var(--workspace-muted); font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
+.voice-call-method button[aria-pressed="true"] { background: var(--workspace-blue); color: var(--workspace-on-primary); box-shadow: 0 1px 3px #10205024; }
+.voice-call-method button:disabled { cursor: default; opacity: .65; }

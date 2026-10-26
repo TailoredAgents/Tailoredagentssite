@@ -16,6 +16,8 @@ import {
   voiceIdentity,
 } from "@/lib/voice-provider/token";
 import {
+  createPhoneCall,
+  VoiceProviderError,
   lookupOwnedVoiceNumber,
   fetchVoiceCall,
   endVoiceCall,
@@ -411,6 +413,8 @@ export async function createVoiceIntent(
   const hash = createHash("sha256").update(JSON.stringify(i)).digest("hex");
   return tx(context.workspace.id, context, async (db) => {
     const { row: line } = await lineAccess(db, context, i.lineId, "call");
+    if (i.mode === "phone" && (!line.forward_phone || line.forward_user_id !== context.user.id || line.forward_phone === i.to || line.forward_phone === line.phone))
+      throw new VoiceInputError("Your approved personal phone must be set in calling settings and differ from the customer number.");
     if (i.recipient) await db.query(`SELECT id FROM ${i.recipient.kind === "lead" ? "leads" : "contacts"} WHERE workspace_id=$1 AND id=$2 FOR SHARE`, [context.workspace.id,i.recipient.id]);
     const recipient = i.recipient ? await getConversationRecipient(context, i.recipient.kind, i.recipient.id) : null;
     if (i.recipient && (!recipient || !recipientMatchesAddress(recipient, i.to)))
@@ -470,6 +474,10 @@ export async function createVoiceIntent(
         from: line.phone,
       };
     }
+    if ((await db.query("SELECT 1 FROM voice_calls WHERE workspace_id=$1 AND actor_user_id=$2 AND callback_phone IS NOT NULL AND ended_at IS NULL AND created_at>now()-interval '65 minutes'", [context.workspace.id, context.user.id])).rowCount)
+      throw new VoiceInputError("Finish your existing phone call before starting another.");
+    if (i.mode === "phone" && (await db.query("SELECT 1 FROM voice_calls WHERE workspace_id=$1 AND (actor_user_id=$2 OR staff_user_id=$2) AND ended_at IS NULL AND status IN ('queued','ringing','in-progress') AND created_at>now()-interval '65 minutes'",[context.workspace.id,context.user.id])).rowCount)
+      throw new VoiceInputError("Finish your existing call before calling through your phone.");
     const recent = (
       await db.query<{ actor: number; line: number }>(
         `SELECT count(*) FILTER(WHERE actor_user_id=$3)::int actor,count(*)::int line FROM voice_intents WHERE workspace_id=$1 AND line_id=$2 AND created_at>now()-interval '1 hour'`,
@@ -509,7 +517,7 @@ export async function createVoiceIntent(
       expires = new Date(Date.now() + 120000);
     await linkRecipient(binding.conversationId);
     await db.query(
-      "INSERT INTO voice_calls(id,workspace_id,line_id,voice_conversation_id,actor_user_id,direction,from_phone,to_phone) VALUES($1,$2,$3,$4,$5,'outbound',$6,$7)",
+      "INSERT INTO voice_calls(id,workspace_id,line_id,voice_conversation_id,actor_user_id,direction,from_phone,to_phone,callback_phone) VALUES($1,$2,$3,$4,$5,'outbound',$6,$7,$8)",
       [
         callId,
         context.workspace.id,
@@ -518,6 +526,7 @@ export async function createVoiceIntent(
         context.user.id,
         line.phone,
         i.to,
+        i.mode === "phone" ? line.forward_phone : null,
       ],
     );
     await db.query(
@@ -552,6 +561,9 @@ export async function createVoiceIntent(
   });
 }
 type CallRow = {
+  callback_phone: string | null;
+  callback_attempted_at: Date | null;
+  callback_accepted_at: Date | null;
   id: string;
   workspace_id: string;
   line_id: string;
@@ -683,6 +695,7 @@ export async function receiveVoiceOutbound(p: Record<string, string>) {
       );
     const c = await getCallDb(db, intent.workspace_id, intent.call_id);
     await freshActor(db, c, "call");
+    if (c.callback_phone) throw new VoiceInputError("This request uses a personal phone.");
     const sid = sidSchema.parse(p.CallSid);
     if (
       p.From !== `client:${voiceIdentity(c.workspace_id, intent.actor_user_id)}`
@@ -706,6 +719,77 @@ export async function receiveVoiceOutbound(p: Record<string, string>) {
     return { intentId: id, callId: c.id, from: c.from_phone, to: c.to_phone, ...recording };
   });
 }
+/** Reserve in the database before the external side effect. Never retry an uncertain create. */
+export async function startPhoneCall(context: DashboardContext, raw: unknown) {
+  const {callId} = callSchema.parse(raw);
+  const pending = await tx(context.workspace.id, context, async db => {
+    const c = await getCallDb(db, context.workspace.id, callId);
+    if (c.actor_user_id !== context.user.id || !c.callback_phone) throw new VoiceAccessError("This is not your phone call.");
+    const {row: line} = await lineAccess(db, context, c.line_id, "call");
+    if (c.ended_at) throw new VoiceInputError("This call has already ended.");
+    if (c.callback_attempted_at) return null;
+    if (line.forward_user_id !== context.user.id || line.forward_phone !== c.callback_phone || await blocked(db,c.workspace_id,c.to_phone))
+      throw new VoiceAccessError("The approved call destination changed. Start a new call.");
+    const claimed = await db.query("UPDATE voice_intents SET redeemed_at=now() WHERE workspace_id=$1 AND call_id=$2 AND redeemed_at IS NULL AND expires_at>now() RETURNING id",[c.workspace_id,c.id]);
+    if (!claimed.rowCount) throw new VoiceInputError("This call request expired. Start a new call.");
+    await db.query("UPDATE voice_calls SET callback_attempted_at=now(),status='queued',status_rank=1 WHERE workspace_id=$1 AND id=$2",[c.workspace_id,c.id]);
+    await audit(db,context,"voice.phone.requested",c.id);
+    await refreshSource(db,c.workspace_id,c.voice_conversation_id);
+    return c;
+  });
+  if (!pending) return "This phone call was already requested. Check its status before trying again.";
+  let result;
+  try { result = await createPhoneCall({callId,phone:pending.callback_phone!}); }
+  catch (error) {
+    if (error instanceof VoiceProviderError && error.outcome === "rejected") {
+      await tx(context.workspace.id,null,async db => {
+        const c = await getCallDb(db,context.workspace.id,callId);
+        if (!c.parent_sid) await applyStatus(db,c,"failed",null,"parent");
+      });
+      throw error;
+    }
+    // Signed callbacks can still recover the SID after a network timeout.
+    return "The phone request is awaiting confirmation. Do not start another call; check your phone or end this request.";
+  }
+  const canceled = await tx(context.workspace.id,null,async db => {
+    const c = await getCallDb(db,context.workspace.id,callId);
+    if (c.parent_sid && c.parent_sid !== result.sid) throw new VoiceInputError("A different phone call is already bound.");
+    await db.query("UPDATE voice_calls SET parent_sid=$3 WHERE workspace_id=$1 AND id=$2",[c.workspace_id,c.id,result.sid]);
+    return Boolean(c.ended_at);
+  });
+  if (canceled) await endVoiceCall(result.sid);
+  return "Answer your phone and press 1 to call the customer.";
+}
+
+async function bindPhoneParent(db: PoolClient, c: CallRow, p: Record<string,string>) {
+  const sid = sidSchema.parse(p.CallSid);
+  if (!c.callback_phone || !c.callback_attempted_at || c.direction !== "outbound" || (c.parent_sid && c.parent_sid !== sid))
+    throw new VoiceInputError("This is not the approved personal phone call.");
+  const actual = await fetchVoiceCall(sid);
+  if (actual.accountSid !== getVoiceConfiguration().accountSid || actual.parentCallSid || actual.from !== c.from_phone || actual.to !== c.callback_phone || actual.direction !== "outbound-api" ||
+      (p.From && p.From !== actual.from) || (p.To && p.To !== actual.to) || p.ParentCallSid)
+    throw new VoiceInputError("The personal phone call identity changed.");
+  if (!c.parent_sid) await db.query("UPDATE voice_calls SET parent_sid=$3 WHERE workspace_id=$1 AND id=$2",[c.workspace_id,c.id,sid]);
+}
+
+export async function receivePhoneAnswer(callId: string, p: Record<string,string>, accept = false) {
+  const c = await callForCallback(p,{callId});
+  return tx(c.workspace_id,null,async db => {
+    const live = await getCallDb(db,c.workspace_id,c.id);
+    await bindPhoneParent(db,live,p);
+    await freshActor(db,live,"call");
+    const line = (await db.query<LineRow>("SELECT * FROM voice_lines WHERE workspace_id=$1 AND id=$2",[c.workspace_id,c.line_id])).rows[0];
+    if (live.ended_at || live.callback_accepted_at || line.forward_phone !== live.callback_phone || line.forward_user_id !== live.actor_user_id ||
+        !live.callback_attempted_at || Date.now()-live.callback_attempted_at.getTime()>120000 || await blocked(db,c.workspace_id,c.to_phone))
+      throw new VoiceAccessError("This phone call is no longer available.");
+    if (!accept) return null;
+    if (p.Digits !== "1") return null;
+    await db.query("UPDATE voice_calls SET callback_accepted_at=now(),status='ringing',status_rank=2 WHERE workspace_id=$1 AND id=$2",[c.workspace_id,c.id]);
+    const recording = await prepareCallRecording(db,c.workspace_id,c.id);
+    return {intentId:c.id,callId:c.id,from:c.from_phone,to:c.to_phone,...recording};
+  });
+}
+
 function inHours(line: LineRow) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: line.timezone,
@@ -873,6 +957,10 @@ async function bindLeg(
   leg?: string,
 ) {
   const sid = sidSchema.parse(p.CallSid);
+  if (c.callback_phone && (!c.parent_sid || sid === c.parent_sid) && (leg === undefined || leg === "parent")) {
+    await bindPhoneParent(db, c, p);
+    return "parent";
+  }
   if (sid === c.parent_sid) return "parent";
   if (sid === c.customer_sid) {
     if (
@@ -1006,7 +1094,8 @@ export async function receiveVoiceStatus(
     )
       return;
     if (leg === "staff" && live.staff_sid !== p.CallSid) return;
-    await applyStatus(db, live, status, durationOf(p.CallDuration), leg);
+    const effectiveStatus = live.callback_phone && leg === "parent" && status === "completed" && !live.answered_at ? "no-answer" : status;
+    await applyStatus(db, live, effectiveStatus, live.callback_phone && leg === "parent" ? null : durationOf(p.CallDuration), leg);
   });
 }
 export async function receiveVoiceStaffAnswer(
@@ -1332,7 +1421,7 @@ export async function endCall(context: DashboardContext, raw: unknown) {
       db,
       await getCallDb(db, context.workspace.id, c.id),
       result.status,
-      result.duration,
+      c.callback_phone ? null : result.duration,
       "parent",
     );
   });

@@ -39,7 +39,7 @@ function ForwardingEditor({line,workspace}:{line:VoiceLine;workspace:VoiceWorksp
     <label className="voice-field"><span>Receiving teammate</span><select name="userId" defaultValue={line.forwardUserId || ""}><option value="">Choose a teammate</option>{workspace.members.filter(m=>workspace.grants.some(g=>g.lineId===line.id && g.userId===m.id && g.canRead && g.canReceive)).map(m=><option key={m.id} value={m.id}>{m.name || m.email}</option>)}</select></label>
     <label className="voice-field"><span>Forwarding mobile number</span><input name="phone" type="tel" maxLength={40} defaultValue={line.forwardPhone || ""} placeholder="(555) 555-0123"/></label>
     <label className="voice-checkbox"><input name="always" type="checkbox" defaultChecked={line.forwardAlways}/><span>Also forward outside business hours</span></label>
-    <p className="voice-phone-help">Personal phone mode rings only this number, even when the CRM is closed. Press 1 to accept. Unanswered calls go to CRM voicemail. Call history, recordings and summaries stay in the CRM. Your business number appears as caller ID on your mobile. Forwarded call minutes are billed by Twilio.</p>
+    <p className="voice-phone-help">Personal phone mode rings only this number, even when the CRM is closed. Press 1 to accept. Unanswered calls go to CRM voicemail. Call history, recordings and summaries stay in the CRM. Your business number appears as caller ID on your mobile. Forwarded call minutes are billed by Twilio. This teammate can also choose My phone for outgoing calls in the Inbox using this saved number, if they have calling access.</p>
   </OperationForm>;
 }
 function RecordingEditor({line}:{line:VoiceLine}) {

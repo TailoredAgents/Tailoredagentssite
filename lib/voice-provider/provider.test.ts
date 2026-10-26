@@ -2,18 +2,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 const sdk = vi.hoisted(() => {
   const callFetch = vi.fn(),
-    update = vi.fn(),
+    update = vi.fn(), create = vi.fn(),
     recordFetch = vi.fn(),
     remove = vi.fn(),
     list = vi.fn(), recordList=vi.fn();
   const calls = vi.fn(() => ({ fetch: callFetch, update })),
     recordings = Object.assign(vi.fn(() => ({ fetch: recordFetch, remove })),{list:recordList});
+  Object.assign(calls,{create});
   const constructor = vi.fn(() => ({
     calls,
     recordings,
     incomingPhoneNumbers: { list },
   }));
   return {
+    create,
     callFetch,
     update,
     recordFetch,
@@ -27,6 +29,7 @@ const sdk = vi.hoisted(() => {
 });
 vi.mock("twilio", () => ({ default: sdk.constructor }));
 import {
+  createPhoneCall,
   deleteVoicemailMedia,
   endVoiceCall,
   fetchVoiceCall,
@@ -67,6 +70,16 @@ const recording = {
   mediaUrl: "https://evil.invalid/media.mp3",
 };
 describe("voice provider transport and private voicemail media", () => {
+  it("creates only one handset leg with fixed business caller ID and signed callback routes",async()=>{
+    vi.stubEnv("TWILIO_VOICE_ENABLED","true");vi.stubEnv("TWILIO_VOICE_APP_SID","AP"+"3".repeat(32));
+    const callId="00000000-0000-4000-8000-000000000001";
+    sdk.create.mockResolvedValue({...call,status:"queued",duration:null,direction:"outbound-api"});
+    expect((await createPhoneCall({callId,phone:to})).sid).toBe(sid);
+    expect(sdk.create).toHaveBeenCalledWith(expect.objectContaining({from:phone,to,url:expect.stringContaining("callback-answer?call="+callId),timeout:25,timeLimit:3660,statusCallbackEvent:["initiated","ringing","answered","completed"]}));
+    expect(sdk.constructor).toHaveBeenCalledWith(expect.anything(),expect.anything(),expect.objectContaining({autoRetry:false,maxRetries:0}));
+    sdk.create.mockRejectedValue({status:503});await expect(createPhoneCall({callId,phone:to})).rejects.toMatchObject({outcome:"unknown"});
+    sdk.create.mockRejectedValue({status:400});await expect(createPhoneCall({callId,phone:to})).rejects.toMatchObject({outcome:"rejected"});
+  });
   it("accepts only scoped dual-channel Dial recordings and uses a bounded private audio proxy",async()=>{
     sdk.recordFetch.mockResolvedValue({...recording,source:"DialVerb",channels:2,duration:"3600"});
     expect((await fetchCallRecording(reference)).duration).toBe(3600);

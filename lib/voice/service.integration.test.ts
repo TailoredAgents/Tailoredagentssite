@@ -16,6 +16,7 @@ import {
 import type { DashboardContext } from "@/lib/dashboard/data";
 import { getDatabasePool } from "@/lib/dashboard/db";
 import {
+  startPhoneCall, receivePhoneAnswer,
   connectVoiceLine,
   saveVoiceGrant,
   saveVoiceRouting,
@@ -52,6 +53,7 @@ import {
 } from "@/lib/conversations/service";
 vi.mock("server-only", () => ({}));
 const provider = vi.hoisted(() => ({
+  create: vi.fn(),
   lookup: vi.fn(),
   fetch: vi.fn(),
   remove: vi.fn(),
@@ -60,6 +62,8 @@ const provider = vi.hoisted(() => ({
   recording: vi.fn(), media: vi.fn(), deleteRecording: vi.fn(), findRecording: vi.fn(), transcribe: vi.fn(), summarize: vi.fn(),
 }));
 vi.mock("@/lib/voice-provider/provider", () => ({
+  createPhoneCall: provider.create,
+  VoiceProviderError: class extends Error { constructor(readonly outcome: string, message: string) { super(message); } },
   lookupOwnedVoiceNumber: provider.lookup,
   fetchVoiceCall: provider.fetch,
   deleteVoicemailMedia: provider.remove,
@@ -250,7 +254,7 @@ describe.skipIf(!url)(
         voiceEnabled: true,
       });
       provider.remove.mockResolvedValue({ deleted: true });
-      provider.fetch.mockReset();
+      provider.fetch.mockReset(); provider.create.mockReset(); provider.end.mockReset();
       provider.token.mockReturnValue({
         token: "synthetic-token",
         identity: identity(),
@@ -286,6 +290,85 @@ describe.skipIf(!url)(
       await pool.query("UPDATE voice_call_recordings SET transcript=$2,summary=$3,analysis_status='ready' WHERE id=$1",[r.id,quote,JSON.stringify({summary:"Website proposal requested.",highlights:[],followUps:[{text:"Prepare the website proposal.",quote}]})]);
       return {...r,input:{recordingId:r.id,suggestionIndex:0,title:"Review the website proposal",ownerUserId:member.user.id,dueAt:new Date(Date.now()+86400000).toISOString(),notes:"Review the site scope first."}};
     }
+    async function phoneIntent() {
+      await saveVoiceForwarding(owner,{lineId,mode:"forward",userId:owner.user.id,phone:"4045550199",always:true});
+      return createVoiceIntent(owner,{lineId,to:remote,requestId:randomUUID(),mode:"phone"});
+    }
+    function phoneParent(n=90) { return {sid:sid(n),accountSid:account,parentCallSid:null,from:phone,to:"+14045550199",direction:"outbound-api",status:"ringing",duration:null}; }
+    function phoneParams(n=90) { return {AccountSid:account,CallSid:sid(n),From:phone,To:"+14045550199"}; }
+    it("rings the approved staff phone once and only dials the customer after press one",async()=>{
+      const i=await phoneIntent();provider.create.mockResolvedValue(phoneParent());provider.fetch.mockResolvedValue(phoneParent());
+      await Promise.all([startPhoneCall(owner,{callId:i.callId}),startPhoneCall(owner,{callId:i.callId})]);
+      expect(provider.create).toHaveBeenCalledTimes(1);expect(provider.create).toHaveBeenCalledWith({callId:i.callId,phone:"+14045550199"});
+      expect(await receivePhoneAnswer(i.callId,phoneParams())).toBeNull();
+      expect(await receivePhoneAnswer(i.callId,{...phoneParams(),Digits:"2"},true)).toBeNull();
+      expect((await getVoiceCall(owner,i.callId)).answeredAt).toBeNull();
+      const dial=await receivePhoneAnswer(i.callId,{...phoneParams(),Digits:"1"},true);
+      expect(dial).toMatchObject({from:phone,to:remote,callId:i.callId,recordCalls:true});
+      await expect(receivePhoneAnswer(i.callId,{...phoneParams(),Digits:"1"},true)).rejects.toThrow();
+      await expect(receiveVoiceOutbound({AccountSid:account,CallSid:sid(91),From:`client:${identity()}`,IntentToken:i.intentToken})).rejects.toThrow();
+      // Parent handset answer is not customer answer and its duration includes screening.
+      await receiveVoiceStatus({...phoneParams(),CallStatus:"in-progress"},{callId:i.callId,leg:"parent"});
+      expect((await getVoiceCall(owner,i.callId)).answeredAt).toBeNull();
+      provider.fetch.mockResolvedValue({...phoneParent(91),parentCallSid:sid(90),to:remote,direction:"outbound-dial"});
+      await receiveVoiceStatus({AccountSid:account,CallSid:sid(91),From:phone,To:remote,ParentCallSid:sid(90),CallStatus:"in-progress"},{callId:i.callId,leg:"customer"});
+      expect((await getVoiceCall(owner,i.callId)).answeredAt).not.toBeNull();
+      await receiveVoiceStatus({AccountSid:account,CallSid:sid(91),From:phone,To:remote,ParentCallSid:sid(90),CallStatus:"completed",CallDuration:"20"},{callId:i.callId,leg:"customer"});
+      provider.fetch.mockResolvedValue(phoneParent());
+      await receiveVoiceStatus({...phoneParams(),CallStatus:"completed",CallDuration:"35"},{callId:i.callId,leg:"parent"});
+      expect((await getVoiceCall(owner,i.callId)).duration).toBe(20);
+      expect((await getVoiceCall(owner,i.callId)).recording).not.toBeNull();
+    });
+    it("recovers an uncertain provider create from signed callbacks without redialing",async()=>{
+      const i=await phoneIntent();provider.create.mockRejectedValue(new Error("timeout"));provider.fetch.mockResolvedValue(phoneParent());
+      await startPhoneCall(owner,{callId:i.callId});await startPhoneCall(owner,{callId:i.callId});
+      expect(provider.create).toHaveBeenCalledTimes(1);
+      await expect(createVoiceIntent(owner,{lineId,to:remote,requestId:randomUUID(),mode:"phone"})).rejects.toThrow("existing phone call");
+      await receiveVoiceStatus({...phoneParams(),CallStatus:"ringing"},{callId:i.callId,leg:"parent"});
+      expect((await pool.query("SELECT parent_sid FROM voice_calls WHERE id=$1",[i.callId])).rows[0].parent_sid).toBe(sid(90));
+      expect(await receivePhoneAnswer(i.callId,{...phoneParams(),Digits:"1"},true)).toMatchObject({to:remote});
+    });
+    it("rejects other actors, changed destinations and substituted call legs",async()=>{
+      const i=await phoneIntent();provider.create.mockResolvedValue(phoneParent());provider.fetch.mockResolvedValue(phoneParent());
+      expect((await getVoiceWorkspace(owner)).lines[0].callbackPhone).toBe("+14045550199");
+      await expect(startPhoneCall(member,{callId:i.callId})).rejects.toThrow();
+      await expect(startPhoneCall(actor("voice-other",otherWs),{callId:i.callId})).rejects.toThrow();
+      await expect(createVoiceIntent(member,{lineId,to:remote,mode:"phone",requestId:randomUUID()})).rejects.toThrow();
+      await startPhoneCall(owner,{callId:i.callId});
+      provider.fetch.mockResolvedValue({...phoneParent(),to:remote});
+      await expect(receivePhoneAnswer(i.callId,phoneParams())).rejects.toThrow("identity changed");
+      provider.fetch.mockResolvedValue(phoneParent());
+      await expect(receivePhoneAnswer(i.callId,phoneParams(91))).rejects.toThrow();
+      await saveVoiceForwarding(owner,{lineId,mode:"forward",userId:owner.user.id,phone:"4045550198",always:true});
+      await expect(receivePhoneAnswer(i.callId,{...phoneParams(),Digits:"1"},true)).rejects.toThrow();
+    });
+    it("cancels while creation is in flight and cannot dial a customer afterward",async()=>{
+      const i=await phoneIntent();let resolve!:(value:ReturnType<typeof phoneParent>)=>void;
+      provider.create.mockImplementation(()=>new Promise(r=>{resolve=r;}));provider.fetch.mockResolvedValue(phoneParent());provider.end.mockResolvedValue({...phoneParent(),status:"canceled"});
+      const started=startPhoneCall(owner,{callId:i.callId});await vi.waitFor(()=>expect(provider.create).toHaveBeenCalledTimes(1));
+      await endCall(owner,{callId:i.callId});resolve(phoneParent());await started;
+      expect(provider.end).toHaveBeenCalledWith(sid(90));
+      await expect(receivePhoneAnswer(i.callId,{...phoneParams(),Digits:"1"},true)).rejects.toThrow();
+      expect((await getVoiceCall(owner,i.callId)).status).toBe("canceled");
+    });
+    it("does not count personal voicemail as a customer answer and rechecks current access",async()=>{
+      const i=await phoneIntent();provider.create.mockResolvedValue(phoneParent());provider.fetch.mockResolvedValue(phoneParent());
+      await startPhoneCall(owner,{callId:i.callId});
+      await pool.query("UPDATE voice_line_grants SET can_call=false WHERE line_id=$1 AND user_id=$2",[lineId,owner.user.id]);
+      await expect(receivePhoneAnswer(i.callId,{...phoneParams(),Digits:"1"},true)).rejects.toThrow();
+      await receiveVoiceStatus({...phoneParams(),CallStatus:"completed",CallDuration:"10"},{callId:i.callId,leg:"parent"});
+      const call=await getVoiceCall(owner,i.callId);expect(call.status).toBe("no-answer");expect(call.answeredAt).toBeNull();expect(call.duration).toBeNull();expect(call.recording).toBeNull();
+    });
+    it("cancels an unstarted phone reservation without sending anything to the provider",async()=>{
+      const i=await phoneIntent();await endCall(owner,{callId:i.callId});
+      await expect(startPhoneCall(owner,{callId:i.callId})).rejects.toThrow();expect(provider.create).not.toHaveBeenCalled();
+    });
+    it("keeps unanswered handset calls distinct from answered customer calls",async()=>{
+      const i=await phoneIntent();provider.create.mockResolvedValue(phoneParent());provider.fetch.mockResolvedValue(phoneParent());
+      await startPhoneCall(owner,{callId:i.callId});
+      await receiveVoiceStatus({...phoneParams(),CallStatus:"no-answer"},{callId:i.callId,leg:"parent"});
+      const call=await getVoiceCall(owner,i.callId);expect(call.status).toBe("no-answer");expect(call.answeredAt).toBeNull();expect(call.recording).toBeNull();
+    });
     it("calls saved alternate numbers within the same customer history and leaves shared numbers unlinked",async()=>{
       const lead=randomUUID();
       await pool.query("INSERT INTO leads(id,workspace_id,name,organization,phone) VALUES($1,$2,'Two numbers','',$3)",[lead,ws,remote]);

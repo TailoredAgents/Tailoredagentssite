@@ -169,6 +169,15 @@ export function recordingAnswerTwiml(announce: boolean) {
   return response.toString();
 }
 
+export function callbackScreenTwiml(callId: string) {
+  if (!VOICE_UUID.test(callId)) throw new Error("A valid call is required.");
+  const response = new twilio.twiml.VoiceResponse();
+  response.gather({input:["dtmf"], numDigits:1, timeout:8, action:voiceCallbackUrl("callbackAccept",{callId}), method:"POST"})
+    .say("Tailored Agents. Press 1 to call your customer.");
+  response.hangup();
+  return response.toString();
+}
+
 export function forwardScreenTwiml(callId: string) {
   const response = new twilio.twiml.VoiceResponse();
   const gather = response.gather({input:["dtmf"],numDigits:1,timeout:6,action:voiceCallbackUrl("forwardAccept",{callId}),method:"POST"});

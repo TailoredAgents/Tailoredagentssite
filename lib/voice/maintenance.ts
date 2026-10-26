@@ -29,6 +29,7 @@ export async function runVoiceMaintenance(): Promise<{
     await db.query(
       "UPDATE voice_calls SET status='canceled',status_rank=4,ended_at=now() WHERE status='reserved' AND created_at<now()-interval '5 minutes'",
     );
+    await db.query("UPDATE voice_calls SET status='canceled',status_rank=4,ended_at=now() WHERE callback_phone IS NOT NULL AND ended_at IS NULL AND ((parent_sid IS NULL AND created_at<now()-interval '3 minutes') OR created_at<now()-interval '65 minutes')");
     await db.query("COMMIT");
   } catch (e) {
     await db.query("ROLLBACK");

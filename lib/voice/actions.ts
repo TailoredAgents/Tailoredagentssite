@@ -91,7 +91,19 @@ export async function updateVoicePresenceAction(input: {
 }) {
   return service.updateVoicePresence(await requireDashboardContext(), input);
 }
+export async function getOwnPhoneCallAction() {
+  const {getOwnPhoneCall} = await import("./data");
+  return getOwnPhoneCall(await requireDashboardContext());
+}
+export async function startPhoneCallAction(callId: string): Promise<VoiceActionState> {
+  try {
+    const result = await service.startPhoneCall(await requireDashboardContext(), {callId});
+    return {status: "success", message: result, callId};
+  } catch (error) { return failure(error); }
+}
+
 export async function createVoiceIntentAction(input: {
+  mode?: "browser" | "phone";
   lineId: string;
   to: string;
   conversationId?: string;

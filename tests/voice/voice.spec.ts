@@ -288,3 +288,35 @@ test("chooses a labeled alternate phone and calls it inside the same customer co
   expect((await control(request,"inspect")).connects[0].to).toBe("+14045550199");
   expect(new URL(page.url()).searchParams.get("conversation")).toBe(originalConversation);
 });
+
+
+test("calls through my phone without browser audio and resumes after reload",async({page,request},info)=>{
+  await control(request,"voicemail");await control(request,"enable-phone-calling");await signIn(page);await openCustomer(page);
+  await page.getByRole("tab",{name:"Call",exact:true}).click();
+  const composer=page.locator(".voice-call-composer");
+  await expect(composer.getByRole("button",{name:"My phone",exact:true})).toHaveAttribute("aria-pressed","true");
+  await expect(composer.getByRole("button",{name:"Call using my phone",exact:true})).toBeEnabled();
+  await expect(composer.getByRole("button",{name:"Connect phone",exact:true})).toHaveCount(0);
+  await composer.getByRole("button",{name:"Browser audio",exact:true}).click();
+  await expect(composer.getByRole("button",{name:"Connect phone",exact:true})).toBeVisible();
+  await composer.getByRole("button",{name:"My phone",exact:true}).click();
+  await page.screenshot({path:dashboardPreviewPath(`phone-callback-composer-${info.project.name}.png`),fullPage:true,style:"nextjs-portal{display:none!important;}"});
+  const existing=(await control(request,"inspect")).calls.length;
+  await composer.getByRole("button",{name:"Call using my phone",exact:true}).click();
+  await expect.poll(async()=>(await control(request,"inspect")).calls.length).toBe(existing+1);
+  let state=await control(request,"inspect");expect(state.calls.at(-1)).toMatchObject({from:"+16785550100",to:"+16785550199"});expect(state.connects).toHaveLength(0);expect(state.devices).toHaveLength(0);
+  const answer=await control(request,"phone-answer");expect(answer.body).toContain("Press 1");expect(answer.body).not.toContain("<Dial");
+  await control(request,"phone-accept");
+  await expect.poll(async()=>(await control(request,"inspect")).connects.length).toBe(1);
+  const panel=page.locator(".voice-phone-panel");
+  await expect(panel.locator(".voice-connection-state")).toContainText("Call in progress");
+  await expect(panel.getByRole("button",{name:"Mute microphone",exact:true})).toHaveCount(0);
+  expect((await new AxeBuilder({page}).include(".voice-call-composer").withTags(["wcag2a","wcag2aa"]).analyze()).violations).toEqual([]);
+  await page.reload();await expect(page.locator(".voice-launcher")).toContainText("Call in progress");
+  await page.locator(".voice-launcher").click();await expect(panel.getByRole("heading",{name:"Call using my phone"})).toBeVisible();
+  await page.screenshot({path:dashboardPreviewPath(`phone-callback-active-${info.project.name}.png`),fullPage:true,style:"nextjs-portal{display:none!important;}"});
+  await panel.getByRole("button",{name:"End call",exact:true}).click();
+  await expect(panel.getByRole("button",{name:"End call",exact:true})).toHaveCount(0);
+  state=await control(request,"inspect");expect(state.calls.filter((c:{to:string})=>c.to==="+16785550199")).toHaveLength(1);expect(state.devices).toHaveLength(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBeTruthy();
+});

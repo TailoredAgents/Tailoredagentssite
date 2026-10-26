@@ -84,3 +84,16 @@ Twilio remains in the media path. The original customer identity, CRM conversati
 The number webhook stays `/api/integrations/twilio/voice/incoming` (POST). New signed `/forward-answer` and `/forward-accept` callbacks are generated automatically. The server snapshots the approved destination, verifies the provider child leg and rechecks current teammate permissions before bridging. Apply migration 0024 before enabling the setting. Existing lines default to browser mode; deployment does not silently change routing.
 
 Acceptance: from a different phone, call the business number with the CRM closed, press 1 on the forwarding mobile, confirm two-way audio, then check the CRM recording and eventual summary. Repeat without accepting and confirm CRM voicemail, not personal voicemail. Calls outside configured hours follow the chosen setting.
+
+
+## Outbound calls using your phone (October 26, 2026)
+
+Migration `0027_outbound_phone_callback.sql` adds durable handset call attempts. No new credentials or number-console webhook changes are required: the application supplies the signed callback URLs when creating the call.
+
+In **Inbox → Call**, the teammate assigned the saved forwarding mobile number now sees **My phone** (selected by default) and **Browser audio**. Choose the customer number, click **Call using my phone**, answer the call from the business line, then press **1**. Only then does Twilio dial the customer with the business number as caller ID. Use the handset for audio/mute; either the handset or CRM can hang up. Leaving or reloading the dashboard does not disconnect handset audio; reopening the dashboard recovers the active call.
+
+This release uses the existing approved forwarding mobile number and its assigned teammate. It does not expose that person's number as a calling destination for other teammates. The current grant, workspace membership, line status, blocked destination and saved mobile are rechecked before customer dialing. Changing/clearing the forwarding destination also changes/disables this option. Browser calling remains available to other approved callers. Independent personal calling numbers for every teammate can be added separately.
+
+The customer call stays on the same canonical conversation, including alternate customer numbers. Connected-call recording preferences and the existing recording, transcript, summary and follow-up pipeline apply unchanged. Handset screening is not counted as customer answer or conversation duration. If the handset is unanswered, reaches personal voicemail, or does not press 1, no customer call begins.
+
+Twilio bills two phone legs for this mode. A database claim is committed before the one REST create attempt; retries never create a second handset call. Signed callbacks can recover a missing provider response. Cancellation prevents later customer dialing, and stale requests expire. Synthetic tests cover provider identity, tenant/actor isolation, changed/revoked permissions, duplicate requests, cancellation during provider creation, missed responses, press-one screening, recording linkage, handset-only voicemail, and desktop/mobile reload recovery. A real handset acceptance call remains an operator check after deployment.
