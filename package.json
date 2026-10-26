@@ -31,12 +31,14 @@
     "test:meta:browser": "playwright test --config playwright.meta.config.ts",
     "test:factory:browser": "playwright test --config playwright.factory.config.ts",
     "factory:worker": "node --conditions=react-server --import tsx scripts/run-factory-worker.ts",
-    "seo:pilot": "node --conditions=react-server --import tsx scripts/run-seo-pilot.ts"
+    "seo:pilot": "node --conditions=react-server --import tsx scripts/run-seo-pilot.ts",
+    "factory:build-worker": "node --conditions=react-server --import tsx scripts/run-factory-build-worker.ts"
   },
   "engines": {
     "node": ">=22.0.0"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1157.0",
     "@tailwindcss/postcss": "^4.1.14",
     "@twilio/voice-sdk": "^2.18.5",
     "better-auth": "^1.7.10",
@@ -47,6 +49,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "server-only": "^0.0.1",
+    "sharp": "0.35.5",
     "tailwindcss": "^4.1.14",
     "tsx": "4.23.15",
     "twilio": "^6.2.0",

@@ -95,7 +95,7 @@ export default async function LeadPage({
           </em>
         </section>
 
-        <div className="dashboard-record-contact-action" style={{ display: "flex", flexWrap: "wrap", gap: ".65rem" }}><Link className="dashboard-primary-button" href={`/dashboard/inbox?lead=${lead.id}`}><MessageSquareText size={16} aria-hidden="true" />Contact lead</Link>{websitePlan ? <Link className="dashboard-secondary-button" href={`/dashboard/sales/factory/${websitePlan.id}`}><Sparkles size={16} aria-hidden="true" />Open website plan</Link> : mutable ? <StartFactoryButton leadId={lead.id} /> : null}</div>
+        <div className="dashboard-record-contact-action" style={{ display: "flex", flexWrap: "wrap", gap: ".65rem" }}><Link className="dashboard-primary-button" href={`/dashboard/inbox?lead=${lead.id}`}><MessageSquareText size={16} aria-hidden="true" />Contact lead</Link>{websitePlan ? <Link className="dashboard-secondary-button" href={`/dashboard/sales/factory/${websitePlan.id}`}><Sparkles size={16} aria-hidden="true" />{websitePlan.latestBuild?.previewUrl ? "Website preview ready" : "Open website plan"}</Link> : mutable ? <StartFactoryButton leadId={lead.id} /> : null}</div>
         <RecordFacts facts={[{label:"Lead owner",value:lead.ownerName || "Unassigned"},{label:"Service interest",value:lead.interest || "General inquiry"},{label:"Follow-up",value:lead.nextActionAt ? formatOperationalDate(lead.nextActionAt,{dateOnly:true}) : "Not scheduled"}]} />
         <div className="dashboard-record-grid">
           <div className="dashboard-record-main">{phoneRecipient ? <section className="dashboard-panel dashboard-detail-card"><PhoneNumbers recipient={phoneRecipient} readOnly={!mutable}/></section> : null}

@@ -33,3 +33,5 @@ apps/mail/.dev.vars*
 !apps/mail/.dev.vars.example
 apps/mail/test-results/
 apps/mail/playwright-report/
+apps/factory-preview/.wrangler/
+apps/factory-preview/.dev.vars*

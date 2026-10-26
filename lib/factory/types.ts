@@ -16,10 +16,11 @@ export type FactoryProjectSummary = {
   id: string; leadId: string; leadName: string; companyName: string;
   status: "draft" | "research_queued" | "researching" | "plan_ready" | "approved" | "failed";
   currentPlanId: string | null; currentPlanVersion: number | null; createdAt: string; updatedAt: string;
+  latestBuild?: {id:string;status:import("./build-types").FactoryBuildStatus;previewUrl:string|null;version:number}|null;
 };
 export type FactoryMessage = { id: string; role: "user" | "assistant"; body: string; referenceUrls: string[]; authorName: string | null; createdAt: string };
 export type FactoryPlan = { id: string; version: number; content: FactoryPlanContent; changeSummary: string; createdAt: string };
 export type FactoryJob = { id: string; kind: "research" | "revision"; status: "queued" | "running" | "succeeded" | "failed" | "cancelled"; stage: "research" | "plan"; error: string | null; createdAt: string; finishedAt: string | null };
-export type FactoryBuildRequest = { id: string; planId: string; planVersion: number; approvedByName: string | null; approvedAt: string; status: "awaiting_builder" };
+export type FactoryBuildRequest = { id: string; planId: string; planVersion: number; approvedByName: string | null; approvedAt: string; status: "awaiting_builder"|"queued"|"building"|"ready"|"failed"|"cancelled" };
 export type FactoryWorkspace = { settings: FactorySettings; canManage: boolean; canEdit: boolean; monthSpentMicros: number; config: { configured: boolean; reason?: string }; projects: FactoryProjectSummary[] };
 export type FactoryProjectWorkspace = Omit<FactoryWorkspace, "projects"> & { project: FactoryProjectSummary; messages: FactoryMessage[]; plans: FactoryPlan[]; jobs: FactoryJob[]; buildRequests: FactoryBuildRequest[] };

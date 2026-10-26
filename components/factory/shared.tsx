@@ -17,7 +17,7 @@ export function FactorySetupNotice({ settings, config, canManage }: Pick<Factory
 }
 
 export function FactoryBuildNotice() {
-  return <div className="factory-notice"><ShieldCheck size={19} aria-hidden="true" /><div><strong>Your team decides when to build</strong><p>Research and chat prepare the plan. A human approves the exact version before it enters the build queue. Website building and hosted previews are the next phase.</p></div></div>;
+  return <div className="factory-notice"><ShieldCheck size={19} aria-hidden="true" /><div><strong>Your team decides when to build</strong><p>Research and chat prepare the plan. A human approves the exact version before it enters the build queue. The builder checks the approved website before publishing its preview and downloadable source.</p></div></div>;
 }
 
 export function FactoryReadOnly({ canEdit }: { canEdit: boolean }) {
@@ -30,4 +30,10 @@ export function safeReference(value: string) {
 
 export function factoryMoney(micros: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(micros / 1_000_000);
+}
+
+export function FactoryPreviewStatus({ build }: { build: NonNullable<FactoryProjectSummary["latestBuild"]> }) {
+  const label = build.status === "ready" ? build.previewUrl ? "Preview ready" : "Preview saved" : build.status === "running" ? "Building website" : build.status === "queued" ? "Build queued" : build.status === "failed" ? "Build needs attention" : "Build cancelled";
+  const tone = build.status === "ready" && build.previewUrl ? "approved" : build.status === "failed" ? "error" : "working";
+  return <span className={`factory-status is-${tone}`}><i aria-hidden="true" />{label}</span>;
 }

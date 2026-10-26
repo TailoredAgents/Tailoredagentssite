@@ -1,0 +1,28 @@
+# Opt-in deployment: not included in the main Blueprint, so normal web deploys
+# cannot silently create a new paid service. One scheduled builder serves all sites.
+services:
+  - type: cron
+    name: tailored-agents-website-builder
+    runtime: docker
+    dockerfilePath: ./deploy/factory-builder.Dockerfile
+    dockerContext: .
+    # Chromium QA benefits from memory headroom; billed only while this job runs.
+    plan: 1c-2g
+    schedule: "*/5 * * * *"
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: FACTORY_OPENAI_API_KEY
+        sync: false
+      - key: FACTORY_R2_ACCOUNT_ID
+        sync: false
+      - key: FACTORY_R2_ACCESS_KEY_ID
+        sync: false
+      - key: FACTORY_R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: FACTORY_R2_BUCKET
+        value: tailored-agents-site-previews
+      - key: FACTORY_PREVIEW_ORIGIN
+        value: https://previews.tailoredagents.com
+      - key: FACTORY_PREVIEW_SECRET
+        sync: false

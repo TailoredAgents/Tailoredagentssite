@@ -1,0 +1,10 @@
+{
+  "$schema": "../mail/node_modules/wrangler/config-schema.json",
+  "name": "tailored-agents-site-previews",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-10-26",
+  "workers_dev": false,
+  "routes": [{"pattern": "previews.tailoredagents.com", "custom_domain": true}],
+  "vars": {"FACTORY_RESOLVER_URL": "https://www.tailoredagents.com/api/integrations/factory/preview"},
+  "r2_buckets": [{"binding": "SITES", "bucket_name": "tailored-agents-site-previews"}]
+}

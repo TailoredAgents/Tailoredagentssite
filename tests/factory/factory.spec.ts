@@ -1,4 +1,6 @@
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
+import { Pool } from "pg";
+import { randomUUID } from "node:crypto";
 import AxeBuilder from "@axe-core/playwright";
 import { dashboardPreviewPath } from "../dashboard-theme-state";
 
@@ -121,4 +123,87 @@ test("keeps paused work and drafts, recovers provider failure, and restricts vie
   await viewer.goto("/dashboard/sales/factory");
   await expect(viewer.getByRole("button",{name:"Save research settings",exact:true})).toHaveCount(0);
   await viewerContext.close();
+});
+
+
+const buildDb = new Pool({ connectionString: "postgresql://ta_test@127.0.0.1:55433/ta_factory_browser_test", max: 1 });
+test.afterAll(async () => { await buildDb.end(); });
+async function approvedBuild(page: Page, request: APIRequestContext) {
+  await signIn(page);
+  await control(request, "enabled");
+  await openLeadPlan(page, (await control(request)).leadId);
+  await generate(request);
+  await page.reload();
+  await page.getByRole("button", { name: "Approve v1 & queue build", exact: true }).click();
+  await expect(page.getByText("Approved plan saved for the build queue", { exact: true })).toBeVisible();
+  const row = (await buildDb.query("SELECT * FROM factory_build_versions ORDER BY created_at DESC LIMIT 1")).rows[0];
+  expect(row).toBeTruthy();
+  return row;
+}
+
+test("shows build limits, paused and failed stages, and preserves upload errors", async ({ page, request }) => {
+  const version = await approvedBuild(page, request);
+  await expect(page.getByRole("heading", { name: "Approved and in the build queue", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open website preview", exact: true })).toHaveCount(0);
+  await buildDb.query("UPDATE factory_build_versions SET status='failed',stage='images',error='Synthetic image provider interruption' WHERE id=$1", [version.id]);
+  await page.reload();
+  await expect(page.getByText("Synthetic image provider interruption", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retry website build", exact: true })).toBeDisabled();
+  const file = page.getByLabel("Choose a hero image", { exact: true });
+  await file.setInputFiles({ name: "too-large.png", mimeType: "image/png", buffer: Buffer.alloc(5 * 1024 * 1024 + 1) });
+  await page.getByRole("button", { name: "Upload image", exact: true }).click();
+  await expect(page.getByText("Choose a PNG, JPEG, or WebP image under 5 MB.", { exact: true })).toBeVisible();
+  await page.route("**/api/dashboard/factory/projects/*/uploads", route => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "Synthetic storage unavailable" }) }));
+  await file.setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: Buffer.from("fixture-image") });
+  await page.getByRole("button", { name: "Upload image", exact: true }).click();
+  await expect(page.getByText("Synthetic storage unavailable", { exact: true })).toBeVisible();
+  expect(await file.evaluate((element: HTMLInputElement) => element.files?.[0]?.name)).toBe("logo.png");
+  await page.goto("/dashboard/sales/factory#build-settings");
+  await expect(page.getByLabel("Enable website building", { exact: true })).toBeDisabled();
+  await expect(page.getByLabel("Monthly build limit (USD)", { exact: true })).toHaveValue("50");
+  await expect(page.getByLabel("Per-website limit (USD)", { exact: true })).toHaveValue("5");
+  await page.getByRole("button", { name: "Save builder settings", exact: true }).click();
+  await expect(page.getByText("Website building settings saved.", { exact: true })).toBeVisible();
+  expect((await buildDb.query("SELECT enabled FROM factory_build_settings")).rows[0].enabled).toBe(false);
+});
+
+test("reviews a completed preview, revokes and renews sharing, exports and uploads assets", async ({ page, request }, info) => {
+  const version = await approvedBuild(page, request);
+  const qa = { passed: true, checks: ["Desktop and phone pages checked", "Navigation and image checks passed"], warnings: ["Connect the real inquiry form before launch"], screenshots: { desktop: `${version.storage_prefix}desktop.png`, mobile: `${version.storage_prefix}mobile.png` } };
+  await buildDb.query("UPDATE factory_build_versions SET status='ready',stage='verify',source_key=$2,qa_report=$3,ready_at=now() WHERE id=$1", [version.id, `${version.storage_prefix}source.zip`, qa]);
+  await page.route("**/api/dashboard/factory/builds/*/screenshot?*", route => route.fulfill({ status: 200, contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500"><rect width="800" height="500" fill="#eef2f6"/><rect width="800" height="70" fill="#10243b"/><rect x="40" y="120" width="430" height="35" fill="#315bb0"/><rect x="40" y="180" width="300" height="15" fill="#96a6bb"/><rect x="40" y="240" width="160" height="50" rx="8" fill="#315bb0"/><rect x="520" y="110" width="240" height="260" rx="12" fill="#c5d3e6"/></svg>' }));
+  await page.route("**/api/dashboard/factory/builds/*/source", route => route.fulfill({ status: 200, contentType: "application/zip", headers: { "content-disposition": 'attachment; filename="website-v1.zip"' }, body: Buffer.from("Synthetic download transport; export contents are tested separately.") }));
+  await page.reload();
+  const preview = page.getByRole("link", { name: "Open website preview", exact: true });
+  await expect(preview).toHaveAttribute("href", /^https:\/\/factory-previews\.example\.test\/p\//);
+  await expect(page.getByText("Website v1 · approved plan v1", { exact: true })).toBeVisible();
+  await page.getByText("Quality checks & handoff notes", { exact: true }).click();
+  await expect(page.getByText("Connect the real inquiry form before launch", { exact: true })).toBeVisible();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Download source ZIP", exact: true }).click();
+  expect((await downloadPromise).suggestedFilename()).toBe("website-v1.zip");
+  await page.getByRole("button", { name: "Turn off preview sharing", exact: true }).click();
+  await expect(preview).toHaveCount(0);
+  await expect(page.getByText("Preview sharing is turned off.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Renew preview sharing", exact: true }).click();
+  await expect(preview).toBeVisible();
+  await page.route("**/api/dashboard/factory/projects/*/uploads", async route => {
+    await buildDb.query("INSERT INTO factory_uploads(id,workspace_id,project_id,storage_key,filename,content_type,byte_size,sha256,status,created_by) VALUES($1,$2,$3,$4,'client-logo.png','image/png',1000,$5,'ready','factory-owner')", [randomUUID(), version.workspace_id, version.project_id, `fixture/${randomUUID()}.png`, "a".repeat(64)]);
+    await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ ok: true }) });
+  });
+  await page.getByLabel("Choose a hero image", { exact: true }).setInputFiles({ name: "client-logo.png", mimeType: "image/png", buffer: Buffer.from("Synthetic image transport") });
+  await page.getByRole("button", { name: "Upload image", exact: true }).click();
+  await expect(page.getByText("client-logo.png", { exact: true })).toBeVisible();
+  expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  await page.evaluate(() => { document.documentElement.style.scrollBehavior = "auto"; if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); window.scrollTo(0, 0); });
+  await page.screenshot({ path: dashboardPreviewPath(`factory-build-${info.project.name}.png`), fullPage: true, style: "nextjs-portal{display:none!important}" });
+  await page.locator(".factory-build-panel").screenshot({ path: dashboardPreviewPath(`factory-build-panel-${info.project.name}.png`) });
+  await page.getByRole("button", { name: "Remove client-logo.png from future builds", exact: true }).click();
+  await expect(page.getByText("client-logo.png", { exact: true })).toHaveCount(0);
+  await page.goto("/dashboard/sales/factory");
+  await page.getByRole("button", { name: "Previews ready", exact: true }).click();
+  await expect(page.getByText("Preview ready", { exact: true })).toBeVisible();
+  await page.goto(`/dashboard/leads/${(await control(request)).leadId}`);
+  await expect(page.getByRole("link", { name: "Website preview ready", exact: true })).toBeVisible();
 });
