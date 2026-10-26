@@ -14,7 +14,7 @@ export function VoiceCallComposer({ record, recipient }: { record?: Conversation
   const [to, setTo] = useState(displayPhone(targets[0] || ""));
   const line = phone.workspace.lines.find((item) => item.id === phone.lineId);
   const [selectedMode, setSelectedMode] = useState<"browser" | "phone" | null>(null);
-  const mode = selectedMode || (line?.callbackPhone ? "phone" : "browser");
+  const mode = line?.callbackPhone ? (selectedMode || "phone") : "browser";
   const ready = (mode === "phone" ? Boolean(line?.callbackPhone) : phone.connection === "ready") && Boolean(line?.canCall) && line?.status === "active" && phone.workspace.state === "ready";
   const busy = phone.phase !== "idle";
   const canConnect = phone.workspace.state === "ready" && Boolean(line && (line.canCall || line.canReceive)) && !phone.readOnly && phone.supported !== false;

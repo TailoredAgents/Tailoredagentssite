@@ -16,7 +16,7 @@ import {
 import type { DashboardContext } from "@/lib/dashboard/data";
 import { getDatabasePool } from "@/lib/dashboard/db";
 import {
-  startPhoneCall, receivePhoneAnswer,
+  saveCallingPhone, startPhoneCall, receivePhoneAnswer,
   connectVoiceLine,
   saveVoiceGrant,
   saveVoiceRouting,
@@ -290,8 +290,38 @@ describe.skipIf(!url)(
       await pool.query("UPDATE voice_call_recordings SET transcript=$2,summary=$3,analysis_status='ready' WHERE id=$1",[r.id,quote,JSON.stringify({summary:"Website proposal requested.",highlights:[],followUps:[{text:"Prepare the website proposal.",quote}]})]);
       return {...r,input:{recordingId:r.id,suggestionIndex:0,title:"Review the website proposal",ownerUserId:member.user.id,dueAt:new Date(Date.now()+86400000).toISOString(),notes:"Review the site scope first."}};
     }
+    it("uses each signed-in teammate's personal phone without changing incoming routing",async()=>{
+      await saveVoiceGrant(owner,{lineId,userId:member.user.id,canRead:true,canCall:true,canReceive:false,canManageVoicemail:false});
+      await saveVoiceForwarding(owner,{lineId,mode:"forward",userId:owner.user.id,phone:"4045550199",always:true});
+      await saveCallingPhone(owner,{lineId,phone:"4045550199"});
+      await saveCallingPhone(member,{lineId,phone:"4045550198"});
+      const own=await createVoiceIntent(owner,{lineId,to:remote,requestId:randomUUID(),mode:"phone"});
+      const theirs=await createVoiceIntent(member,{lineId,to:remote,requestId:randomUUID(),mode:"phone"});
+      const rows=(await pool.query("SELECT id,callback_phone FROM voice_calls WHERE id=ANY($1::uuid[])",[[own.callId,theirs.callId]])).rows;
+      expect(rows.find(r=>r.id===own.callId).callback_phone).toBe("+14045550199");expect(rows.find(r=>r.id===theirs.callId).callback_phone).toBe("+14045550198");
+      const view=await getVoiceWorkspace(member);expect(view.lines[0].callbackPhone).toBe("+14045550198");expect(view.callingPhones).toBeUndefined();expect(view.lines[0].forwardPhone).toBeNull();
+      expect((await pool.query("SELECT forward_phone,forward_user_id FROM voice_lines WHERE id=$1",[lineId])).rows[0]).toMatchObject({forward_phone:"+14045550199",forward_user_id:owner.user.id});
+      await expect(saveCallingPhone(member,{lineId,email:"voice-owner@example.test",phone:"4045550197"})).rejects.toThrow();
+      await expect(saveCallingPhone(viewer,{lineId,phone:"4045550197"})).rejects.toThrow();
+      await expect(saveCallingPhone(actor("voice-other",otherWs),{lineId,phone:"4045550197"})).rejects.toThrow();
+      await expect(saveCallingPhone(owner,{lineId,phone})).rejects.toThrow();
+      await expect(saveCallingPhone(owner,{lineId,phone:"+442079460123"})).rejects.toThrow();
+    });
+    it("prepares a login email before first sign-in without granting calling access",async()=>{
+      await saveCallingPhone(owner,{lineId,email:"FUTURE@example.test",phone:"4045550196"});
+      expect((await getVoiceWorkspace(owner)).callingPhones).toContainEqual(expect.objectContaining({email:"future@example.test",phone:"+14045550196",ready:false}));
+      await pool.query('INSERT INTO "user"(id,name,email) VALUES($1,$1,$2)',["voice-future","future@example.test"]);
+      await pool.query("INSERT INTO workspace_memberships(id,workspace_id,user_id,role,status) VALUES($1,$2,$3,'member','active')",[randomUUID(),ws,"voice-future"]);
+      await expect(createVoiceIntent(actor("voice-future"),{lineId,to:remote,requestId:randomUUID(),mode:"phone"})).rejects.toThrow();
+      await saveVoiceGrant(owner,{lineId,userId:"voice-future",canRead:true,canCall:true,canReceive:false,canManageVoicemail:false});
+      const future=await createVoiceIntent(actor("voice-future"),{lineId,to:remote,requestId:randomUUID(),mode:"phone"});
+      expect((await pool.query("SELECT callback_phone FROM voice_calls WHERE id=$1",[future.callId])).rows[0].callback_phone).toBe("+14045550196");
+      await saveCallingPhone(owner,{lineId,email:"future@example.test",phone:""});
+      expect((await getVoiceWorkspace(actor("voice-future"))).lines[0].callbackPhone).toBeNull();
+    });
     async function phoneIntent() {
       await saveVoiceForwarding(owner,{lineId,mode:"forward",userId:owner.user.id,phone:"4045550199",always:true});
+      await saveCallingPhone(owner,{lineId,phone:"4045550199"});
       return createVoiceIntent(owner,{lineId,to:remote,requestId:randomUUID(),mode:"phone"});
     }
     function phoneParent(n=90) { return {sid:sid(n),accountSid:account,parentCallSid:null,from:phone,to:"+14045550199",direction:"outbound-api",status:"ringing",duration:null}; }
@@ -339,7 +369,7 @@ describe.skipIf(!url)(
       await expect(receivePhoneAnswer(i.callId,phoneParams())).rejects.toThrow("identity changed");
       provider.fetch.mockResolvedValue(phoneParent());
       await expect(receivePhoneAnswer(i.callId,phoneParams(91))).rejects.toThrow();
-      await saveVoiceForwarding(owner,{lineId,mode:"forward",userId:owner.user.id,phone:"4045550198",always:true});
+      await saveCallingPhone(owner,{lineId,phone:"4045550198"});
       await expect(receivePhoneAnswer(i.callId,{...phoneParams(),Digits:"1"},true)).rejects.toThrow();
     });
     it("cancels while creation is in flight and cannot dial a customer afterward",async()=>{

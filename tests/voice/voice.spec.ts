@@ -320,3 +320,22 @@ test("calls through my phone without browser audio and resumes after reload",asy
   state=await control(request,"inspect");expect(state.calls.filter((c:{to:string})=>c.to==="+16785550199")).toHaveLength(1);expect(state.devices).toHaveLength(0);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBeTruthy();
 });
+
+
+test("saves separate personal calling phones for owners and members",async({page,request},info)=>{
+  await control(request,"voicemail");await signIn(page);await page.goto("/dashboard/settings#calling");
+  const own=page.getByRole("form",{name:"Save my calling phone",exact:true});
+  await own.getByLabel("My mobile number",{exact:true}).fill("4045550199");await own.getByRole("button",{name:"Save my calling phone",exact:true}).click();
+  await expect(own.getByRole("status")).toContainText("Personal calling phone saved");
+  const team=page.getByRole("form",{name:"Save teammate calling phone",exact:true});
+  await team.getByLabel("Teammate login email",{exact:true}).fill("austin@example.test");await team.getByLabel("Teammate mobile number",{exact:true}).fill("4045550198");
+  await team.getByRole("button",{name:"Save teammate calling phone",exact:true}).click();await expect(team.getByRole("status")).toContainText("Personal calling phone saved");
+  await page.reload();await expect(own.getByLabel("My mobile number",{exact:true})).toHaveValue("+14045550199");
+  const menu=page.getByRole("button",{name:"Menu",exact:true});if(await menu.isVisible()) await menu.click();
+  await page.getByRole("button",{name:"Sign out",exact:true}).click();await signIn(page,"austin");await page.goto("/dashboard/settings#calling");
+  await expect(own.getByLabel("My mobile number",{exact:true})).toHaveValue("+14045550198");await expect(team).toHaveCount(0);
+  expect((await new AxeBuilder({page}).include('#calling').withTags(["wcag2a","wcag2aa"]).analyze()).violations).toEqual([]);
+  await page.screenshot({path:dashboardPreviewPath(`personal-calling-phone-${info.project.name}.png`),fullPage:true,style:"nextjs-portal{display:none!important;}"});
+  await page.goto("/dashboard/inbox");await openCustomer(page);await page.getByRole("tab",{name:"Call",exact:true}).click();
+  await expect(page.locator(".voice-call-composer")).toContainText("(404) 555-0198");await expect(page.getByRole("button",{name:"Call using my phone",exact:true})).toBeEnabled();
+});

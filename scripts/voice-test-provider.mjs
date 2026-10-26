@@ -86,7 +86,7 @@ createServer(async (request, response) => {
     if (request.url === "/control") {
       if (input.action === "reset") await reset();
       if (input.action === "revoke") await pool.query("DELETE FROM voice_line_grants WHERE user_id=$1", [`voice-${input.actor || "owner"}`]);
-      if (input.action === "enable-phone-calling") await pool.query("UPDATE voice_lines SET forward_phone='+16785550199',forward_user_id='voice-owner' WHERE id=$1",[lineId]);
+      if (input.action === "enable-phone-calling") await pool.query("INSERT INTO voice_calling_phones(workspace_id,line_id,login_email,phone) VALUES($1,$2,'owner@example.test','+16785550199') ON CONFLICT DO NOTHING",[workspace,lineId]);
       if (input.action === "phone-answer" || input.action === "phone-accept") {
         const parent = [...calls.values()].find(c=>c.direction === "outbound-api");
         if (!parent) throw new Error("Start a synthetic handset call first");

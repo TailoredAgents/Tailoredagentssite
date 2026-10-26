@@ -36,6 +36,7 @@ export type VoiceWorkspace = {
   configuredPhone: string | null;
   grants: (VoiceGrant & { lineId: string })[];
   members: { id: string; name: string; email: string }[];
+  callingPhones?: {lineId:string;email:string;phone:string;name:string|null;ready:boolean}[];
 };
 export type VoiceActionState = {
   status: "idle" | "success" | "error";

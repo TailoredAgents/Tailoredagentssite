@@ -29,6 +29,7 @@ export type LineRow = {
   record_calls: boolean;
   recording_announcement: boolean;
   auto_transcribe: boolean;
+  callback_phone: string | null;
   can_read: boolean;
   can_call: boolean;
   can_receive: boolean;
@@ -37,6 +38,7 @@ export type LineRow = {
 export function lineDto(n: LineRow, role: string): VoiceLine {
   const config = getVoiceConfiguration();
   return {
+    callbackPhone: n.callback_phone,
     id: n.id,
     phone: n.phone,
     status: n.status,
@@ -94,7 +96,7 @@ export async function lineAccess(
     );
   const row = (
     await db.query<LineRow>(
-      `SELECT l.*,COALESCE(g.can_read,false) can_read,COALESCE(g.can_call,false) can_call,COALESCE(g.can_receive,false) can_receive,COALESCE(g.can_manage_voicemail,false) can_manage_voicemail FROM voice_lines l LEFT JOIN voice_line_grants g ON g.workspace_id=l.workspace_id AND g.line_id=l.id AND g.user_id=$3 WHERE l.workspace_id=$1 AND l.id=$2 AND l.account_sid=$4 AND l.phone=$5`,
+      `SELECT l.*,cp.phone AS callback_phone,COALESCE(g.can_read,false) can_read,COALESCE(g.can_call,false) can_call,COALESCE(g.can_receive,false) can_receive,COALESCE(g.can_manage_voicemail,false) can_manage_voicemail FROM voice_lines l LEFT JOIN voice_line_grants g ON g.workspace_id=l.workspace_id AND g.line_id=l.id AND g.user_id=$3 LEFT JOIN voice_calling_phones cp ON cp.workspace_id=l.workspace_id AND cp.line_id=l.id AND cp.login_email=(SELECT lower(trim(email)) FROM "user" WHERE id=$3) WHERE l.workspace_id=$1 AND l.id=$2 AND l.account_sid=$4 AND l.phone=$5`,
       [
         context.workspace.id,
         id,
@@ -141,7 +143,7 @@ export async function getVoiceWorkspace(
   if (!config.webhookReady) return base;
   const pool = getDatabasePool(),
     rows = await pool.query<LineRow>(
-      `SELECT l.*,g.can_read,g.can_call,g.can_receive,g.can_manage_voicemail FROM voice_lines l JOIN voice_line_grants g ON g.workspace_id=l.workspace_id AND g.line_id=l.id WHERE l.workspace_id=$1 AND g.user_id=$2 AND g.can_read AND l.account_sid=$3 AND l.phone=$4`,
+      `SELECT l.*,cp.phone AS callback_phone,g.can_read,g.can_call,g.can_receive,g.can_manage_voicemail FROM voice_lines l JOIN voice_line_grants g ON g.workspace_id=l.workspace_id AND g.line_id=l.id LEFT JOIN voice_calling_phones cp ON cp.workspace_id=l.workspace_id AND cp.line_id=l.id AND cp.login_email=(SELECT lower(trim(email)) FROM "user" WHERE id=$2) WHERE l.workspace_id=$1 AND g.user_id=$2 AND g.can_read AND l.account_sid=$3 AND l.phone=$4`,
       [
         context.workspace.id,
         context.user.id,
@@ -149,7 +151,7 @@ export async function getVoiceWorkspace(
         config.phoneNumber,
       ],
     );
-  base.lines = rows.rows.map((n) => ({...lineDto(n, role), callbackPhone: n.can_call && n.forward_user_id === context.user.id ? n.forward_phone : null}));
+  base.lines = rows.rows.map((n) => lineDto(n, role));
   base.state = base.lines.length ? "ready" : "grant_required";
   base.message = base.lines.length
     ? config.enabled
@@ -157,6 +159,7 @@ export async function getVoiceWorkspace(
       : "Call history is available. New calling is paused."
     : "No voice line has been approved for your account.";
   if (canManage) {
+    base.callingPhones = (await pool.query<NonNullable<VoiceWorkspace["callingPhones"]>[number]>(`SELECT p.line_id AS "lineId",p.login_email AS email,p.phone,u.name,COALESCE(m.status='active' AND m.role<>'viewer' AND g.can_read AND g.can_call,false) AS ready FROM voice_calling_phones p JOIN voice_lines l ON l.id=p.line_id AND l.workspace_id=p.workspace_id LEFT JOIN "user" u ON lower(trim(u.email))=p.login_email LEFT JOIN workspace_memberships m ON m.workspace_id=p.workspace_id AND m.user_id=u.id LEFT JOIN voice_line_grants g ON g.workspace_id=p.workspace_id AND g.line_id=p.line_id AND g.user_id=u.id WHERE p.workspace_id=$1 AND l.account_sid=$2 AND l.phone=$3 ORDER BY p.login_email`,[context.workspace.id,config.accountSid,config.phoneNumber])).rows;
     base.members = (
       await pool.query<{ id: string; name: string; email: string }>(
         `SELECT u.id,u.name,u.email FROM "user" u JOIN workspace_memberships m ON m.user_id=u.id WHERE m.workspace_id=$1 AND m.status='active' AND m.role<>'viewer' ORDER BY u.name LIMIT 200`,

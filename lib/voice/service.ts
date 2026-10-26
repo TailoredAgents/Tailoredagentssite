@@ -32,6 +32,7 @@ import {
   type LineRow,
 } from "./data";
 import {
+  callingPhoneSchema,
   forwardingSchema,
   phoneSchema,
   connectSchema,
@@ -204,6 +205,21 @@ export async function saveVoiceGrant(context: DashboardContext, raw: unknown) {
     },
     true,
   );
+}
+/** Saving a phone changes only this preference, never a grant or inbound routing. */
+export async function saveCallingPhone(context: DashboardContext, raw: unknown) {
+  const i=callingPhoneSchema.parse(raw);
+  await tx(context.workspace.id,context,async db => {
+    const own=(await db.query<{email:string}>('SELECT lower(trim(email)) AS email FROM "user" WHERE id=$1',[context.user.id])).rows[0]?.email;
+    if (!own) throw new VoiceAccessError("Your login account is unavailable.");
+    const email=i.email?.trim().toLowerCase() || own;
+    const {row:line}=await lineAccess(db,context,i.lineId,email===own ? "read" : "manage");
+    const phone=i.phone ? phoneSchema.parse(i.phone) : null;
+    if (phone && (!/^\+1[0-9]{10}$/.test(phone) || phone===line.phone)) throw new VoiceInputError("Enter a US personal number different from the business line.");
+    if (phone) await db.query("INSERT INTO voice_calling_phones(workspace_id,line_id,login_email,phone) VALUES($1,$2,$3,$4) ON CONFLICT(workspace_id,line_id,login_email) DO UPDATE SET phone=EXCLUDED.phone,updated_at=now()",[context.workspace.id,i.lineId,email,phone]);
+    else await db.query("DELETE FROM voice_calling_phones WHERE workspace_id=$1 AND line_id=$2 AND login_email=$3",[context.workspace.id,i.lineId,email]);
+    await audit(db,context,"voice.personal_phone.updated",i.lineId,{email,configured:Boolean(phone)});
+  });
 }
 export async function saveVoiceRouting(
   context: DashboardContext,
@@ -413,7 +429,7 @@ export async function createVoiceIntent(
   const hash = createHash("sha256").update(JSON.stringify(i)).digest("hex");
   return tx(context.workspace.id, context, async (db) => {
     const { row: line } = await lineAccess(db, context, i.lineId, "call");
-    if (i.mode === "phone" && (!line.forward_phone || line.forward_user_id !== context.user.id || line.forward_phone === i.to || line.forward_phone === line.phone))
+    if (i.mode === "phone" && (!line.callback_phone || line.callback_phone === i.to || line.callback_phone === line.phone))
       throw new VoiceInputError("Your approved personal phone must be set in calling settings and differ from the customer number.");
     if (i.recipient) await db.query(`SELECT id FROM ${i.recipient.kind === "lead" ? "leads" : "contacts"} WHERE workspace_id=$1 AND id=$2 FOR SHARE`, [context.workspace.id,i.recipient.id]);
     const recipient = i.recipient ? await getConversationRecipient(context, i.recipient.kind, i.recipient.id) : null;
@@ -526,7 +542,7 @@ export async function createVoiceIntent(
         context.user.id,
         line.phone,
         i.to,
-        i.mode === "phone" ? line.forward_phone : null,
+        i.mode === "phone" ? line.callback_phone : null,
       ],
     );
     await db.query(
@@ -728,7 +744,7 @@ export async function startPhoneCall(context: DashboardContext, raw: unknown) {
     const {row: line} = await lineAccess(db, context, c.line_id, "call");
     if (c.ended_at) throw new VoiceInputError("This call has already ended.");
     if (c.callback_attempted_at) return null;
-    if (line.forward_user_id !== context.user.id || line.forward_phone !== c.callback_phone || await blocked(db,c.workspace_id,c.to_phone))
+    if (line.callback_phone !== c.callback_phone || await blocked(db,c.workspace_id,c.to_phone))
       throw new VoiceAccessError("The approved call destination changed. Start a new call.");
     const claimed = await db.query("UPDATE voice_intents SET redeemed_at=now() WHERE workspace_id=$1 AND call_id=$2 AND redeemed_at IS NULL AND expires_at>now() RETURNING id",[c.workspace_id,c.id]);
     if (!claimed.rowCount) throw new VoiceInputError("This call request expired. Start a new call.");
@@ -777,9 +793,9 @@ export async function receivePhoneAnswer(callId: string, p: Record<string,string
   return tx(c.workspace_id,null,async db => {
     const live = await getCallDb(db,c.workspace_id,c.id);
     await bindPhoneParent(db,live,p);
-    await freshActor(db,live,"call");
-    const line = (await db.query<LineRow>("SELECT * FROM voice_lines WHERE workspace_id=$1 AND id=$2",[c.workspace_id,c.line_id])).rows[0];
-    if (live.ended_at || live.callback_accepted_at || line.forward_phone !== live.callback_phone || line.forward_user_id !== live.actor_user_id ||
+    const actor = await freshActor(db,live,"call");
+    const {row:line} = await lineAccess(db,actor,c.line_id,"call");
+    if (live.ended_at || live.callback_accepted_at || line.callback_phone !== live.callback_phone ||
         !live.callback_attempted_at || Date.now()-live.callback_attempted_at.getTime()>120000 || await blocked(db,c.workspace_id,c.to_phone))
       throw new VoiceAccessError("This phone call is no longer available.");
     if (!accept) return null;

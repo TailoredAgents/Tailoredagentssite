@@ -26,7 +26,7 @@ Remaining Inbox work includes general-email-to-lead conversion, outgoing attachm
 
 The original October 21, 2026 design followed the owner's request to inspect Wholesale's Inbox. The shared email/SMS/notes foundation has since expanded as described here. Production delivery and provider acceptance remain separate records.
 
-**Outbound handset calling (October 26):** the teammate assigned the approved forwarding cell can choose **My phone** in the Call composer. The system rings their cell first, requires press 1, then calls the customer with business caller ID. Browser audio remains available. Migration **0027**; see [Calling](VOICE_SETUP.md) for recovery, recording and setup details.
+**Outbound handset calling (October 26):** each teammate with a saved personal calling phone can choose **My phone** in the Call composer. The system rings their cell first, requires press 1, then calls the customer with business caller ID. Browser audio remains available. Migrations **0027–0028**; personal outbound phones are separate from incoming forwarding, and owners can prepare phones by login email. See [Calling](VOICE_SETUP.md) for recovery, recording and setup details.
 
 Calling extends this same conversation model through the **Call** composer, persistent dashboard phone, signed incoming staff routing, call history and protected voicemail. Voice sources use explicit line grants independent of SMS. [Calling](VOICE_SETUP.md), [recordings/transcripts](CALL_RECORDINGS.md) and [reviewed call follow-up tasks](CALL_FOLLOW_UP_TASKS.md) are implemented. The owner has confirmed calling and recording/analysis operation; the guides distinguish that confirmation from independent live checks and later refinements.
 

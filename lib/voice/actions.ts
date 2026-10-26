@@ -63,6 +63,9 @@ export async function connectVoiceLineAction(_: VoiceActionState, f: FormData) {
 export async function saveVoiceGrantAction(_: VoiceActionState, f: FormData) {
   return change(f, service.saveVoiceGrant, "Voice permissions updated.");
 }
+export async function saveCallingPhoneAction(_: VoiceActionState, f: FormData) {
+  return change(f,service.saveCallingPhone,"Personal calling phone saved.");
+}
 export async function saveVoiceRoutingAction(_: VoiceActionState, f: FormData) {
   return change(f, service.saveVoiceRouting, "Call routing updated.");
 }

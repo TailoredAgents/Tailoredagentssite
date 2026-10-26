@@ -3,10 +3,31 @@
 import { useState } from "react";
 import { Headphones, LockKeyhole, Phone, ShieldCheck } from "lucide-react";
 import { OperationForm } from "@/components/dashboard/operation-form";
-import { saveVoiceForwardingAction, connectVoiceLineAction, saveVoiceGrantAction, saveVoiceRoutingAction, saveRecordingPreferencesAction } from "@/lib/voice/actions";
+import { saveCallingPhoneAction, saveVoiceForwardingAction, connectVoiceLineAction, saveVoiceGrantAction, saveVoiceRoutingAction, saveRecordingPreferencesAction } from "@/lib/voice/actions";
+import { displayPhone } from "@/lib/conversations/phone-options";
 import type { VoiceLine, VoiceWorkspace } from "@/lib/voice/types";
 import "@/app/dashboard/inbox/voice.css";
 
+function PersonalPhoneEditor({line}:{line:VoiceLine}) {
+  return <OperationForm action={saveCallingPhoneAction} submitLabel="Save my calling phone" className="voice-settings-form">
+    <input type="hidden" name="lineId" value={line.id}/><h3>My calling phone</h3>
+    <label className="voice-field"><span>My mobile number</span><input key={line.callbackPhone || "empty"} name="phone" type="tel" maxLength={40} defaultValue={line.callbackPhone || ""} placeholder="(555) 555-0123" autoComplete="tel-national"/></label>
+    <p className="voice-phone-help">Choose My phone in the Inbox to ring this number first, then press 1 to call your customer using the business caller ID. Leave blank to remove it. Incoming business calls keep their separate routing.</p>
+  </OperationForm>;
+}
+function TeamPhonesEditor({line,workspace}:{line:VoiceLine;workspace:VoiceWorkspace}) {
+  const [email,setEmail]=useState("");
+  const entries=(workspace.callingPhones || []).filter(p=>p.lineId===line.id);
+  return <div className="voice-settings-form"><h4>Team calling phones</h4>
+    <div className="voice-grant-list">{entries.map(p=><div key={p.email}><span><strong>{p.name || p.email}</strong><small>{displayPhone(p.phone)} · {p.ready ? "Calling access ready" : "Needs CRM sign-in and calling access"}</small></span><button className="voice-button" type="button" onClick={()=>setEmail(p.email)}>Edit<span className="sr-only"> calling phone for {p.email}</span></button></div>)}</div>
+    <OperationForm action={saveCallingPhoneAction} submitLabel="Save teammate calling phone" className="voice-settings-form">
+      <input type="hidden" name="lineId" value={line.id}/>
+      <label className="voice-field"><span>Teammate login email</span><input name="email" type="email" required maxLength={254} value={email} onChange={e=>setEmail(e.target.value)} list={`calling-emails-${line.id}`} autoComplete="off"/></label><datalist id={`calling-emails-${line.id}`}>{workspace.members.map(m=><option key={m.id} value={m.email}>{m.name}</option>)}</datalist>
+      <label className="voice-field"><span>Teammate mobile number</span><input key={email+":"+(entries.find(p=>p.email===email)?.phone || "")} name="phone" type="tel" maxLength={40} defaultValue={entries.find(p=>p.email===email)?.phone || ""} placeholder="(555) 555-0123" autoComplete="off"/></label>
+      <p className="voice-phone-help">Use their exact login email. You can prepare a number before their first CRM sign-in. Calling access is managed above. Leave the number blank to remove it.</p>
+    </OperationForm>
+  </div>;
+}
 function GrantEditor({ line, workspace }: { line: VoiceLine; workspace: VoiceWorkspace }) {
   const [userId, setUserId] = useState("");
   const [read, setRead] = useState(true);
@@ -39,7 +60,7 @@ function ForwardingEditor({line,workspace}:{line:VoiceLine;workspace:VoiceWorksp
     <label className="voice-field"><span>Receiving teammate</span><select name="userId" defaultValue={line.forwardUserId || ""}><option value="">Choose a teammate</option>{workspace.members.filter(m=>workspace.grants.some(g=>g.lineId===line.id && g.userId===m.id && g.canRead && g.canReceive)).map(m=><option key={m.id} value={m.id}>{m.name || m.email}</option>)}</select></label>
     <label className="voice-field"><span>Forwarding mobile number</span><input name="phone" type="tel" maxLength={40} defaultValue={line.forwardPhone || ""} placeholder="(555) 555-0123"/></label>
     <label className="voice-checkbox"><input name="always" type="checkbox" defaultChecked={line.forwardAlways}/><span>Also forward outside business hours</span></label>
-    <p className="voice-phone-help">Personal phone mode rings only this number, even when the CRM is closed. Press 1 to accept. Unanswered calls go to CRM voicemail. Call history, recordings and summaries stay in the CRM. Your business number appears as caller ID on your mobile. Forwarded call minutes are billed by Twilio. This teammate can also choose My phone for outgoing calls in the Inbox using this saved number, if they have calling access.</p>
+    <p className="voice-phone-help">Personal phone mode rings only this number, even when the CRM is closed. Press 1 to accept. Unanswered calls go to CRM voicemail. Call history, recordings and summaries stay in the CRM. Your business number appears as caller ID on your mobile. Forwarded call minutes are billed by Twilio. Outgoing calls use each teammate’s separate personal calling phone.</p>
   </OperationForm>;
 }
 function RecordingEditor({line}:{line:VoiceLine}) {
@@ -54,10 +75,11 @@ function RecordingEditor({line}:{line:VoiceLine}) {
 
 export function VoiceSettingsPanel({ workspace }: { workspace: VoiceWorkspace }) {
   return <section id="calling" className="dashboard-panel voice-settings-panel"><div className="dashboard-panel-heading"><div><span>Business calling</span><h2>Voice & voicemail</h2></div><Headphones size={21} aria-hidden="true" /></div><div className="voice-settings-body"><p>{workspace.message}</p>
+    {workspace.lines.filter(line=>line.canCall).map(line=><PersonalPhoneEditor key={`personal:${line.id}`} line={line}/>)}
     {!workspace.canManage ? <p className="voice-phone-help"><LockKeyhole size={16} aria-hidden="true" />An owner or administrator verifies the calling line and manages teammate access and routing.</p> : <>
       <p className="voice-settings-security"><ShieldCheck size={18} aria-hidden="true" /><span>Twilio credentials and application secrets stay in the server secret store. This panel verifies the configured business number and controls its team access.</span></p>
       {!workspace.lines.length ? <OperationForm action={connectVoiceLineAction} submitLabel="Verify configured calling line" className="voice-settings-form" disabled={!workspace.configuredPhone}><label className="voice-field"><span>Configured calling number</span><input name="phone" type="tel" readOnly required value={workspace.configuredPhone || ""} placeholder="Set the approved business number in server configuration" /><small>The number must belong to the configured Twilio account and support voice.</small></label></OperationForm> : null}
-      {workspace.lines.map((line) => <section className="voice-settings-line" key={line.id}><header><span className="voice-line-icon"><Phone size={19} aria-hidden="true" /></span><div><h3>{line.phone}</h3><p>{line.status === "active" ? "Verified calling line" : "Calling paused"}</p></div></header><div className="voice-line-columns"><div><h4>Teammate access</h4><div className="voice-grant-list" aria-label={`Calling access for ${line.phone}`}>{workspace.grants.filter((grant) => grant.lineId === line.id).map((grant) => <div key={grant.userId}><span><strong>{grant.name || grant.email}</strong><small>{[grant.canRead ? "Read" : "", grant.canCall ? "Call" : "", grant.canReceive ? "Receive" : "", grant.canManageVoicemail ? "Manage recordings" : ""].filter(Boolean).join(" · ")}</small></span><OperationForm action={saveVoiceGrantAction} submitLabel={`Revoke calling access for ${grant.name || grant.email}`} className="voice-revoke-form"><input type="hidden" name="lineId" value={line.id} /><input type="hidden" name="userId" value={grant.userId} /><input type="hidden" name="canRead" value="false" /><input type="hidden" name="canCall" value="false" /><input type="hidden" name="canReceive" value="false" /><input type="hidden" name="canManageVoicemail" value="false" /></OperationForm></div>)}</div><GrantEditor line={line} workspace={workspace} /></div><div><h4>Routing & voicemail</h4><ForwardingEditor line={line} workspace={workspace}/><RoutingEditor line={line} /></div></div></section>)}
+      {workspace.lines.map((line) => <section className="voice-settings-line" key={line.id}><header><span className="voice-line-icon"><Phone size={19} aria-hidden="true" /></span><div><h3>{line.phone}</h3><p>{line.status === "active" ? "Verified calling line" : "Calling paused"}</p></div></header><div className="voice-line-columns"><div><h4>Teammate access</h4><div className="voice-grant-list" aria-label={`Calling access for ${line.phone}`}>{workspace.grants.filter((grant) => grant.lineId === line.id).map((grant) => <div key={grant.userId}><span><strong>{grant.name || grant.email}</strong><small>{[grant.canRead ? "Read" : "", grant.canCall ? "Call" : "", grant.canReceive ? "Receive" : "", grant.canManageVoicemail ? "Manage recordings" : ""].filter(Boolean).join(" · ")}</small></span><OperationForm action={saveVoiceGrantAction} submitLabel={`Revoke calling access for ${grant.name || grant.email}`} className="voice-revoke-form"><input type="hidden" name="lineId" value={line.id} /><input type="hidden" name="userId" value={grant.userId} /><input type="hidden" name="canRead" value="false" /><input type="hidden" name="canCall" value="false" /><input type="hidden" name="canReceive" value="false" /><input type="hidden" name="canManageVoicemail" value="false" /></OperationForm></div>)}</div><GrantEditor line={line} workspace={workspace} /><TeamPhonesEditor line={line} workspace={workspace}/></div><div><h4>Routing & voicemail</h4><ForwardingEditor line={line} workspace={workspace}/><RoutingEditor line={line} /></div></div></section>)}
       {workspace.lines.map(line=><RecordingEditor key={`recording:${line.id}`} line={line}/>)}
     </>}
   </div></section>;
