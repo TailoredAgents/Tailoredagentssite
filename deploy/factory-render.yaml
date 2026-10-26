@@ -4,6 +4,9 @@ services:
   - type: cron
     name: tailored-agents-website-builder
     runtime: docker
+    branch: main
+    # Match the existing CRM database's private network.
+    region: ohio
     dockerfilePath: ./deploy/factory-builder.Dockerfile
     dockerContext: .
     # Chromium QA benefits from memory headroom; billed only while this job runs.
