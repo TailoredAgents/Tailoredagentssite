@@ -30,3 +30,22 @@ it("does not let a retry delay run beyond the overall deadline",async()=>{
   await runScheduledWorkers({...env,SEARCH_CONSOLE_SYNC_URL:'bad'},{fetcher,now:()=>elapsed,sleep,log:()=>{}});
   expect(sleep).not.toHaveBeenCalled();expect(fetcher).toHaveBeenCalledTimes(1);
 });
+
+it("isolates website planning failures from reporting and SEO", async () => {
+  const fetcher = vi.fn(async (url: URL) => new Response(JSON.stringify({ok: true}), {status: url.pathname.endsWith("/factory") ? 503 : 200}));
+  const log = vi.fn();
+  expect(await runScheduledWorkers({...env, FACTORY_WORKER_URL:"https://www.tailoredagents.com/api/cron/factory"}, {fetcher,log})).toBe(false);
+  expect(fetcher).toHaveBeenCalledTimes(3);
+  expect(JSON.stringify(log.mock.calls)).not.toContain(env.SEARCH_CONSOLE_SYNC_SECRET);
+});
+
+it("uses the shared cron secret for planning and refuses other destinations", async () => {
+  const fetcher = vi.fn(async (_url: URL, _options: RequestInit) => Response.json({ok:true}));
+  const log = vi.fn();
+  expect(await runScheduledWorkers({...env, FACTORY_WORKER_URL:"https://www.tailoredagents.com/api/cron/factory"}, {fetcher,log})).toBe(true);
+  const request = fetcher.mock.calls.find(([url]) => url.pathname === "/api/cron/factory");
+  expect(request?.[1].headers).toEqual({Authorization:`Bearer ${env.SEARCH_CONSOLE_SYNC_SECRET}`});
+  fetcher.mockClear();
+  expect(await runScheduledWorkers({...env, FACTORY_WORKER_URL:"https://example.test/api/cron/factory"}, {fetcher,log})).toBe(false);
+  expect(fetcher).toHaveBeenCalledTimes(2);
+});

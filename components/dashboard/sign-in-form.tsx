@@ -1,11 +1,13 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { ArrowRight, KeyRound, LoaderCircle, Mail } from "lucide-react";
 
 type FormStatus = "idle" | "submitting" | "error";
 
 export function SignInForm({ enabled, mailLogin = false }: { enabled: boolean; mailLogin?: boolean }) {
+  const [interactive, setInteractive] = useState(false);
+  useEffect(() => setInteractive(true), []);
   const [status, setStatus] = useState<FormStatus>("idle");
   const [errorMessage, setErrorMessage] = useState("The email or password was not accepted. Check both and try again.");
 
@@ -47,7 +49,7 @@ export function SignInForm({ enabled, mailLogin = false }: { enabled: boolean; m
   }
 
   return (
-    <form className="signin-form" onSubmit={handleSubmit}>
+    <form className="signin-form" method="post" onSubmit={handleSubmit}>
       <label htmlFor="dashboard-email">Team email</label>
       <div className="signin-field">
         <Mail size={17} aria-hidden="true" />
@@ -76,7 +78,7 @@ export function SignInForm({ enabled, mailLogin = false }: { enabled: boolean; m
           disabled={!enabled || status === "submitting"}
         />
       </div>
-      <button type="submit" disabled={!enabled || status === "submitting"}>
+      <button type="submit" disabled={!interactive || !enabled || status === "submitting"}>
         {status === "submitting" ? <LoaderCircle className="signin-spinner" size={17} /> : null}
         {status === "submitting" ? "Signing in" : "Sign in"}
         {status !== "submitting" ? <ArrowRight size={16} aria-hidden="true" /> : null}

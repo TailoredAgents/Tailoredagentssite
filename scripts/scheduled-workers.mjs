@@ -28,6 +28,9 @@ export async function runScheduledWorkers(env, { fetcher = fetch, now = Date.now
   const tasks = [lane("Reporting", env.SEARCH_CONSOLE_SYNC_URL?.trim(), env.SEARCH_CONSOLE_SYNC_SECRET?.trim(), "/api/cron/search-console", 110_000)];
   // Omit only the SEO URL to pause this lane during rollback; reporting continues.
   if (env.SEO_WORKER_URL?.trim()) tasks.push(lane("SEO", env.SEO_WORKER_URL.trim(), env.SEO_WORKER_SECRET?.trim(), "/api/cron/seo", 90_000));
+  // Factory planning is independent of reporting/SEO. Omitting its URL pauses
+  // this lane; its database settings separately control paid work and intake.
+  if (env.FACTORY_WORKER_URL?.trim()) tasks.push(lane("Website planning", env.FACTORY_WORKER_URL.trim(), (env.FACTORY_WORKER_SECRET || env.SEARCH_CONSOLE_SYNC_SECRET)?.trim(), "/api/cron/factory", 110_000));
   const results = await Promise.allSettled(tasks);
   for (const result of results) if (result.status === "rejected") error(result.reason instanceof Error ? result.reason.message : "Worker check failed.");
   return results.every(r => r.status === "fulfilled");

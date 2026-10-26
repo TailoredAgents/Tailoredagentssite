@@ -4,6 +4,7 @@ import type { DashboardContext } from "@/lib/dashboard/data";
 import { getDatabasePool, insertAuditLog } from "@/lib/dashboard/db";
 import { authorizeSales, SalesAccessError } from "@/lib/sales/data";
 import { createLeadSchema } from "./validation";
+import { enqueueFactoryLead } from "@/lib/factory/service";
 
 export async function createManualLead(context: DashboardContext, input: unknown) {
   const data = createLeadSchema.parse(input);
@@ -47,6 +48,7 @@ export async function createManualLead(context: DashboardContext, input: unknown
       action: "lead.created", targetType: "lead", targetId: leadId,
       metadata: { source: "manual" },
     });
+    await enqueueFactoryLead(client, context.workspace.id, leadId, context.user.id);
     await client.query("COMMIT");
     return { leadId };
   } catch (error) {

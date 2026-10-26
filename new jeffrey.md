@@ -88,3 +88,15 @@ During the first free scan, sampled website CPU stayed below 0.04 CPU, memory be
 New articles, broader automatic SEO repairs, city-ranking services, Google Business Profile work and client-site SEO are deferred. Meta Conversions API, automated team alerts and qualified/won feedback are later features. Twilio/calling development and the wider agency roadmap remain separate from this checklist; see [the agency roadmap](docs/AGENCY_OS_ROADMAP.md).
 
 Work stays directly on **main**, preserving collaborators' changes. Keep this file as the current status record; keep reusable technical instructions in their setup guides.
+
+## Website Factory — research and planning setup (October 26, 2026)
+
+This is a separate addition to the Mail, Meta and SEO work above. Milestone 1 adds lead research, proposed plans, pre-approval chat, version history and approval saved to a build queue. The website builder, preview hosting, image/file uploads, exports and editing copilot are still later milestones. No Factory budget has been activated or paid model call verified by the implementation tests.
+
+- [ ] **Jeffrey/Codex:** deploy the website with migrations `0029_website_factory.sql` and `0030_factory_costs.sql`. Confirm the deployment and the Website planning queue open correctly; the source change alone does not establish live availability.
+- [ ] **Jeffrey:** optionally create a dedicated OpenAI project/key and set `FACTORY_OPENAI_API_KEY` privately on the website service. Otherwise the existing `OPENAI_API_KEY` is supported. Preserve the key used by calls and Inbox drafting. No provider key belongs on the cron service.
+- [ ] **Jeffrey:** confirm the existing `tailored-agents-search-console-sync` cron has `FACTORY_WORKER_URL=https://www.tailoredagents.com/api/cron/factory`. Its existing `SEARCH_CONSOLE_SYNC_SECRET` is the fallback on both website and cron. If choosing a separate `FACTORY_WORKER_SECRET`, install the same new value of at least 32 random characters on both services. Keep reporting and SEO configuration intact.
+- [ ] **Austin/owner with Codex:** choose and approve a separate Factory monthly allowance in **Sales → Website mockups → Website planning** settings. Research defaults off; the displayed $25 is only a suggested value. Review deliberately queued leads before enabling research. Keep automatic intake off for the initial pilot.
+- [ ] **Together:** verify a real, approved pilot with sparse leads, uncertain company matches, chat revisions and exact-version approval. Approval currently saves `awaiting_builder` and does not produce a preview. Compare actual provider usage with conservative app estimates before enabling automatic research for new leads.
+
+No Cloudflare/R2 setup or new paid builder service is required yet. Exact configuration, recovery behavior, synthetic test commands and official model/pricing references are in [Website Factory setup](docs/WEBSITE_FACTORY_SETUP.md). The complete remaining implementation checklist is in [AI Website Factory build plan](docs/AI_WEBSITE_FACTORY_BUILD_PLAN.md).

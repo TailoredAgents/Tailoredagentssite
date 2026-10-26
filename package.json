@@ -29,6 +29,8 @@
     "seo:worker": "node --conditions=react-server --import tsx scripts/run-seo-worker.ts",
     "test:seo:browser": "playwright test --config playwright.seo.config.ts",
     "test:meta:browser": "playwright test --config playwright.meta.config.ts",
+    "test:factory:browser": "playwright test --config playwright.factory.config.ts",
+    "factory:worker": "node --conditions=react-server --import tsx scripts/run-factory-worker.ts",
     "seo:pilot": "node --conditions=react-server --import tsx scripts/run-seo-pilot.ts"
   },
   "engines": {

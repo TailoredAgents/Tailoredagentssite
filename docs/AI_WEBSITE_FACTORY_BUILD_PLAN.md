@@ -1,10 +1,10 @@
 # AI Website Factory: implementation plan and resume guide
 
-Created October 26, 2026. Status: **planning saved; implementation has not started**.
+Created October 26, 2026. Status: **milestone 1 implemented and locally verified; deployment pending**.
 
 This is the durable task specification for the lead research, website planning, human-approved builder, and website copilot discussed with Austin. Read this file before continuing this task after a new chat, context compaction, or work from another computer. Update its checklist and resume log as implementation progresses.
 
-The immediate user request was to save this plan **before we begin**. Creating this document does not mean the builder, hosting, or paid AI jobs have been activated. No builder-specific budget or new paid infrastructure has been approved or configured yet.
+Austin subsequently authorized implementation. Research, versioned plans, pre-approval chat, and exact-version approval are implemented. Research starts disabled; its suggested $25 monthly cap is not an approved operating budget. Website construction, preview hosting, image generation, editing actual sites, and export remain later milestones. No paid AI jobs or new infrastructure have been activated.
 
 ## Outcome
 
@@ -140,13 +140,14 @@ Store each human message and agent response. A plan revision should explain what
 
 ### 1. Research, proposed plans, and pre-approval chat
 
-- [ ] Reinspect current code and database; read applicable `AGENTS.md` and installed Next.js guides before writing code.
-- [ ] Design additive records for a lead's Factory project, research/evidence, chat messages, plan versions, and job state. Attach opportunities/projects when available without requiring them first.
-- [ ] Add durable intake hooks for newly created Meta, website, and manual leads, plus deliberate start for existing leads. Intake must succeed even if the AI provider is unavailable.
-- [ ] Implement research and plan generation with structured outputs, sources, uncertainty, limits, and explicit job errors/retry controls.
-- [ ] Build the lead-linked planning UI and shared pre-approval chat with optional uploads and revised-plan comparisons.
-- [ ] Implement permission-checked, version-bound approval and durable build queue creation. Do not mark a build complete before a builder exists.
-- [ ] Verify sparse/fake/missing details, source access boundaries, duplicate intake, stale approval, and deletion behavior.
+- [x] Reinspect current code and database; read applicable `AGENTS.md` and installed Next.js guides before writing code.
+- [x] Design additive lead-linked records for Factory projects, research/evidence, chat messages, immutable plan versions, job state, and usage receipts. Existing sales links remain available through the lead; builder-to-mockup linkage follows in milestone 2.
+- [x] Add durable intake hooks for newly created Meta, website, and manual leads, plus deliberate start for existing leads. Intake makes no AI calls and does not depend on provider availability.
+- [x] Implement research and plan generation with structured outputs, sources, uncertainty, limits, and explicit job errors/retry controls.
+- [x] Build the lead-linked planning UI and shared pre-approval chat with optional reference links, change summaries, and version selection.
+- [ ] Add optional image/file uploads with the artifact storage introduced in milestone 2. Text and reference URLs work now; uploads are explicitly unavailable.
+- [x] Implement permission-checked, version-bound approval and durable build queue creation. Approval creates `awaiting_builder`, never a completed website.
+- [x] Verify sparse/fake/missing details, source access boundaries, duplicate intake, stale approval, and deletion behavior in synthetic provider/database tests.
 
 Exit: a lead can produce a plan, humans can refine it through chat, and approval queues exactly the reviewed version. No build can occur without that approval.
 
@@ -208,12 +209,17 @@ No blanket "free hosting" promise: AI, build compute, storage operations, routin
 
 1. Read this specification and the latest user messages; preserve the explicit decisions above.
 2. Check `git status`, remote updates, and applicable project instructions. Work on `main`, preserve collaborators' changes, and push focused verified commits as required by `AGENTS.md`.
-3. If the user has authorized implementation, start at the first unfinished milestone. The current request only saved the plan; do not activate paid jobs or infrastructure on the strength of this document alone.
+3. Implementation is authorized. Resume from the remaining work below. Keep paid activation and infrastructure configuration separate from synthetic local verification; the research budget question is pending, and the builder budget has not been set.
 4. Keep completed work, actual verification, remaining work, and precise next action here. Record provider setup and deployment separately from local test success.
 5. Update the roadmap link and Jeffrey handoff only where new concrete work belongs. Do not restart completed communications or SEO setup.
 
 | Date | Completed | Verification | Remaining / next action |
 | --- | --- | --- | --- |
 | October 26, 2026 | Saved agreed scope and implementation sequence; added roadmap pointer | Read current mockup, lead-intake, sales-linking, and Render configuration; documentation-only change | Implementation not started. On authorization, begin milestone 1: lead-linked Factory records, durable research jobs, planning chat, and versioned approval. |
+| October 26, 2026 | Implemented milestone 1 in migrations `0029`/`0030`, `lib/factory/`, lead intake hooks, `/dashboard/sales/factory`, lead actions, and independent `/api/cron/factory` worker lane | 325 tests passed, including 30 Factory tests and affected Sales/Meta regressions; 223 unrelated integration cases skipped without their database configuration. Four desktop/phone browser flows and two additional dark-theme flows passed, including accessibility checks. Lint and production build/type checks passed. Screenshots inspected. All AI responses were synthetic. | Deployment pending. Research remains disabled. Confirm the research cap and configure the cron lane for a manual pilot. Continue milestone 2 with portable source projects, isolated build execution, artifact storage, previews, optional uploads, and export. |
+
+Milestone 1 reads the lead profile, shared lead notes, planning chat, and prior plan. It does not copy permission-scoped Inbox messages, recordings, or client-memory facts into the shared planning workspace. Any expansion must preserve those source permissions. Budget totals are conservative estimates plus reservations, not an OpenAI invoice. Failed or uncertain requests require an explicit retry; they do not silently repeat provider calls.
+
+Read [the setup and operating guide](WEBSITE_FACTORY_SETUP.md) for activation, budget behavior, worker configuration, test commands, and known limits. Exact infrastructure steps are also appended to `new jeffrey.md`.
 
 Before ending a future implementation session, replace or extend this log with: changed files/commits, tests actually run, live deployment status, any pending configuration, and the next specific action. Never mark a milestone complete because only its UI or specification exists.

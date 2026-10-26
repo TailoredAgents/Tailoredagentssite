@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { getDatabasePool, insertAuditLog } from "@/lib/dashboard/db";
 import { publicInquiryStorageSchema } from "./validation";
 import { measurementSchema, type MeasurementContext } from "@/lib/analytics/measurement";
+import { enqueueFactoryLead } from "@/lib/factory/service";
 
 const INTERNAL_WORKSPACE_ID = "00000000-0000-4000-8000-000000000001";
 const CONTACT_RATE_WINDOW_MINUTES = 15;
@@ -87,6 +88,7 @@ export async function storePublicInquiry(input: unknown, measurement?: Measureme
       targetId: leadId,
       metadata: { source: "website", inquiryType: data.inquiryType },
     });
+    await enqueueFactoryLead(client, INTERNAL_WORKSPACE_ID, leadId);
     await client.query("COMMIT");
     return { leadId, duplicate: false };
   } catch (error) {

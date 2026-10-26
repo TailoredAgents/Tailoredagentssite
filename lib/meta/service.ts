@@ -1,4 +1,5 @@
 import "server-only";
+import { enqueueFactoryLead } from "@/lib/factory/service";
 import { enqueueLeadAlerts } from "./lead-alerts";
 import { randomUUID } from "node:crypto";
 import { getDatabasePool, insertAuditLog } from "@/lib/dashboard/db";
@@ -110,6 +111,7 @@ export async function runMetaLeadWorker() {
         [job.id, lease, leadId],
       );
       await enqueueLeadAlerts(client, workspaceId, job.id, leadId);
+      await enqueueFactoryLead(client, workspaceId, leadId);
       await insertAuditLog(client, {
         workspaceId,
         action: "lead.received",

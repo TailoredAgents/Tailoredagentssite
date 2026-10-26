@@ -3,6 +3,9 @@ import { getConversationRecipient } from "@/lib/conversations/recipients";
 import { leadDisplayName, leadCompanyName, leadBusinessName } from "@/lib/operations/format";
 import { RecordFacts } from "@/components/dashboard/record-facts";
 import { DeleteLeadButton } from "@/components/dashboard/delete-lead-button";
+import { StartFactoryButton } from "@/components/factory/start-button";
+import { getFactoryLeadProject } from "@/lib/factory/data";
+import "@/app/dashboard/factory.css";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
@@ -13,6 +16,7 @@ import {
   MessageSquareText,
   Phone,
   ShieldCheck,
+  Sparkles,
   UserRound,
   UsersRound,
 } from "lucide-react";
@@ -41,9 +45,10 @@ export default async function LeadPage({
 }) {
   const context = await requireDashboardContext();
   const { id } = await params;
-  const [lead, members] = await Promise.all([
+  const [lead, members, websitePlan] = await Promise.all([
     getLead(context, id),
     getWorkspaceMembers(context),
+    getFactoryLeadProject(context, id),
   ]);
   if (!lead) notFound();
   const phoneRecipient = id ? await getConversationRecipient(context, "lead", id) : null;
@@ -90,7 +95,7 @@ export default async function LeadPage({
           </em>
         </section>
 
-        <div className="dashboard-record-contact-action"><Link className="dashboard-primary-button" href={`/dashboard/inbox?lead=${lead.id}`}><MessageSquareText size={16} aria-hidden="true" />Contact lead</Link></div>
+        <div className="dashboard-record-contact-action" style={{ display: "flex", flexWrap: "wrap", gap: ".65rem" }}><Link className="dashboard-primary-button" href={`/dashboard/inbox?lead=${lead.id}`}><MessageSquareText size={16} aria-hidden="true" />Contact lead</Link>{websitePlan ? <Link className="dashboard-secondary-button" href={`/dashboard/sales/factory/${websitePlan.id}`}><Sparkles size={16} aria-hidden="true" />Open website plan</Link> : mutable ? <StartFactoryButton leadId={lead.id} /> : null}</div>
         <RecordFacts facts={[{label:"Lead owner",value:lead.ownerName || "Unassigned"},{label:"Service interest",value:lead.interest || "General inquiry"},{label:"Follow-up",value:lead.nextActionAt ? formatOperationalDate(lead.nextActionAt,{dateOnly:true}) : "Not scheduled"}]} />
         <div className="dashboard-record-grid">
           <div className="dashboard-record-main">{phoneRecipient ? <section className="dashboard-panel dashboard-detail-card"><PhoneNumbers recipient={phoneRecipient} readOnly={!mutable}/></section> : null}

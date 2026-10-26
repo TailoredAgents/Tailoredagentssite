@@ -89,6 +89,10 @@ services:
 
       - key: SEO_WORKER_URL
         value: https://www.tailoredagents.com/api/cron/seo
+      # Optional planning lane. Uses the shared cron secret unless overridden.
+      # Factory research remains off until enabled in the dashboard.
+      - key: FACTORY_WORKER_URL
+        value: https://www.tailoredagents.com/api/cron/factory
       - key: SEO_WORKER_SECRET
         fromService:
           name: tailored-agents-web
