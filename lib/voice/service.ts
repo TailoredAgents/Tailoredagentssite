@@ -322,11 +322,17 @@ async function ensureConversation(
       conversationId: source.conversation_id,
     };
   }
+  // A shared office number cannot establish one person's identity implicitly.
+  const identities = remote.startsWith("+") ? (await db.query<{id:string;kind:string;business_id:string|null}>(
+    `SELECT p.id,'contact' kind,p.business_id FROM contacts p LEFT JOIN crm_businesses b ON b.id=p.business_id AND b.workspace_id=p.workspace_id
+     WHERE p.workspace_id=$1 AND crm_phone_matches(p.phone,p.alternate_phones,$2) AND b.anonymized_at IS NULL
+     UNION ALL SELECT l.id,'lead' kind,l.business_id FROM leads l LEFT JOIN crm_businesses b ON b.id=l.business_id AND b.workspace_id=l.workspace_id
+     WHERE l.workspace_id=$1 AND crm_phone_matches(l.phone,l.alternate_phones,$2) AND l.anonymized_at IS NULL AND b.anonymized_at IS NULL LIMIT 2`, [workspaceId,remote])).rows : [];
   let canonical = explicit;
-  if (!canonical && remote.startsWith("+")) {
+  if (!canonical && remote.startsWith("+") && identities.length < 2) {
     const matches = (
       await db.query<{ id: string }>(
-        `SELECT DISTINCT c.id FROM crm_conversations c LEFT JOIN contacts p ON p.id=c.contact_id AND p.workspace_id=c.workspace_id LEFT JOIN leads l ON l.id=c.lead_id AND l.workspace_id=c.workspace_id LEFT JOIN crm_conversation_sources s ON s.conversation_id=c.id AND s.workspace_id=c.workspace_id LEFT JOIN sms_conversations sc ON sc.id=s.sms_conversation_id AND sc.workspace_id=s.workspace_id WHERE c.workspace_id=$1 AND c.merged_into_id IS NULL AND c.deleted_at IS NULL AND (crm_normalized_phone(p.phone)=$2 OR crm_normalized_phone(l.phone)=$2 OR sc.remote_phone=$2) LIMIT 2`,
+        `SELECT DISTINCT c.id FROM crm_conversations c LEFT JOIN contacts p ON p.id=c.contact_id AND p.workspace_id=c.workspace_id LEFT JOIN leads l ON l.id=c.lead_id AND l.workspace_id=c.workspace_id LEFT JOIN crm_conversation_sources s ON s.conversation_id=c.id AND s.workspace_id=c.workspace_id LEFT JOIN sms_conversations sc ON sc.id=s.sms_conversation_id AND sc.workspace_id=s.workspace_id WHERE c.workspace_id=$1 AND c.merged_into_id IS NULL AND c.deleted_at IS NULL AND (crm_phone_matches(p.phone,p.alternate_phones,$2) OR crm_phone_matches(l.phone,l.alternate_phones,$2) OR sc.remote_phone=$2) LIMIT 2`,
         [workspaceId, remote],
       )
     ).rows;
@@ -334,14 +340,7 @@ async function ensureConversation(
   }
   if (!canonical) {
     canonical = randomUUID();
-    const contacts = remote.startsWith("+")
-      ? (
-          await db.query<{ id: string; kind: string; business_id: string | null }>(
-            `SELECT p.id,'contact' kind,p.business_id FROM contacts p LEFT JOIN crm_businesses b ON b.id=p.business_id AND b.workspace_id=p.workspace_id WHERE p.workspace_id=$1 AND crm_normalized_phone(p.phone)=$2 AND b.anonymized_at IS NULL UNION ALL SELECT l.id,'lead' kind,l.business_id FROM leads l LEFT JOIN crm_businesses b ON b.id=l.business_id AND b.workspace_id=l.workspace_id WHERE l.workspace_id=$1 AND crm_normalized_phone(l.phone)=$2 AND l.anonymized_at IS NULL AND b.anonymized_at IS NULL LIMIT 2`,
-            [workspaceId, remote],
-          )
-        ).rows
-      : [];
+    const contacts = identities;
     await db.query(
       "INSERT INTO crm_conversations(id,workspace_id,contact_id,business_id,lead_id) VALUES($1,$2,$3,$4,$5)",
       [

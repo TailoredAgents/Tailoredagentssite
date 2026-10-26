@@ -2,7 +2,8 @@
 
 import { DraftAssistant } from "@/components/conversations/draft-assistant";
 import type { ConversationRecipient } from "@/lib/conversations/types";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { normalizePhone } from "@/lib/sales/import";
+import { useId, useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FilePenLine, LoaderCircle, LockKeyhole, Send, ShieldAlert } from "lucide-react";
 import { checkSmsSendAction, saveSmsDraftAction, sendSmsMessageAction } from "@/lib/sms/actions";
@@ -12,7 +13,8 @@ import { smsHref } from "./shared";
 const initial: SmsActionState = { status: "idle", message: "" };
 type Intent = { requestId: string; to: string; text: string; state: "pending" | "unknown" };
 
-export function SmsComposer({ number, conversationId, phone, blocked = false, draft, userId, readOnly, conversationHref, recipient, crmConversationId, compact = false }: { number: SmsNumber; conversationId?: string; phone?: string; blocked?: boolean; draft?: SmsDraft | null; userId: string; readOnly: boolean; conversationHref?: string; recipient?: ConversationRecipient | null; crmConversationId?: string; compact?: boolean }) {
+export function SmsComposer({ number, conversationId, phone, blocked = false, draft, userId, readOnly, conversationHref, recipient, crmConversationId, compact = false, lockRecipient = false }: { number: SmsNumber; conversationId?: string; phone?: string; blocked?: boolean; draft?: SmsDraft | null; userId: string; readOnly: boolean; conversationHref?: string; recipient?: ConversationRecipient | null; crmConversationId?: string; compact?: boolean; lockRecipient?: boolean }) {
+  const elementId = useId();
   const router = useRouter();
   const [to, setTo] = useState(phone || draft?.to || "");
   const [text, setText] = useState(draft?.text || "");
@@ -22,7 +24,7 @@ export function SmsComposer({ number, conversationId, phone, blocked = false, dr
   const unresolvedRef = useRef(false);
   const recoveredRecipientIntent = useRef(false);
   const intentRef = useRef<Intent | null>(null);
-  const composeKey = recipient ? `${recipient.kind}:${recipient.id}` : undefined;
+  const composeKey = recipient ? `${recipient.kind}:${recipient.id}${phone && normalizePhone(phone) !== normalizePhone(recipient.phone || "") ? `:${normalizePhone(phone)}` : ""}` : undefined;
   const newRecipientKey = composeKey ? `tailored-sms-send:${userId}:${number.id}:${composeKey}` : undefined;
   const storageKey = `tailored-sms-send:${userId}:${number.id}:${conversationId || composeKey || "compose"}`;
 
@@ -72,14 +74,14 @@ export function SmsComposer({ number, conversationId, phone, blocked = false, dr
     setRequestId(crypto.randomUUID());
   }, [storageKey, newRecipientKey]);
 
-  const envelopeFields = <><div className="inbox-from"><span>From</span><strong>{number.phone}</strong></div><label className="inbox-field"><span>Recipient phone *</span><input type="tel" name="to" aria-label="Recipient phone *" aria-describedby="sms-recipient-note" required maxLength={50} value={to} readOnly={Boolean(conversationId) || unresolved} onChange={(event) => setTo(event.target.value)} placeholder="(678) 555-0123" autoComplete="tel-national" /><small id="sms-recipient-note">Enter a 10-digit US number. We add +1 automatically.</small></label></>;
-  return <section className="inbox-composer sms-composer" aria-labelledby="sms-composer-title"><div className="inbox-composer-heading"><h2 id="sms-composer-title">{conversationId ? "Send a text" : "New text message"}</h2><span><LockKeyhole size={13} aria-hidden="true" />Private draft</span></div><form action={unresolved ? checkAction : sendAction} aria-label={conversationId ? "Send SMS reply" : "Compose SMS"} aria-busy={busy} onSubmit={(event) => {
+  const envelopeFields = <><div className="inbox-from"><span>From</span><strong>{number.phone}</strong></div><label className="inbox-field"><span>Recipient phone *</span><input type="tel" name="to" aria-label="Recipient phone *" aria-describedby={`${elementId}-recipient-note`} required maxLength={50} value={to} readOnly={lockRecipient || Boolean(conversationId) || unresolved} onChange={(event) => setTo(event.target.value)} placeholder="(678) 555-0123" autoComplete="tel-national" /><small id={`${elementId}-recipient-note`}>Enter a 10-digit US number. We add +1 automatically.</small></label></>;
+  return <section className="inbox-composer sms-composer" aria-labelledby={`${elementId}-title`}><div className="inbox-composer-heading"><h2 id={`${elementId}-title`}>{conversationId ? "Send a text" : "New text message"}</h2><span><LockKeyhole size={13} aria-hidden="true" />Private draft</span></div><form action={unresolved ? checkAction : sendAction} aria-label={conversationId ? "Send SMS reply" : "Compose SMS"} aria-busy={busy} onSubmit={(event) => {
     if ((event.nativeEvent as SubmitEvent).submitter?.getAttribute("data-intent") !== "send" || unresolved) return;
     const intent: Intent = { requestId, to, text, state: "pending" };
     intentRef.current = intent;
     try { sessionStorage.setItem(storageKey, JSON.stringify(intent)); } catch { /* Keep the same intent in memory. */ }
   }}>{recipient ? <><input type="hidden" name="recipientId" value={recipient.id} /><input type="hidden" name="recipientKind" value={recipient.kind} /><input type="hidden" name="composeKey" value={composeKey} /><input type="hidden" name="crmConversationId" value={crmConversationId || ""} /></> : null}<input type="hidden" name="numberId" value={number.id} /><input type="hidden" name="conversationId" value={conversationId || ""} /><input type="hidden" name="requestId" value={requestId} />
-    <fieldset className="inbox-composer-fields" disabled={readOnly || busy}>{compact && conversationId ? <input type="hidden" name="to" value={to} /> : envelopeFields}<DraftAssistant key={`${storageKey}:${requestId}`} disabled={disabled || unresolved} request={{ channel: "sms", accountId: number.id, to, threadId: conversationId, conversationId: crmConversationId, recipient: recipient ? { kind: recipient.kind, id: recipient.id } : undefined, currentText: text }} onApply={draft => setText(draft.text)} /><label className="inbox-field inbox-message-field"><span>Text message *</span><textarea name="text" required maxLength={1600} value={text} readOnly={unresolved} onChange={(event) => setText(event.target.value)} placeholder="Write a personal text message…" /></label><div className="sms-character-count"><span>Long messages may use multiple billable SMS segments.</span><strong>{text.length.toLocaleString()} / 1,600</strong></div>
+    <fieldset className="inbox-composer-fields" disabled={readOnly || busy}>{compact && (conversationId || lockRecipient) ? <input type="hidden" name="to" value={to} /> : envelopeFields}<DraftAssistant key={`${storageKey}:${requestId}`} disabled={disabled || unresolved} request={{ channel: "sms", accountId: number.id, to, threadId: conversationId, conversationId: crmConversationId, recipient: recipient ? { kind: recipient.kind, id: recipient.id } : undefined, currentText: text }} onApply={draft => setText(draft.text)} /><label className="inbox-field inbox-message-field"><span>Text message *</span><textarea name="text" required maxLength={1600} value={text} readOnly={unresolved} onChange={(event) => setText(event.target.value)} placeholder="Write a personal text message…" /></label><div className="sms-character-count"><span>Long messages may use multiple billable SMS segments.</span><strong>{text.length.toLocaleString()} / 1,600</strong></div>
     </fieldset>
     {blocked ? <p className="sms-recipient-optout"><ShieldAlert size={16} aria-hidden="true" />Sending is blocked because this recipient has opted out.</p> : null}
     {readOnly ? <p className="inbox-form-help">Your dashboard access is read-only.</p> : number.status === "paused" ? <p className="inbox-form-help">This number is paused. An administrator can resume it in Settings.</p> : !number.canSend ? <p className="inbox-form-help">{number.sendUnavailableReason || "SMS sending is unavailable. Check Business SMS in Settings."}</p> : null}

@@ -39,18 +39,31 @@ export async function discover(context: DashboardContext, scope: Scopes, smsConv
           )
         ).rows[0];
         if (!source) {
-          const id = randomUUID();
-          await db.query(
-            "INSERT INTO crm_conversations(id,workspace_id,owner_user_id,status,business_id,lead_id,work_updated_at,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
+          let id: string = randomUUID();
+          // Only one unambiguous saved alternate may establish a new relationship.
+          // Existing sources and explicit legacy links always keep their identity.
+          const matches = !c.lead_id && !c.business_id ? (await db.query<{id:string;kind:string;business_id:string|null;alternate:boolean}>(
+            `SELECT p.id,'contact' kind,p.business_id,EXISTS(SELECT 1 FROM jsonb_array_elements(p.alternate_phones) a WHERE a->>'phone'=$2) alternate
+             FROM contacts p LEFT JOIN crm_businesses b ON b.id=p.business_id AND b.workspace_id=p.workspace_id
+             WHERE p.workspace_id=$1 AND crm_phone_matches(p.phone,p.alternate_phones,$2) AND b.anonymized_at IS NULL
+             UNION ALL SELECT l.id,'lead' kind,l.business_id,EXISTS(SELECT 1 FROM jsonb_array_elements(l.alternate_phones) a WHERE a->>'phone'=$2)
+             FROM leads l LEFT JOIN crm_businesses b ON b.id=l.business_id AND b.workspace_id=l.workspace_id
+             WHERE l.workspace_id=$1 AND crm_phone_matches(l.phone,l.alternate_phones,$2) AND l.anonymized_at IS NULL AND b.anonymized_at IS NULL LIMIT 2`,[context.workspace.id,c.remote_phone])).rows : [];
+          const person = matches.length === 1 && matches[0].alternate ? matches[0] : null;
+          const existing = person ? (await db.query<{id:string}>(`SELECT id FROM crm_conversations WHERE workspace_id=$1 AND ${person.kind === "lead" ? "lead_id" : "contact_id"}=$2 AND deleted_at IS NULL AND merged_into_id IS NULL LIMIT 2`,[context.workspace.id,person.id])).rows : [];
+          if (existing.length === 1) id = existing[0].id;
+          else await db.query(
+            "INSERT INTO crm_conversations(id,workspace_id,owner_user_id,status,business_id,lead_id,work_updated_at,created_at,contact_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)",
             [
               id,
               context.workspace.id,
               c.owner_user_id,
               c.status === "open" ? "needs_reply" : c.status,
-              c.business_id,
-              c.lead_id,
+              c.business_id || person?.business_id,
+              c.lead_id || (person?.kind === "lead" ? person.id : null),
               c.updated_at,
               c.created_at,
+              person?.kind === "contact" ? person.id : null,
             ],
           );
           await db.query(

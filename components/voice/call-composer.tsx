@@ -1,21 +1,16 @@
 "use client";
 
+import { recipientPhones, displayPhone } from "@/lib/conversations/phone-options";
 import Link from "next/link";
 import { useState } from "react";
 import { LoaderCircle, Phone } from "lucide-react";
 import type { ConversationRecord, ConversationRecipient } from "@/lib/conversations/types";
 import { useBrowserPhone } from "./phone-provider";
 
-function displayPhone(value: string) {
-  const digits = value.replace(/\D/g, "");
-  const local = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
-  if (local.length !== 10 || (value.trim().startsWith("+") && !value.trim().startsWith("+1"))) return value;
-  return `(${local.slice(0, 3)}) ${local.slice(3, 6)}-${local.slice(6)}`;
-}
-
 export function VoiceCallComposer({ record, recipient }: { record?: ConversationRecord; recipient?: ConversationRecipient | null }) {
   const phone = useBrowserPhone();
-  const targets = [...new Set([...(recipient?.phone ? [recipient.phone] : []), ...(record?.sources || []).flatMap((source) => source.externalAddresses)].filter((value) => /^\+?[\d\s().-]{7,}$/.test(value)))];
+  const savedPhones = recipientPhones(recipient);
+  const targets = [...new Set([...savedPhones.map(item => item.phone), ...(record?.sources || []).flatMap((source) => source.externalAddresses)].filter((value) => /^\+?[\d\s().-]{7,}$/.test(value)))];
   const [to, setTo] = useState(displayPhone(targets[0] || ""));
   const line = phone.workspace.lines.find((item) => item.id === phone.lineId);
   const ready = phone.connection === "ready" && Boolean(line?.canCall) && line?.status === "active" && phone.workspace.state === "ready";
@@ -38,7 +33,7 @@ export function VoiceCallComposer({ record, recipient }: { record?: Conversation
         {phone.workspace.lines.length > 1 ? <label className="voice-call-origin voice-call-line-picker"><span>Calling line</span><select aria-label="Calling line" value={phone.lineId} disabled={phone.readOnly || busy || phone.connection === "connecting"} onChange={(event) => phone.setLineId(event.target.value)}>{phone.workspace.lines.map((item) => <option key={item.id} value={item.id}>{displayPhone(item.phone)}{item.status === "paused" ? " · Paused" : ""}{!item.canCall ? " · Outbound access required" : ""}</option>)}</select></label> : <p className="voice-call-origin"><span>Calling from</span><strong>{line ? displayPhone(line.phone) : "No calling line"}</strong></p>}
 
         <fieldset className="voice-call-controls" disabled={phone.readOnly || phone.connection === "connecting"}>
-          <label className="voice-field voice-call-destination"><span>Customer phone</span><input type="tel" aria-label="Customer phone *" required disabled={busy} value={to} onChange={(event) => setTo(event.target.value)} list="voice-customer-phones" maxLength={50} autoComplete="tel-national" placeholder="(678) 555-0123" /><datalist id="voice-customer-phones">{targets.map((target) => <option key={target} value={displayPhone(target)} />)}</datalist></label>
+          <label className="voice-field voice-call-destination"><span>Customer phone</span>{savedPhones.length > 1 ? <select aria-label="Customer phone" value={to} disabled={busy} onChange={event => setTo(event.target.value)}>{savedPhones.map(item => <option key={item.phone} value={displayPhone(item.phone)}>{item.label} · {displayPhone(item.phone)}</option>)}</select> : <input type="tel" aria-label="Customer phone *" required disabled={busy} value={to} onChange={(event) => setTo(event.target.value)} list="voice-customer-phones" maxLength={50} autoComplete="tel-national" placeholder="(678) 555-0123" />}<datalist id="voice-customer-phones">{targets.map((target) => <option key={target} value={displayPhone(target)} />)}</datalist></label>
           <div className="voice-call-actions">
             {busy ? <button type="button" className="voice-button" onClick={() => phone.setExpanded(true)}><Phone size={16} aria-hidden="true" />Open active call</button> : phone.connection !== "ready" && canConnect ? <button type="button" className="voice-button is-primary" disabled={phone.connection === "connecting" || line?.status !== "active"} onClick={() => void phone.connectPhone(undefined, false)}>{phone.connection === "connecting" ? <LoaderCircle size={16} className="signin-spinner" aria-hidden="true" /> : <Phone size={16} aria-hidden="true" />}{phone.connection === "connecting" ? "Connecting…" : "Connect phone"}</button> : ready && !phone.readOnly ? <button type="submit" className="voice-button is-primary" disabled={!to.trim()}><Phone size={16} aria-hidden="true" />Call now</button> : null}
           </div>

@@ -15,7 +15,7 @@ export default defineConfig({
   ],
   webServer: [
     { command: "node scripts/voice-test-provider.mjs", url: "http://127.0.0.1:3161/health", reuseExistingServer: false, env: { VOICE_TEST_DATABASE_URL: databaseUrl } },
-    { command: "npm exec next dev -- --hostname 127.0.0.1 --port 3160", url: `${origin}/api/health`, reuseExistingServer: false, timeout: 120000,
+    { command: "npm exec next dev -- --webpack --hostname 127.0.0.1 --port 3160", url: `${origin}/api/health`, reuseExistingServer: false, timeout: 120000,
       env: { DATABASE_URL: databaseUrl, BETTER_AUTH_URL: origin, NEXT_PUBLIC_SITE_URL: origin,
         NODE_OPTIONS: `--require ${JSON.stringify(resolve("scripts/voice-test-preload.cjs"))}`,
         VOICE_BROWSER_TEST_SDK: "true", BETTER_AUTH_SECRET: "voice-browser-local-session-secret-1234567890", DASHBOARD_AUTH_MODE: "password",

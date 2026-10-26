@@ -119,6 +119,7 @@ export type ConversationWorkspace = {
   numbers: SmsNumber[];
 };
 export type ConversationRecipient = {
+  alternatePhones?: import("./phone-options").AlternatePhone[];
   id: string;
   kind: "contact" | "lead";
   name: string;

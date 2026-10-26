@@ -4,15 +4,16 @@ import { z } from "zod";
 import type { DashboardContext } from "@/lib/dashboard/data";
 import { getDatabasePool } from "@/lib/dashboard/db";
 import { authorizeInbox } from "@/lib/inbox/data";
+import { recipientPhones } from "./phone-options";
 import { normalizePhone } from "@/lib/sales/import";
 import type { ConversationRecipient } from "./types";
 
-const directory = `SELECT c.id,'contact' AS kind,c.name,c.email,c.phone,c.business_id AS "businessId",b.name AS "businessName"
+const directory = `SELECT c.id,'contact' AS kind,c.name,c.email,c.phone,c.alternate_phones AS "alternatePhones",c.business_id AS "businessId",b.name AS "businessName"
  FROM contacts c LEFT JOIN crm_businesses b ON b.id=c.business_id AND b.workspace_id=c.workspace_id
  WHERE c.workspace_id=$1 AND b.anonymized_at IS NULL
  UNION ALL
  SELECT l.id,'lead' AS kind,l.name,
- l.email,l.phone,l.business_id AS "businessId",NULLIF(l.organization,'') AS "businessName"
+ l.email,l.phone,l.alternate_phones AS "alternatePhones",l.business_id AS "businessId",NULLIF(l.organization,'') AS "businessName"
  FROM leads l LEFT JOIN crm_businesses b ON b.id=l.business_id AND b.workspace_id=l.workspace_id
  WHERE l.workspace_id=$1 AND l.anonymized_at IS NULL AND b.anonymized_at IS NULL`;
 
@@ -26,7 +27,7 @@ export async function listConversationRecipients(context: DashboardContext, quer
   await authorizeInbox(context);
   const q = query.trim().slice(0, 120);
   return (await getDatabasePool().query<ConversationRecipient>(
-    `SELECT * FROM (${directory}) r WHERE $2='' OR strpos(lower(concat_ws(' ',name,"businessName",email,phone)),lower($2))>0 OR (length($3)>=3 AND strpos(regexp_replace(COALESCE(phone,''),'[^0-9]','','g'),$3)>0) ORDER BY name,kind,id LIMIT 50`,
+    `SELECT * FROM (${directory}) r WHERE $2='' OR strpos(lower(concat_ws(' ',name,"businessName",email,phone,"alternatePhones"::text)),lower($2))>0 OR (length($3)>=3 AND strpos(regexp_replace(concat_ws(' ',phone,"alternatePhones"::text),'[^0-9]','','g'),$3)>0) ORDER BY name,kind,id LIMIT 50`,
     [context.workspace.id, q, q.replace(/\D/g, "")],
   )).rows.map(displayRecipient);
 }
@@ -42,8 +43,8 @@ export async function getConversationRecipient(context: DashboardContext, kind: 
 
 export function recipientMatchesAddress(recipient: ConversationRecipient, address: string) {
   if (address.includes("@")) return !!recipient.email && address.trim().toLowerCase() === recipient.email.trim().toLowerCase();
-  const phone = normalizePhone(recipient.phone || "");
-  return !!phone && phone === normalizePhone(address);
+  const phone = normalizePhone(address);
+  return !!phone && recipientPhones(recipient).some(item => item.phone === phone);
 }
 
 export function recipientMatchesConversation(

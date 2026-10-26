@@ -46,7 +46,7 @@ export const conversationSchema = threadSchema.extend({
   leadId: optionalId,
 });
 export const draftSchema = z.object({
-  composeKey: z.string().regex(/^(contact|lead):[0-9a-f-]{36}$/i).optional(),
+  composeKey: z.string().regex(/^(contact|lead):[0-9a-f-]{36}(:\+[1-9][0-9]{7,14})?$/i).optional(),
   numberId: identifier,
   conversationId: optionalId,
   to: z.string().trim().max(50).default(""),

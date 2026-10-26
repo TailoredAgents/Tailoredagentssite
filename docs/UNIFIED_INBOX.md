@@ -2,6 +2,16 @@
 
 Current behavior reconciled with source on October 25, 2026. Contact-first entry, calling/recording workflows, AI drafts and client briefs are implemented. The design rationale and dated test/deployment evidence below retain their original scope; they do not establish fresh production acceptance. [Jeffrey's current handoff](../new%20jeffrey.md) tracks shared Sales acceptance; the [active roadmap](AGENCY_OS_ROADMAP.md) tracks remaining development.
 
+## Alternate phone numbers — October 26, 2026
+
+Open a lead, sales contact, client contact, or the Inbox customer-details pane and use **Phone numbers → Add another number**. Give it a label such as **Website**, **Office**, or **Mobile**, with an optional source note. Ten-digit US numbers normalize automatically. The original primary number stays intact; alternate labels and notes can be edited, and removing an alternate preserves its conversation history.
+
+In the Inbox, **Text to** selects the destination; **Customer phone** selects among saved calling numbers. Unsent text stays in its own composer when switching numbers. Saved drafts and uncertain send recovery are scoped to the destination, so switching or refreshing cannot resend a pending message to another number. AI suggestions accept saved alternates and use the authorized customer history.
+
+New channel histories join the selected customer when identity and access allow. New inbound texts to a unique saved alternate can join that person's existing conversation. Shared office numbers remain ambiguous and do not automatically combine different people's histories; older conflicting links still require explicit review. Lead-to-sales/client conversion copies researched numbers without replacing existing contact labels. Lead deletion clears its saved recipient drafts; retention clears alternate numbers when their record is anonymized.
+
+Deployment requires migration **0026**; no additional credentials or Twilio configuration. Verified with 117 conversation/SMS/voice service checks and eight desktop/phone browser cases, including alternate-number calling, separate drafts, uncertain-send recovery, conversion, deletion and shared-number conflicts. Calls and messages in these tests used synthetic providers. Lint, TypeScript and production build passed. The browser fixtures use Webpack to avoid the local Turbopack reload loop; production remains on Turbopack.
+
 ## Contact-first entry — October 24, 2026
 
 - **New conversation** opens a searchable contact/lead directory. Search by name, business, email or phone, then open that person's Inbox. The lead detail page now has **Contact lead** using the same flow.

@@ -1,3 +1,5 @@
+import { PhoneNumbers } from "@/components/conversations/phone-numbers";
+import { getConversationRecipient } from "@/lib/conversations/recipients";
 import { leadDisplayName, leadCompanyName, leadBusinessName } from "@/lib/operations/format";
 import { RecordFacts } from "@/components/dashboard/record-facts";
 import { DeleteLeadButton } from "@/components/dashboard/delete-lead-button";
@@ -44,6 +46,7 @@ export default async function LeadPage({
     getWorkspaceMembers(context),
   ]);
   if (!lead) notFound();
+  const phoneRecipient = id ? await getConversationRecipient(context, "lead", id) : null;
   const mutable = context.role !== "viewer";
   const manual = lead.source === "manual";
   const meta = lead.source === "facebook";
@@ -90,7 +93,7 @@ export default async function LeadPage({
         <div className="dashboard-record-contact-action"><Link className="dashboard-primary-button" href={`/dashboard/inbox?lead=${lead.id}`}><MessageSquareText size={16} aria-hidden="true" />Contact lead</Link></div>
         <RecordFacts facts={[{label:"Lead owner",value:lead.ownerName || "Unassigned"},{label:"Service interest",value:lead.interest || "General inquiry"},{label:"Follow-up",value:lead.nextActionAt ? formatOperationalDate(lead.nextActionAt,{dateOnly:true}) : "Not scheduled"}]} />
         <div className="dashboard-record-grid">
-          <div className="dashboard-record-main">
+          <div className="dashboard-record-main">{phoneRecipient ? <section className="dashboard-panel dashboard-detail-card"><PhoneNumbers recipient={phoneRecipient} readOnly={!mutable}/></section> : null}
             <section className="dashboard-panel dashboard-detail-card">
               <div className="dashboard-panel-heading">
                 <div>

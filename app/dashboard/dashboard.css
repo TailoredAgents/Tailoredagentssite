@@ -805,3 +805,19 @@ a.dashboard-nav-item:hover { background: var(--workspace-nav-hover); color: var(
 
 .lead-alert-intro { padding: 16px 22px 0; color: var(--workspace-muted); font-size: .875rem; }
 .lead-alert-help { margin-top: 12px; color: var(--workspace-muted); font-size: .8125rem; }
+
+/* A person's alternate numbers, shared by record and Inbox views. */
+.crm-phone-numbers { min-width: 0; }
+.crm-phone-numbers h3 { display:flex; align-items:center; gap:8px; margin:0 0 14px; font-size:14px; }
+.crm-phone-numbers ul { list-style:none; padding:0; margin:0; display:grid; gap:10px; }
+.crm-phone-numbers li { padding:12px; border:1px solid var(--workspace-line); border-radius:10px; background:var(--workspace-surface); overflow-wrap:anywhere; }
+.crm-phone-numbers li strong,.crm-phone-numbers li span,.crm-phone-numbers li small { display:block; }
+.crm-phone-numbers li span { font-size:12px; color:var(--workspace-muted); margin-top:4px; }
+.crm-phone-numbers li small { color:var(--workspace-muted); margin-top:5px; }
+.crm-phone-numbers summary { cursor:pointer; color:var(--workspace-blue); font-size:13px; padding:8px 0; }
+.crm-phone-add { margin-top:8px; }
+.crm-phone-add > summary { display:flex; align-items:center; gap:6px; }
+.crm-phone-numbers .dashboard-operation-fields { display:grid; gap:10px; min-width:0; }
+.crm-phone-numbers .dashboard-form-footer { flex-wrap:wrap; gap:8px; }
+.crm-phone-numbers .dashboard-operation-form { padding:8px 0; }
+.crm-phone-numbers input { min-width:0; width:100%; }

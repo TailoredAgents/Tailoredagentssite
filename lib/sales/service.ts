@@ -574,6 +574,14 @@ export async function saveMockup(context: DashboardContext, input: unknown) {
     });
   });
 }
+async function copyLeadPhones(db: PoolClient, workspaceId: string, leadId: string, contactId: string) {
+  await db.query(`UPDATE contacts c SET alternate_phones=c.alternate_phones || COALESCE((
+    SELECT jsonb_agg(p) FROM leads l CROSS JOIN LATERAL jsonb_array_elements(l.alternate_phones) p
+    WHERE l.workspace_id=c.workspace_id AND l.id=$3
+    AND NOT crm_phone_matches(c.phone,c.alternate_phones,p->>'phone')
+  ),'[]'::jsonb) WHERE c.workspace_id=$1 AND c.id=$2`, [workspaceId,contactId,leadId]);
+}
+
 export async function convertOpportunity(
   context: DashboardContext,
   input: unknown,
@@ -622,6 +630,7 @@ export async function convertOpportunity(
       "UPDATE contacts SET client_id=$1,updated_at=now() WHERE business_id=$2 AND workspace_id=$3 AND client_id IS NULL",
       [clientId, business.id, context.workspace.id],
     );
+    if (o.lead_id && o.primary_contact_id) await copyLeadPhones(db, context.workspace.id, o.lead_id, o.primary_contact_id);
     let siteId: string | null = null;
     if (data.createSite) {
       const website = (
@@ -760,6 +769,7 @@ export async function linkInquiry(context: DashboardContext, leadId: string) {
         leadId,
         ownerUserId: l.owner_user_id ?? undefined,
       });
+    await copyLeadPhones(db, context.workspace.id, leadId, contactId);
     await db.query(
       "UPDATE leads SET business_id=$1 WHERE id=$2 AND workspace_id=$3",
       [business.id, leadId, context.workspace.id],

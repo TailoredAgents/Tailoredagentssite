@@ -1,3 +1,7 @@
+import { savePhoneNumber } from "./phone-numbers";
+import { recipientMatchesAddress } from "./recipients";
+import { linkInquiry, convertOpportunity } from "@/lib/sales/service";
+import { saveSmsDraft } from "@/lib/sms/service";
 import { deleteLead } from "@/lib/operations/delete-lead";
 import { loadClientMemory, saveClientMemory, rememberSuggestions, memoryEvidence } from "./memory";
 import { generateClientDraft } from "./draft-service";
@@ -294,6 +298,69 @@ describe.skipIf(!databaseUrl)(
         before: null,
         hasOlder: false,
       }));
+    });
+
+    it("saves labeled alternate numbers, keeps primary, normalizes duplicates and enforces current access", async () => {
+      const input={kind:"contact",id:contactId,operation:"save",phone:"4045550199",label:"Website",source:"Contact page"};
+      await savePhoneNumber(owner,input);
+      await savePhoneNumber(owner,{...input,phone:"(404) 555-0199",label:"Office"});
+      const recipient=(await getConversationRecipient(owner,"contact",contactId))!;
+      expect(recipient.phone).toBe("+12125550123");
+      expect(recipient.alternatePhones).toEqual([{phone:"+14045550199",label:"Office",source:"Contact page"}]);
+      expect(recipientMatchesAddress(recipient,"4045550199")).toBe(true);
+      expect((await listConversationRecipients(owner,"(404) 555-0199")).map(p=>p.id)).toEqual([contactId]);
+      await expect(savePhoneNumber(viewer,input)).rejects.toThrow("access");
+      await expect(savePhoneNumber(context(otherId,otherWorkspace),input)).rejects.toThrow("workspace");
+      await expect(savePhoneNumber(owner,{...input,phone:"2125550123"})).rejects.toThrow("primary");
+      await expect(savePhoneNumber(owner,{...input,phone:"4045550199 ext 3"})).rejects.toThrow();
+      await pool.query("UPDATE workspace_memberships SET role='viewer' WHERE workspace_id=$1 AND user_id=$2",[workspace,ownerId]);
+      await expect(savePhoneNumber(owner,input)).rejects.toThrow("access");
+    });
+    it("connects new texts from a saved alternate only when the person is unambiguous", async () => {
+      const {email}=await identities();
+      await linkConversationContext(owner,{conversationId:email.id,contactId,businessId});
+      const input={kind:"contact",id:contactId,operation:"save",phone:"4045550199",label:"Website"};
+      await savePhoneNumber(owner,input);
+      const suggested=await generateClientDraft(owner,{channel:"sms",accountId:numberId,to:"4045550199",conversationId:email.id,recipient:{kind:"contact",id:contactId},direction:"Try their website number"});
+      expect(suggested.draft.text).toContain("Alice");
+      const altId=randomUUID();
+      await pool.query("INSERT INTO sms_conversations(id,workspace_id,number_id,remote_phone) VALUES($1,$2,$3,'+14045550199')",[altId,workspace,numberId]);
+      await workspaceView();
+      expect((await pool.query("SELECT conversation_id FROM crm_conversation_sources WHERE sms_conversation_id=$1",[altId])).rows[0].conversation_id).toBe(email.id);
+      await savePhoneNumber(owner,{...input,id:secondContactId,phone:"4045550198"});
+      await savePhoneNumber(owner,{...input,phone:"4045550198"});
+      const shared=randomUUID();
+      await pool.query("INSERT INTO sms_conversations(id,workspace_id,number_id,remote_phone) VALUES($1,$2,$3,'+14045550198')",[shared,workspace,numberId]);
+      await workspaceView();
+      const row=(await pool.query("SELECT c.* FROM crm_conversations c JOIN crm_conversation_sources s ON s.conversation_id=c.id WHERE s.sms_conversation_id=$1",[shared])).rows[0];
+      expect(row.contact_id).toBeNull();expect(row.id).not.toBe(email.id);
+      await savePhoneNumber(owner,{...input,operation:"remove"});
+      expect((await pool.query("SELECT conversation_id FROM crm_conversation_sources WHERE sms_conversation_id=$1",[altId])).rows[0].conversation_id).toBe(email.id);
+    });
+    it("keeps per-number drafts separate and carries alternate numbers through lead conversion", async () => {
+      const lead=randomUUID();
+      await pool.query("INSERT INTO leads(id,workspace_id,submission_id,source,name,organization,phone,email) VALUES($1,$2,$1::uuid::text,'manual','New Person','New Company','+14045550110','new@example.test')",[lead,workspace]);
+      const input={kind:"lead",id:lead,operation:"save",phone:"4045550111",label:"Website",source:"Website contact page"};
+      await savePhoneNumber(owner,input);
+      const key=`lead:${lead}`;
+      await saveSmsDraft(owner,{numberId,composeKey:key,to:"+14045550110",text:"Original draft"});
+      await saveSmsDraft(owner,{numberId,composeKey:`${key}:+14045550111`,to:"+14045550111",text:"Website draft"});
+      const data=await listConversationWorkspace(owner,{lead});
+      expect(data.recipientDrafts.sms[numberId].text).toBe("Original draft");
+      expect(data.recipientDrafts.sms[`${numberId}:+14045550111`].text).toBe("Website draft");
+      const opportunityId=await linkInquiry(owner,lead);
+      await savePhoneNumber(owner,{...input,phone:"4045550112",label:"Office"});
+      await convertOpportunity(owner,{opportunityId,projectName:"New project",createSite:false});
+      const contact=(await pool.query("SELECT c.* FROM contacts c JOIN crm_opportunities o ON o.primary_contact_id=c.id WHERE o.id=$1",[opportunityId])).rows[0];
+      expect(contact.alternate_phones).toHaveLength(2);expect(contact.phone).toBe("+14045550110");
+      await deleteLead(owner,{leadId:lead,confirmed:"yes"});
+      expect((await pool.query("SELECT 1 FROM sms_drafts WHERE starts_with(thread_key,$1)",[key])).rowCount).toBe(0);
+      expect((await pool.query("SELECT alternate_phones FROM contacts WHERE id=$1",[contact.id])).rows[0].alternate_phones).toHaveLength(2);
+    });
+    it("erases alternate numbers on anonymization",async()=>{
+      await savePhoneNumber(owner,{kind:"contact",id:contactId,operation:"save",phone:"4045550199",label:"Website"});
+      await pool.query("UPDATE crm_businesses SET anonymized_at=now() WHERE id=$1",[businessId]);
+      expect((await pool.query("SELECT alternate_phones FROM contacts WHERE id=$1",[contactId])).rows[0].alternate_phones).toEqual([]);
     });
 
     it("opens text-alert links only into an authorized live SMS conversation",async()=>{

@@ -1,3 +1,5 @@
+import { PhoneNumbers } from "@/components/conversations/phone-numbers";
+import { getConversationRecipient } from "@/lib/conversations/recipients";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -19,6 +21,7 @@ export default async function SalesRecordPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const record = await getSalesRecord(context, id);
   if (!record) notFound();
+  const phoneRecipient = record.contact?.id ? await getConversationRecipient(context, "contact", record.contact?.id) : null;
   const mutable = context.role !== "viewer" && !record.business.anonymizedAt;
   const { business, contact, mockup } = record;
   const openTasks = record.tasks.filter((task) => task.status === "open");
@@ -27,7 +30,7 @@ export default async function SalesRecordPage({ params }: { params: Promise<{ id
     <div className="sales-body"><Link className="dashboard-back-link" href="/dashboard/sales"><ArrowLeft size={14} />Back to pipeline</Link>
       {business.anonymizedAt ? <p className="sales-inline-note" role="status">This expired prospect was anonymized under the retention policy. Its history is read-only.</p> : null}
       <nav className="workspace-section-links" aria-label="Sales record sections"><a href="#sales-context">Business details</a><a href="#sales-history">Activity</a><a href="#sales-follow-ups">Follow-ups</a><a href="#sales-preview">Website mockup</a><a href="#sales-close">Close & handoff</a></nav>
-      <div className="sales-record-grid"><div>
+      <div className="sales-record-grid"><div>{phoneRecipient ? <section className="dashboard-panel dashboard-detail-card"><PhoneNumbers recipient={phoneRecipient} readOnly={!mutable}/></section> : null}
         <SalesPanel id="sales-context" title="Business & contact" eyebrow="One shared customer record">
           <dl className="sales-record-facts"><div><dt><UserRound size={14} />Primary contact</dt><dd>{contact?.name || "Not identified"}</dd></div><div><dt><MapPin size={14} />Industry / region</dt><dd>{[business.industry, business.state].filter(Boolean).join(" · ") || "Not researched"}</dd></div><div><dt><Phone size={14} />Phone</dt><dd>{contact?.phone || business.phone || "Not provided"}</dd></div><div><dt><Mail size={14} />Email</dt><dd>{contact?.email || business.email || "Not provided"}</dd></div><div><dt>Website</dt><dd><BusinessLink url={business.websiteUrl} /></dd></div><div><dt>Research</dt><dd>{websiteStatusLabels[business.websiteStatus]}{business.score !== null ? ` · Score ${business.score}` : ""}</dd></div>{business.researchUrl ? <div><dt>Evidence</dt><dd><BusinessLink url={business.researchUrl} label="Open research source" /></dd></div> : null}<div><dt>Origin</dt><dd>{record.listNames.length ? record.listNames.join(", ") : record.source.replaceAll("_", " ")}</dd></div></dl>
           {business.researchNotes ? <p className="sales-record-notes">{business.researchNotes}</p> : null}

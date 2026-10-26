@@ -262,3 +262,29 @@ test("handles denied microphones and keeps the public microphone policy restrict
   await form.scrollIntoViewIfNeeded();await page.screenshot({path:`test-results/mobile-forwarding-${info.project.name}.png`,style:"nextjs-portal{display:none!important;}"});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  });
+
+
+test("chooses a labeled alternate phone and calls it inside the same customer conversation",async({page,request},info)=>{
+  await control(request,"voicemail");await signIn(page);await openCustomer(page);
+  await expect(page).toHaveURL(/conversation=/);
+  const originalConversation=new URL(page.url()).searchParams.get("conversation");
+  const nav=page.getByRole("navigation",{name:"Conversation panes",exact:true});
+  if(await nav.isVisible()) await nav.getByRole("button",{name:"Details",exact:true}).click();
+  const numbers=page.getByRole("region",{name:"Phone numbers",exact:true});
+  await numbers.getByText("Add another number",{exact:true}).click();
+  await numbers.getByLabel("Phone number",{exact:true}).fill("4045550199");
+  await numbers.getByLabel("Label",{exact:true}).fill("Website");
+  await numbers.getByRole("button",{name:"Add number",exact:true}).click();
+  await expect(numbers.getByText("(404) 555-0199",{exact:true})).toBeVisible();
+  if(await nav.isVisible()) await nav.getByRole("button",{name:"Thread",exact:true}).click();
+  await page.getByRole("tab",{name:"Call",exact:true}).click();
+  const composer=page.locator(".voice-call-composer");
+  await composer.getByRole("combobox",{name:"Customer phone",exact:true}).selectOption({label:"Website · (404) 555-0199"});
+  await composer.getByRole("button",{name:"Connect phone",exact:true}).click();
+  await expect(composer.getByRole("button",{name:"Call now",exact:true})).toBeEnabled();
+  await composer.screenshot({path:`test-results/alternate-call-${info.project.name}.png`});
+  await composer.getByRole("button",{name:"Call now",exact:true}).click();
+  await expect.poll(async()=>(await control(request,"inspect")).connects.length).toBe(1);
+  expect((await control(request,"inspect")).connects[0].to).toBe("+14045550199");
+  expect(new URL(page.url()).searchParams.get("conversation")).toBe(originalConversation);
+});

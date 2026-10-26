@@ -406,10 +406,10 @@ export async function listConversationWorkspace(
     const key = `${recipient.kind}:${recipient.id}`;
     const [email, sms] = await Promise.all([
       pool.query<{mailbox_id:string;id:string;to:string;subject:string;text:string;replyToMessageId:null}>(`SELECT mailbox_id,id,recipient AS "to",subject,body AS text,NULL AS "replyToMessageId" FROM inbox_drafts WHERE workspace_id=$1 AND author_user_id=$2 AND thread_key=$3 AND mailbox_id=ANY($4::text[]) AND updated_at>now()-interval '90 days'`,[context.workspace.id,context.user.id,key,fresh.mailboxes.map(m=>m.id)]),
-      pool.query<{number_id:string;id:string;to:string;text:string}>(`SELECT number_id,id,recipient AS "to",body AS text FROM sms_drafts WHERE workspace_id=$1 AND author_user_id=$2 AND thread_key=$3 AND number_id=ANY($4::uuid[]) AND updated_at>now()-interval '90 days'`,[context.workspace.id,context.user.id,key,fresh.numbers.map(n=>n.id)]),
+      pool.query<{number_id:string;thread_key:string;id:string;to:string;text:string}>(`SELECT number_id,thread_key,id,recipient AS "to",body AS text FROM sms_drafts WHERE workspace_id=$1 AND author_user_id=$2 AND (thread_key=$3 OR starts_with(thread_key,$3 || ':')) AND number_id=ANY($4::uuid[]) AND updated_at>now()-interval '90 days'`,[context.workspace.id,context.user.id,key,fresh.numbers.map(n=>n.id)]),
     ]);
     recipientDrafts.email = Object.fromEntries(email.rows.map(d=>[d.mailbox_id,d]));
-    recipientDrafts.sms = Object.fromEntries(sms.rows.map(d=>[d.number_id,d]));
+    recipientDrafts.sms = Object.fromEntries(sms.rows.map(d=>[d.thread_key === key ? d.number_id : `${d.number_id}:${d.thread_key.slice(key.length+1)}`,d]));
   }
   return {
     recipientDrafts,

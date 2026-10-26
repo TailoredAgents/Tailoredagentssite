@@ -1,5 +1,6 @@
 "use client";
 
+import { PhoneNumbers } from "./phone-numbers";
 import Link from "next/link";
 import { ClientBrief } from "./client-brief";
 import { ArrowUpRight, CalendarClock, ChevronDown, CircleCheck, ExternalLink, FolderKanban, Link2, Mail, MessageSquareText, Phone, UserRound } from "lucide-react";
@@ -34,6 +35,8 @@ export function ConversationContextPanel({ record, data, readOnly }: { record: C
       {context.mockup ? <div className="conversation-context-pair"><span>Mockup</span><strong>{context.mockup.status.replaceAll("_", " ")}</strong></div> : null}
       <div className="conversation-record-links">{context.opportunityId ? <Link href={`/dashboard/sales/${context.opportunityId}`}>Sales record<ArrowUpRight size={14} aria-hidden="true" /></Link> : null}{context.clientId ? <Link href={`/dashboard/clients/${context.clientId}`}>Client<ArrowUpRight size={14} aria-hidden="true" /></Link> : null}{context.projectId ? <Link href={`/dashboard/projects/${context.projectId}`}>Project<ArrowUpRight size={14} aria-hidden="true" /></Link> : null}{previewUrl ? <a href={previewUrl} target="_blank" rel="noreferrer">Mockup preview<ExternalLink size={14} aria-hidden="true" /><span className="sr-only"> (new tab)</span></a> : null}</div>
     </section> : null}
+
+    {record.recipient ? <div className="conversation-context-section"><PhoneNumbers recipient={record.recipient} readOnly={readOnly}/></div> : null}
 
     <ClientBrief key={conversation.id} record={record} readOnly={readOnly} />
 

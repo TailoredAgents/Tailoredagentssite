@@ -1,7 +1,12 @@
+import { resolve } from "node:path";
 import type { NextConfig } from "next";
 import { browserScriptSources, voiceBrowserFixture, voiceDashboardHeaders } from "./lib/security/voice-browser";
 
 const voiceFixture = voiceBrowserFixture();
+const fixtureWebpack: NextConfig["webpack"] = (config, { isServer }) => {
+  if (!isServer) config.resolve.alias["@twilio/voice-sdk"] = resolve("scripts/voice-browser-sdk-fixture.ts");
+  return config;
+};
 const metaPixel = process.env.NEXT_PUBLIC_META_PIXEL_ENABLED === "true" && /^\d{5,30}$/.test(process.env.NEXT_PUBLIC_META_PIXEL_ID || "");
 const metaScript = metaPixel ? " https://connect.facebook.net" : "";
 const metaEvents = metaPixel ? " https://www.facebook.com https://connect.facebook.net" : "";
@@ -19,7 +24,7 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // Twilio uses native Node HTTP clients and server-side credential handling.
   serverExternalPackages: ["twilio"],
-  ...(voiceFixture ? { turbopack: { resolveAlias: { "@twilio/voice-sdk": { browser: "./scripts/voice-browser-sdk-fixture.ts" } } } } : {}),
+  ...(voiceFixture ? { webpack: fixtureWebpack, turbopack: { resolveAlias: { "@twilio/voice-sdk": { browser: "./scripts/voice-browser-sdk-fixture.ts" } } } } : {}),
   poweredByHeader: false,
   compress: true,
   async redirects() {

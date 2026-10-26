@@ -1,3 +1,4 @@
+import { savePhoneNumber } from "@/lib/conversations/phone-numbers";
 import { deleteLead } from "@/lib/operations/delete-lead";
 import { captureCallMemory, loadClientMemory } from "@/lib/conversations/memory";
 import { randomUUID, createHash } from "node:crypto";
@@ -285,6 +286,24 @@ describe.skipIf(!url)(
       await pool.query("UPDATE voice_call_recordings SET transcript=$2,summary=$3,analysis_status='ready' WHERE id=$1",[r.id,quote,JSON.stringify({summary:"Website proposal requested.",highlights:[],followUps:[{text:"Prepare the website proposal.",quote}]})]);
       return {...r,input:{recordingId:r.id,suggestionIndex:0,title:"Review the website proposal",ownerUserId:member.user.id,dueAt:new Date(Date.now()+86400000).toISOString(),notes:"Review the site scope first."}};
     }
+    it("calls saved alternate numbers within the same customer history and leaves shared numbers unlinked",async()=>{
+      const lead=randomUUID();
+      await pool.query("INSERT INTO leads(id,workspace_id,name,organization,phone) VALUES($1,$2,'Two numbers','',$3)",[lead,ws,remote]);
+      const primary=await createVoiceIntent(owner,{lineId,to:remote,requestId:randomUUID(),recipient:{kind:"lead",id:lead}});
+      await pool.query("UPDATE voice_calls SET status='completed' WHERE id=$1",[primary.callId]);
+      const alternate="+14045550102";
+      await savePhoneNumber(owner,{kind:"lead",id:lead,operation:"save",phone:alternate,label:"Website"});
+      const second=await createVoiceIntent(owner,{lineId,to:alternate,requestId:randomUUID(),recipient:{kind:"lead",id:lead},conversationId:primary.conversationId});
+      expect(second.conversationId).toBe(primary.conversationId);
+      expect((await pool.query("SELECT remote_phone FROM voice_conversations WHERE id=(SELECT voice_conversation_id FROM voice_calls WHERE id=$1)",[second.callId])).rows[0].remote_phone).toBe(alternate);
+      await pool.query("UPDATE voice_calls SET status='completed' WHERE id=$1",[second.callId]);
+      const shared="+14045550103",other=randomUUID();
+      await savePhoneNumber(owner,{kind:"lead",id:lead,operation:"save",phone:shared,label:"Office"});
+      await pool.query("INSERT INTO leads(id,workspace_id,name,organization,phone) VALUES($1,$2,'Other person','',$3)",[other,ws,shared]);
+      const incomingShared=await incoming(93,shared);
+      const linked=(await pool.query("SELECT c.id,c.lead_id FROM crm_conversations c JOIN crm_conversation_sources s ON s.conversation_id=c.id JOIN voice_calls v ON v.voice_conversation_id=s.voice_conversation_id WHERE v.id=$1",[incomingShared.callId])).rows[0];
+      expect(linked.lead_id).toBeNull();expect(linked.id).not.toBe(primary.conversationId);
+    });
     it("links a first call to the chosen lead and rejects mismatched or conflicting identities",async()=>{
       const lead=randomUUID(),other=randomUUID();
       await pool.query("INSERT INTO leads(id,workspace_id,name,organization,phone) VALUES($1,$2,'First caller','',$3),($4,$2,'Different lead','',$3)",[lead,ws,remote,other]);
