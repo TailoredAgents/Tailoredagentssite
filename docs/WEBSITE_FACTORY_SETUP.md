@@ -4,6 +4,8 @@ October 26, 2026. This guide covers milestone 1 of the [build plan](AI_WEBSITE_F
 
 This guide does not establish production deployment, paid activation, live model quality, or a verified provider bill. Implementation checks use synthetic responses. No paid provider calls or new infrastructure were activated while implementing this milestone.
 
+**Current status:** Austin explicitly approved **$25 per month for research and planning** on October 26, 2026. Saved settings were read back in the live UI under Austin's Owner account: research enabled, automatic new-lead research off, monthly limit $25, zero workspaces and $0 estimated/reserved usage. The paused banner was removed. This enables manually selected pilot work; cron configuration, authenticated scheduled processing, provider access/model quality and the paid pilot remain unverified. Builder/image spending is separate and has not been approved.
+
 ## What this release does
 
 Open **Sales → Website mockups → Website planning**, or start/open the planning workspace from a lead. A lead needs no company name, website, location, industry, or other specific business field to enter this workflow. Missing or questionable information should yield an explicitly provisional, useful general concept.
@@ -32,7 +34,7 @@ Apply all website migrations through `0030_factory_costs.sql` before serving the
 
 Provider keys belong only on the website service. The cron needs its URL and worker secret, not an OpenAI key. Keep secret values out of Git, screenshots, chat, request URLs and logs.
 
-Adding a key **does not enable paid work**. Research settings live in PostgreSQL and default off. The displayed **$25 monthly allowance is a suggested starting value, not approved spending**. An owner/admin must deliberately save research enabled with an accepted allowance before the worker can make requests. The Factory allowance is independent of SEO, call analysis, Inbox drafting and hosting.
+Adding a key **does not enable paid work**. Research settings live in PostgreSQL and default off for a new workspace. Austin explicitly approved **$25/month for research and planning**, and the live settings have been saved and verified with research enabled and automatic intake off. That approval does not need repeating. The Factory allowance is independent of SEO, call analysis, Inbox drafting and hosting.
 
 ## Scheduled processing
 
@@ -49,7 +51,7 @@ No separate paid cron service or always-running builder was added. Additional ac
 1. Deploy the additive migrations and website changes; keep research disabled.
 2. Verify that the Website planning queue opens for an authorized teammate and that a sparse existing lead can start a workspace. Its research should remain queued while disabled. Viewers can read but cannot start work, change settings, send planning chat or approve plans.
 3. Confirm the cron URL/secret configuration. An authenticated worker invocation while research is disabled should find no paid work. An unauthenticated request must be rejected. This confirms routing, not model quality.
-4. Have the owner/admin choose the monthly Factory allowance and enable research for a deliberate pilot. Leave **automatic research for new leads** off initially. Existing deliberately queued requests become eligible once research is enabled; review that queue before enabling it.
+4. Use Austin's approved **$25 monthly research/planning allowance**. The live settings are already saved and verified for a deliberate pilot: research enabled and **automatic research for new leads** off. The queue was empty at verification. Existing deliberately queued requests become eligible when research is enabled; keep automatic intake off while selecting and evaluating pilot leads.
 5. Select a small, authorized set of leads, including no website, an unhelpful company name, uncertain business matches and sparse details. Run research and assess the sources and proposed plans. A nonexistent search match must not become a factual assertion that the business lacks a site.
 6. Use planning chat to correct a detail and change the design direction. Verify a revised version and its change explanation. Ask a clarification and verify that no unnecessary version is created when the plan is unchanged.
 7. Approve the latest plan and verify that exactly that version enters `awaiting_builder`. There is no build or URL to validate yet. Check that further discussion preserves the already approved snapshot.

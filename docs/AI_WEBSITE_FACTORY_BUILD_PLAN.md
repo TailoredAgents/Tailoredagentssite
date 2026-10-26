@@ -1,10 +1,10 @@
 # AI Website Factory: implementation plan and resume guide
 
-Created October 26, 2026. Status: **milestone 1 deployed; research disabled pending budget choice and live pilot**.
+Created October 26, 2026. Status: **milestone 1 deployed; research enabled for a manual pilot with an approved $25/month cap; cron and live pilot unverified**.
 
 This is the durable task specification for the lead research, website planning, human-approved builder, and website copilot discussed with Austin. Read this file before continuing this task after a new chat, context compaction, or work from another computer. Update its checklist and resume log as implementation progresses.
 
-Austin subsequently authorized implementation. Research, versioned plans, pre-approval chat, and exact-version approval are implemented. Research starts disabled; its suggested $25 monthly cap is not an approved operating budget. Website construction, preview hosting, image generation, editing actual sites, and export remain later milestones. No paid AI jobs or new infrastructure have been activated.
+Austin subsequently authorized implementation and explicitly approved **$25 per month for research and planning** on October 26, 2026. Research, versioned plans, pre-approval chat, and exact-version approval are implemented. Saved live settings were verified under Austin's Owner account: research enabled, automatic intake off, monthly limit $25, zero workspaces and $0 estimated/reserved usage. This enables deliberately selected pilot leads; it does not establish working cron processing or provider operation. Website construction, preview hosting, image generation, editing actual sites, and export remain later milestones with their own unset budget. No paid provider call or live model-quality pilot has been verified.
 
 ## Outcome
 
@@ -186,12 +186,12 @@ Exit: a teammate can request a change, inspect the new version, restore an earli
 | Area | Required work |
 | --- | --- |
 | OpenAI | Research, coding, and image access. Prefer a dedicated Factory project/key for usage separation. Verify current models, SDK behavior, account access, and prices when implementing; model IDs are not fixed by this plan. |
-| Budget | Define builder-specific monthly and per-job limits, revision/repair limits, and concurrency. Track planned/reserved/actual or uncertain spend across retries. Do not inherit the unrelated SEO budget or bypass limits with concurrent jobs. |
+| Budget | Austin approved $25/month for research and planning on October 26, 2026; live settings were saved and verified with research enabled and automatic intake off. Define separate builder/image monthly and per-job limits, revision/repair limits, and concurrency. Track planned/reserved/estimated or uncertain spend across retries. Do not inherit the unrelated SEO budget or bypass limits with concurrent jobs. |
 | Build runtime | Dedicated worker plus isolated project execution and durable job recovery. Select a deployment based on tested workload, not assumptions about the current small CRM service. |
 | Cloudflare | Separate preview artifact storage, routing, hostname/DNS, and narrowly scoped credentials. Preserve Mail infrastructure. |
 | Render | Deploy CRM changes and relevant workers; provide a deployment configuration for exported customer projects. |
 | GitHub | Repository creation access only if direct repository export is enabled. ZIP export must not depend on this. |
-| Austin | Optional design references, sample outputs to review, and feedback. These are not mandatory lead inputs. Establish an operating budget before live paid activation. |
+| Austin | Research/planning allowance approved at $25/month. Optional design references, sample outputs to review, and feedback are not mandatory lead inputs. Establish the separate builder/image operating budget before activating those later services. |
 | Jeffrey | Infrastructure configuration and secrets where he owns the accounts. Once exact requirements exist, add concrete steps to `new jeffrey.md` and link this specification; do not replace his existing Mail/Meta/SEO tasks. |
 | Coding agent | Build the CRM workflow, agents, builder integration, UI, exports, tests, deployment documentation, and evidence. Keep this document current. |
 
@@ -203,13 +203,13 @@ Current platform documentation researched for the proposal (recheck at implement
 - [Cloudflare R2 pricing](https://developers.cloudflare.com/r2/pricing/)
 - [Render static sites](https://render.com/docs/static-sites)
 
-No blanket "free hosting" promise: AI, build compute, storage operations, routing, and usage allowances all contribute to cost. Final model choices, exact runtime, budget amounts, and production integration breadth remain implementation decisions. None requires a lead to supply more information before planning can start.
+No blanket "free hosting" promise: AI, build compute, storage operations, routing, and usage allowances all contribute to cost. Research/planning has an approved $25/month allowance. Builder model choices, exact runtime, builder/image budgets, and production integration breadth remain implementation decisions. None requires a lead to supply more information before planning can start.
 
 ## Resume instructions and progress log
 
 1. Read this specification and the latest user messages; preserve the explicit decisions above.
 2. Check `git status`, remote updates, and applicable project instructions. Work on `main`, preserve collaborators' changes, and push focused verified commits as required by `AGENTS.md`.
-3. Implementation is authorized. Resume from the remaining work below. Keep paid activation and infrastructure configuration separate from synthetic local verification; the research budget question is pending, and the builder budget has not been set.
+3. Implementation and a $25/month research/planning allowance are authorized. The live research-enabled, automatic-intake-off and $25 settings have been verified. Resume with cron verification and a deliberate live pilot; do not repeat budget approval. Keep infrastructure configuration and live provider results separate from synthetic local verification. The builder/image budget has not been set.
 4. Keep completed work, actual verification, remaining work, and precise next action here. Record provider setup and deployment separately from local test success.
 5. Update the roadmap link and Jeffrey handoff only where new concrete work belongs. Do not restart completed communications or SEO setup.
 
@@ -218,6 +218,7 @@ No blanket "free hosting" promise: AI, build compute, storage operations, routin
 | October 26, 2026 | Saved agreed scope and implementation sequence; added roadmap pointer | Read current mockup, lead-intake, sales-linking, and Render configuration; documentation-only change | Implementation not started. On authorization, begin milestone 1: lead-linked Factory records, durable research jobs, planning chat, and versioned approval. |
 | October 26, 2026 | Implemented milestone 1 in migrations `0029`/`0030`, `lib/factory/`, lead intake hooks, `/dashboard/sales/factory`, lead actions, and independent `/api/cron/factory` worker lane. Pushed implementation `0bb3a62` to main. | 325 tests passed, including 30 Factory tests and affected Sales/Meta regressions; 223 unrelated integration cases skipped without their database configuration. Four desktop/phone browser flows and two additional dark-theme flows passed, including accessibility checks. Lint and production build/type checks passed. Screenshots inspected. All AI responses were synthetic. | Research remains disabled. Confirm the research cap and configure the cron lane for a manual pilot. Continue milestone 2 with portable source projects, isolated build execution, artifact storage, previews, optional uploads, and export. |
 | October 26, 2026, 21:28 UTC | Implementation `0bb3a62bc2486593f443497f14511724874add2f` deployed successfully; Render `dep-dbfsb2h42hec739rm1t0`, GitHub deployment `7343996117` | Signed-in Austin Owner opened the live planning queue; zero projects, research paused, automatic intake off, $25 suggested cap, $0 estimated/reserved usage. Health returned 200; unsigned worker POST returned 401; anonymous planning page redirected to sign-in. No production lead mutation or paid AI call performed. | Existing cron environment, authenticated scheduled Factory invocation, provider access/model quality, and paid pilot are not verified. Jeffrey's exact remaining steps are in his handoff. The visible suggested cap is not spending authorization. |
+| October 26, 2026, about 5:51 PM EDT | Austin explicitly approved $25/month for research and planning; settings saved for a manually selected pilot | Read back the live Website planning settings as Austin Owner: Enable AI research checked, automatic new-lead research unchecked, monthly limit $25, zero workspaces and $0 estimated/reserved usage. The paused banner was removed. Earlier rows describe the pre-approval state. No provider call was performed by saving settings. | Existing cron environment, authenticated scheduled Factory invocation, provider access/model quality and paid pilot remain unverified. Keep automatic intake off during the pilot. Builder/image spending is still unset. |
 
 Milestone 1 reads the lead profile, shared lead notes, planning chat, and prior plan. It does not copy permission-scoped Inbox messages, recordings, or client-memory facts into the shared planning workspace. Any expansion must preserve those source permissions. Budget totals are conservative estimates plus reservations, not an OpenAI invoice. Failed or uncertain requests require an explicit retry; they do not silently repeat provider calls.
 
