@@ -1,0 +1,25 @@
+# Opt-in shared hosting service. Every lead preview shares this disk and service.
+# Kept outside the main Blueprint so ordinary CRM releases cannot create a service.
+services:
+  - type: web
+    name: tailored-agents-site-previews
+    runtime: docker
+    branch: main
+    region: ohio
+    plan: 0.5c-512mb
+    dockerfilePath: ./deploy/factory-preview.Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    disk:
+      name: website-previews
+      mountPath: /var/data/factory
+      sizeGB: 5
+    envVars:
+      - key: FACTORY_STORAGE_DIRECTORY
+        value: /var/data/factory
+      - key: FACTORY_STORAGE_SECRET
+        sync: false
+      - key: FACTORY_PREVIEW_SECRET
+        sync: false
+      - key: FACTORY_RESOLVER_URL
+        value: https://www.tailoredagents.com/api/integrations/factory/preview

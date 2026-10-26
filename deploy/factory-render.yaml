@@ -17,15 +17,12 @@ services:
         sync: false
       - key: FACTORY_OPENAI_API_KEY
         sync: false
-      - key: FACTORY_R2_ACCOUNT_ID
+      # Reuse the existing builder; point at the separate Render preview/storage service.
+      - key: FACTORY_STORAGE_URL
         sync: false
-      - key: FACTORY_R2_ACCESS_KEY_ID
+      - key: FACTORY_STORAGE_SECRET
         sync: false
-      - key: FACTORY_R2_SECRET_ACCESS_KEY
-        sync: false
-      - key: FACTORY_R2_BUCKET
-        value: tailored-agents-site-previews
       - key: FACTORY_PREVIEW_ORIGIN
-        value: https://previews.tailoredagents.com
+        sync: false
       - key: FACTORY_PREVIEW_SECRET
         sync: false

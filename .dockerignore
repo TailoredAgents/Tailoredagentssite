@@ -1,0 +1,11 @@
+.git
+**/node_modules
+**/.next
+**/.wrangler
+**/.env
+**/.env.*
+.codex
+test-results
+playwright-report
+coverage
+**/*.log
