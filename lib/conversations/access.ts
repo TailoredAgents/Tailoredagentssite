@@ -10,6 +10,7 @@ import { getSmsSendUnavailableReason } from "@/lib/sms/data";
 import type { ConversationWorkspace } from "./types";
 import { getVoiceWorkspace } from "@/lib/voice/data";
 import type { VoiceLine } from "@/lib/voice/types";
+import { emailRelationshipSql } from "./email-scope";
 export class ConversationAccessError extends Error {}
 export type SourceRow = {
   id: string;
@@ -28,6 +29,7 @@ export type SourceRow = {
   last_inbound_at: Date | null;
   last_outbound_at: Date | null;
   visible: boolean;
+  email_in_crm: boolean;
 };
 export type Scopes = {
   role: string;
@@ -36,7 +38,12 @@ export type Scopes = {
   lines: VoiceLine[];
   sync: ConversationWorkspace["sync"];
 };
-export const sourceSelect = `SELECT s.*,sc.number_id,vc.line_id FROM crm_conversation_sources s LEFT JOIN sms_conversations sc ON sc.id=s.sms_conversation_id AND sc.workspace_id=s.workspace_id LEFT JOIN voice_conversations vc ON vc.id=s.voice_conversation_id AND vc.workspace_id=s.workspace_id`;
+export const sourceSelect = `SELECT s.*,sc.number_id,vc.line_id,
+  (s.channel<>'email' OR ${emailRelationshipSql("s.workspace_id", "s.external_addresses", {contactId:"relationship.contact_id",leadId:"relationship.lead_id",businessId:"relationship.business_id"})}) AS email_in_crm
+  FROM crm_conversation_sources s
+  JOIN crm_conversations relationship ON relationship.id=s.conversation_id AND relationship.workspace_id=s.workspace_id
+  LEFT JOIN sms_conversations sc ON sc.id=s.sms_conversation_id AND sc.workspace_id=s.workspace_id
+  LEFT JOIN voice_conversations vc ON vc.id=s.voice_conversation_id AND vc.workspace_id=s.workspace_id`;
 export async function scopes(context: DashboardContext): Promise<Scopes> {
   const role = await authorizeInbox(context);
   let mailboxes: InboxMailbox[] = [];
@@ -111,7 +118,7 @@ export function permitted(source: SourceRow, scope: Scopes) {
   return (
     source.visible &&
     (source.channel === "email"
-      ? scope.mailboxes.some((m) => m.id === source.mailbox_id)
+      ? source.email_in_crm && scope.mailboxes.some((m) => m.id === source.mailbox_id)
       : source.channel === "sms"
         ? scope.numbers.some((n) => n.id === source.number_id)
         : scope.lines.some((n) => n.id === source.line_id))

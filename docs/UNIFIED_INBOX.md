@@ -1,5 +1,15 @@
 # Unified Inbox
 
+## Customer email filter — October 27, 2026
+
+The main CRM Inbox includes email only when its conversation is explicitly linked to a current lead/contact/business, or an external participant's complete email address exactly matches a saved CRM lead, customer contact or business email in the same workspace. Matching ignores case and surrounding spaces. Company names, similar addresses and shared domains are not matches. A match admits the thread; it never guesses between duplicate people, changes their details or merges their histories.
+
+New unrelated threads stay out of the CRM index. Previously indexed unrelated email is hidden at read time from all queues, counts, search, selected history and AI context; it is not deleted from Mail or from existing CRM metadata. Existing explicit links remain eligible when a customer uses another email. Deleted/anonymized relationships cannot qualify. Matching also rechecks after loading history so concurrent contact changes do not return stale customer email.
+
+To bring an unknown sender into the CRM, save their exact email on a lead/customer record. Existing indexed history qualifies immediately; previously skipped Mail threads appear on a subsequent metadata discovery pass. Mail remains the full inbox, with its original folders and messages. Its existing spam/trash exclusions continue to apply. SMS/call discovery and channel permissions are unchanged. The connection notice now links directly to **Open Mail**.
+
+Implementation verification: 71 conversation/Mail-adapter tests passed, including six new database-backed filtering scenarios, existing grants and mixed-channel behavior, paging beyond one provider page, and late relationship changes. Type checking and lint passed. Production build and release acceptance are recorded with the deployment below.
+
 Current behavior reconciled with source on October 25, 2026. Contact-first entry, calling/recording workflows, AI drafts and client briefs are implemented. The design rationale and dated test/deployment evidence below retain their original scope; they do not establish fresh production acceptance. [Jeffrey's current handoff](../new%20jeffrey.md) tracks shared Sales acceptance; the [active roadmap](AGENCY_OS_ROADMAP.md) tracks remaining development.
 
 ## Alternate phone numbers — October 26, 2026

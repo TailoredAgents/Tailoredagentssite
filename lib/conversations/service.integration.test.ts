@@ -152,6 +152,9 @@ async function expireCheckpoint() {
     "UPDATE crm_conversation_sync SET last_completed_at=now()-interval '1 minute'",
   );
 }
+function indexedEmail(threadId: string, addresses: string[]) {
+  return {threadId,latestMessageId:`${threadId}-message`,lastMessageAt:base,lastInboundAt:base,lastOutboundAt:null,externalAddresses:addresses,hasAttachments:false};
+}
 describe.skipIf(!databaseUrl)(
   "Unified conversations with guarded PostgreSQL and live-adapter fixtures",
   () => {
@@ -300,6 +303,82 @@ describe.skipIf(!databaseUrl)(
       }));
     });
 
+    it("indexes only exact CRM email matches and leaves general Mail out of every queue", async () => {
+      const lead=randomUUID();
+      await pool.query("INSERT INTO leads(id,workspace_id,name,organization,email) VALUES($1,$2,'New Lead','','  LEAD@example.test  ')",[lead,workspace]);
+      await pool.query("UPDATE crm_businesses SET normalized_email='office@customer.test' WHERE id=$1",[businessId]);
+      gateway.index.mockResolvedValue({items:[
+        indexedEmail("contact-mail",["ALICE@example.test"]),
+        indexedEmail("lead-mail",["lead@example.test"]),
+        indexedEmail("business-mail",["office@customer.test"]),
+        indexedEmail("newsletter",["news@example.test"]),
+        indexedEmail("same-domain",["sales@customer.test"]),
+        indexedEmail("internal",[]),
+      ],cursor:null,complete:true});
+      const view=await workspaceView();
+      expect(view.total).toBe(4); // three customer emails and the existing SMS
+      expect(view.counts.unread).toBe(4);expect(view.counts.needs_reply).toBe(4);
+      expect((await pool.query("SELECT thread_id FROM crm_conversation_sources WHERE channel='email' ORDER BY thread_id")).rows.map(r=>r.thread_id)).toEqual(["business-mail","contact-mail","lead-mail"]);
+      expect((await workspaceView(owner,{q:"news@example.test"})).total).toBe(0);
+      expect(gateway.history).not.toHaveBeenCalled();
+    });
+    it("hides previously indexed general mail immediately, including direct history access, without deleting data", async () => {
+      const ids=await identities(),source=(await workspaceView(owner,{conversation:ids.email.id})).selected!.sources[0];
+      await pool.query("UPDATE contacts SET email='changed@example.test' WHERE id=$1",[contactId]);
+      gateway.history.mockClear();
+      for(const view of ["team","mine","unassigned","needs_reply","unread","archived"]){
+        const result=await listConversationWorkspace(owner,{view,conversation:ids.email.id});
+        expect(result.items.some(c=>c.id===ids.email.id)).toBe(false);expect(result.selected).toBeNull();
+      }
+      expect((await workspaceView()).total).toBe(1);
+      await expect(loadConversationSourceHistory(owner,{sourceId:source.id})).rejects.toBeInstanceOf(ConversationAccessError);
+      expect(gateway.history).not.toHaveBeenCalled();
+      expect((await pool.query("SELECT id FROM crm_conversation_sources WHERE id=$1",[source.id])).rowCount).toBe(1);
+      // A later saved CRM address makes existing metadata eligible without a new sweep.
+      await pool.query("UPDATE contacts SET email='alice@example.test' WHERE id=$1",[contactId]);
+      expect((await workspaceView()).items.some(c=>c.id===ids.email.id)).toBe(true);
+    });
+    it("discovers previously skipped email after its sender becomes a lead and never infers a duplicate identity", async () => {
+      gateway.index.mockResolvedValue({items:[indexedEmail("new-sender",["new@example.test"])],cursor:null,complete:true});
+      expect((await workspaceView()).total).toBe(1);
+      for(const name of ["First candidate","Second candidate"])await pool.query("INSERT INTO leads(id,workspace_id,name,organization,email) VALUES($1,$2,$3,'','new@example.test')",[randomUUID(),workspace,name]);
+      await expireCheckpoint();
+      const mail=(await workspaceView()).items.find(c=>c.channels.includes("email"))!;
+      expect(mail).toBeDefined();expect(mail.leadId).toBeNull();expect(mail.contactId).toBeNull();
+      expect(mail.personName).toBe("new@example.test");
+    });
+    it("keeps explicit CRM and legacy links even when the sender uses another email", async () => {
+      const ids=await identities();
+      await linkConversationContext(owner,{conversationId:ids.email.id,contactId,businessId});
+      await pool.query("UPDATE contacts SET email='new-address@example.test' WHERE id=$1",[contactId]);
+      expect((await workspaceView()).items.some(c=>c.id===ids.email.id)).toBe(true);
+      await pool.query("INSERT INTO inbox_conversations(id,workspace_id,mailbox_id,thread_id,business_id) VALUES($1,$2,$3,'legacy-linked',$4)",[randomUUID(),workspace,mailbox.id,businessId]);
+      await expireCheckpoint();
+      gateway.index.mockResolvedValue({items:[indexedEmail("legacy-linked",["alternate@unknown.test"])],cursor:null,complete:true});
+      const view=await workspaceView();
+      expect(view.items.some(c=>c.channels.includes("email")&&c.businessId===businessId)).toBe(true);
+      await pool.query("UPDATE crm_businesses SET anonymized_at=now() WHERE id=$1",[businessId]);
+      expect((await workspaceView()).items.some(c=>c.channels.includes("email"))).toBe(false);
+    });
+    it("does not match another workspace or a deleted lead, and continues past pages of general mail", async () => {
+      await pool.query("INSERT INTO leads(id,workspace_id,name,organization,email) VALUES($1,$2,'Other workspace','','foreign@example.test')",[randomUUID(),otherWorkspace]);
+      await pool.query("INSERT INTO leads(id,workspace_id,name,organization,email,anonymized_at) VALUES($1,$2,'Removed','','removed@example.test',now())",[randomUUID(),workspace]);
+      gateway.index.mockResolvedValueOnce({items:[indexedEmail("foreign",["foreign@example.test"]),indexedEmail("removed",["removed@example.test"]),indexedEmail("news",["news@example.test"])],cursor:"next-customer-page",complete:false});
+      expect((await workspaceView()).total).toBe(1);
+      gateway.index.mockResolvedValueOnce({items:[indexedEmail("real-customer",["alice@example.test"])],cursor:null,complete:true});
+      expect((await workspaceView()).total).toBe(2);
+      expect(gateway.index.mock.calls.at(-1)![2].cursor).toBe("next-customer-page");
+      expect((await pool.query("SELECT thread_id FROM crm_conversation_sources WHERE channel='email'")).rows.map(r=>r.thread_id)).toEqual(["real-customer"]);
+    });
+    it("rechecks the CRM relationship after loading email history", async () => {
+      const ids=await identities();
+      gateway.history.mockImplementationOnce(async()=>{
+        await pool.query("UPDATE contacts SET email='changed@example.test' WHERE id=$1",[contactId]);
+        return {threadId:"mail-thread",subject:"Website enquiry",messages:mailMessages,before:null,hasOlder:false};
+      });
+      const view=await workspaceView(owner,{conversation:ids.email.id});
+      expect(view.selected).toBeNull();expect(view.total).toBe(1);
+    });
     it("saves labeled alternate numbers, keeps primary, normalizes duplicates and enforces current access", async () => {
       const input={kind:"contact",id:contactId,operation:"save",phone:"4045550199",label:"Website",source:"Contact page"};
       await savePhoneNumber(owner,input);
@@ -765,6 +844,7 @@ describe.skipIf(!databaseUrl)(
       expect(view.sync.some((s) => s.state === "unavailable")).toBe(true);
     });
     it("paginates the complete indexed queue beyond one provider page and scopes metadata search", async () => {
+      await pool.query("INSERT INTO contacts(id,workspace_id,business_id,name,email) SELECT gen_random_uuid(),$1,$2,'Customer '||n,'person'||n||'@example.test' FROM generate_series(0,59) n",[workspace,businessId]);
       const items = Array.from({ length: 60 }, (_, i) => ({
         threadId: `thread-${i}`,
         latestMessageId: `message-${i}`,

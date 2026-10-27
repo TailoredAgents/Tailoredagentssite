@@ -7,6 +7,7 @@ import {
   MailProviderError,
 } from "@/lib/inbox/mail-provider";
 import type { Scopes } from "./access";
+import { emailRelationshipSql } from "./email-scope";
 export async function discover(context: DashboardContext, scope: Scopes, smsConversationId = "") {
   const pool = getDatabasePool();
   // Local SMS discovery covers the complete granted dataset, independent of the
@@ -176,6 +177,14 @@ export async function discover(context: DashboardContext, scope: Scopes, smsConv
               [context.workspace.id, mailbox.id, item.threadId],
             )
           ).rows[0];
+          // General correspondence stays in Mail. Only relationship mail gets a
+          // new CRM queue row. Existing rows are filtered again at read time so
+          // unrelated historical mail disappears immediately without deleting it.
+          const eligible = (await db.query<{ eligible: boolean }>(
+            `SELECT ${emailRelationshipSql("$1::uuid", "$2::text[]", {leadId:"$3::uuid",businessId:"$4::uuid"})} AS eligible`,
+            [context.workspace.id,item.externalAddresses,legacy?.lead_id ?? null,legacy?.business_id ?? null],
+          )).rows[0].eligible;
+          if (!eligible) continue;
           await db.query(
             "INSERT INTO crm_conversations(id,workspace_id,created_at,work_updated_at,owner_user_id,status,lead_id,business_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
             [

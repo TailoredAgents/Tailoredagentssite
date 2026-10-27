@@ -218,7 +218,9 @@ export async function listConversationWorkspace(
       scope.sync = scope.sync.filter((s) => s.channel !== notice.channel);
       scope.sync.push(notice);
     }
-  sources = sources.filter((s) => permitted(s, fresh));
+  // Recheck the relationship too: a lead/contact can change while Mail loads.
+  const currentSourceIds = new Set((await authorizedSources(context, fresh)).map(s => s.id));
+  sources = sources.filter((s) => permitted(s, fresh) && currentSourceIds.has(s.id));
   const allowed = new Set(sources.map((s) => s.id));
   const all = summaries();
   const summary = all.find((c) => c.id === requested);
