@@ -1,6 +1,6 @@
 # Jeffrey — current status and remaining work
 
-Meta status updated after the October 27, 2026 production lead recovery. Mail and SEO figures retain their recorded verification times below. This is the main status checklist for Jeffrey's Meta, shared Sales email and SEO work. Setup commands live in the linked guides. Older release records describe what was true on their recorded dates; completed setup does not need repeating.
+Meta status updated October 27, 2026 for the production lead recovery and ongoing App Review test. Mail, SEO and Factory figures retain their recorded verification times below. This is the main status checklist for Jeffrey's Meta, shared Sales email and SEO work. Setup commands live in the linked guides. Older release records describe what was true on their recorded dates; completed setup does not need repeating.
 
 ## Current state
 
@@ -17,7 +17,7 @@ Austin assigned this connection to Jeffrey on October 23. The technical connecti
 
 Remaining work:
 
-- [ ] **Jeffrey with Codex:** `leads_retrieval` shows **Ready for testing** in Meta's dashboard. Open **Review → App Review** to identify the remaining requirements for this own-business integration. Complete any required usage explanations, demonstrations and submissions; [a truthful review draft is prepared](docs/META_SETUP.md#app-review-preparation). Meta's MCP review fields conflict; no completed review appears in its history. Do not infer approval or exemption from publication, token scopes, “Requirements: 0” or the successful test.
+- [ ] **Jeffrey with Codex:** the `leads_retrieval` usage description and agreement are saved. The selected **Marketing API Access Tier** also requires API testing. A read-only batch is running against Tailored Agents' own advertising account, with a slower pace after one rate-limit response; [test details and pending verification](docs/META_SETUP.md#marketing-api-access-tier-testing--october-27-2026). After the batch finishes, confirm Meta credits the calls (its screen allows up to 24 hours), then complete the remaining descriptions, demonstrations and submission. [Review drafts](docs/META_SETUP.md#app-review-preparation) describe the actual app. Successful calls, publication and granted token permissions do not establish final approval.
 - [x] **Codex, October 27:** recover the real Facebook submission Austin reported from October 26 at 10:50 PM EDT. Retrieval succeeded, the missing optional email answer is now accepted, and the original receipt produced exactly one CRM lead. [Recovery evidence](docs/META_SETUP.md#missing-answer-recovery--october-27-2026). This does not establish access to every placement or complete App Review.
 - [ ] **Austin and Devon:** use their own accounts to open the received lead and confirm the details are useful for follow-up.
 - [ ] **Together:** check Instagram placement delivery if used. A real Facebook lead with a phone and no email imported successfully on October 27.
