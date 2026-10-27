@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { DashboardPagination } from "@/components/dashboard/pagination";
 import { ManualLeadForm } from "@/components/dashboard/manual-lead-form";
+import { LeadStatusSelect } from "@/components/dashboard/lead-status-select";
 import { requireDashboardContext } from "@/lib/dashboard/data";
 import { listLeads } from "@/lib/operations/data";
 import { formatOperationalDate, statusLabel } from "@/lib/operations/format";
@@ -114,17 +115,18 @@ export default async function LeadsPage({
             </div>
             {leads.items.length ? (
               leads.items.map((lead) => (
-                <Link
-                  className="dashboard-data-row"
-                  href={`/dashboard/leads/${lead.id}`}
+                <div
+                  className="dashboard-data-row dashboard-lead-row"
                   key={lead.id}
                 >
                   <span data-label="Lead">
-                    <strong>{leadDisplayName(lead)}</strong>
-                    {leadCompanyName(lead) && <small>{leadCompanyName(lead)}</small>}
-                    <small>
-                      {lead.email || lead.phone || "No contact details"}
-                    </small>
+                    <Link className="dashboard-lead-link" href={`/dashboard/leads/${lead.id}`}>
+                      <strong>{leadDisplayName(lead)}</strong>
+                      {leadCompanyName(lead) && <small>{leadCompanyName(lead)}</small>}
+                      <small>
+                        {lead.email || lead.phone || "No contact details"}
+                      </small>
+                    </Link>
                   </span>
                   <span data-label="Interest">
                     <strong>
@@ -141,9 +143,9 @@ export default async function LeadsPage({
                     )}
                   </span>
                   <span data-label="Status">
-                    <em className={`dashboard-status status-${lead.status}`}>
+                    {context.role === "viewer" ? <em className={`dashboard-status status-${lead.status}`}>
                       {statusLabel(lead.status)}
-                    </em>
+                    </em> : <LeadStatusSelect leadId={lead.id} name={leadDisplayName(lead)} status={lead.status} />}
                   </span>
                   <span data-label="Owner / next action">
                     <strong>{lead.ownerName || "Unassigned"}</strong>
@@ -157,7 +159,7 @@ export default async function LeadsPage({
                   <time data-label="Received" dateTime={lead.createdAt}>
                     {formatOperationalDate(lead.createdAt)}
                   </time>
-                </Link>
+                </div>
               ))
             ) : (
               <div className="dashboard-empty">

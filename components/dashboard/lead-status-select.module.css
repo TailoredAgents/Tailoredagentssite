@@ -1,0 +1,22 @@
+.control {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.control .select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--workspace-line);
+  cursor: pointer;
+}
+
+.select:focus-visible {
+  outline: 2px solid var(--workspace-blue);
+  outline-offset: 2px;
+}
+
+.select:disabled { cursor: wait; opacity: .7; }
+.select option { background: var(--workspace-surface); color: var(--workspace-ink); }
+.feedback { display: block; font-size: .75rem; margin-top: 4px; }
+.feedback:empty { display: none; }

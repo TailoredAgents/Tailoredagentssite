@@ -40,6 +40,73 @@ async function signIn(page: Page, viewer = false) {
 
 const run = Date.now().toString(36);
 
+test("changes lead status from the list without losing follow-up details", async ({ page }, info) => {
+  const name = `Inline status ${info.project.name} ${run}`;
+  const [lead] = await rows(`INSERT INTO leads(id,workspace_id,name,organization,email,source,delivery_status,owner_user_id,next_action,next_action_at,outcome_summary)
+    VALUES(gen_random_uuid(),'00000000-0000-4000-8000-000000000001',$1,'','status@example.test','manual','not_configured','preview-owner','Call on Friday','2026-11-06T12:00:00Z','Keep this context') RETURNING id`, [name]);
+  await signIn(page);
+  const listUrl = `/dashboard/leads?q=${encodeURIComponent(name)}&source=manual`;
+  await page.goto(listUrl);
+  const status = page.getByRole("combobox", { name: `Status for ${name}`, exact: true });
+  await expect(status).toHaveValue("new");
+  await status.focus();
+  await expect(status).toBeFocused();
+  await status.selectOption("qualified");
+  await expect(page.getByRole("status").filter({ hasText: "Status saved." })).toBeVisible();
+  await expect(status).toBeEnabled();
+  await expect(status).toHaveValue("qualified");
+  expect(new URL(page.url()).pathname).toBe("/dashboard/leads");
+  const [saved] = await rows("SELECT status,owner_user_id,next_action,next_action_at,outcome_summary FROM leads WHERE id=$1", [lead.id]);
+  expect(saved).toMatchObject({ status: "qualified", owner_user_id: "preview-owner", next_action: "Call on Friday", outcome_summary: "Keep this context" });
+  expect(saved.next_action_at.toISOString()).toBe("2026-11-06T12:00:00.000Z");
+  expect(await rows("SELECT metadata->>'status' status FROM audit_logs WHERE target_id=$1 AND action='lead.updated'", [lead.id])).toEqual([{ status: "qualified" }]);
+  await page.reload();
+  await expect(status).toHaveValue("qualified");
+  const axe = await new AxeBuilder({ page }).include(".dashboard-leads-table").withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+  expect(axe.violations).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  await page.screenshot({ path: `test-results/lead-status-${info.project.name}.png`, fullPage: true });
+  await page.getByRole("link").filter({ has: page.getByText(name, { exact: true }) }).click();
+  await expect(page).toHaveURL(new RegExp(`/dashboard/leads/${lead.id}$`));
+  await page.goto(`${listUrl}&status=qualified`);
+  await status.selectOption("proposal");
+  await expect(status).toHaveCount(0);
+  await expect(page.getByText("No leads match this view", { exact: true })).toBeVisible();
+  expect(await rows("SELECT status FROM leads WHERE id=$1", [lead.id])).toEqual([{ status: "proposal" }]);
+});
+
+test("restores the displayed status when a lead is no longer available", async ({ page }, info) => {
+  const name = `Missing status ${info.project.name} ${run}`;
+  const [lead] = await rows("INSERT INTO leads(id,workspace_id,name,organization,email,source,delivery_status) VALUES(gen_random_uuid(),'00000000-0000-4000-8000-000000000001',$1,'','missing-status@example.test','manual','not_configured') RETURNING id", [name]);
+  await signIn(page);
+  await page.goto(`/dashboard/leads?q=${encodeURIComponent(name)}`);
+  const status = page.getByRole("combobox", { name: `Status for ${name}`, exact: true });
+  await expect(status).toHaveValue("new");
+  await rows("DELETE FROM leads WHERE id=$1", [lead.id]);
+  await status.selectOption("lost");
+  await expect(page.locator(".dashboard-leads-table").getByRole("alert")).toHaveText("That record is no longer available in this workspace.");
+  await expect(status).toHaveValue("new");
+  await expect(status).toBeEnabled();
+});
+
+test("rejects inline status changes when edit access is revoked", async ({ page }, info) => {
+  const name = `Revoked status ${info.project.name} ${run}`;
+  const [lead] = await rows("INSERT INTO leads(id,workspace_id,name,organization,email,source,delivery_status) VALUES(gen_random_uuid(),'00000000-0000-4000-8000-000000000001',$1,'','revoked-status@example.test','manual','not_configured') RETURNING id", [name]);
+  await signIn(page);
+  await page.goto(`/dashboard/leads?q=${encodeURIComponent(name)}`);
+  const status = page.getByRole("combobox", { name: `Status for ${name}`, exact: true });
+  await expect(status).toBeEnabled();
+  try {
+    await rows("UPDATE workspace_memberships SET role='viewer' WHERE user_id='preview-owner'");
+    await status.selectOption("won");
+    await expect(page.locator(".dashboard-leads-table").getByRole("alert")).toHaveText("Your workspace role does not allow this change.");
+    await expect(status).toHaveValue("new");
+    expect(await rows("SELECT status FROM leads WHERE id=$1", [lead.id])).toEqual([{ status: "new" }]);
+  } finally {
+    await rows("UPDATE workspace_memberships SET role='owner' WHERE user_id='preview-owner'");
+  }
+});
+
 test("adds a phone-only lead directly from Leads and retains useful sales context", async ({
   page,
 }, info) => {
@@ -249,4 +316,5 @@ test("viewers can read Leads without a manual create control", async ({
   await expect(
     page.getByRole("form", { name: "Add lead", exact: true }),
   ).toHaveCount(0);
+  await expect(page.getByRole("combobox", { name: /^Status for / })).toHaveCount(0);
 });

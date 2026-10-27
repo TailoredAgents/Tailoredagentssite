@@ -245,7 +245,10 @@ a.dashboard-nav-item:hover { color: var(--workspace-nav-text); background: var(-
 .dashboard-data-row strong { color: var(--workspace-muted); font-size: .875rem; }
 .dashboard-data-row small { margin-top: .2rem; color: var(--workspace-muted); font-size: .875rem; }
 .dashboard-data-row time { color: var(--workspace-muted); font: .875rem var(--font-mono); }
-.dashboard-leads-table .dashboard-data-head, .dashboard-leads-table .dashboard-data-row { grid-template-columns: 1.2fr 1fr .55fr 1.15fr .72fr; }
+.dashboard-leads-table .dashboard-data-head, .dashboard-leads-table .dashboard-data-row { grid-template-columns: 1.2fr 1fr minmax(110px, .7fr) 1.15fr .72fr; }
+.dashboard-lead-row { position: relative; }
+.dashboard-lead-link::after { content: ""; position: absolute; inset: 0; }
+.dashboard-lead-link:focus-visible::after { outline: 2px solid var(--workspace-blue); outline-offset: -2px; border-radius: 6px; }
 .dashboard-clients-table .dashboard-data-head, .dashboard-clients-table .dashboard-data-row { grid-template-columns: 1.2fr 1fr .7fr .55fr .7fr; }
 .dashboard-sites-table .dashboard-data-head, .dashboard-sites-table .dashboard-data-row { grid-template-columns: 1.3fr 1fr .7fr .55fr .72fr; }
 .dashboard-projects-table .dashboard-data-head, .dashboard-projects-table .dashboard-data-row { grid-template-columns: 1.2fr .9fr .75fr .9fr .68fr; }

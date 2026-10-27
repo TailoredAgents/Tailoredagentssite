@@ -168,6 +168,44 @@ export async function updateLeadAction(
   }
 }
 
+export async function updateLeadStatusAction(
+  _previous: OperationActionState,
+  formData: FormData,
+): Promise<OperationActionState> {
+  const context = await mutationContext();
+  if (!context) return denied();
+  const parsed = updateLeadSchema.pick({ leadId: true, status: true })
+    .safeParse(formValues(formData, ["leadId", "status"]));
+  if (!parsed.success) return validationState(parsed.error);
+  const { leadId, status } = parsed.data;
+
+  try {
+    const changed = await withTransaction(async (client) => {
+      const result = await client.query(
+        "UPDATE leads SET status = $1, updated_at = now() WHERE id = $2 AND workspace_id = $3",
+        [status, leadId, context.workspace.id],
+      );
+      if (!result.rowCount) return false;
+      await insertAuditLog(client, {
+        workspaceId: context.workspace.id,
+        actorUserId: context.user.id,
+        action: "lead.updated",
+        targetType: "lead",
+        targetId: leadId,
+        metadata: { status },
+      });
+      return true;
+    });
+    if (!changed) return missing();
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/leads");
+    revalidatePath(`/dashboard/leads/${leadId}`);
+    return success("Status saved.");
+  } catch {
+    return genericFailure;
+  }
+}
+
 export async function addLeadNoteAction(
   _previous: OperationActionState,
   formData: FormData,
