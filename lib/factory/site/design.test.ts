@@ -6,7 +6,7 @@ import path from "node:path";
 import {tmpdir} from "node:os";
 vi.mock("server-only",()=>({}));
 import {fixtureBlueprint,fixtureHeroSvg,fixtureSitePlan} from "./fixtures";
-import {applyApprovedDesign,approvedDesignConstraints} from "./design";
+import {applyApprovedDesign,approvedDesignConstraints,contrastRatio} from "./design";
 import {validateBlueprintStructure,portableBundle,siteGenerationSchema} from "./validate";
 import {renderPortableSite} from "./render";
 import {checkPortableSite} from "./qa";
@@ -65,6 +65,20 @@ describe("Approved design fidelity and portable presentation",()=>{
     const expected={background:"#0b1220",ink:"#f8fafc",accent:"#4f83ff",accentSecondary:"#abcdef",muted:"#cbd5e1"};
     for(const palette of [[...explicit,...guessed],[...guessed,...explicit]])expect(approvedDesignConstraints({...plan,design:{...plan.design,palette}}).palette).toEqual(expected);
     for(const palette of [["Background #0B1220","Warm cream #F8FAFC"],["Warm cream #F8FAFC","Background #0B1220"]])expect(approvedDesignConstraints({...plan,design:{...plan.design,palette}}).palette.background).toBe("#0b1220");
+  });
+  it("honors labeled roles when their descriptions mention other surfaces or text",async()=>{
+    const labeled=["Background: off-white #F5F7F8","Surface: white #FFFFFF; navy #142B40 for inverted feature bands","Ink: charcoal #24323D","Muted: slate #52616B, contrast-tested on its surface","Accent: cooling teal #087F8C","AccentSecondary: warm amber #F3AD46 for restrained highlights with dark text"];
+    const expected={background:"#f5f7f8",surface:"#ffffff",ink:"#24323d",muted:"#52616b",accent:"#087f8c",accentSecondary:"#f3ad46"};
+    for(const palette of [labeled,[...labeled,"Off-white text #FFFFFF","Muted text #CCCCCC"],["Off-white text #FFFFFF","Muted text #CCCCCC",...labeled]]){
+      expect(approvedDesignConstraints({...plan,design:{...plan.design,palette}}).palette).toEqual(expected);
+    }
+    const exactPlan={...plan,design:{...plan.design,palette:labeled}};
+    const blueprint=fixtureBlueprint();
+    const result=await generatePortableSite({plan:exactPlan},async()=>({id:"synthetic-labeled-palette",status:"completed",usage:{input_tokens:1000,output_tokens:1000},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(blueprint)}]}]}));
+    expect(result.blueprint.design!.palette).toEqual(expected);
+    for(const foreground of [expected.ink,expected.muted])for(const background of [expected.background,expected.surface])expect(contrastRatio(foreground,background)).toBeGreaterThanOrEqual(4.5);
+    const inaccessible={...exactPlan,design:{...exactPlan.design,palette:[...labeled,"Ink: white #FFFFFF"]}};
+    expect(()=>validateBlueprintStructure(applyApprovedDesign(blueprint,inaccessible))).toThrow("contrast");
   });
   it("renders purposeful palettes, focal points and all new sections without visual or accessibility regressions",async()=>{
     const blueprint=applyApprovedDesign(fixtureBlueprint("trades","framed",true),plan);

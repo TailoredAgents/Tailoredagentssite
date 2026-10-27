@@ -6,7 +6,7 @@ import {afterAll,beforeAll,beforeEach,describe,expect,it,vi} from "vitest";
 import type {DashboardContext} from "@/lib/dashboard/data";
 import {getDatabasePool} from "@/lib/dashboard/db";
 import {approveFactoryPlan,startFactory} from "./service";
-import {claimFactoryBuild,saveFactoryBuildStage,finishFactoryBuild,saveFactoryBuildSettings,failFactoryBuild,retryFactoryBuild,revokeFactoryPreview,restoreFactoryPreview,recoverFactoryBuilds,registerFactoryUpload,completeFactoryUpload,deleteFactoryUpload,claimFactoryStorageCleanup,finishFactoryStorageCleanup,queueApprovedFactoryBuild,rollbackFactoryBuildAttempt} from "./build-service";
+import {claimFactoryBuild,saveFactoryBuildStage,saveFactoryBuildProgress,finishFactoryBuild,saveFactoryBuildSettings,failFactoryBuild,retryFactoryBuild,revokeFactoryPreview,restoreFactoryPreview,recoverFactoryBuilds,registerFactoryUpload,completeFactoryUpload,deleteFactoryUpload,claimFactoryStorageCleanup,finishFactoryStorageCleanup,queueApprovedFactoryBuild,rollbackFactoryBuildAttempt} from "./build-service";
 import {getFactoryProjectBuilds,getFactoryPreviewResolution,getFactorySourceDownload,getFactoryScreenshotDownload,getFactoryUploadDownload} from "./build-data";
 import {FactoryBuildBudgetError,reserveFactoryBuildCost,attemptFactoryBuildCost,settleFactoryBuildCost,uncertainFactoryBuildCost} from "./build-budget";
 import {FactoryBuildRequestNotAttemptedError} from "./build-provider";
@@ -30,11 +30,11 @@ blueprint.pages=blueprint.pages.filter(p=>p.path!=="approach/index.html");
 blueprint.brandName="New Business Concept";
 
 function qa(job:FactoryClaimedBuild):FactoryBuildQa{return {passed:true,checks:["Desktop layout","Mobile layout"],warnings:[],screenshots:{desktop:`${job.storagePrefix}screenshots/desktop.png`,mobile:`${job.storagePrefix}screenshots/mobile.png`}};}
-async function prepared(approve=true,company=""){
+async function prepared(approve=true,company="",content:FactoryPlanContent=approvedPlan){
   const leadId=randomUUID();await pool.query("INSERT INTO leads(id,workspace_id,name,organization,email) VALUES($1,$2,'Sparse person',$3,NULL)",[leadId,ws,company]);
   const {projectId}=await startFactory(member,{leadId});
   const job=(await pool.query("UPDATE factory_jobs SET status='succeeded' WHERE project_id=$1 RETURNING id",[projectId])).rows[0];const planId=randomUUID();
-  await pool.query(`INSERT INTO factory_plans(id,workspace_id,project_id,version,content,change_summary,job_id) VALUES($1,$2,$3,1,$5::jsonb,'Initial concept',$4)`,[planId,ws,projectId,job.id,JSON.stringify(approvedPlan)]);
+  await pool.query(`INSERT INTO factory_plans(id,workspace_id,project_id,version,content,change_summary,job_id) VALUES($1,$2,$3,1,$5::jsonb,'Initial concept',$4)`,[planId,ws,projectId,job.id,JSON.stringify(content)]);
   await pool.query("UPDATE factory_projects SET current_plan_id=$1,status='plan_ready' WHERE id=$2",[planId,projectId]);
   if(approve)await approveFactoryPlan(member,{projectId,planId});
   return {leadId,projectId,planId};
@@ -304,6 +304,34 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     expect(await runFactoryBuildWorkerStep(runtime)).toMatchObject({status:"processed",stage:"generate"});
     const row=(await pool.query("SELECT stage,working_data FROM factory_build_versions WHERE project_id=$1",[project.projectId])).rows[0];
     expect(row.stage).toBe("images");expect(row.working_data.blueprint).toBeTruthy();expect(row.working_data.generationResponse).toBeUndefined();
+  });
+  it("recovers a saved palette-validation failure without changing approval or charging for design again",async()=>{
+    const plan=structuredClone(approvedPlan);
+    plan.design.palette=["Background: off-white #F5F7F8","Surface: white #FFFFFF; navy #142B40 for inverted feature bands","Ink: charcoal #24323D","Muted: slate #52616B, contrast-tested on its surface","Accent: cooling teal #087F8C","AccentSecondary: warm amber #F3AD46 for restrained highlights with dark text"];
+    const project=await prepared(false,"",plan);
+    await approveFactoryPlan(member,{projectId:project.projectId,planId:project.planId});await enable();
+    const job=(await claimFactoryBuild())!,raw={id:"resp_saved_palette_fixture",status:"completed",usage:{input_tokens:1000,output_tokens:2000},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(blueprint)}]}]};
+    const cost=await reserveFactoryBuildCost({versionId:job.id,leaseToken:job.leaseToken,stage:"generate",requestKey:"saved-design",reservedMicros:200000});
+    await attemptFactoryBuildCost(cost,job.leaseToken);await settleFactoryBuildCost(cost,{actualMicros:100000,providerId:raw.id});
+    expect(await saveFactoryBuildProgress({versionId:job.id,leaseToken:job.leaseToken,stage:"generate",workingData:{...job.workingData,generationResponse:raw}})).toBe(true);
+    // Reproduce the durable state left by the old palette parser, then recover
+    // through the real retry path using the new parser and the same paid response.
+    await failFactoryBuild({versionId:job.id,leaseToken:job.leaseToken,error:"The generated website did not pass validation: Website palette text must have at least 4.5:1 contrast on its backgrounds."});
+    const before=(await getFactoryProjectBuilds(member,project.projectId))!;
+    expect(before.versions[0]).toMatchObject({id:job.id,planId:project.planId,status:"failed",stage:"generate",retryCount:0});
+    expect(before.versions[0]).not.toHaveProperty("generationResponse");expect(before.monthSpentMicros).toBe(100000);
+    expect((await pool.query("SELECT working_data FROM factory_build_versions WHERE id=$1",[job.id])).rows[0].working_data.generationResponse).toEqual(raw);
+    const receipts=(await pool.query("SELECT id,status,actual_micros,provider_id FROM factory_build_costs WHERE version_id=$1",[job.id])).rows;
+    const {runtime}=await fixtureRuntime(),execute=vi.fn(()=>async()=>{throw Error("A saved design response must not trigger another paid request");});runtime.execute=execute;
+    await retryFactoryBuild(member,{versionId:job.id,requestId:randomUUID()});
+    expect(await runFactoryBuildWorkerStep(runtime)).toMatchObject({status:"processed",stage:"generate"});expect(execute).not.toHaveBeenCalled();
+    const row=(await pool.query("SELECT stage,working_data FROM factory_build_versions WHERE id=$1",[job.id])).rows[0];
+    expect(row.stage).toBe("images");expect(row.working_data.generationResponse).toBeUndefined();
+    expect(row.working_data.blueprint.design.palette).toEqual({background:"#f5f7f8",surface:"#ffffff",ink:"#24323d",muted:"#52616b",accent:"#087f8c",accentSecondary:"#f3ad46"});
+    const after=(await getFactoryProjectBuilds(member,project.projectId))!;
+    expect(after.versions[0]).toMatchObject({id:job.id,version:job.version,planId:project.planId,status:"queued",stage:"images",retryCount:1});expect(after.monthSpentMicros).toBe(before.monthSpentMicros);
+    expect((await pool.query("SELECT id,status,actual_micros,provider_id FROM factory_build_costs WHERE version_id=$1",[job.id])).rows).toEqual(receipts);
+    expect((await pool.query("SELECT content FROM factory_plans WHERE id=$1",[project.planId])).rows[0].content).toEqual(plan);
   });
   it("keeps failed verification private and preserves artifacts for an explicit retry",async()=>{
     const project=await prepared();await enable();const {runtime,objects}=await fixtureRuntime();for(let step=0;step<4;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");

@@ -12,9 +12,15 @@ export function readableInk(background:string){return colorLuminance(background)
 /** Labels are interpreted narrowly; colors without a semantic role remain art-direction input. */
 export function approvedDesignConstraints(plan:FactoryPlanContent){
   const palette:Partial<SiteDesign["palette"]>={};
+  const labeledPalette:Partial<SiteDesign["palette"]>={};
+  const roleLabels:Record<string,keyof SiteDesign["palette"]>={background:"background",canvas:"background",surface:"surface",card:"surface",ink:"ink",foreground:"ink",text:"ink","body text":"ink",muted:"muted","muted text":"muted","muted body text":"muted","muted foreground":"muted","muted ink":"muted",accent:"accent","primary accent":"accent",accentsecondary:"accentSecondary","secondary accent":"accentSecondary"};
   const swatches=plan.design.palette.flatMap(label=>{const color=label.match(/#[0-9a-fA-F]{6}\b/)?.[0];return color?[{label:label.toLowerCase(),color:color.toLowerCase()}]:[];});
   const inferred:Array<{role:keyof SiteDesign["palette"];color:string}>=[];
   for(const {label,color} of swatches){
+    // A leading role is authoritative. Descriptive prose such as "on its
+    // surface" or "with dark text" must not reassign Muted/AccentSecondary.
+    const role=label.match(/^\s*([a-z]+(?:\s+[a-z]+){0,2})\s*:/)?.[1].replace(/\s+/g," ");
+    if(role&&Object.hasOwn(roleLabels,role)){labeledPalette[roleLabels[role]]=color;continue;}
     // Explicit roles win over color-name heuristics: "off-white text" is not a background.
     if(/(?:muted|secondary|subtle) (?:body )?text|muted (?:foreground|ink)/.test(label))palette.muted=color;
     else if(/(?:body )?text|\bink\b|foreground/.test(label))palette.ink=color;
@@ -28,6 +34,7 @@ export function approvedDesignConstraints(plan:FactoryPlanContent){
     else if(/muted/.test(label))inferred.push({role:"muted",color});
     else if(/warm amber|gold|coral/.test(label))inferred.push({role:"accentSecondary",color});
   }
+  Object.assign(palette,labeledPalette);
   // Fill only unspecified roles after every explicit entry has been considered,
   // so reordering a palette cannot let a color-name guess override its labels.
   for(const {role,color} of inferred)if(!palette[role])palette[role]=color;
