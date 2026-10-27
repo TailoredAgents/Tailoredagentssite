@@ -2,6 +2,8 @@
 
 **Latest correction-workflow checkpoint - October 27:** [Saved draft editing](WEBSITE_BUILDER_DRAFT_EDITING.md) is implemented and locally verified. Failed checks now retain affected-page screenshots; manual and scoped AI edits create new checked versions using the same approval and saved images. Immediate-parent restore and cumulative revision spending are implemented. This supersedes the historical no-editor limitation recorded below. Broader design polish and real quality calibration remain outstanding; deployment/live output verification is separate.
 
+**Current live Cosmo state, read-only before this release:** website v6 on approved plan v8 failed quality checks at October 27, 6:38 PM EDT (82/100; target 85). Findings concern repetitive Services/About copy, oversized text bands and nested Contact padding. Website v3 remains the working preview. The new editing release is not yet deployed; historical statements that plan v8 is awaiting approval are superseded.
+
 Ongoing policy: [shared Website Builder standards](WEBSITE_BUILDER_STANDARDS.md) now carry the general lessons from this pilot into planning, generation and review. Individual client choices remain specific to their approved plan.
 
 ## Authorization and objective

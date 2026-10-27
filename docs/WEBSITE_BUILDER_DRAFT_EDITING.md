@@ -1,6 +1,8 @@
 # Website Builder: saved draft editing
 
-October 27, 2026. Implementation and local verification checkpoint. Deployment and live customer-output verification are **not established by this document**. This release implements the first correction-workflow recommendations from [the comparison research](WEBSITE_BUILDER_COMPARISON_RESEARCH.md); broader design and benchmark work remains.
+October 27, 2026. Implemented, locally verified and deployed. This release implements the first correction-workflow recommendations from [the comparison research](WEBSITE_BUILDER_COMPARISON_RESEARCH.md); broader design and benchmark work remains. Live editor access is verified below; a successful paid client revision is not established by these checks.
+
+**Read-only live checkpoint before this release:** the CRM shows Cosmo website **v6**, approved plan **v8**, failed quality checks at **6:38 PM EDT on October 27** with **82 overall against the 85 target**. Findings concern repetitive Services/About copy, oversized text bands and nested Contact padding. Website v3 remains the previous working preview. Plan v8 is therefore already approved, not awaiting approval. The editing release has not yet been deployed at this checkpoint; no live edit or successful replacement preview is established here.
 
 ## Salesperson workflow
 
@@ -56,3 +58,10 @@ Both automatic correction and explicit AI refinement now receive bounded desktop
 - Broader release validation passed **269 Factory unit tests**, **six browser workflows**, **16 Contact layout/region checks**, type checking, lint and a production build. Counts overlap with focused suites above and should not be added as unique tests. Deployment evidence belongs in the final release log. These synthetic/local checks do not establish live design scores, prospect appeal, real provider cost or production latency.
 
 Implementation: [draft service](../lib/factory/draft-service.ts), [scoped patch validation](../lib/factory/site/draft.ts), [AI patch provider](../lib/factory/site/draft-provider.ts), [worker](../lib/factory/build-worker.ts), [failure evidence](../lib/factory/build-failure-evidence.ts), [editor](../components/factory/draft-editor.tsx).
+
+## Live release verification
+
+- Code release **`c7fdc906a95c89c9e8bc1b83dc5cd7b77c31e81c`** is live on the [CRM deployment](https://dashboard.render.com/web/srv-db6hod8473hc739q2uo0/deploys/dep-dbgisleq1p3s73fqn09g) and [builder deployment](https://dashboard.render.com/cron/crn-dbfth6uk1f9s73amh7ig/deploys/dep-dbgislmq1p3s73fqn18g). Render recorded migration `0034_factory_draft_snapshots.sql` applied at 7:06 PM EDT and the CRM live at 7:08 PM EDT.
+- Signed-in read-only verification opened **Edit this draft** on Cosmo website v6 and loaded all five saved pages, existing section text and supported layout choices. The UI showed **$4.50 remaining** in this approved website's shared allowance. No edit was submitted and no paid generation, retry or approval was triggered by verification.
+- Cosmo v6 remains failed at the previously recorded 82/100; this software release does not change its saved content or publish it. The previous v3 sharing link remains available. Its existing Home-only evidence cannot acquire historical missing page screenshots retroactively.
+- [Live editor screenshot](previews/factory-draft-editor-live-cosmos.png). The next product phase is stronger design compositions and visual-plan/reference calibration, followed by actual human-approved output/cost measurements.
