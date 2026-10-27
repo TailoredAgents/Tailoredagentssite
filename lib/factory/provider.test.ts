@@ -37,6 +37,36 @@ describe("Factory provider boundaries (synthetic responses only)",()=>{
     const result=parseFactoryPlan({changed:false,reply:"Yes, the form is a demo.",changeSummary:"Answered question",plan:{...plan(),summary:"This must not silently replace the plan"}},{text:"",sources:[]},previous);
     expect(result.plan).toBe(previous);expect(result.changed).toBe(false);
   });
+  it.each([
+    ["A one-page website proposal",2,1],
+    ["A premium 5-page site",1,5],
+    ["Five distinct responsive pages with clear navigation",1,5],
+    ["Ten dedicated pages",1,10],
+    ["A 10-page redesign proposal",1,10],
+  ])("rejects a declared count that disagrees with the actual page list: %s",(declaration,actual,declared)=>{
+    const content=plan();content.summary=declaration;content.pages=Array.from({length:actual},(_,index)=>({title:`Page ${index+1}`,purpose:"A distinct visitor purpose",sections:["Introduction"]}));
+    expect(()=>parseFactoryPlan({changed:true,reply:"Review the proposal",changeSummary:"Revised scope",plan:content},{text:"",sources:[]},null)).toThrow(`describes ${declared} pages but lists ${actual}`);
+  });
+  it("rejects the observed five-page feature promise even when its summary uses intervening business words",()=>{
+    const content={...plan(),summary:"Version 4: a premium five-page Cosmo’s home-comfort redesign proposal for human review only.",previewFeatures:["Five distinct responsive pages with clear navigation, filled surfaces, concise educational copy and mobile call/contact controls that do not obscure content."]};
+    expect(()=>parseFactoryPlan({changed:true,reply:"Review this plan",changeSummary:"Revised",plan:content},{text:"",sources:[]},null)).toThrow("describes 5 pages but lists 1");
+  });
+  it("accepts matching page declarations at any supported size without imposing a five-page quota",()=>{
+    for(const count of [1,5,10]){
+      const content=plan();content.summary=`A ${count}-page website proposal`;content.previewFeatures=[`${count} distinct responsive pages`];content.pages=Array.from({length:count},(_,index)=>({title:`Page ${index+1}`,purpose:"A distinct visitor purpose",sections:["Introduction"]}));
+      expect(parseFactoryPlan({changed:true,reply:"Review this plan",changeSummary:"Scope",plan:content},{text:"",sources:[]},null).plan.pages).toHaveLength(count);
+    }
+  });
+  it("ignores historical, optional, range, question and form-field counts rather than guessing current scope",()=>{
+    for(const summary of ["The existing five-page site needs a fresh direction.","The previous ten-page website was hard to navigate.","Up to five pages could be useful later.","Five pages could be added later.","Between three and five pages may be useful.","A 3–5 pages range remains undecided.","Would a five-page site be useful?","A three-field form and a two-step inquiry process.","A three-page intake form inside the website."]){
+      expect(()=>parseFactoryPlan({changed:true,reply:"Review this direction",changeSummary:"Concept",plan:{...plan(),summary}},{text:"",sources:[]},null)).not.toThrow();
+    }
+  });
+  it("checks only current plan declarations and preserves unchanged historical plans exactly",()=>{
+    const previous={...plan(),summary:"A five-page website proposal",sources:[]};
+    expect(parseFactoryPlan({changed:false,reply:"Previously you requested ten pages",changeSummary:"No scope change",plan:{...plan(),summary:previous.summary}},{text:"",sources:[]},previous).plan).toBe(previous);
+    expect(parseFactoryPlan({changed:true,reply:"The old site had ten pages",changeSummary:"Discussed five-page alternative",plan:plan()},{text:"",sources:[]},null).plan.pages).toHaveLength(1);
+  });
   it("bounds search tools, output and time; marks data untrusted; never exposes build tools",async()=>{
     request.mockResolvedValue(new Response(JSON.stringify(response("No confident company match. Generic concept remains possible."))));
     const result=await researchFactoryLead(ctx,snapshot);

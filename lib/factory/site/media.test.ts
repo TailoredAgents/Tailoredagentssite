@@ -82,4 +82,11 @@ describe("Approved premium presentation contract",()=>{
     expect(result.blueprint.presentation!.sectionImages).toEqual([{pagePath:"index.html",sectionId:"services",itemIndex:null,assetId:"hero"}]);
     expect(result.blueprint.pages[0].sections[0].layout).toBe("service-tabs");expect(result.blueprint.heroImage.prompt).toBe(original.heroImage.prompt);
   });
+  it("can remove unsuitable saved supporting imagery during repair without admitting replacements",async()=>{
+    const original=presentation(),next=presentation();next.media=[];next.presentation!.logoAssetId=null;next.presentation!.sectionImages=[];
+    const repair={plan:fixtureSitePlan,assets:uploads,previousBlueprint:original,repairIssues:[{page:"index.html",code:"review_imagery",severity:"error" as const,message:"Remove the unsuitable supporting photo and use a typographic identity"}]};
+    const result=await generatePortableSite(repair,async()=>response(next));expect(result.blueprint.media).toEqual([]);expect(result.blueprint.heroImage.prompt).toBe(original.heroImage.prompt);
+    const replacement=presentation();replacement.media![1].id="replacement";replacement.presentation!.sectionImages[0].assetId="replacement";
+    await expect(generatePortableSite(repair,async()=>response(replacement))).rejects.toThrow("cannot request new imagery");
+  });
 });
