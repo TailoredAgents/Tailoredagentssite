@@ -358,7 +358,7 @@ Use roughly ten representative briefs across HVAC/trades, wellness, hospitality,
 
 ## First quality release October 27, 2026
 
-Austin said to proceed with the recommended sequence. The first design/image/review release is implemented locally; record its final commit, Render deployments and live acceptance separately before calling it deployed. Existing Cosmo's v1 was not regenerated, and no v2 plan approval was created. Its current link remains [Cosmo's existing preview](https://www.tailoredagents.com/preview/cosmos-heating-air).
+Austin said to proceed with the recommended sequence. The first design/image/review release is **live on Render**, source commit `b574796283c71335968d7855c55f9802c4d68568`. The [CRM deployment](https://dashboard.render.com/web/srv-db6hod8473hc739q2uo0/deploys/dep-dbgdjv0ae00c73d0sn7g), [builder deployment](https://dashboard.render.com/cron/crn-dbfth6uk1f9s73amh7ig/deploys/dep-dbgdjvgae00c73d0soi0), and [preview/storage deployment](https://dashboard.render.com/web/srv-dbfu0g2jnfac73elqll0/deploys/dep-dbgdjv0ae00c73d0so1g) all report Live on this commit. Existing Cosmo's v1 was not regenerated, and no v2 plan approval was created. Its current link remains [Cosmo's existing preview](https://www.tailoredagents.com/preview/cosmos-heating-air).
 
 ### Implemented
 
@@ -384,6 +384,8 @@ A read-only image probe used Cosmo's existing **2,930,343-byte** hero as input t
 
 Cosmo's **plan v2 is prepared** in [its planning workspace](https://www.tailoredagents.com/dashboard/sales/factory/7663f9da-2652-46b5-93dc-74881ea1d39e), dated October 27 at 1:02 PM EDT. The existing planning agent revised the proposal within the unchanged research allowance. It has distinct Home, Services, Service Areas, About and Contact pages, substantive educational HVAC copy, the original navy/teal/amber palette, bold sans-serif typography and one responsive illustrative hero. The UI shows **Approve v2 & queue build**; it has not been clicked. No website v2 was generated. The current v1 homepage still returns 200 with SHA-256 `50c1c7dafd0ee65ff76a1f08f05d31aae55f941c047180e16c20036fd5fd6163`.
 
-Next: complete deployment verification, then have Austin review and approve the exact v2 plan. Compare the resulting desktop/mobile website with v1, review content and crops, inspect the exported project, and record actual review/build cost and elapsed time. Calibrate the reviewer against human judgments across representative industries and sparse briefs before claiming consistently excellent results.
+Post-deployment acceptance: the CRM health endpoint returned 200; the Cosmo short link returned 200 with the unchanged v1 hash above. The signed-in planning workspace still shows website v1 checked/ready and plan v2 awaiting approval. This establishes deployment and preservation, not a successful real model-generated v2 or a calibrated visual reviewer.
+
+Next: Austin reviews and approves the exact v2 plan. Compare the resulting desktop/mobile website with v1, review content and crops, inspect the exported project, and record actual review/build cost and elapsed time. Calibrate the reviewer against human judgments across representative industries and sparse briefs before claiming consistently excellent results.
 
 **Still to build:** the finished-site editing copilot with version comparisons/restore; optional visitor-facing business chatbot and its separate usage cap; dedicated asset roles/reference-image understanding; broader performance measurements; and real production forms, booking, SEO launch configuration and customer deployment finishing. Planning chat continues to revise plans only.
