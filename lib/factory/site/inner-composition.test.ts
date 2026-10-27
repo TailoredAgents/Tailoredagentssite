@@ -23,9 +23,9 @@ function readingFixture(sample=0):SiteBlueprint{
   services.sections[0].layout="spotlight";
   b.presentation!.sectionImages=b.presentation!.sectionImages.filter(binding=>binding.pagePath!==services.path);
   const about:SiteBlueprint["pages"][number]={path:"about/index.html",title:"About",description:"Understand the ideas that shape the proposed experience.",hero:{eyebrow:"Our perspective",headline:"Thoughtful details. A clear sense of purpose.",body:"Explore the priorities behind this concept and the kind of experience it sets out to create.",primaryCta:"Start an inquiry",secondaryCta:""},sections:[
-    {id:"purpose",kind:"about",layout:"split",eyebrow:"The starting point",title:"An experience shaped around real life.",body:"A good starting point makes room for the way people actually live. This concept keeps everyday priorities in view, brings useful details to the foreground and offers a straightforward next step.",items:[]},
+    {id:"purpose",kind:"statement",layout:"split",eyebrow:"The starting point",title:"An experience shaped around real life.",body:"A good starting point makes room for the way people actually live. This concept keeps everyday priorities in view, brings useful details to the foreground and offers a straightforward next step.",items:[]},
     {id:"care",kind:"about",layout:"band",eyebrow:"The small details",title:"Give the details the attention they deserve.",body:"Clear communication and a considered setting can make a simple interaction feel more useful. The proposed approach puts those qualities at the center, with room to adapt around each conversation.",items:[]},
-    {id:"conversation",kind:"about",layout:"editorial",eyebrow:"An open conversation",title:"Start with the question on your mind.",body:"Share the context you already have and the outcome you would like to explore. A useful introduction does not need a polished brief; it needs enough detail to make the next conversation worthwhile.",items:[]},
+    {id:"conversation",kind:"statement",layout:"editorial",eyebrow:"An open conversation",title:"Start with the question on your mind.",body:"Share the context you already have and the outcome you would like to explore. A useful introduction does not need a polished brief; it needs enough detail to make the next conversation worthwhile.",items:[]},
     {id:"next-step",kind:"contact",layout:"band",eyebrow:"Your next step",title:"Bring your ideas into the conversation.",body:"Tell us what matters to you and how you would like to hear back.",items:[{title:"Start an inquiry",body:"Share a short outline of what you have in mind."}]},
   ]};
   b.pages.push(about);
@@ -56,10 +56,11 @@ describe("Content-sized inner compositions",()=>{
           expect(await rendered.locator("h2").textContent()).toBe(section.title);expect(await rendered.locator(".section-copy").textContent()).toBe(section.body);
           const box=await rendered.evaluate(element=>{
             const title=element.querySelector("h2")!.getBoundingClientRect(),copy=element.querySelector(".section-copy")!.getBoundingClientRect();
-            return {height:element.getBoundingClientRect().height,sideBySide:copy.left>=title.right,stacked:copy.top>=title.bottom,headingSize:parseFloat(getComputedStyle(element.querySelector("h2")!).fontSize),padding:parseFloat(getComputedStyle(element).paddingTop)};
+            return {height:element.getBoundingClientRect().height,sideBySide:copy.left>=title.right,stacked:copy.top>=title.bottom,headingSize:parseFloat(getComputedStyle(element.querySelector("h2")!).fontSize),padding:parseFloat(getComputedStyle(element).paddingTop),readingWidth:element.querySelector(".section-heading")!.getBoundingClientRect().width,contentWidth:element.querySelector(".section-inner")!.getBoundingClientRect().width};
           });
-          expect(width>760?box.sideBySide:box.stacked).toBe(true);expect(box.headingSize).toBeLessThanOrEqual(width>760?42.4:37.6);
+          expect(width>760?box.sideBySide:box.stacked).toBe(true);expect(box.headingSize).toBeLessThanOrEqual(width>760?(section.kind==="statement"?48:42.4):38.4);
           if(width>760)expect(box.height).toBeLessThan(320);
+          expect(box.readingWidth).toBe(box.contentWidth);
           expect(box.padding).toBe(width>760?57:40);
         }
         const contact=page.locator("#next-step .contact-item");
@@ -83,11 +84,12 @@ describe("Content-sized inner compositions",()=>{
     }finally{await context.close();}
   },60000);
 
-  it("preserves explicit imagery, expressive statements, long readings, Home composition and selected density",async()=>{
+  it("preserves explicit imagery, long statements/readings, Home composition and selected density",async()=>{
     const b=readingFixture(),about=b.pages.at(-1)!;
     b.presentation!.sectionImages.push({pagePath:about.path,sectionId:"purpose",assetId:"detail",itemIndex:null});
     about.sections[1].kind="statement";
     about.sections[2].body=Array.from({length:7},()=>"A longer explanation gives the reader detailed context for the choices and considerations involved in shaping this proposed experience.").join(" ");
+    about.sections[1].body=about.sections[2].body;
     for(const density of ["compact","airy"] as const){
       b.design!.density=density;const files=await render(b),context=await browser.newContext({viewport:{width:1440,height:900}});
       try{

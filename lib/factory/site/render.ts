@@ -130,16 +130,18 @@ function sectionMarkup(section:SiteBlueprint["pages"][number]["sections"][number
   const hasForm=section.kind==="contact"&&blueprint.interactions?.forms.some(form=>form.pagePath===pagePath&&form.sectionId===section.id);
   const page=blueprint.pages.find(page=>page.path===pagePath)!;
   // Short text-led inner sections need less breathing room than a Home feature
-  // or an image story. Keep expressive statements, long copy and every explicit
-  // image composition intact; the selected density still controls the spacing.
+  // or an image story. Short inner statements are supporting copy, not another
+  // hero. Keep Home statements, long readings and explicit image compositions
+  // intact; the selected density still controls the spacing.
   const words=[section.title,section.body,...section.items.flatMap(item=>[item.title,item.body])].join(" ").trim().split(/\s+/).length;
-  const compactContent=blueprint.presentation&&pagePath!=="index.html"&&section.kind!=="contact"&&section.kind!=="statement"&&!bindings.length&&words<=(copyOnly?110:360);
+  const precedesInquiry=blueprint.interactions?.forms.some(form=>form.pagePath===pagePath&&form.sectionId===page.sections[index+1]?.id);
+  const compactContent=blueprint.presentation&&pagePath!=="index.html"&&section.kind!=="contact"&&!bindings.length&&!(copyOnly&&precedesInquiry)&&words<=(copyOnly?110:360);
   const readingSection=compactContent&&copyOnly&&Boolean(section.body)&&words<=110;
   // A final direct-contact band has no form to fill its second grid column.
   // Use that column for its existing channels/actions; keep all copy intact.
   const contactClosing=blueprint.presentation&&blueprint.interactions&&!isContactPage(page)&&section.kind==="contact"&&!hasForm&&!sectionImage&&index===page.sections.length-1;
   const compactInquiry=blueprint.presentation&&!isContactPage(page)&&hasForm&&!sectionImage;
-  const inquiryContext=blueprint.presentation&&pagePath!=="index.html"&&!isContactPage(page)&&copyOnly&&!sectionImage&&blueprint.interactions?.forms.some(form=>form.pagePath===pagePath&&form.sectionId===page.sections[index+1]?.id);
+  const inquiryContext=blueprint.presentation&&pagePath!=="index.html"&&!isContactPage(page)&&copyOnly&&!sectionImage&&precedesInquiry;
   return `<section id="${escape(section.id)}" class="site-section section-${section.kind} layout-${section.layout} section-order-${index%2}${tone?` tone-${tone}`:""}${copyOnly?" is-copy-only":""}${sectionImage?" has-section-image":""}${hasForm?" with-demo-form":""}${compactContent?" compact-content":""}${readingSection?" reading-section":""}${contactClosing?` contact-closing${hasContactDetails?"":" contact-copy-only"}`:""}${compactInquiry?" compact-inquiry":""}${inquiryContext?" inquiry-context":""}" aria-labelledby="${escape(section.id)}-heading"><div class="section-inner">${heading.replace("<h2>",`<h2 id="${escape(section.id)}-heading">`)}${illustration}${content}</div></section>`;
 }
 

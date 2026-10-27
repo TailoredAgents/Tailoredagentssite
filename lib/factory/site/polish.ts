@@ -219,8 +219,10 @@ export const portablePresentationCss=`
 .presentation-v1 .compact-content .section-heading .eyebrow{margin-bottom:14px}
 .presentation-v1 .compact-content .section-copy{margin-top:16px}
 .presentation-v1 .reading-section .section-heading{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:12px 64px;max-width:none;margin:0;align-items:start}
+.presentation-v1 .reading-section.is-copy-only .section-heading{max-width:none}
 .presentation-v1 .reading-section .section-heading .eyebrow{grid-column:1;margin:0}
 .presentation-v1 .reading-section .section-heading h2{grid-column:1;font-size:clamp(1.8rem,2.8vw,2.65rem)}
+.presentation-v1 .reading-section.section-statement .section-heading h2{font-size:clamp(2rem,3.2vw,3rem)}
 .presentation-v1 .reading-section .section-copy{grid-column:2;grid-row:1/span 2;margin:0;align-self:center}
 .presentation-v1 .compact-content.layout-spotlight .feature-item:first-child{padding:30px}
 .presentation-v1 .compact-content.layout-spotlight .feature-item:first-child .item-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:12px 36px;align-items:start}
@@ -244,6 +246,7 @@ export const portablePresentationCss=`
  .presentation-v1 .compact-content{padding:calc(var(--section-space-mobile,50px)*.8) 0}
  .presentation-v1 .compact-content .section-heading{margin-bottom:24px}.presentation-v1 .compact-content .section-heading h2{font-size:clamp(1.8rem,7.2vw,2.35rem)}
  .presentation-v1 .reading-section .section-heading{display:block;margin:0}.presentation-v1 .reading-section .section-heading .eyebrow{margin-bottom:12px}.presentation-v1 .reading-section .section-copy{margin-top:16px}
+ .presentation-v1 .reading-section.section-statement .section-heading h2{font-size:clamp(1.9rem,7.8vw,2.4rem)}
  .presentation-v1 .compact-content.layout-spotlight .feature-item:first-child{padding:24px}.presentation-v1 .compact-content.layout-spotlight .feature-item:first-child .item-body{display:block}
  .presentation-v1 .compact-content.layout-spotlight .feature-item:first-child .item-number{margin-bottom:16px}.presentation-v1 .compact-content.layout-spotlight .feature-item:first-child h3{font-size:1.6rem}.presentation-v1 .compact-content.layout-spotlight .feature-item:first-child p{margin-top:14px}.presentation-v1 .compact-content.layout-spotlight .feature-item:first-child .service-link{margin-top:14px}
  .presentation-v1 .hero-image-caption{width:calc(100% - 40px);text-align:left}
