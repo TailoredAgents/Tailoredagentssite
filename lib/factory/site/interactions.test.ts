@@ -8,6 +8,7 @@ import {assertPortableSiteSafety} from "./safety";
 import {checkPortableSite} from "./qa";
 import {siteContentType} from "./artifacts";
 import {publicSiteCopy} from "./quality";
+import {contrastRatio} from "./design";
 
 const fixture=()=>{
   const b=fixtureBlueprint("trades","split",true);
@@ -67,6 +68,8 @@ describe("Explicit portable forms and service navigation",()=>{
     const b=fixture();
     for(const page of [b.pages[0],b.pages[1]]){
       const section=page.sections.find(s=>s.kind==="contact")!;
+      section.layout="band";
+      b.design!.sectionStyles.push({pagePath:page.path,sectionId:section.id,tone:"contrast"});
       section.items=[{title:"Prefer a written inquiry?",body:"Describe your needs <briefly>."}];
       b.interactions!.actions.push({pagePath:page.path,sectionId:section.id,itemIndex:0,label:"Contact <the team>",targetPage:"contact/index.html",targetSection:"inquiry"});
     }
@@ -79,6 +82,22 @@ describe("Explicit portable forms and service navigation",()=>{
     expect(home).not.toContain('>Start an inquiry <span');expect(home).not.toContain('<form ');
     expect(inner.match(/<form /g)).toHaveLength(1);
     expect(()=>assertPortableSiteSafety(files)).not.toThrow();
+    const context=await browser.newContext();
+    await context.route("**/*",async route=>{const key=new URL(route.request().url()).pathname.slice(1);await route.fulfill({body:Buffer.from(files[key]),contentType:siteContentType(key)});});
+    try{
+      const page=await context.newPage();
+      for(const width of [1440,390]){
+        await page.setViewportSize({width,height:900});await page.goto("https://contrast-test.invalid/approach/index.html");
+        const link=page.locator('#coverage .contact-item a');
+        const colors=await link.evaluate(el=>{
+          const hex=(rgb:string)=>"#"+rgb.match(/[\d.]+/g)!.slice(0,3).map(n=>Math.round(Number(n)).toString(16).padStart(2,"0")).join("");
+          return {ink:hex(getComputedStyle(el).color),background:hex(getComputedStyle(el.closest("section")!).backgroundColor)};
+        });
+        expect(contrastRatio(colors.ink,colors.background)).toBeGreaterThanOrEqual(4.5);
+        await link.focus();expect(await link.evaluate(el=>el===document.activeElement)).toBe(true);
+        await link.click();expect(new URL(page.url()).pathname).toBe("/contact/index.html");
+      }
+    }finally{await context.close();}
     const qa=await checkPortableSite({files,browser});expect(qa.issues).toEqual([]);
   },120000);
   it("switches contact validation and previews submission without network delivery or storage",async()=>{
