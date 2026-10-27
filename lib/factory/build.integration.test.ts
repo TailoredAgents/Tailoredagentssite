@@ -369,6 +369,7 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
     const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];
     expect(version.error).toContain("another revision");expect(reviews).toBe(2);expect(repairs).toBe(1);
+      expect(version.reviewAttempts).toBe(2);
     expect(version.failedQa?.issues.some(issue=>issue.message.includes("Replace unsupported"))).toBe(true);
     expect(version.failedQa?.screenshots.desktop).toContain("failed/screenshots/desktop.png");
     expect((await getFactoryScreenshotDownload(member,version.id,"desktop")).storageKey).toBe(version.failedQa?.screenshots.desktop);

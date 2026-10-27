@@ -27,6 +27,43 @@ beforeAll(async()=>{hero=await sharp(Buffer.from(fixtureHeroSvg)).png().toBuffer
 afterAll(async()=>{await browser?.close();});
 
 describe("Explicit portable forms and service navigation",()=>{
+  it("preserves explicit service actions without injecting generic links into explanatory items",()=>{
+    const b=fixture();b.presentation={version:1,fontTheme:"studio",heroEmphasis:null,logoAssetId:null,pageImages:[],sectionImages:[]};b.media=[];
+    b.interactions!.actions[0].itemIndex=2;b.interactions!.actions[0].label="Let's discuss cooling";
+    const html=Buffer.from(renderPortableSite(portableBundle(b),{"assets/images/hero.png":hero}).files["index.html"]).toString();
+    expect(html).toContain('href="contact/index.html#inquiry">Preview inquiry <span');
+    const services=html.match(/<section id="services"[\s\S]*?<\/section>/)![0];
+    expect(services.match(/class="service-link"/g)).toHaveLength(1);expect(services).toContain("Let&#39;s discuss cooling");expect(services).toContain('href="services/index.html#options"');
+    expect(services).not.toContain("Discuss your needs");
+    const configured=b.interactions!.actions;b.interactions!.actions=[];
+    const automatic=Buffer.from(renderPortableSite(portableBundle(b),{"assets/images/hero.png":hero}).files["index.html"]).toString().match(/<section id="services"[\s\S]*?<\/section>/)![0];
+    expect(automatic.match(/class="service-link"/g)).toHaveLength(3);b.interactions!.actions=configured;
+    delete b.presentation;
+    const legacy=Buffer.from(renderPortableSite(portableBundle(b),{"assets/images/hero.png":hero}).files["index.html"]).toString().match(/<section id="services"[\s\S]*?<\/section>/)![0];
+    expect(legacy.match(/class="service-link"/g)).toHaveLength(3);
+  });
+  it("shows direct channels once per page and does not duplicate explicit Call or Email actions",()=>{
+    const b=fixture();b.presentation={version:1,fontTheme:"studio",heroEmphasis:null,logoAssetId:null,pageImages:[],sectionImages:[]};b.media=[];
+    b.contact={email:"hello@example.test",phone:"+16785550101",address:"Synthetic test address"};
+    b.pages.find(page=>page.path==="contact/index.html")!.sections.push({id:"channels",kind:"contact",layout:"rows",eyebrow:"Direct contact",title:"Choose how to reach us",body:"Use the route that suits your question.",items:[{title:"By phone",body:"Discuss what you need."},{title:"By email",body:"Send the useful details."}]});
+    b.interactions!.actions.push({pagePath:"contact/index.html",sectionId:"channels",itemIndex:0,label:"Call our team",targetPage:"contact/index.html",targetSection:"inquiry"},{pagePath:"contact/index.html",sectionId:"channels",itemIndex:1,label:"Email our team",targetPage:"contact/index.html",targetSection:"inquiry"});
+    const sections=()=>{
+      const html=Buffer.from(renderPortableSite(portableBundle(b),{"assets/images/hero.png":hero}).files["contact/index.html"]).toString();
+      return {channels:html.match(/<section id="channels"[\s\S]*?<\/section>/)![0],inquiry:html.match(/<section id="inquiry"[\s\S]*?<\/section>/)![0]};
+    };
+    const explicit=sections();
+    expect(explicit.channels.match(/href="tel:/g)).toHaveLength(1);expect(explicit.channels.match(/href="mailto:/g)).toHaveLength(1);expect(explicit.channels).toContain("Synthetic test address");
+    expect(explicit.inquiry).not.toMatch(/href="(?:tel:|mailto:)/);expect(explicit.inquiry).not.toContain("Synthetic test address");expect(explicit.inquiry.match(/<form /g)).toHaveLength(1);
+    for(const remaining of ["Call our team","Email our team"]){
+      const original=b.interactions!.actions;
+      b.interactions!.actions=original.filter(action=>action.pagePath!=="contact/index.html"||action.label===remaining);
+      const partial=sections();expect(partial.channels.match(/href="tel:/g)).toHaveLength(1);expect(partial.channels.match(/href="mailto:/g)).toHaveLength(1);
+      b.interactions!.actions=original;
+    }
+    b.interactions!.actions=b.interactions!.actions.filter(action=>action.pagePath!=="contact/index.html");
+    const fallback=sections();
+    expect(fallback.channels.match(/href="tel:/g)).toHaveLength(1);expect(fallback.channels.match(/href="mailto:/g)).toHaveLength(1);expect(fallback.inquiry).not.toMatch(/href="(?:tel:|mailto:)/);
+  });
   it("requires controls in new provider responses while retaining legacy blueprints",()=>{
     const b=fixture();expect(siteGenerationSchema.parse({...b,media:[],presentation:{version:1,fontTheme:"studio",heroEmphasis:null,logoAssetId:null,pageImages:[],sectionImages:[]}}).interactions.forms).toHaveLength(2);
     delete b.interactions;expect(()=>validateBlueprintStructure(b)).not.toThrow();expect(()=>siteGenerationSchema.parse(b)).toThrow();

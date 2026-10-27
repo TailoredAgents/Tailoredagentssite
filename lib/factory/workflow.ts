@@ -1,4 +1,5 @@
 import type { FactoryProjectSummary } from "./types";
+import { maximumReviewAttempts } from "./build-types";
 
 export const factoryViews = { review: "Needs review", building: "Building", ready: "Ready to share", attention: "Needs attention" } as const;
 export function factoryProjectView(project: FactoryProjectSummary): keyof typeof factoryViews {
@@ -10,9 +11,11 @@ export function factoryProjectView(project: FactoryProjectSummary): keyof typeof
   return "building";
 }
 
-export function factoryBuildRecovery(error: string | null) {
+export function factoryBuildRecovery(error: string | null, reviewAttempts = 0) {
   if (/three allowed requests|approve a new version/i.test(error || ""))
     return {kind:"plan",summary:"This version needs a revised plan. Open Plan & project history, discuss the changes, then review and approve the new plan."} as const;
+  if (/needs another revision after its included repair/i.test(error || "") && reviewAttempts >= maximumReviewAttempts)
+    return {kind:"plan",summary:"This version has used its included correction and all three visual reviews. Open Plan & project history to discuss the remaining changes, then review and approve a revised plan."} as const;
   if (/needs another revision after its included repair/i.test(error || ""))
     return {kind:"help",summary:"Quality checks still found issues after the included correction. An administrator can review the details and recheck after a technical fix. If the design needs a new direction, revise the plan instead."} as const;
   if (/did not pass validation|invalid website structure|unreadable website data|adjust this request|exceeded its.*limit/i.test(error || ""))

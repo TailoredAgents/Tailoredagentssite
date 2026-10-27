@@ -27,6 +27,9 @@ Keep exact human plan approval; sparse leads remain supported. Preserve $25/mont
 | Medium | Repair instruction truncation can omit blocking errors | Optional warnings can occupy the bounded correction prompt | Fixed: errors precede warnings within the existing 20-issue limit |
 | Medium | Page matching allows additional unapproved pages | Build may exceed the approved page scope | Fixed: one-to-one alias matching now rejects unexpected page identities too |
 | Medium | Hidden service-tab panels escape accessibility checks | Inaccessible revealed content may pass the initial-page scan | Fixed: bounded axe scans for each revealed panel |
+| Medium | Renderer adds default links/contact lists beside explicit actions | Repetition contradicts the intended design and wastes the correction on immutable defaults | Fixed: honor configured service actions; include each direct channel once across contact sections, retaining missing channels and unconfigured service fallbacks |
+| Medium | Hero captions overlay detailed imagery | Small disclosure text becomes hard to read | Fixed: presentation-enabled hero captions occupy their own readable strip below the hero |
+| Medium | Exhausted visual reviews still offer administrator retry | A retry cannot purchase another review and sends the user through a futile loop | Fixed: expose only the bounded review count; direct exhausted quality failures to revised-plan review; unrelated publish/verification failures remain recoverable |
 
 ## Checks already present and preserved
 
@@ -44,6 +47,16 @@ Keep exact human plan approval; sparse leads remain supported. Preserve $25/mont
 - Five free industry/sparse-input benchmarks passed with zero reported issues and 26 desktop/mobile captures. Root visually inspected the trades Home and Services mobile output, confirming separate contact controls and compact inner introduction.
 - **14 desktop/phone salesperson scenarios passed**, including private failed-review screenshots, bounded administrator recovery, accessibility/overflow, sparse-lead planning, approval, preserved drafts, progress, source download and sharing. The local development server logged two aborted-stream messages during deliberate reloads; all assertions passed. No production session/database was used by these tests.
 - Live deployment/recovery results follow below.
+
+## Release and live verification
+
+- Fix commits: `7d5e723` (bounded preview request queue) and `9b85761` (builder audit fixes). A concurrent documentation-only update `fd8edaf` was merged without rewriting shared history. Release `a05ca0bde278d185da7f2bd037a5cbbd3ddf9dfb` is verified as the last successfully deployed commit for CRM, builder and preview/storage services.
+- CRM health, the existing v3 short link and eight concurrent public CSS/runtime/image requests all returned HTTP 200 after deployment. This is a small smoke check, not a load certification.
+- At 5:16 PM EDT, administrator recovery requeued the same Cosmo website v4 / approved plan v5. The worker was triggered at 5:17 PM and reached corrected-page QA at 5:18 PM. No new plan was approved, and no spending/review/correction limit was reset. Final result follows.
+- The third review cleared the original hero-inheritance/mobile-overlay findings but still failed: **AI assessment 82/100 against the 85 target**. It reported renderer-added contact lists repeated beside explicit channels/forms, default service links beside explicit topic actions, excessive Contact spacing and a small caption over the hero image. This is an AI assessment, not a measured customer score.
+- Root downloaded and visually inspected the private desktop/mobile Home screenshots. The new output is materially richer than v3, with multiple images, service-topic cards, a process section and FAQs; inner-page repetition and spacing still prevent calling it finished. The private report is visible in the CRM. The previous v3 preview remains available; v4 is not published.
+- Follow-up addresses deterministic duplicate actions/channels and caption placement. The UI recognizes an exhausted visual-review allowance before offering another technical retry. **Do not retry v4 again or reset its three reviews.** A further generated revision requires a revised plan and human approval.
+- Follow-up combined verification: **287 tests across 26 Factory files passed**, including all three disposable PostgreSQL suites; lint, TypeScript and production build passed. The tests cover explicit/partial channel deduplication, preserved configured/unconfigured service actions, and desktop/mobile caption geometry. Both targeted desktop/phone exhaustion-screen scenarios also passed. Final release verification follows.
 
 ## Remaining priorities
 

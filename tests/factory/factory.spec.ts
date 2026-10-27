@@ -248,6 +248,9 @@ test("shows private failed review evidence and bounded administrator recovery",a
   await buildDb.query("UPDATE factory_build_versions SET retry_count=3 WHERE id=$1",[version.id]);await page.reload();await page.getByText("Administrator recovery",{exact:true}).click();
   await expect(page.getByText("This version has used its three recovery attempts. Review and approve a revised plan to continue.",{exact:true})).toBeVisible();
   await expect(page.getByRole("button",{name:"Retry after technical fix",exact:true})).toHaveCount(0);
+  await buildDb.query("UPDATE factory_build_versions SET retry_count=2,working_data=working_data||'{\"reviewAttempts\":3}'::jsonb WHERE id=$1",[version.id]);await page.reload();
+  await expect(page.getByText("This version has used its included correction and all three visual reviews.",{exact:false})).toBeVisible();
+  await expect(page.getByText("Administrator recovery",{exact:true})).toHaveCount(0);
 });
 
 test("reviews a completed preview, revokes and renews sharing, exports and uploads assets", async ({ page, request }, info) => {

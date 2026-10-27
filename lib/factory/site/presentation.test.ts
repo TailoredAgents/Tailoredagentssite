@@ -72,6 +72,22 @@ describe("Premium portable presentation",()=>{
       }
     }finally{await context.close();}
   },45000);
+  it.each(["split","immersive"] as const)("keeps the %s hero disclosure readable below the image on desktop and mobile",async composition=>{
+    const b=presentationFixture();b.composition=composition;
+    const {files}=renderPortableSite(portableBundle(b),assets),context=await browser.newContext();
+    try{
+      await context.route("**/*",route=>{const key=new URL(route.request().url()).pathname.slice(1)||"index.html";return files[key]?route.fulfill({body:Buffer.from(files[key]),contentType:siteContentType(key)}):route.abort();});
+      const page=await context.newPage();
+      for(const width of [390,1440]){
+        await page.setViewportSize({width,height:900});await page.goto("https://presentation.test/index.html");await page.evaluate(()=>document.fonts.ready);
+        const caption=await page.evaluate(()=>{
+          const image=document.querySelector(".hero-image")!.getBoundingClientRect(),note=document.querySelector(".hero-image-caption")!,rect=note.getBoundingClientRect();
+          return {belowImage:rect.top>=image.bottom,position:getComputedStyle(note).position,fontSize:parseFloat(getComputedStyle(note).fontSize),text:note.textContent,overPhotoCaptions:document.querySelectorAll(".hero-image figcaption").length,overflow:document.documentElement.scrollWidth>innerWidth+2};
+        });
+        expect(caption).toMatchObject({belowImage:true,position:"static",text:b.heroImage.caption,overPhotoCaptions:0,overflow:false});expect(caption.fontSize).toBeGreaterThanOrEqual(12);
+      }
+    }finally{await context.close();}
+  },30000);
   it("routes primary, secondary and item CTA language to the real action, including inner-page calls",()=>{
     const b=presentationFixture("trades",true);b.contact.phone="+16785550101";b.contact.email="team@example.test";
     b.pages[1].sections.push({id:"inquiry",kind:"contact",layout:"split",eyebrow:"Start here",title:"Tell us what you need.",body:"Get in touch with our team.",items:[]});

@@ -187,10 +187,12 @@ export const portablePresentationCss=`
 }
 .presentation-v1.page-inner .hero-inner.hero-text-only{display:block;min-height:0;padding:0;background:none}
 .presentation-v1.page-inner .hero-text-only .hero-copy{max-width:960px;padding:24px 0 32px}
+.presentation-v1 .hero-image-caption{width:min(var(--content-width),calc(100% - 96px));margin:12px auto 0;color:var(--muted);font-size:.8rem;line-height:1.55;text-align:right}
 @media(max-width:760px){
  .presentation-v1{padding-bottom:0}
  .presentation-v1 .mobile-contact{position:static;inset:auto;z-index:auto;width:calc(100% - 40px);margin:16px auto 0;padding:14px 0;border-top:1px solid color-mix(in srgb,var(--ink) 18%,transparent);border-bottom:1px solid color-mix(in srgb,var(--ink) 18%,transparent);background:none;box-shadow:none}
  .presentation-v1.page-inner .hero-text-only .hero-copy{padding:15px 0 20px}
+ .presentation-v1 .hero-image-caption{width:calc(100% - 40px);text-align:left}
 }
 @media(prefers-reduced-motion:reduce){.presentation-v1 .button{transition:none}.presentation-v1 .button:hover{transform:none}}
 `;

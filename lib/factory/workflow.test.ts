@@ -24,6 +24,9 @@ describe("salesperson website workflow", () => {
   });
   it("directs exhausted revisions and invalid output away from blind retries", () => {
     expect(factoryBuildRecovery("This website needs another revision after its included repair.").kind).toBe("help");
+    expect(factoryBuildRecovery("This website needs another revision after its included repair.",2).kind).toBe("help");
+    expect(factoryBuildRecovery("This website needs another revision after its included repair.",3).kind).toBe("plan");
+    expect(factoryBuildRecovery("Preview verification temporarily unavailable",3).kind).toBe("retry");
     expect(factoryBuildRecovery("The builder used its three allowed requests; approve a new version.").kind).toBe("plan");
     expect(factoryBuildRecovery("Website did not pass validation.").kind).toBe("help");
     expect(factoryBuildRecovery("Image provider temporarily unavailable").kind).toBe("retry");
