@@ -4,6 +4,8 @@
 
 ### Live build progress
 
+Deployed October 27 from `26f64cf`: CRM `dep-dbgepeuc6qcc73ftjs20` live at 2:28:11 PM EDT; builder's last successfully deployed source verified at the same commit. Signed-in Cosmo workspace shows the new tracker and its existing v3 generation failure.
+
 The build panel reads saved worker milestones, with the active stage highlighted and completed stages checked. Quality checks distinguish browser checks, design/content review, corrections, rechecking and saving. Publishing and verification have their own activities. The worker persists each milestone before starting that operation; existing builds without milestones still show their main stage.
 
 The page refreshes status every six seconds while visible and when returning to the tab, including while a build is queued or paused. Refreshing preserves an unsent planning draft. Elapsed time is measured since approval (including waits/retries), plus time in the current reported activity; it is not a completion estimate. Between stages the panel says **Next: [stage]**, rather than claiming the whole website is awaiting its initial build. A failed stage is marked **Stopped here**. There is no automatic paid retry, new provider request, budget change or migration for progress reporting.
