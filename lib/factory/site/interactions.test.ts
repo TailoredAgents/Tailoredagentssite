@@ -42,6 +42,7 @@ describe("Explicit portable forms and service navigation",()=>{
       (b:ReturnType<typeof fixture>)=>{b.interactions!.actions[0].targetSection="missing";},
       (b:ReturnType<typeof fixture>)=>{b.interactions!.actions[0].itemIndex=7;},
       (b:ReturnType<typeof fixture>)=>{b.interactions!.actions.push(b.interactions!.actions[0]);},
+      (b:ReturnType<typeof fixture>)=>{b.pages[0].sections.find(s=>s.id==="services")!.kind="faq";},
     ];
     for(const change of changes){const b=fixture();change(b);expect(()=>validateBlueprintStructure(b)).toThrow();}
   });
@@ -61,6 +62,24 @@ describe("Explicit portable forms and service navigation",()=>{
     const qa=await checkPortableSite({files,browser});expect(qa.issues).toEqual([]);expect(qa.passed).toBe(true);
     const broken={...files,"index.html":Buffer.from(Buffer.from(files["index.html"]).toString().replace('services/index.html#options','services/index.html#missing'))};
     const invalid=await checkPortableSite({files:broken,browser});expect(invalid.issues.some(i=>i.code==="broken_anchor")).toBe(true);
+  },120000);
+  it("renders closing contact item links without extra forms or duplicate fallback links",async()=>{
+    const b=fixture();
+    for(const page of [b.pages[0],b.pages[1]]){
+      const section=page.sections.find(s=>s.kind==="contact")!;
+      section.items=[{title:"Prefer a written inquiry?",body:"Describe your needs <briefly>."}];
+      b.interactions!.actions.push({pagePath:page.path,sectionId:section.id,itemIndex:0,label:"Contact <the team>",targetPage:"contact/index.html",targetSection:"inquiry"});
+    }
+    expect(()=>validateBlueprintStructure(b)).not.toThrow();
+    const {files}=renderPortableSite(portableBundle(b),{"assets/images/hero.png":hero});
+    const home=Buffer.from(files["index.html"]).toString(),inner=Buffer.from(files["approach/index.html"]).toString();
+    expect(home).toContain('href="contact/index.html#inquiry">Contact &lt;the team&gt;');
+    expect(inner).toContain('href="../contact/index.html#inquiry">Contact &lt;the team&gt;');
+    expect(home).toContain('Describe your needs &lt;briefly&gt;.');
+    expect(home).not.toContain('>Start an inquiry <span');expect(home).not.toContain('<form ');
+    expect(inner.match(/<form /g)).toHaveLength(1);
+    expect(()=>assertPortableSiteSafety(files)).not.toThrow();
+    const qa=await checkPortableSite({files,browser});expect(qa.issues).toEqual([]);
   },120000);
   it("switches contact validation and previews submission without network delivery or storage",async()=>{
     const {files}=renderPortableSite(portableBundle(fixture()),{"assets/images/hero.png":hero});

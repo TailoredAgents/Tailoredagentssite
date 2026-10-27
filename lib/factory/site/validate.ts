@@ -53,7 +53,8 @@ export function validateBlueprintStructure(value:unknown):SiteBlueprint {
     for(const action of data.interactions.actions){
       const section=data.pages.find(p=>p.path===action.pagePath)?.sections.find(s=>s.id===action.sectionId),target=data.pages.find(p=>p.path===action.targetPage);
       const key=`${action.pagePath}#${action.sectionId}:${action.itemIndex}`;
-      if(!section||!["services","features"].includes(section.kind)||!section.items[action.itemIndex]||actions.has(key)||!target||(action.targetSection&&!target.sections.some(s=>s.id===action.targetSection)))throw new SiteBlueprintError("A website action references a missing or duplicate item, page or section.");
+      if(section&&!["services","features","contact"].includes(section.kind))throw new SiteBlueprintError("Website item links are supported on service, feature and contact sections.");
+      if(!section||!section.items[action.itemIndex]||actions.has(key)||!target||(action.targetSection&&!target.sections.some(s=>s.id===action.targetSection)))throw new SiteBlueprintError("A website action references a missing or duplicate item, page or section.");
       actions.add(key);
     }
   }

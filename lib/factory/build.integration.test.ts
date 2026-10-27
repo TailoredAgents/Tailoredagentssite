@@ -209,9 +209,12 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     expect((await getFactoryProjectBuilds(member,project.projectId))!.monthSpentMicros).toBe(100000);
     expect((await pool.query("SELECT count(*)::int n FROM factory_build_costs")).rows[0].n).toBe(1);
   });
-  it("resumes saved generation after interruption without a new provider request",async()=>{
+  it("resumes saved generation with closing contact links without a new provider request",async()=>{
     const project=await prepared();await enable();const {runtime}=await fixtureRuntime();
-    const raw={id:"resp_saved_fixture",status:"completed",usage:{input_tokens:1000,output_tokens:2000},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(blueprint)}]}]};
+    const saved=structuredClone(blueprint);
+    saved.pages[0].sections.push({id:"contact",kind:"contact",layout:"split",eyebrow:"Next step",title:"Discuss your needs",body:"Prepare an inquiry.",items:[{title:"Write to us",body:"Tell the team what you have in mind."}]});
+    saved.interactions!.actions.push({pagePath:"index.html",sectionId:"contact",itemIndex:0,label:"Explore our services",targetPage:"services/index.html",targetSection:null});
+    const raw={id:"resp_saved_fixture",status:"completed",usage:{input_tokens:1000,output_tokens:2000},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(saved)}]}]};
     await pool.query("UPDATE factory_build_versions SET working_data=working_data||$2::jsonb WHERE project_id=$1",[project.projectId,JSON.stringify({generationResponse:raw})]);
     runtime.execute=()=>async()=>{throw Error("A saved response must not be regenerated");};
     expect(await runFactoryBuildWorkerStep(runtime)).toMatchObject({status:"processed",stage:"generate"});

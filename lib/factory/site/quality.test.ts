@@ -20,6 +20,25 @@ describe("Website design direction and content depth",()=>{
   it("accepts a complete concept with unknown business details",()=>{
     expect(reviewSiteDepth(fixtureBlueprint("trades","split",true),fixtureSitePlan)).toEqual([]);
   });
+  it.each(["Contact","Service Areas"])("accepts purposeful %s form pages without forcing unrelated sales sections",title=>{
+    const b=fixtureBlueprint("trades","split",true),plan=structuredClone(fixtureSitePlan);
+    const path=title==="Contact"?"contact/index.html":"service-areas/index.html";
+    plan.pages.push({title,purpose:"Prepare an inquiry",sections:["Inquiry form","Direct contact"]});
+    b.pages.push({...structuredClone(b.pages[1]),path,title,sections:[
+      {id:"inquiry",kind:"contact",layout:"split",eyebrow:"Inquiry",title:"Prepare a message",body:"Share your city or ZIP code and describe the concern you would like to discuss with the team.",items:[]},
+      {id:"direct",kind:"contact",layout:"band",eyebrow:"Next step",title:"Talk to the team",body:"Use the direct contact options to discuss coverage and possible next steps before making any arrangements.",items:[]},
+    ]});
+    b.interactions!.forms.push({pagePath:path,sectionId:"inquiry",fields:["location","message"],submitLabel:"Preview inquiry"});
+    expect(reviewSiteDepth(b,plan).filter(i=>i.page===path)).toEqual([]);
+    b.interactions!.forms=[];
+    expect(reviewSiteDepth(b,plan).some(i=>i.page===path&&i.code==="thin_page")).toBe(true);
+    b.interactions!.forms.push({pagePath:path,sectionId:"inquiry",fields:["message"],submitLabel:"Preview inquiry"});
+    b.pages.at(-1)!.sections[1].body="Call us.";
+    expect(reviewSiteDepth(b,plan).some(i=>i.page===path&&i.code==="thin_page")).toBe(true);
+    b.pages.at(-1)!.title="Services";b.pages.at(-1)!.path="services-extra/index.html";
+    b.interactions!.forms[0].pagePath="services-extra/index.html";
+    expect(reviewSiteDepth(b,plan).some(i=>i.page==="services-extra/index.html"&&i.code==="thin_page")).toBe(true);
+  });
   it("rejects substituted pages even when the total page count is correct",()=>{
     const blueprint=fixtureBlueprint("trades","split",true);
     blueprint.pages[2].title="Careers";blueprint.pages[2].path="careers/index.html";

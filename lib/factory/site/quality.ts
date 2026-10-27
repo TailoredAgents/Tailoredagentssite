@@ -116,7 +116,12 @@ export function reviewSiteDepth(blueprint:SiteBlueprint,plan:FactoryPlanContent)
   for(const page of blueprint.pages){
     const sections=page.sections.filter(s=>s.kind!=="contact");
     const minimum=page.path==="index.html"?4:2;
-    if(sections.length<minimum) add(page.path,"thin_page",`Provide at least ${minimum} useful non-contact sections on this page; use approved services, explanatory guidance, process and relevant questions rather than padding.`);
+    // An approved contact/coverage page can be a focused inquiry utility, not a second sales page.
+    // Count substantive form/direct-contact guidance only there; a form cannot exempt a thin service page.
+    const inquiryPage=page.path!=="index.html"&&plan.pages.some(p=>[3,4].includes(alias(normalize(p.title)))&&pageMatch(p.title,page)>0)
+      &&blueprint.interactions?.forms.some(f=>f.pagePath===page.path&&page.sections.some(s=>s.id===f.sectionId&&s.kind==="contact"));
+    const usefulContacts=inquiryPage?page.sections.filter(s=>s.kind==="contact"&&s.title.trim()&&normalize(s.body).split(" ").length>=12).length:0;
+    if(sections.length+usefulContacts<minimum) add(page.path,"thin_page",`Provide at least ${minimum} useful sections on this page; use approved services, explanatory guidance, process and relevant questions rather than padding. Focused contact/coverage pages may use substantive inquiry guidance with a configured form.`);
     for(const section of sections){
       if(["services","features","process","faq"].includes(section.kind)&&section.items.length<2)
         add(page.path,"empty_collection",`The ${section.id} section needs at least two useful items or a more suitable section type.`);
