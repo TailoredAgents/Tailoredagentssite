@@ -9,7 +9,9 @@ export const designFamilies:Record<DesignFamilyId,DesignFamily>={
   general:{name:"Room to grow",direction:"Flexible, welcoming and contemporary. Confident mixed-scale typography, expressive color blocks and clear introductions that work without an established company identity.",compositions:["centered","minimal"],background:"#f4f3ee",surface:"#ffffff",ink:"#263031",muted:"#556262",accent:"#c5cfef",radius:"18px",sectionRhythm:"varied feature grids, useful service rows and an uncomplicated contact form"},
 };
 export function familyForPlan(text:string):DesignFamilyId {
-  if(/roof|plumb|hvac|contractor|landscap|construction|remodel|electrician/i.test(text))return"trades";
+  // Website redesign is the requested work, not the customer's industry.
+  text=text.replace(/\b(?:website|web|site)\s+(?:re)?design\b|\bredesign\w*/gi,"");
+  if(/roof|plumb|hvac|heating|air conditioning|cooling|heat pump|contractor|landscap|construction|remodel|electrician/i.test(text))return"trades";
   if(/spa|salon|wellness|beauty|yoga|massage|esthetic/i.test(text))return"wellness";
   if(/restaurant|cafe|coffee|bakery|hotel|hospitality|catering/i.test(text))return"hospitality";
   if(/law|account|consult|financial|insurance|professional/i.test(text))return"professional";

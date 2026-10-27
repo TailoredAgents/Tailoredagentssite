@@ -13,7 +13,7 @@ export async function serveFactoryPreview(request,env,fetcher=fetch){
   if(!["GET","HEAD"].includes(request.method))return error(404);
   const url=new URL(request.url);let pathname;
   try{pathname=decodeURIComponent(url.pathname);}catch{return error(404);}
-  const match=pathname.match(/^\/p\/([a-f0-9]{48})(\/.*)?$/);if(!match)return error(404);
+  const match=pathname.match(/^\/p\/([a-f0-9]{48}|[a-z][a-z0-9-]{1,63})(\/.*)?$/);if(!match)return error(404);
   let file=(match[2]||"/").slice(1);if(!file||file.endsWith("/"))file+="index.html";
   if(!pathPattern.test(file))return error(404);
   // Keep relative navigation inside the capability URL, including a missing slash.

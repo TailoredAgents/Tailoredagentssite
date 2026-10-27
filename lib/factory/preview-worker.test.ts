@@ -9,6 +9,15 @@ const request=(path="/",headers?:HeadersInit)=>new Request(`https://previews.exa
 beforeEach(()=>{fetcher=vi.fn<typeof fetch>(async()=>Response.json(resolution()));get=vi.fn<FactoryPreviewEnv["SITES"]["get"]>(async()=>({size:body.length,arrayBuffer:async()=>Uint8Array.from(body).buffer}));env={FACTORY_RESOLVER_URL:"https://www.tailoredagents.com/api/integrations/factory/preview",FACTORY_PREVIEW_SECRET:secret,SITES:{get}};});
 afterEach(()=>vi.unstubAllGlobals());
 describe("Isolated preview capability service",()=>{
+  it("serves named previews and preserves their relative asset/navigation base",async()=>{
+    const url="https://previews.example.test/p/cosmos-heating-air";
+    const redirect=await serveFactoryPreview(new Request(url),env,fetcher);
+    expect(redirect.status).toBe(308);expect(redirect.headers.get("location")).toBe("/p/cosmos-heating-air/");
+    expect((await serveFactoryPreview(new Request(url+"/"),env,fetcher)).status).toBe(200);
+    expect(JSON.parse(fetcher.mock.calls[0][1]!.body as string)).toEqual({token:"cosmos-heating-air",verification:false});
+    fetcher.mockResolvedValueOnce(new Response(null,{status:404}));
+    expect((await serveFactoryPreview(new Request(url+"/"),env,fetcher)).status).toBe(404);
+  });
   it("resolves every request without caching and serves only the exact checked bytes",async()=>{
     const response=await serveFactoryPreview(request(),env,fetcher);expect(response.status).toBe(200);expect(await response.text()).toContain("Preview");expect(response.headers.get("cache-control")).toBe("no-store");expect(response.headers.get("content-security-policy")).toContain("form-action 'none'");expect(response.headers.get("x-robots-tag")).toContain("noindex");expect(get).toHaveBeenCalledWith(prefix+"index.html");
     fetcher.mockResolvedValueOnce(new Response(null,{status:404}));expect((await serveFactoryPreview(request(),env,fetcher)).status).toBe(404);expect(fetcher).toHaveBeenCalledTimes(2);expect(get).toHaveBeenCalledTimes(1);

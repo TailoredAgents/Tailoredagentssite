@@ -11,6 +11,7 @@ import {factorySiteExecutor,generateFactoryHero} from "./build-provider";
 import {generatePortableSite} from "./site/provider";
 import {portableBundle,validateSiteBlueprint} from "./site/validate";
 import {renderPortableSite} from "./site/render";
+import {reviewSiteDepth} from "./site/quality";
 import {checkPortableSite} from "./site/qa";
 import {createPortableExport} from "./site/package";
 import type {SiteFiles,SiteQaResult} from "./site/artifacts";
@@ -83,19 +84,23 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
     await advance("qa");return;
   }
   if(build.stage==="qa"){
-    let site=await withSite(build,state,runtime),qa=await runtime.qa(site.files);
+    const inspect = async (files:SiteFiles) => {
+      const browserQa=await runtime.qa(files),depth=reviewSiteDepth(state.blueprint!,build.plan);
+      return {...browserQa,passed:browserQa.passed&&!depth.length,issues:[...browserQa.issues,...depth]};
+    };
+    let site=await withSite(build,state,runtime),qa=await inspect(site.files);
     if(!qa.passed&&!state.repaired){
       state.repaired=true;
       if(!await saveFactoryBuildProgress({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,workingData:state as Record<string,unknown>}))throw new Error("This website build was paused or removed.");
       const revised=await generatePortableSite({plan:build.plan,previousBlueprint:state.blueprint,repairIssues:qa.issues},runtime.execute(build));
       state.blueprint=revised.blueprint;
       if(!await saveFactoryBuildProgress({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,workingData:state as Record<string,unknown>}))throw new Error("This website build was paused or removed.");
-      site=await withSite(build,state,runtime);qa=await runtime.qa(site.files);
+      site=await withSite(build,state,runtime);qa=await inspect(site.files);
     }
     if(!qa.passed)throw new Error("This website needs a design review because its browser checks did not pass.");
     const screenshots={desktop:`${build.storagePrefix}screenshots/desktop.png`,mobile:`${build.storagePrefix}screenshots/mobile.png`};
     for(const view of ["desktop","mobile"] as const){const shot=qa.screenshots.find(s=>s.page==="index.html"&&s.viewport===view);if(!shot)throw new Error("Desktop and mobile screenshots are required.");await runtime.storage.put(screenshots[view],shot.bytes,"image/png");}
-    state.qaReport={passed:true,checks:["Desktop and mobile layouts","Local links and images","Demo navigation and forms","Serious and critical accessibility checks","No external requests"],warnings:qa.issues.filter(i=>i.severity==="warning").map(i=>i.message),screenshots};
+    state.qaReport={passed:true,checks:["Approved page coverage and content depth","Distinct page content and varied sections","Desktop and mobile layouts","Local links and images","Demo navigation and forms","Serious and critical accessibility checks","No external requests"],warnings:qa.issues.filter(i=>i.severity==="warning").map(i=>i.message),screenshots};
     await advance("publish");return;
   }
   if(build.stage==="publish"){

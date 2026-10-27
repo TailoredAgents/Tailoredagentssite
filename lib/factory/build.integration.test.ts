@@ -11,6 +11,7 @@ import {getFactoryProjectBuilds,getFactoryPreviewResolution,getFactorySourceDown
 import {reserveFactoryBuildCost,attemptFactoryBuildCost,settleFactoryBuildCost,uncertainFactoryBuildCost} from "./build-budget";
 import type {FactoryClaimedBuild,FactoryBuildQa,FactoryBuildManifest} from "./build-types";
 import type {FactoryPlanContent} from "./types";
+import {fixtureBlueprint} from "./site/fixtures";
 import type {SiteBlueprint} from "./site/types";
 import {runFactoryBuildWorkerStep,type FactoryBuildRuntime} from "./build-worker";
 vi.mock("server-only",()=>({}));
@@ -22,10 +23,13 @@ const owner=actor(),member=actor("build-member",ws,"member"),viewer=actor("build
 let pool:Pool;
 const manifest:FactoryBuildManifest={entrypoint:"index.html",files:[{path:"index.html",contentType:"text/html; charset=utf-8",size:40,sha256:"a".repeat(64)}]};
 const approvedPlan:FactoryPlanContent={summary:"Approved sparse concept",goal:"Introduce a new business concept",audience:"Local customers",knownDetails:[],uncertainties:["Business identity is unconfirmed"],assumptions:["Use a provisional concept name"],pages:[{title:"Home",purpose:"Introduction",sections:["Services","Contact"]},{title:"Services",purpose:"Explain proposed services",sections:["Overview"]}],callsToAction:["Get in touch"],design:{direction:"Warm and modern",palette:["Blue","Cream"],typography:"Humanist",imagery:"Illustrative abstract architecture"},previewFeatures:["Demonstration contact form"],productionIntegrations:["Connect the real contact form"],sources:[]};
-const blueprint:SiteBlueprint={version:1,brandName:"New Business Concept",tagline:"A fresh direction",family:"general",composition:"centered",accent:"#405080",fontPair:"humanist",pages:["index.html","services/index.html"].map((path,index)=>({path,title:index?"Services":"Home",description:"A provisional website concept for a new business.",hero:{eyebrow:"Website concept",headline:index?"A useful service overview":"Space for your next chapter",body:"A thoughtful introduction to the proposed business direction.",primaryCta:"Get in touch",secondaryCta:"Explore services"},sections:[{id:"overview",kind:"about",layout:"split",eyebrow:"The approach",title:"Make the next step clear",body:"This concept introduces the services and helps customers make contact.",items:[]}]})),heroImage:{prompt:"An illustrative architectural composition with soft light and blue materials, without text or people.",alt:"Illustrative blue architectural forms",caption:"Illustrative concept imagery."},contact:{email:null,phone:null,address:null},factualClaims:[],productionTasks:["Confirm business details and connect the contact form"],assumptions:["Business name is provisional"]};
+const blueprint:SiteBlueprint=fixtureBlueprint("general","centered",true);
+blueprint.pages=blueprint.pages.filter(p=>p.path!=="approach/index.html");
+blueprint.brandName="New Business Concept";
+
 function qa(job:FactoryClaimedBuild):FactoryBuildQa{return {passed:true,checks:["Desktop layout","Mobile layout"],warnings:[],screenshots:{desktop:`${job.storagePrefix}screenshots/desktop.png`,mobile:`${job.storagePrefix}screenshots/mobile.png`}};}
-async function prepared(approve=true){
-  const leadId=randomUUID();await pool.query("INSERT INTO leads(id,workspace_id,name,organization,email) VALUES($1,$2,'Sparse person','',NULL)",[leadId,ws]);
+async function prepared(approve=true,company=""){
+  const leadId=randomUUID();await pool.query("INSERT INTO leads(id,workspace_id,name,organization,email) VALUES($1,$2,'Sparse person',$3,NULL)",[leadId,ws,company]);
   const {projectId}=await startFactory(member,{leadId});
   const job=(await pool.query("UPDATE factory_jobs SET status='succeeded' WHERE project_id=$1 RETURNING id",[projectId])).rows[0];const planId=randomUUID();
   await pool.query(`INSERT INTO factory_plans(id,workspace_id,project_id,version,content,change_summary,job_id) VALUES($1,$2,$3,1,$5::jsonb,'Initial concept',$4)`,[planId,ws,projectId,job.id,JSON.stringify(approvedPlan)]);
@@ -80,17 +84,26 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     const db=await pool.connect();try{await expect(queueApprovedFactoryBuild(db,randomUUID())).rejects.toThrow("human-approved");}finally{db.release();}
   });
   it("exposes only verified previews, immutable sources and scoped screenshots; revocation is immediate",async()=>{
-    const project=await prepared();await enable();const job=await toVerification();
+    const project=await prepared(true,"Cosmo’s Heating and Air Conditioning");await enable();const job=await toVerification();
+    const slug=(await pool.query("SELECT preview_slug FROM factory_build_versions WHERE id=$1",[job.id])).rows[0].preview_slug;
+    expect(slug).toBe("cosmos-heating-air");expect(await getFactoryPreviewResolution(slug)).toBeNull();
     expect(await getFactoryPreviewResolution(job.previewToken)).toBeNull();expect((await getFactoryPreviewResolution(job.previewToken,{verification:true}))?.ready).toBe(false);
     await expect(finishFactoryBuild({versionId:job.id,leaseToken:job.leaseToken,manifest,qaReport:qa(job),sourceKey:`${job.storagePrefix}source.zip`,verification:{url:"https://example.test",status:200,checkedAt:new Date().toISOString()}})).rejects.toThrow("real hosted preview");
-    expect(await finish(job)).toBe(true);expect(await finish(job)).toBe(false);expect((await getFactoryPreviewResolution(job.previewToken))?.ready).toBe(true);
+    expect(await finish(job)).toBe(true);expect(await finish(job)).toBe(false);expect((await getFactoryPreviewResolution(job.previewToken))?.ready).toBe(true);expect((await getFactoryPreviewResolution(slug))?.ready).toBe(true);
     expect((await getFactorySourceDownload(member,job.id)).storageKey).toBe(`${job.storagePrefix}source.zip`);expect((await getFactoryScreenshotDownload(member,job.id,"mobile")).filename).toContain("mobile.png");
     await expect(getFactorySourceDownload(other,job.id)).rejects.toThrow("not available");expect(await getFactoryProjectBuilds(other,project.projectId)).toBeNull();
     await expect(revokeFactoryPreview(viewer,{versionId:job.id})).rejects.toThrow("workspace access");
-    await revokeFactoryPreview(member,{versionId:job.id});expect(await getFactoryPreviewResolution(job.previewToken)).toBeNull();expect((await getFactorySourceDownload(member,job.id)).storageKey).toContain("source.zip");
-    await restoreFactoryPreview(member,{versionId:job.id});expect(await getFactoryPreviewResolution(job.previewToken)).not.toBeNull();
-    await pool.query("UPDATE factory_build_versions SET expires_at=now()-interval '1 second' WHERE id=$1",[job.id]);expect(await getFactoryPreviewResolution(job.previewToken)).toBeNull();
+    await revokeFactoryPreview(member,{versionId:job.id});expect(await getFactoryPreviewResolution(job.previewToken)).toBeNull();expect(await getFactoryPreviewResolution(slug)).toBeNull();expect((await getFactorySourceDownload(member,job.id)).storageKey).toContain("source.zip");
+    await restoreFactoryPreview(member,{versionId:job.id});expect(await getFactoryPreviewResolution(job.previewToken)).not.toBeNull();expect(await getFactoryPreviewResolution(slug)).not.toBeNull();
+    await pool.query("UPDATE factory_build_versions SET expires_at=now()-interval '1 second' WHERE id=$1",[job.id]);expect(await getFactoryPreviewResolution(job.previewToken)).toBeNull();expect(await getFactoryPreviewResolution(slug)).toBeNull();
     await expect(pool.query("UPDATE factory_build_versions SET source_key='altered.zip' WHERE id=$1",[job.id])).rejects.toThrow("immutable");
+  });
+  it("keeps same-company aliases unique and never uses a person's name for missing companies",async()=>{
+    await Promise.all([prepared(true,"Northline Works"),prepared(true,"Northline Works")]);
+    const slugs=(await pool.query("SELECT preview_slug FROM factory_build_versions ORDER BY preview_slug")).rows.map(r=>r.preview_slug);
+    expect(slugs).toEqual(["northline-works","northline-works-2"]);
+    await prepared(true,"");
+    expect((await pool.query("SELECT preview_slug FROM factory_build_versions WHERE preview_slug LIKE 'website-%'")).rows[0].preview_slug).toMatch(/^website-[a-f0-9]{8}$/);
   });
   it("rejects unsafe artifact paths, failed QA and out-of-order transitions",async()=>{
     await prepared();await enable();const job=(await claimFactoryBuild())!;
@@ -142,7 +155,7 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
   it("runs all five injected stages with typed generation, local assets, source ZIP and verified publication",async()=>{
     const project=await prepared();await enable();const {runtime,objects}=await fixtureRuntime();
     for(const stage of ["generate","images","qa","publish","verify"]){const result=await runFactoryBuildWorkerStep(runtime);expect(result).toMatchObject({status:"processed",stage});}
-    const result=(await getFactoryProjectBuilds(member,project.projectId))!;expect(result.versions[0]).toMatchObject({status:"ready",sourceReady:true});expect(result.versions[0].previewUrl).toContain("/p/");
+    const result=(await getFactoryProjectBuilds(member,project.projectId))!;expect(result.versions[0]).toMatchObject({status:"ready",sourceReady:true});expect(result.versions[0].previewUrl).toContain("/preview/");
     const source=await getFactorySourceDownload(member,result.versions[0].id),archive=unzipStored(objects.get(source.storageKey)!);expect(archive.has("build.mjs")).toBe(true);expect(archive.has("render.yaml")).toBe(true);expect(archive.has("package-lock.json")).toBe(true);expect(archive.has("site/services/index.html")).toBe(true);expect(archive.has("site/assets/images/hero.png")).toBe(true);
     const prefix=source.storageKey.slice(0,-"source.zip".length);for(const [name,bytes]of archive)if(name.startsWith("site/"))expect(bytes).toEqual(Buffer.from(objects.get(`${prefix}preview/${name.slice(5)}`)!));
     expect(result.monthSpentMicros).toBe(230000);expect((await pool.query("SELECT count(*)::int n FROM factory_build_costs WHERE status='settled'")).rows[0].n).toBe(2);

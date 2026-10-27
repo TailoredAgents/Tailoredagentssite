@@ -22,6 +22,18 @@ beforeAll(async()=>{await mkdir(output,{recursive:true});hero=await sharp(Buffer
 afterAll(async()=>{await browser?.close();});
 
 describe("Portable website renderer and independent source export",()=>{
+  it("makes call CTAs dial the saved number and keeps a copy-only section out of an empty split",()=>{
+    const b=fixtureBlueprint("trades","split",true);
+    b.contact.phone="+16785550101";b.pages[0].hero.primaryCta="Call our team";
+    b.pages[0].sections.push({id:"coverage",kind:"statement",layout:"split",eyebrow:"Coverage",title:"Discuss your location",body:"Share your area when making an inquiry.",items:[]});
+    const {files}=renderPortableSite(portableBundle(b),{"assets/images/hero.png":hero});
+    const html=Buffer.from(files["index.html"]).toString();
+    expect(html).toContain('href="tel:+16785550101">Call our team');
+    expect(html).toContain('aria-label="Quick contact"');
+    expect(html).toMatch(/id="coverage" class="[^"]*is-copy-only/);
+    expect(Buffer.from(files["services/index.html"]).toString()).toContain('page-inner');
+    expect(()=>assertPortableSiteSafety(files)).not.toThrow();
+  });
   it("escapes model-authored content and rejects active resource injection before browser execution",()=>{
     const blueprint=fixtureBlueprint();blueprint.brandName='<script>alert("unsafe")</script>';blueprint.pages[0].hero.body='<img src="https://outside.test" onerror="bad()">';
     const {files}=renderPortableSite(portableBundle(blueprint),{"assets/images/hero.png":hero});

@@ -11,7 +11,7 @@ describe("Portable site provider (synthetic responses only)",()=>{
     const execute=vi.fn(async(_request:SiteModelRequest)=>response(fixtureBlueprint()));
     const result=await generatePortableSite({plan:fixtureSitePlan},execute);
     expect(result.bundle.imageSlots).toHaveLength(1);expect(result.usage.estimatedMicros).toBeGreaterThan(0);
-    const request=execute.mock.calls[0][0];expect(request.body).toMatchObject({model:"gpt-6.1-sol",store:false,max_output_tokens:9000,text:{format:{type:"json_schema",name:"factory_site_blueprint",strict:true}}});
+    const request=execute.mock.calls[0][0];expect(request.body).toMatchObject({model:"gpt-6.1-sol",store:false,max_output_tokens:12000,text:{format:{type:"json_schema",name:"factory_site_blueprint",strict:true}}});
     expect(request.body.tools).toBeUndefined();expect(request.reservedMicros).toBeGreaterThan(result.usage.estimatedMicros);expect(request.body.instructions).toContain("untrusted data");expect(request.body.instructions).toContain("possible matches and assumptions are not established facts");
   });
   it("treats sparse/fake details as valid while rejecting invented contact facts",()=>{
@@ -22,7 +22,7 @@ describe("Portable site provider (synthetic responses only)",()=>{
   });
   it("rejects invalid paths, duplicate ids, unsupported compositions and claims",()=>{
     for(const path of ["../secret.html","https://evil.test/","/index.html","a/b/index.html"]){const b=fixtureBlueprint();b.pages[0].path=path;expect(()=>validateSiteBlueprint(b,fixtureSitePlan)).toThrow();}
-    const duplicate=fixtureBlueprint();duplicate.pages[0].sections[1].id="services-heading";expect(()=>validateSiteBlueprint(duplicate,fixtureSitePlan)).toThrow("duplicate");
+    const duplicate=fixtureBlueprint();duplicate.pages[0].sections[2].id="services-heading";expect(()=>validateSiteBlueprint(duplicate,fixtureSitePlan)).toThrow("duplicate");
     const composition=fixtureBlueprint();composition.composition="minimal";expect(()=>validateSiteBlueprint(composition,fixtureSitePlan)).toThrow("compositions");
     const claim=fixtureBlueprint();claim.factualClaims=[{text:"Licensed for 30 years",detailIndex:0}];expect(()=>validateSiteBlueprint(claim,fixtureSitePlan)).toThrow("not supported");
   });

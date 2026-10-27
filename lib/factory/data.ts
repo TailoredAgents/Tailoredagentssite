@@ -3,7 +3,7 @@ import type { PoolClient } from "pg";
 import type { DashboardContext } from "@/lib/dashboard/data";
 import { getDatabasePool } from "@/lib/dashboard/db";
 import { leadDisplayName,leadCompanyName } from "@/lib/operations/format";
-import {factoryPreviewUrl} from "./build-data";
+import {factoryShareUrl} from "./build-data";
 import { FactoryAccessError, type FactoryWorkspace, type FactoryProjectWorkspace, type FactoryProjectSummary, type FactorySettings, type FactoryPlan, type FactoryMessage, type FactoryJob, type FactoryBuildRequest } from "./types";
 
 export async function factoryTransaction<T>(workspaceId: string, work: (db: PoolClient) => Promise<T>) {
@@ -27,12 +27,12 @@ export async function readFactorySettings(db: Pick<PoolClient,"query">, workspac
   const row = (await db.query<{research_enabled:boolean;auto_research:boolean;monthly_budget_micros:string;budget_approved_at:Date|null}>("SELECT research_enabled,auto_research,monthly_budget_micros,budget_approved_at FROM factory_settings WHERE workspace_id=$1", [workspaceId])).rows[0];
   return {researchEnabled:row?.research_enabled??false,autoResearch:row?.auto_research??false,monthlyBudgetMicros:Number(row?.monthly_budget_micros??25000000),budgetApprovedAt:date(row?.budget_approved_at??null)};
 }
-const projectSelect = `SELECT p.id,p.lead_id AS "leadId",l.name AS "leadName",l.organization AS "companyName",l.phone,l.email,p.status,p.current_plan_id AS "currentPlanId",v.version AS "currentPlanVersion",p.created_at AS "createdAt",p.updated_at AS "updatedAt",(SELECT json_build_object('id',b.id,'version',b.version,'status',b.status,'token',b.preview_token,'revoked',b.revoked_at,'expires',b.expires_at) FROM factory_build_versions b WHERE b.project_id=p.id AND b.workspace_id=p.workspace_id ORDER BY b.version DESC LIMIT 1) AS "buildRaw" FROM factory_projects p JOIN leads l ON l.id=p.lead_id AND l.workspace_id=p.workspace_id AND l.anonymized_at IS NULL LEFT JOIN factory_plans v ON v.id=p.current_plan_id AND v.project_id=p.id AND v.workspace_id=p.workspace_id`;
-type ProjectRow = Omit<FactoryProjectSummary,"createdAt"|"updatedAt"> & {createdAt:Date;updatedAt:Date;phone:string|null;email:string|null;buildRaw:{id:string;version:number;status:import("./build-types").FactoryBuildStatus;token:string;revoked:string|null;expires:string}|null};
+const projectSelect = `SELECT p.id,p.lead_id AS "leadId",l.name AS "leadName",l.organization AS "companyName",l.phone,l.email,p.status,p.current_plan_id AS "currentPlanId",v.version AS "currentPlanVersion",p.created_at AS "createdAt",p.updated_at AS "updatedAt",(SELECT json_build_object('id',b.id,'version',b.version,'status',b.status,'token',b.preview_token,'slug',b.preview_slug,'revoked',b.revoked_at,'expires',b.expires_at) FROM factory_build_versions b WHERE b.project_id=p.id AND b.workspace_id=p.workspace_id ORDER BY b.version DESC LIMIT 1) AS "buildRaw" FROM factory_projects p JOIN leads l ON l.id=p.lead_id AND l.workspace_id=p.workspace_id AND l.anonymized_at IS NULL LEFT JOIN factory_plans v ON v.id=p.current_plan_id AND v.project_id=p.id AND v.workspace_id=p.workspace_id`;
+type ProjectRow = Omit<FactoryProjectSummary,"createdAt"|"updatedAt"> & {createdAt:Date;updatedAt:Date;phone:string|null;email:string|null;buildRaw:{id:string;version:number;status:import("./build-types").FactoryBuildStatus;token:string;slug:string;revoked:string|null;expires:string}|null};
 function projectDto(row: ProjectRow): FactoryProjectSummary {
   const {phone,email,buildRaw,...project}=row;
   const identity={name:row.leadName,organization:row.companyName,phone,email};
-  return {...project,leadName:leadDisplayName(identity),companyName:leadCompanyName(identity),createdAt:date(row.createdAt)!,updatedAt:date(row.updatedAt)!,latestBuild:buildRaw?{id:buildRaw.id,version:buildRaw.version,status:buildRaw.status,previewUrl:buildRaw.status==="ready"&&!buildRaw.revoked&&Date.parse(buildRaw.expires)>Date.now()?factoryPreviewUrl(buildRaw.token):null}:null};
+  return {...project,leadName:leadDisplayName(identity),companyName:leadCompanyName(identity),createdAt:date(row.createdAt)!,updatedAt:date(row.updatedAt)!,latestBuild:buildRaw?{id:buildRaw.id,version:buildRaw.version,status:buildRaw.status,previewUrl:buildRaw.status==="ready"&&!buildRaw.revoked&&Date.parse(buildRaw.expires)>Date.now()?factoryShareUrl(buildRaw.token,buildRaw.slug):null}:null};
 }
 async function workspaceInfo(db: PoolClient, context: DashboardContext, role: string) {
   const settings = await readFactorySettings(db,context.workspace.id);

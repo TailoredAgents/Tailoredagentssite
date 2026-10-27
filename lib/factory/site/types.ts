@@ -9,7 +9,7 @@ export type SiteBlueprint={
   version:1;brandName:string;tagline:string;family:DesignFamilyId;composition:HeroComposition;
   accent:string;fontPair:"modern"|"editorial"|"humanist";
   pages:Array<{path:string;title:string;description:string;hero:{eyebrow:string;headline:string;body:string;primaryCta:string;secondaryCta:string};
-    sections:Array<{id:string;kind:"services"|"about"|"process"|"features"|"faq"|"contact"|"statement";layout:"grid"|"rows"|"split"|"editorial"|"timeline"|"band";eyebrow:string;title:string;body:string;items:Array<{title:string;body:string}>}>}>;
+    sections:Array<{id:string;kind:"services"|"about"|"process"|"features"|"faq"|"contact"|"statement";layout:"grid"|"rows"|"split"|"editorial"|"timeline"|"band"|"showcase"|"checklist";eyebrow:string;title:string;body:string;items:Array<{title:string;body:string}>}>}>;
   heroImage:{prompt:string;alt:string;caption:string};
   contact:{email:string|null;phone:string|null;address:string|null};
   factualClaims:Array<{text:string;detailIndex:number}>;

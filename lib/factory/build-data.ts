@@ -12,6 +12,7 @@ export function factoryPreviewOrigin() {
   try{const url=new URL(configured);if(url.protocol!=="https:"||url.username||url.password||url.search||url.hash||url.pathname!=="/"||["tailoredagents.com","www.tailoredagents.com","mail.tailoredagents.com"].includes(url.hostname))return null;return url.origin;}catch{return null;}
 }
 export function factoryPreviewUrl(token:string){const origin=factoryPreviewOrigin();return origin?`${origin}/p/${token}/`:null;}
+export function factoryShareUrl(token:string,slug?:string|null){return factoryPreviewOrigin() ? slug ? `https://www.tailoredagents.com/preview/${slug}` : factoryPreviewUrl(token) : null;}
 const iso=(v:Date|string|null)=>v?new Date(v).toISOString():null;
 export async function readFactoryBuildSettings(db:Pick<PoolClient,"query">,workspaceId:string):Promise<FactoryBuildSettings>{
   const row=(await db.query("SELECT * FROM factory_build_settings WHERE workspace_id=$1",[workspaceId])).rows[0];
@@ -31,15 +32,15 @@ export async function getFactoryProjectBuilds(context:DashboardContext,projectId
     const project=await db.query("SELECT id FROM factory_projects WHERE id=$1 AND workspace_id=$2",[projectId,context.workspace.id]);
     if(!project.rowCount)return null;
     const rows=(await db.query(`SELECT v.*,r.plan_id,p.version plan_version FROM factory_build_versions v JOIN factory_build_requests r ON r.id=v.build_request_id AND r.workspace_id=v.workspace_id JOIN factory_plans p ON p.id=r.plan_id AND p.workspace_id=r.workspace_id WHERE v.workspace_id=$1 AND v.project_id=$2 ORDER BY v.version DESC LIMIT 100`,[context.workspace.id,projectId])).rows;
-    const versions:FactoryBuildVersion[]=rows.map(v=>({id:v.id,version:v.version,planId:v.plan_id,planVersion:v.plan_version,status:v.status,stage:v.stage,error:v.error,createdAt:iso(v.created_at)!,readyAt:iso(v.ready_at),previewUrl:v.status==="ready"&&!v.revoked_at&&new Date(v.expires_at).getTime()>Date.now()?factoryPreviewUrl(v.preview_token):null,sourceReady:v.status==="ready"&&Boolean(v.source_key),qaReport:v.qa_report,revokedAt:iso(v.revoked_at),expiresAt:iso(v.expires_at)!,retryCount:v.retry_count}));
+    const versions:FactoryBuildVersion[]=rows.map(v=>({id:v.id,version:v.version,planId:v.plan_id,planVersion:v.plan_version,status:v.status,stage:v.stage,error:v.error,createdAt:iso(v.created_at)!,readyAt:iso(v.ready_at),previewUrl:v.status==="ready"&&!v.revoked_at&&new Date(v.expires_at).getTime()>Date.now()?factoryShareUrl(v.preview_token,v.preview_slug):null,sourceReady:v.status==="ready"&&Boolean(v.source_key),qaReport:v.qa_report,revokedAt:iso(v.revoked_at),expiresAt:iso(v.expires_at)!,retryCount:v.retry_count}));
     const uploads=(await db.query<FactoryUpload&{createdAt:Date}>(`SELECT id,filename,content_type AS "contentType",byte_size AS "byteSize",created_at AS "createdAt" FROM factory_uploads WHERE workspace_id=$1 AND project_id=$2 AND status='ready' ORDER BY created_at DESC`,[context.workspace.id,projectId])).rows.map(u=>({...u,createdAt:iso(u.createdAt)!}));
     return {...info,versions,uploads};
   });
 }
 /** Capability lookup for the separate preview service. Never cache its result. */
 export async function getFactoryPreviewResolution(token:string,options:{verification?:boolean}={}){
-  if(!/^[0-9a-f]{48}$/.test(token))return null;
-  const row=(await getDatabasePool().query<{id:string;storage_prefix:string;manifest:FactoryBuildManifest;expires_at:Date;status:string}>(`SELECT v.id,v.storage_prefix,v.manifest,v.expires_at,v.status FROM factory_build_versions v JOIN factory_projects p ON p.id=v.project_id AND p.workspace_id=v.workspace_id JOIN leads l ON l.id=p.lead_id AND l.workspace_id=p.workspace_id JOIN workspaces w ON w.id=v.workspace_id WHERE v.preview_token=$1 AND v.revoked_at IS NULL AND v.expires_at>now() AND v.manifest IS NOT NULL AND w.status='active' AND l.anonymized_at IS NULL AND (v.status='ready' OR ($2::boolean AND v.status='running' AND v.stage='verify' AND v.lease_until>now()))`,[token,Boolean(options.verification)])).rows[0];
+  if(!/^(?:[0-9a-f]{48}|[a-z][a-z0-9-]{1,63})$/.test(token))return null;
+  const row=(await getDatabasePool().query<{id:string;storage_prefix:string;manifest:FactoryBuildManifest;expires_at:Date;status:string}>(`SELECT v.id,v.storage_prefix,v.manifest,v.expires_at,v.status FROM factory_build_versions v JOIN factory_projects p ON p.id=v.project_id AND p.workspace_id=v.workspace_id JOIN leads l ON l.id=p.lead_id AND l.workspace_id=p.workspace_id JOIN workspaces w ON w.id=v.workspace_id WHERE (v.preview_token=$1 OR v.preview_slug=$1) AND v.revoked_at IS NULL AND v.expires_at>now() AND v.manifest IS NOT NULL AND w.status='active' AND l.anonymized_at IS NULL AND (v.status='ready' OR ($2::boolean AND v.status='running' AND v.stage='verify' AND v.lease_until>now()))`,[token,Boolean(options.verification)])).rows[0];
   return row?{versionId:row.id,storagePrefix:`${row.storage_prefix}preview/`,manifest:row.manifest,expiresAt:iso(row.expires_at)!,ready:row.status==="ready"}:null;
 }
 export async function getFactorySourceDownload(context:DashboardContext,versionId:string){

@@ -32,7 +32,16 @@ export async function checkPortableSite(input:{files:SiteFiles;browser:Browser})
         page.on("pageerror",()=>pageErrors.push("The preview runtime reported a browser error."));
         try {
           await page.goto(`${origin}/${file}`,{waitUntil:"load",timeout:15000});
-          await page.evaluate(async()=>{await document.fonts.ready;await Promise.all([...document.images].map(i=>i.decode().catch(()=>undefined)));});
+          // Inspect the full page, including images below the initial viewport.
+          // Lazy images otherwise leave decode() pending until somebody scrolls.
+          await page.evaluate(async()=>{
+            for(const img of document.images)img.loading="eager";
+            let timer:ReturnType<typeof setTimeout>;
+            try { await Promise.race([
+              Promise.all([document.fonts.ready,...[...document.images].map(i=>i.decode().catch(()=>undefined))]),
+              new Promise(resolve=>{timer=setTimeout(resolve,5000);}),
+            ]); } finally { clearTimeout(timer!); }
+          });
           const inspection=await page.evaluate(()=>{
             const ids=[...document.querySelectorAll("[id]")].map(e=>e.id);
             return {overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)>innerWidth+2,
