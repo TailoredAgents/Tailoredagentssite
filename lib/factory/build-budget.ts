@@ -11,7 +11,7 @@ export async function reserveFactoryBuildCost(input:{versionId:string;leaseToken
   const db=await getDatabasePool().connect();
   try{
     await db.query("BEGIN");
-    const version=(await db.query("SELECT workspace_id FROM factory_build_versions WHERE id=$1",[input.versionId])).rows[0];
+    const version=(await db.query("SELECT workspace_id,build_request_id FROM factory_build_versions WHERE id=$1",[input.versionId])).rows[0];
     if(!version)throw new FactoryBuildBudgetError("This website build no longer exists.");
     await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`factory-build-budget:${version.workspace_id}`]);
     const settings=(await db.query("SELECT s.* FROM factory_build_settings s JOIN workspaces w ON w.id=s.workspace_id WHERE s.workspace_id=$1 AND w.status='active' FOR UPDATE OF s",[version.workspace_id])).rows[0];
@@ -19,9 +19,9 @@ export async function reserveFactoryBuildCost(input:{versionId:string;leaseToken
     const live=await db.query(`SELECT 1 FROM factory_build_versions v JOIN factory_projects p ON p.id=v.project_id AND p.workspace_id=v.workspace_id JOIN leads l ON l.id=p.lead_id AND l.workspace_id=p.workspace_id WHERE v.id=$1 AND v.lease_token=$2 AND v.stage=$3 AND v.status='running' AND v.lease_until>now() AND l.anonymized_at IS NULL`,[input.versionId,input.leaseToken,input.stage]);
     if(!live.rowCount)throw new FactoryBuildBudgetError("This build is no longer active or its worker lease expired.");
     const costs=(await db.query(`SELECT ${sumCosts} used FROM factory_build_costs WHERE workspace_id=$1 AND period=date_trunc('month',now() AT TIME ZONE 'UTC')::date`,[version.workspace_id])).rows[0];
-    const own=(await db.query(`SELECT ${sumCosts} used FROM factory_build_costs WHERE version_id=$1`,[input.versionId])).rows[0];
+    const own=(await db.query(`SELECT ${sumCosts} used FROM factory_build_costs WHERE workspace_id=$2 AND version_id IN (SELECT id FROM factory_build_versions WHERE build_request_id=$1 AND workspace_id=$2)`,[version.build_request_id,version.workspace_id])).rows[0];
     if(Number(costs.used)+input.reservedMicros>Number(settings.monthly_budget_micros))throw new FactoryBuildBudgetError("This build step exceeds the remaining monthly website allowance.");
-    if(Number(own.used)+input.reservedMicros>Number(settings.per_build_budget_micros))throw new FactoryBuildBudgetError("This build step exceeds the remaining allowance for this website version.");
+    if(Number(own.used)+input.reservedMicros>Number(settings.per_build_budget_micros))throw new FactoryBuildBudgetError("This build step exceeds the remaining allowance for this approved website, including its revisions.");
     const id=randomUUID();
     await db.query(`INSERT INTO factory_build_costs(id,workspace_id,version_id,request_key,stage,reserved_micros) VALUES($1,$2,$3,$4,$5,$6)`,[id,version.workspace_id,input.versionId,`${input.versionId}:${input.requestKey}`,input.stage,input.reservedMicros]);
     await db.query("COMMIT");return id;
@@ -37,7 +37,7 @@ export async function attemptFactoryBuildCost(id:string,leaseToken:string){
     await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`factory-build-budget:${row.workspace_id}`]);
     const settings=(await db.query("SELECT * FROM factory_build_settings WHERE workspace_id=$1 FOR UPDATE",[row.workspace_id])).rows[0];
     if(!settings?.enabled||!settings.budget_approved_at)throw new FactoryBuildBudgetError("Website building is paused.");
-    const updated=await db.query(`UPDATE factory_build_costs c SET attempted_at=now() FROM factory_build_versions v,factory_projects p,leads l,workspaces w WHERE c.id=$1 AND c.status='reserved' AND c.attempted_at IS NULL AND c.version_id=v.id AND v.workspace_id=c.workspace_id AND v.lease_token=$2 AND v.lease_until>now() AND v.status='running' AND v.stage=c.stage AND p.id=v.project_id AND p.workspace_id=v.workspace_id AND l.id=p.lead_id AND l.workspace_id=p.workspace_id AND l.anonymized_at IS NULL AND w.id=v.workspace_id AND w.status='active' AND c.period=date_trunc('month',now() AT TIME ZONE 'UTC')::date AND (SELECT ${sumCosts} FROM factory_build_costs WHERE workspace_id=c.workspace_id AND period=c.period)<=$3 AND (SELECT ${sumCosts} FROM factory_build_costs WHERE version_id=v.id)<=$4 RETURNING c.id`,[id,leaseToken,settings.monthly_budget_micros,settings.per_build_budget_micros]);
+    const updated=await db.query(`UPDATE factory_build_costs c SET attempted_at=now() FROM factory_build_versions v,factory_projects p,leads l,workspaces w WHERE c.id=$1 AND c.status='reserved' AND c.attempted_at IS NULL AND c.version_id=v.id AND v.workspace_id=c.workspace_id AND v.lease_token=$2 AND v.lease_until>now() AND v.status='running' AND v.stage=c.stage AND p.id=v.project_id AND p.workspace_id=v.workspace_id AND l.id=p.lead_id AND l.workspace_id=p.workspace_id AND l.anonymized_at IS NULL AND w.id=v.workspace_id AND w.status='active' AND c.period=date_trunc('month',now() AT TIME ZONE 'UTC')::date AND (SELECT ${sumCosts} FROM factory_build_costs WHERE workspace_id=c.workspace_id AND period=c.period)<=$3 AND (SELECT ${sumCosts} FROM factory_build_costs WHERE workspace_id=c.workspace_id AND version_id IN (SELECT sibling.id FROM factory_build_versions sibling WHERE sibling.build_request_id=v.build_request_id AND sibling.workspace_id=v.workspace_id))<=$4 RETURNING c.id`,[id,leaseToken,settings.monthly_budget_micros,settings.per_build_budget_micros]);
     if(!updated.rowCount)throw new FactoryBuildBudgetError("This request was already attempted, paused, removed, or exceeds its current allowance.");
     await db.query("COMMIT");
   }catch(error){await db.query("ROLLBACK");throw error;}finally{db.release();}

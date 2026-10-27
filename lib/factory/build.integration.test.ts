@@ -16,6 +16,7 @@ import {fixtureBlueprint} from "./site/fixtures";
 import type {SiteBlueprint} from "./site/types";
 import type {SiteScorecard} from "./site/review";
 import {runFactoryBuildWorkerStep,type FactoryBuildRuntime} from "./build-worker";
+import {getFactoryDraft,reviseFactoryDraft} from "./draft-service";
 vi.mock("server-only",()=>({}));
 vi.mock("./build-config",()=>({factoryBuildConfiguration:()=>({configured:true,reason:null})}));
 const url=process.env.TEST_FACTORY_BUILD_DATABASE_URL;
@@ -164,7 +165,7 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     const requests=await Promise.allSettled([reserveFactoryBuildCost({versionId:job.id,leaseToken:job.leaseToken,stage:"generate",requestKey:"one",reservedMicros:600000}),reserveFactoryBuildCost({versionId:job.id,leaseToken:job.leaseToken,stage:"generate",requestKey:"two",reservedMicros:600000})]);
     expect(requests.filter(r=>r.status==="fulfilled")).toHaveLength(1);const receipt=(requests.find(r=>r.status==="fulfilled") as PromiseFulfilledResult<string>).value;
     await attemptFactoryBuildCost(receipt,job.leaseToken);await expect(attemptFactoryBuildCost(receipt,job.leaseToken)).rejects.toThrow("already attempted");await uncertainFactoryBuildCost(receipt);
-    await expect(reserveFactoryBuildCost({versionId:job.id,leaseToken:job.leaseToken,stage:"generate",requestKey:"more",reservedMicros:500000})).rejects.toThrow("this website version");
+    await expect(reserveFactoryBuildCost({versionId:job.id,leaseToken:job.leaseToken,stage:"generate",requestKey:"more",reservedMicros:500000})).rejects.toThrow("this approved website");
     await settleFactoryBuildCost(receipt,{actualMicros:200000,providerId:"synthetic-provider",usage:{inputTokens:100}});
     const allowed=await reserveFactoryBuildCost({versionId:job.id,leaseToken:job.leaseToken,stage:"generate",requestKey:"within-cap",reservedMicros:500000});expect(allowed).toBeTruthy();
     await uncertainFactoryBuildCost(allowed);expect((await pool.query("SELECT status FROM factory_build_costs WHERE id=$1",[allowed])).rows[0].status).toBe("released");
@@ -674,5 +675,118 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     expect((await pool.query("SELECT status,retry_count,working_data,build_request_id FROM factory_build_versions WHERE id=$1",[job.id])).rows[0]).toEqual(before);
     expect((await pool.query("SELECT status,actual_micros FROM factory_build_costs WHERE id=$1",[costId])).rows[0]).toMatchObject({status:"settled",actual_micros:"100000"});
     expect((await pool.query("SELECT storage_prefix FROM factory_storage_cleanup")).rows.map(row=>row.storage_prefix)).toEqual([original.storageKey]);
+  });
+
+  describe("Saved website draft revisions",()=>{
+    async function editableFixture(ready=false){
+      const project=await prepared();await enable();const resources=await fixtureRuntime();
+      for(let step=0;step<(ready?5:2);step++)expect((await runFactoryBuildWorkerStep(resources.runtime)).status).toBe("processed");
+      if(!ready){const job=(await claimFactoryBuild())!;expect(await failFactoryBuild({versionId:job.id,leaseToken:job.leaseToken,error:"Synthetic design needs a shorter introduction."})).toBe(true);}
+      const version=(await pool.query("SELECT * FROM factory_build_versions WHERE project_id=$1 ORDER BY version DESC LIMIT 1",[project.projectId])).rows[0];
+      const draft=await getFactoryDraft(member,version.id);
+      return {...project,...resources,version,draft};
+    }
+    function manual(draft:Awaited<ReturnType<typeof getFactoryDraft>>,requestId=randomUUID()){
+      return {versionId:draft.versionId,fingerprint:draft.fingerprint,requestId,mode:"manual",pagePath:"index.html",sectionId:"__intro__",headline:"A clear next step for your project",body:draft.pages[0].hero.body,layout:null,items:null};
+    }
+    it("allows an editable saved draft only to an active editing teammate, and removes access with its lead",async()=>{
+      const data=await editableFixture();expect(data.draft.pages).toHaveLength(2);expect(data.draft.fingerprint).toMatch(/^[a-f0-9]{64}$/);
+      expect(JSON.stringify(data.draft)).not.toContain("inputHash");expect(JSON.stringify(data.draft)).not.toContain(data.version.storage_prefix);
+      await expect(getFactoryDraft(viewer,data.version.id)).rejects.toThrow("workspace access");await expect(reviseFactoryDraft(viewer,manual(data.draft))).rejects.toThrow("workspace access");
+      await expect(getFactoryDraft(other,data.version.id)).rejects.toThrow("no longer available");await expect(reviseFactoryDraft(other,manual(data.draft))).rejects.toThrow("no longer available");
+      await pool.query("UPDATE leads SET anonymized_at=now() WHERE id=$1",[data.leadId]);
+      await expect(getFactoryDraft(member,data.version.id)).rejects.toThrow("no longer available");await expect(reviseFactoryDraft(member,manual(data.draft))).rejects.toThrow("no longer available");
+    });
+    it("queues only the chosen patch, reuses exact approval, rejects stale/current builds, and deduplicates retries",async()=>{
+      const data=await editableFixture(),input=manual(data.draft),original=structuredClone(data.version.working_data);
+      await expect(reviseFactoryDraft(member,{...input,fingerprint:"0".repeat(64)})).rejects.toThrow("draft changed");
+      const result=await reviseFactoryDraft(member,input);expect(await reviseFactoryDraft(member,input)).toEqual(result);
+      const child=(await pool.query("SELECT * FROM factory_build_versions WHERE id=$1",[result.versionId])).rows[0];
+      const expected=structuredClone(original.blueprint);expected.pages[0].hero.headline=input.headline;
+      expect(child).toMatchObject({kind:"revision",parent_version_id:data.version.id,build_request_id:data.version.build_request_id,status:"queued",stage:"images",version:2});
+      expect(child.working_data.blueprint).toEqual(expected);expect(child.working_data.inputUploads).toEqual(original.inputUploads);expect(child.working_data.repaired).toBe(true);
+      expect((await pool.query("SELECT working_data FROM factory_build_versions WHERE id=$1",[data.version.id])).rows[0].working_data).toEqual(original);
+      expect((await pool.query("SELECT count(*)::int n FROM factory_build_requests WHERE project_id=$1",[data.projectId])).rows[0].n).toBe(1);
+      expect((await pool.query("SELECT count(*)::int n FROM factory_build_versions WHERE project_id=$1",[data.projectId])).rows[0].n).toBe(2);
+      await expect(reviseFactoryDraft(member,{...input,requestId:randomUUID()})).rejects.toThrow("newest website version");
+      await expect(retryFactoryBuild(member,{versionId:data.version.id,requestId:randomUUID()})).rejects.toThrow("newest website version");
+      expect((await pool.query("SELECT retry_count,status,working_data FROM factory_build_versions WHERE id=$1",[data.version.id])).rows[0]).toMatchObject({retry_count:0,status:"failed",working_data:original});
+      await expect(getFactoryDraft(member,child.id)).rejects.toThrow("finish before editing");
+      const job=(await claimFactoryBuild())!;await failFactoryBuild({versionId:job.id,leaseToken:job.leaseToken,error:"Synthetic queued revision stopped."});
+      await expect(reviseFactoryDraft(member,{...input,requestId:randomUUID()})).rejects.toThrow("newest website version");
+      await expect(retryFactoryBuild(member,{versionId:data.version.id,requestId:randomUUID()})).rejects.toThrow("newest website version");
+    });
+    it("copies saved images without generation, keeps ready parents immutable, and restores as another checked revision",async()=>{
+      const data=await editableFixture(true),initial=structuredClone(data.version),hero=vi.fn(data.runtime.hero);data.runtime.hero=hero;
+      const execute=data.runtime.execute,stages:string[]=[];data.runtime.execute=job=>async request=>{stages.push(request.stage);return execute(job)(request);};
+      const revision=await reviseFactoryDraft(member,manual(data.draft));
+      for(let step=0;step<4;step++)expect((await runFactoryBuildWorkerStep(data.runtime)).status).toBe("processed");
+      expect(hero).not.toHaveBeenCalled();expect(stages).toEqual(["review"]);
+      const child=(await pool.query("SELECT * FROM factory_build_versions WHERE id=$1",[revision.versionId])).rows[0];
+      expect(child.status).toBe("ready");expect(child.draft_snapshot.blueprint.pages[0].hero.headline).toBe("A clear next step for your project");
+      expect(data.objects.get(`${child.storage_prefix}assets/hero.png`)).toEqual(data.objects.get(`${initial.storage_prefix}assets/hero.png`));
+      const preserved=(await pool.query("SELECT * FROM factory_build_versions WHERE id=$1",[initial.id])).rows[0];
+      for(const key of ["manifest","qa_report","source_key","preview_token","storage_prefix","draft_snapshot","working_data","status"])expect(preserved[key]).toEqual(initial[key]);
+      await expect(pool.query("UPDATE factory_build_versions SET draft_snapshot='{}'::jsonb WHERE id=$1",[initial.id])).rejects.toThrow("immutable");
+      const current=await getFactoryDraft(member,child.id),restore=await reviseFactoryDraft(member,{versionId:child.id,fingerprint:current.fingerprint,requestId:randomUUID(),mode:"restore"});
+      const restored=(await pool.query("SELECT * FROM factory_build_versions WHERE id=$1",[restore.versionId])).rows[0];
+      expect(restored).toMatchObject({version:3,parent_version_id:child.id,build_request_id:initial.build_request_id,status:"queued",stage:"images"});
+      expect(restored.working_data.blueprint).toEqual(initial.draft_snapshot.blueprint);expect(restored.working_data.draftRevision.sourceVersionId).toBe(initial.id);
+      for(let step=0;step<4;step++)expect((await runFactoryBuildWorkerStep(data.runtime)).status).toBe("processed");
+      expect(hero).not.toHaveBeenCalled();expect((await getFactoryDraft(member,restore.versionId)).pages[0].hero.headline).toBe(data.draft.pages[0].hero.headline);
+      expect((await pool.query("SELECT count(*)::int n FROM factory_build_requests WHERE project_id=$1",[data.projectId])).rows[0].n).toBe(1);
+    });
+    it("applies an AI patch only to the selected introduction with real screenshot context and no new images",async()=>{
+      const data=await editableFixture(),execute=data.runtime.execute,hero=vi.fn(data.runtime.hero),requests:unknown[]=[];data.runtime.hero=hero;
+      const target="services/index.html",patch={headline:"Explore the right next step",body:"Compare the questions and priorities for your project before choosing a direction.",layout:null,items:null};
+      data.runtime.execute=job=>async request=>{
+        const raw=await execute(job)(request);
+        if(request.stage!=="generate")return raw;
+        requests.push(request.body);
+        return {...raw as Record<string,unknown>,output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(patch)}]}]};
+      };
+      const revision=await reviseFactoryDraft(member,{versionId:data.version.id,fingerprint:data.draft.fingerprint,requestId:randomUUID(),mode:"ai",pagePath:target,sectionId:"__intro__",instruction:"Make this introduction clearer and more concise."});
+      for(let step=0;step<5;step++)expect((await runFactoryBuildWorkerStep(data.runtime)).status).toBe("processed");
+      expect(requests).toHaveLength(1);expect(JSON.stringify(requests[0])).toContain("input_image");expect(hero).not.toHaveBeenCalled();
+      const child=(await pool.query("SELECT * FROM factory_build_versions WHERE id=$1",[revision.versionId])).rows[0],expected=structuredClone(data.version.working_data.blueprint);
+      const changed=expected.pages.find((page:SiteBlueprint["pages"][number])=>page.path===target);changed.hero.headline=patch.headline;changed.hero.body=patch.body;
+      expect(child.status).toBe("ready");expect(child.draft_snapshot.blueprint).toEqual(expected);
+      expect((await pool.query("SELECT working_data FROM factory_build_versions WHERE id=$1",[data.version.id])).rows[0].working_data).toEqual(data.version.working_data);
+    });
+    it("revalidates a saved invalid AI patch on retry without another provider charge",async()=>{
+      const data=await editableFixture(),execute=data.runtime.execute,calls=vi.fn(),hero=vi.fn(data.runtime.hero);data.runtime.hero=hero;
+      data.runtime.execute=job=>async request=>{
+        calls();const raw=await execute(job)(request);
+        return {...raw as Record<string,unknown>,output:[{type:"message",content:[{type:"output_text",text:JSON.stringify({headline:"Useful next steps",body:"A short introduction.",layout:"not-a-layout",items:null})}]}]};
+      };
+      const revision=await reviseFactoryDraft(member,{versionId:data.version.id,fingerprint:data.draft.fingerprint,requestId:randomUUID(),mode:"ai",pagePath:"index.html",sectionId:"__intro__",instruction:"Shorten the introduction."});
+      expect((await runFactoryBuildWorkerStep(data.runtime)).status).toBe("failed");expect(calls).toHaveBeenCalledTimes(1);
+      const before=(await pool.query("SELECT working_data FROM factory_build_versions WHERE id=$1",[revision.versionId])).rows[0].working_data;
+      expect(before.generationResponse).toBeTruthy();expect(before.blueprint).toEqual(data.version.working_data.blueprint);
+      await retryFactoryBuild(member,{versionId:revision.versionId,requestId:randomUUID()});expect((await runFactoryBuildWorkerStep(data.runtime)).status).toBe("failed");
+      expect(calls).toHaveBeenCalledTimes(1);expect(hero).not.toHaveBeenCalled();
+      expect((await pool.query("SELECT count(*)::int n FROM factory_build_costs WHERE version_id=$1",[revision.versionId])).rows[0].n).toBe(1);
+      expect((await getFactoryProjectBuilds(member,data.projectId))!.versions[0].previewUrl).toBeNull();
+    });
+    it("charges parent and revision requests against the same five-dollar approval including uncertain usage",async()=>{
+      const project=await prepared();await enable();const {runtime}=await fixtureRuntime();
+      for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+      const parent=(await claimFactoryBuild())!;
+      const settled=await reserveFactoryBuildCost({versionId:parent.id,leaseToken:parent.leaseToken,stage:parent.stage,requestKey:"draft-parent-settled",reservedMicros:3_000_000});
+      await attemptFactoryBuildCost(settled,parent.leaseToken);await settleFactoryBuildCost(settled,{actualMicros:3_000_000});
+      const uncertain=await reserveFactoryBuildCost({versionId:parent.id,leaseToken:parent.leaseToken,stage:parent.stage,requestKey:"draft-parent-uncertain",reservedMicros:1_500_000});
+      await attemptFactoryBuildCost(uncertain,parent.leaseToken);await uncertainFactoryBuildCost(uncertain);await failFactoryBuild({versionId:parent.id,leaseToken:parent.leaseToken,error:"Synthetic provider interruption."});
+      const draft=await getFactoryDraft(member,parent.id);expect(draft.spentMicros).toBe(4_730_000);expect(draft.remainingMicros).toBe(270_000);
+      const revision=await reviseFactoryDraft(member,manual(draft));expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+      const child=(await claimFactoryBuild())!;expect(child.id).toBe(revision.versionId);expect(child.stage).toBe("qa");
+      const shared=await reserveFactoryBuildCost({versionId:child.id,leaseToken:child.leaseToken,stage:child.stage,requestKey:"draft-child-uncertain",reservedMicros:100_000});
+      await attemptFactoryBuildCost(shared,child.leaseToken);await uncertainFactoryBuildCost(shared);
+      await expect(reserveFactoryBuildCost({versionId:child.id,leaseToken:child.leaseToken,stage:child.stage,requestKey:"over-shared-approval",reservedMicros:200_000})).rejects.toThrow("allowance");
+      const final=await reserveFactoryBuildCost({versionId:child.id,leaseToken:child.leaseToken,stage:child.stage,requestKey:"remaining-shared-approval",reservedMicros:170_000});
+      await attemptFactoryBuildCost(final,child.leaseToken);await uncertainFactoryBuildCost(final);await failFactoryBuild({versionId:child.id,leaseToken:child.leaseToken,error:"Synthetic quality interruption."});
+      const spent=await getFactoryDraft(member,child.id);expect(spent.spentMicros).toBe(5_000_000);expect(spent.remainingMicros).toBe(0);
+      await expect(reviseFactoryDraft(member,{...manual(spent),headline:"Another focused direction"})).rejects.toThrow("used its build allowance");
+      expect((await pool.query("SELECT count(*)::int n FROM factory_build_versions WHERE project_id=$1",[project.projectId])).rows[0].n).toBe(2);
+    });
   });
 });

@@ -151,12 +151,18 @@ describe("Compact dedicated contact pages",()=>{
     expect(qa.screenshots.map(shot=>`${shot.page}:${shot.viewport}`).sort()).toEqual(b.pages.flatMap(page=>[`${page.path}:desktop`,`${page.path}:mobile`]).sort());
     for(const viewport of ["desktop","mobile"] as const){
       const shot=qa.screenshots.find(shot=>shot.page===contactPath&&shot.viewport===viewport)!;
-      // This page contains the introductory section and the combined contact
-      // wrapper. The wrapper must remain a review region despite nesting its
-      // original sections rather than leaving them as direct main children.
-      expect(shot.regions).toHaveLength(2);
-      expect(shot.regions![1].top).toBeGreaterThan(shot.regions![0].top);
-      expect(shot.regions![1].height).toBeGreaterThan(500);
+      // Review the combined composition, while keeping both nested sections
+      // addressable for targeted screenshot-aware draft corrections.
+      expect(shot.regions).toHaveLength(4);
+      const composition=shot.regions!.find(region=>region.id==="contact-composition")!;
+      expect(composition.top).toBeGreaterThan(shot.regions![0].top);
+      expect(composition.height).toBeGreaterThan(500);
+      for(const id of ["direct-contact","inquiry"]){
+        const section=shot.regions!.find(region=>region.id===id)!;
+        expect(section).toBeDefined();
+        expect(section.top).toBeGreaterThanOrEqual(composition.top);
+        expect(section.top+section.height).toBeLessThanOrEqual(composition.top+composition.height+1);
+      }
       await writeFile(path.join(output,`contact-approved-${viewport}.png`),shot.bytes);
     }
   },60000);

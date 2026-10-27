@@ -23,7 +23,7 @@ function elapsed(since: string, now: number) {
   return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} hr ${minutes % 60} min`;
 }
 
-export function BuildProgress({ version, configured, enabled }: { version: FactoryBuildVersion; configured: boolean; enabled: boolean }) {
+export function BuildProgress({ version, configured, enabled, editableDraft = false }: { version: FactoryBuildVersion; configured: boolean; enabled: boolean; editableDraft?: boolean }) {
   const router = useRouter();
   const [refreshing, startRefresh] = useTransition();
   const [now, setNow] = useState<number | null>(null);
@@ -37,12 +37,14 @@ export function BuildProgress({ version, configured, enabled }: { version: Facto
   const index = stages.findIndex(stage => stage.value === version.stage);
   const ready = version.status === "ready", failed = version.status === "failed", queued = version.status === "queued";
   const activity = version.activity?.stage === version.stage ? version.activity : null;
+  const recovery = factoryBuildRecovery(version.error, version.reviewAttempts);
+  const recoverySummary = editableDraft && (recovery.kind === "plan" || /needs another revision after its included repair/i.test(version.error || "")) ? "Review the failed checks, then open Edit this draft below to refine the saved website. Your changes create a new checked version using the same approved plan, saved images and remaining allowance." : recovery.summary;
   const headline = ready ? "Your website preview is ready" : failed ? "This build needs attention" : version.status === "cancelled" ? "This build was cancelled" : queued ? index === 0 ? "Approved and in the build queue" : `Next: ${stages[index].label}` : stages[index].label;
   const detail = failed ? version.error || "The build could not finish. Your plan and previous completed websites are preserved." : version.status === "cancelled" ? "The saved plan is still available for review." : queued ? !configured ? "The approved plan is saved. Building waits until preview hosting and the website builder are configured." : !enabled ? "The builder is paused. An administrator can enable it to process approved plans within the spending limits." : index === 0 ? "Waiting for the next worker run. Starting can take a few minutes." : "The previous stage is saved. Waiting for the worker to continue with this step." : activity ? buildActivities[activity.step].label : stages[index].detail;
   return <>
     <div className={`factory-build-headline ${ready ? "is-ready" : ""}`} role="status" aria-live="polite" aria-atomic="true">
       {ready ? <CheckCheck size={23} /> : failed ? <CircleAlert size={23} /> : queued || version.status === "cancelled" ? <Clock3 size={23} /> : <LoaderCircle size={23} className="factory-spin" />}
-      <div><h3>{headline}</h3><p>{ready ? <>Checked <LocalTime value={version.readyAt || version.createdAt} />. Open the site or copy its link to share.</> : failed ? factoryBuildRecovery(version.error,version.reviewAttempts).summary : detail}</p>{failed && activity ? <p>Stopped during: {buildActivities[activity.step].label.toLowerCase()}.</p> : null}{failed?<details className="factory-error-details"><summary>Error details</summary><p>{detail}</p></details>:null}</div>
+      <div><h3>{headline}</h3><p>{ready ? <>Checked <LocalTime value={version.readyAt || version.createdAt} />. Open the site or copy its link to share.</> : failed ? recoverySummary : detail}</p>{failed && activity ? <p>Stopped during: {buildActivities[activity.step].label.toLowerCase()}.</p> : null}{failed?<details className="factory-error-details"><summary>Error details</summary><p>{detail}</p></details>:null}</div>
     </div>
     {!ready && version.status !== "cancelled" ? <ol className="factory-build-stages" aria-label="Build progress">
       {stages.map((stage, step) => {

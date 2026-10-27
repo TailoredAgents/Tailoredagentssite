@@ -1,5 +1,7 @@
 # Website Builder quality upgrade — October 27, 2026
 
+**Latest correction-workflow checkpoint - October 27:** [Saved draft editing](WEBSITE_BUILDER_DRAFT_EDITING.md) is implemented and locally verified. Failed checks now retain affected-page screenshots; manual and scoped AI edits create new checked versions using the same approval and saved images. Immediate-parent restore and cumulative revision spending are implemented. This supersedes the historical no-editor limitation recorded below. Broader design polish and real quality calibration remain outstanding; deployment/live output verification is separate.
+
 Ongoing policy: [shared Website Builder standards](WEBSITE_BUILDER_STANDARDS.md) now carry the general lessons from this pilot into planning, generation and review. Individual client choices remain specific to their approved plan.
 
 ## Authorization and objective
@@ -15,7 +17,7 @@ Reference: https://cosmos-heating-air.onrender.com/ . Existing generated preview
 - Research/planning $25/month; builds/images $50/month and $5/site maximum. Keep existing reservations, uncertain charges, bounded retries and prior working previews.
 - Actual source/asset export and shared Render preview hosting.
 - No automatic paid rebuild of Cosmo's or other existing approved/ready projects just to demonstrate the upgrade. A materially changed creative direction needs a new reviewed plan.
-- Visitor chatbot and finished-site editing copilot remain separate follow-on work; this release is the design/review quality foundation.
+- Visitor chatbot and a broader project/file editing copilot remain follow-on work. The initial scoped draft editor is recorded in the latest checkpoint above; the original release below established the design/review foundation.
 
 ## Implementation checklist
 

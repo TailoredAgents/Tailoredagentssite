@@ -49,3 +49,12 @@ Release **`390175760410f3b0082ebac9eee946856817e8a8`** was verified live on both
 - Adjacent direct channels and the inquiry form on a dedicated Contact page use the composition described above. Browser checks cover narrow/mobile/desktop layouts, anchors and demo-form behavior; visual review captures this combined region.
 - Direct-only closing bands use their second desktop column for the existing channels/actions instead of reserving it for a nonexistent form. Empty and automatic fallback bands use one content column. Non-Contact form headings and an immediately preceding itemless, image-free explanation use compact spacing; all copy and controls remain intact.
 - Technical recovery rerenders saved content/assets within the existing review and spending allowance. It does not reset attempts, regenerate images, approve a plan or alter a published preview in place.
+
+## Saved-draft corrections
+
+- A completed image-backed draft can receive a targeted manual or AI revision within its original approved plan. Select a named page and introduction/section; preserve routes, forms, action destinations, contact channels and image identities. New scope still requires a revised plan and exact approval.
+- Manual edits change supported text, item content and section layout without a text-generation request. AI edits receive bounded screenshots of the actual selected page/section and return a validated content patch. Neither path replaces the entire website or buys new images.
+- Each explicit revision creates a separate version, copies verified saved assets and runs fresh browser and visual checks. The working published preview remains available until a replacement passes. Restoring the previous draft also creates a checked version.
+- Every revision shares the original approval's per-site allowance. Include previous, reserved and uncertain charges in that total and the existing monthly limit. Editing does not clear historical charges or reset an older version's repair/review attempts.
+- Preserve private failed-page screenshots with matching issues. Older completed builds without an editable snapshot remain viewable/exportable; do not reconstruct their editing state from public HTML. Saved failed drafts with complete images can be edited.
+- See [the draft-editing workflow and verification](WEBSITE_BUILDER_DRAFT_EDITING.md). This is a bounded section editor, not an arbitrary-code or image editor.

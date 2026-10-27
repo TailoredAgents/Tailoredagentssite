@@ -2,7 +2,7 @@
 
 Research date: October 27, 2026. Local baseline: `53eec1d` (renderer release `1203b5b`).
 
-Status: research and recommended work, **not implemented by this report**. This investigation did not approve/retry a build, change live settings, buy a service, or change spending limits. The live Cosmo build state was not inspected during this research.
+Status: the original investigation below is a historical baseline. The **October 27 saved-draft editing implementation** addresses the first correction-workflow phase; see [workflow, limits and verification](WEBSITE_BUILDER_DRAFT_EDITING.md). That checkpoint records local verification, not a live output-quality claim. The original investigation did not approve/retry a build, change live settings, buy a service, or change spending limits; the live Cosmo state was not inspected during that research.
 
 ## Main finding
 
@@ -25,7 +25,7 @@ The sources below document mechanisms we can learn from. They are not a controll
 
 These workflows support keeping our structured foundation while making its designs and editing controls substantially better. They do not establish that a platform migration or a more expensive model would solve our current bottlenecks.
 
-## Confirmed local gaps
+## Confirmed local gaps at the research baseline
 
 1. **Saved drafts cannot be edited directly.** After the included correction, a copy change requires revised planning and another approved build. Technical retry rerenders existing content. See [worker](../lib/factory/build-worker.ts), lines 222-235, and the recorded limitation in [quality upgrade](WEBSITE_BUILDER_QUALITY_UPGRADE.md).
 2. **Repair does not receive screenshots.** Review sees the rendered pages, but repair receives the prior blueprint and written issues, then returns an entire replacement blueprint. See [generation provider](../lib/factory/site/provider.ts), lines 29-38, and [worker](../lib/factory/build-worker.ts), lines 225-233. This creates room for both missed visual defects and unrelated changes.
@@ -37,6 +37,8 @@ These workflows support keeping our structured foundation while making its desig
 8. **Performance evidence is limited.** Resource-size budgets are valuable, but current timings come from unthrottled, in-memory Chromium. Test deployed previews under a constrained mobile connection before making real-world speed claims. See [performance measurement](../lib/factory/site/performance.ts), lines 6-8 and 73-101.
 
 ## Recommended implementation order
+
+**Implementation checkpoint — October 27:** failed-page desktop/mobile evidence, manual text/supported-layout editing, scoped screenshot-aware AI edits, immutable child versions, immediate-parent restore and cumulative same-approval spending are now implemented and locally tested. This addresses gaps 1, 2 and 6 above within the bounded [draft-editing capabilities](WEBSITE_BUILDER_DRAFT_EDITING.md). Failed previews remain authenticated screenshot evidence. Image-placement edits and a full interactive canvas are not part of this first editor. Design-family polish, visual plan contracts, human/reference calibration and deployed mobile performance remain outstanding; existing quality thresholds are unchanged.
 
 ### 1. Make correcting the existing draft practical
 

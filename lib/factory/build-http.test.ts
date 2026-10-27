@@ -42,4 +42,16 @@ describe("Factory uploads and authenticated artifacts",()=>{
     expect((await screenshotDownload(new Request("https://www.tailoredagents.com/screenshot?view=invalid"),params)).status).toBe(400);
     expect((await screenshotDownload(new Request("https://www.tailoredagents.com/screenshot?view=mobile"),params)).status).toBe(200);expect(f.screenshot).toHaveBeenCalledTimes(2);
   });
+  it("serves a selected failed page privately and rejects unsafe page paths before storage",async()=>{
+    const id=randomUUID(),params={params:Promise.resolve({id})};
+    const response=await screenshotDownload(new Request("https://www.tailoredagents.com/screenshot?view=mobile&page=contact%2Findex.html"),params);
+    expect(response.status).toBe(200);expect(response.headers.get("cache-control")).toBe("private, no-store");expect(response.headers.get("x-robots-tag")).toContain("noindex");
+    expect(f.screenshot).toHaveBeenNthCalledWith(1,context,id,"mobile","contact/index.html");expect(f.screenshot).toHaveBeenNthCalledWith(2,context,id,"mobile","contact/index.html");
+    f.get.mockClear();expect((await screenshotDownload(new Request("https://www.tailoredagents.com/screenshot?view=desktop&page=..%2Findex.html"),params)).status).toBe(400);expect(f.get).not.toHaveBeenCalled();
+  });
+  it("does not return a screenshot if access or the selected evidence changes during its storage read",async()=>{
+    const params={params:Promise.resolve({id:randomUUID()})},request=new Request("https://www.tailoredagents.com/screenshot?view=mobile&page=contact%2Findex.html");
+    f.screenshot.mockResolvedValueOnce({storageKey:"private/contact.png"}).mockRejectedValueOnce(new FactoryAccessError("Removed membership"));expect((await screenshotDownload(request,params)).status).toBe(404);
+    f.screenshot.mockResolvedValueOnce({storageKey:"private/contact.png"}).mockResolvedValueOnce({storageKey:"private/new-contact.png"});expect((await screenshotDownload(request,params)).status).toBe(404);
+  });
 });

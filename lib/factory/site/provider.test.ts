@@ -1,4 +1,5 @@
 import {describe,expect,it,vi} from "vitest";
+import sharp from "sharp";
 vi.mock("server-only",()=>({}));
 import {generatePortableSite,siteUsage} from "./provider";
 import {fixtureBlueprint,fixtureSitePlan} from "./fixtures";
@@ -36,6 +37,34 @@ describe("Portable site provider (synthetic responses only)",()=>{
     const previous=fixtureBlueprint(),next=fixtureBlueprint();next.heroImage.prompt="A different image that should not create another charge.";
     const result=await generatePortableSite({plan:fixtureSitePlan,previousBlueprint:previous,repairIssues:[{code:"overflow",message:"Long heading",page:"index.html",severity:"error"}]},async request=>{expect(request.stage).toBe("repair");return response(next);});
     expect(result.blueprint.heroImage).toEqual(previous.heroImage);
+  });
+  it("repairs with actual failing-page screenshots and reserves their input before the single request",async()=>{
+    const previous=fixtureBlueprint("trades","split",true),bytes=await sharp({create:{width:390,height:2400,channels:3,background:"#163c50"}}).png().toBuffer();
+    const issue={code:"review_quality_copy",message:"Shorten the options section introduction.",page:"services/index.html",severity:"error" as const};
+    const execute=vi.fn(async(_request:SiteModelRequest)=>response(previous));
+    await generatePortableSite({plan:fixtureSitePlan,previousBlueprint:previous,repairIssues:[issue],repairScreenshots:[
+      {page:"index.html",viewport:"mobile",bytes:new Uint8Array([0])}, // Unaffected pages must not enter the request.
+      {page:issue.page,viewport:"mobile",bytes,regions:[{id:"options",top:850,height:900}]},
+    ]},execute);
+    expect(execute).toHaveBeenCalledOnce();
+    const request=execute.mock.calls[0][0],content=(request.body.input as Array<{content:Array<{type:string;text?:string;image_url?:string;detail?:string}>}>)[0].content;
+    const images=content.filter(item=>item.type==="input_image");expect(images).toHaveLength(2);
+    expect(content.some(item=>item.text?.includes("readable section (options) detail; cropped rows 850–1850"))).toBe(true);
+    let imageBytes=0;
+    for(const image of images){
+      expect(image.detail).toBe("high");expect(image.image_url).toMatch(/^data:image\/jpeg;base64,/);
+      const bytes=Buffer.from(image.image_url!.split(",")[1],"base64");imageBytes+=bytes.length;
+      expect((await sharp(bytes).metadata()).format).toBe("jpeg");
+    }
+    expect(request.reservedMicros).toBe(factoryUsageCost(request.inputBytes-imageBytes+8192+images.length*32768,12000,0));
+    // A saved paid response remains recoverable without retaining image payloads.
+    expect((await generatePortableSite({plan:fixtureSitePlan,previousBlueprint:previous,repairIssues:[issue]},async()=>response(previous))).blueprint).toEqual(previous);
+  });
+  it("rejects invalid selected correction screenshots before making any paid request",async()=>{
+    const execute=vi.fn(),previous=fixtureBlueprint(),issue={code:"review_design",message:"Correct the introduction.",page:"index.html",severity:"error" as const};
+    await expect(generatePortableSite({plan:fixtureSitePlan,previousBlueprint:previous,repairIssues:[issue],repairScreenshots:[{page:"index.html",viewport:"desktop",bytes:new Uint8Array(12_000_001)}]},execute)).rejects.toThrow("source screenshot exceeds");
+    await expect(generatePortableSite({plan:fixtureSitePlan,previousBlueprint:previous,repairIssues:[issue],repairScreenshots:[{page:"index.html",viewport:"desktop",bytes:new Uint8Array([1,2,3])}]},execute)).rejects.toThrow();
+    expect(execute).not.toHaveBeenCalled();
   });
   it("rejects excessive input before a billable call and never retries executor errors",async()=>{
     const execute=vi.fn().mockRejectedValue(new Error("Synthetic transport interruption"));

@@ -1,5 +1,5 @@
 import type { FactoryPlanContent } from "../types";
-import type { SiteIssue } from "./artifacts";
+import type { SiteIssue, SiteQaResult } from "./artifacts";
 
 export const designFamilyIds=["trades","editorial","wellness","hospitality","professional","general"] as const;
 export type DesignFamilyId=typeof designFamilyIds[number];
@@ -49,4 +49,4 @@ export type SiteUsage={providerId:string;inputTokens:number;outputTokens:number;
 export type SiteModelRequest={stage:"generate"|"repair"|"review";model:string;body:Record<string,unknown>;inputBytes:number;maxOutputTokens:number;reservedMicros:number};
 /** Executor owns reserve -> commit attempt -> HTTP -> settle/uncertain. No HTTP retry. */
 export type SiteModelExecutor=(request:SiteModelRequest)=>Promise<unknown>;
-export type SiteGenerationInput={plan:FactoryPlanContent;family?:DesignFamilyId;previousBlueprint?:SiteBlueprint;repairIssues?:SiteIssue[];assets?:SiteAssetDescriptor[]};
+export type SiteGenerationInput={plan:FactoryPlanContent;family?:DesignFamilyId;previousBlueprint?:SiteBlueprint;repairIssues?:SiteIssue[];repairScreenshots?:SiteQaResult["screenshots"];assets?:SiteAssetDescriptor[]};

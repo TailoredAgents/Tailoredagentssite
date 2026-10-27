@@ -260,5 +260,37 @@ button.factory-stat{text-align:left;cursor:pointer;font:inherit;color:var(--work
 .factory-error-details{margin-top:.75rem;font-size:.85rem}
 .factory-error-details summary{cursor:pointer;font-weight:600}
 .factory-error-details p{margin-top:.65rem!important;white-space:pre-wrap}
+.factory-draft-editor>.factory-build-caption,.factory-draft-editor>div>.factory-build-caption:first-child{margin:0 0 1rem}
+.factory-draft-editor .factory-field select,.factory-evidence-page select{display:block;width:100%;min-width:0;min-height:44px;padding:.7rem;border:1px solid var(--workspace-control-line);border-radius:8px;background:var(--workspace-field);color:var(--workspace-ink);font:400 .875rem var(--font-sans)}
+.factory-evidence-page{max-width:440px;margin:1rem 0}
+.factory-evidence-issues{margin:.9rem 0}
+.factory-evidence-other>.factory-list{margin-top:.8rem}
+.factory-draft-loading{display:flex;align-items:center;gap:.5rem;color:var(--workspace-muted);font-size:.85rem}
+.factory-draft-selection{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:0 0 1rem}
+.factory-draft-mode{display:flex;flex-wrap:wrap;gap:.3rem;border-bottom:1px solid var(--workspace-line);margin:0 0 1.1rem;padding-bottom:.65rem}
+.factory-draft-mode button{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem .8rem;min-height:42px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--workspace-muted);font:600 .8rem var(--font-sans);cursor:pointer}
+.factory-draft-mode button[aria-pressed=true]{background:var(--workspace-blue-soft);border-color:var(--workspace-line);color:var(--workspace-blue)}
+.factory-draft-mode button:disabled{opacity:.55;cursor:not-allowed}
+.factory-draft-fields{display:grid;gap:1rem}
+.factory-draft-items>summary,.factory-draft-diff>summary,.factory-draft-restore>summary{font-size:.8rem}
+.factory-draft-items>div{padding-top:.8rem}
+.factory-draft-item{min-width:0;display:grid;gap:.75rem;padding:1rem;border:1px solid var(--workspace-line);border-radius:8px;margin:0 0 .85rem;background:var(--workspace-field)}
+.factory-draft-item legend{padding:0 .35rem;font-size:.75rem;font-weight:650;color:var(--workspace-muted)}
+.factory-draft-item textarea{min-height:80px}
+.factory-draft-item>.factory-button{justify-self:start;min-height:36px;font-size:.75rem;padding:.4rem .6rem}
+.factory-draft-diff{border-top:1px solid var(--workspace-line);padding-top:1rem}
+.factory-draft-comparison{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.8rem}
+.factory-draft-copy{min-width:0;padding:1rem;background:var(--workspace-field);border:1px solid var(--workspace-line);border-radius:8px;font-size:.8rem;line-height:1.6}
+.factory-draft-copy:last-child{background:var(--workspace-blue-soft)}
+.factory-draft-copy h4{margin:0 0 .6rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--workspace-muted)}
+.factory-draft-copy>strong{font-size:.9rem}
+.factory-draft-copy p{margin:.4rem 0 .65rem;color:var(--workspace-muted);white-space:pre-wrap}
+.factory-draft-copy small{color:var(--workspace-muted)}
+.factory-draft-copy ul{padding-left:1rem;margin:.8rem 0 0}
+.factory-draft-cost{font-size:.78rem;line-height:1.6;color:var(--workspace-muted);margin:1rem 0}
+.factory-draft-actions{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem}
+.factory-draft-restore{border-top:1px solid var(--workspace-line);padding-top:1rem;margin-top:1.2rem}
+.factory-draft-restore>div{padding-top:.4rem}
+@media(max-width:600px){.factory-draft-selection,.factory-draft-comparison{grid-template-columns:1fr}.factory-draft-editor .factory-field select,.factory-evidence-page select{font-size:16px}.factory-draft-mode button{flex:1}.factory-draft-actions>.factory-button{width:100%}}
 @media(max-width:1000px){.factory-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.factory-heading{flex-direction:column}.factory-project-row{align-items:flex-start;flex-direction:column;gap:1rem}.factory-project-actions{justify-content:flex-start!important}.factory-steps{grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}.factory-steps li{justify-content:flex-start}.factory-navigation{gap:.2rem}.factory-navigation a{padding:.6rem}.factory-heading>.factory-button{width:100%}}

@@ -9,6 +9,9 @@ import {claimFactoryBuild,saveFactoryBuildStage,saveFactoryBuildProgress,rollbac
 import {FactoryBuildBudgetError} from "./build-budget";
 import {factorySiteExecutor,generateFactoryHero,FactoryBuildRequestNotAttemptedError} from "./build-provider";
 import {generatePortableSite} from "./site/provider";
+import {generateSiteDraftRevision} from "./site/draft-provider";
+import {boundedFactoryFailureIssues,saveFactoryFailureScreenshots} from "./build-failure-evidence";
+import type {FactoryDraftRevision} from "./draft-types";
 import {SiteGenerationResponseError} from "./site/errors";
 import {portableBundle,validateSiteBlueprint} from "./site/validate";
 import {renderPortableSite} from "./site/render";
@@ -26,7 +29,7 @@ import type {FactoryClaimedBuild,FactoryBuildManifest,FactoryBuildQa,FactoryBuil
 import {maximumReviewAttempts} from "./build-types";
 import type {FactoryBuildActivity,FactoryBuildActivityStep} from "./build-progress";
 
-type Working={generationResponse?:unknown;activity?:FactoryBuildActivity;blueprint?:SiteBlueprint;heroKey?:string;provenance?:unknown;imageAssets?:Record<string,FactorySavedImage>;qaReport?:FactoryBuildQa;manifest?:FactoryBuildManifest;sourceKey?:string;repaired?:boolean;
+type Working={generationResponse?:unknown;activity?:FactoryBuildActivity;blueprint?:SiteBlueprint;heroKey?:string;provenance?:unknown;imageAssets?:Record<string,FactorySavedImage>;qaReport?:FactoryBuildQa;manifest?:FactoryBuildManifest;sourceKey?:string;repaired?:boolean;draftRevision?:FactoryDraftRevision;
   repairResponse?:{blueprintHash:string;issues:SiteIssue[];raw:unknown};lastFailedQa?:FactoryBuildFailureQa;
   reviewAttempts?:number;review?:{fingerprint:string;result:SiteReview};reviewResponse?:{fingerprint:string;raw:unknown;requireScorecard?:boolean;imageCount?:number};checkedManifest?:FactoryBuildManifest};
 class FactoryBuildQualityError extends Error{}
@@ -84,7 +87,42 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
   const persist=async()=>{if(!await saveFactoryBuildProgress({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,workingData:state as Record<string,unknown>}))throw new Error("This website build was paused or removed.");};
   const report=async(step:FactoryBuildActivityStep)=>{state.activity={stage:build.stage,step,startedAt:new Date().toISOString()};await persist();};
   const advance=async(nextStage:"images"|"qa"|"publish"|"verify")=>{if(!await saveFactoryBuildStage({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,nextStage,workingData:state as Record<string,unknown>,manifest:state.manifest,qaReport:state.qaReport,sourceKey:state.sourceKey}))throw new Error("This website build was paused or removed.");};
+  const reuseRevisionImages=async()=>{
+    const revision=state.draftRevision;if(!revision)return;
+    if(!state.blueprint||revision.version!==1||!/^[0-9a-f-]{36}$/i.test(revision.sourceVersionId)||revision.sourcePrefix!==`factory/${build.workspaceId}/${build.projectId}/${revision.sourceVersionId}/`||revision.sourceHeroKey!==`${revision.sourcePrefix}assets/hero.png`)throw new Error("The saved draft does not belong to this website.");
+    state.imageAssets={...state.imageAssets};
+    for(const slot of resolveFactoryBuildImages(build,state.blueprint)){
+      const source=revision.sourceImageAssets[slot.id],key=`${build.storagePrefix}assets/${slot.id}.png`;
+      const expected=createHash("sha256").update(JSON.stringify({id:slot.id,role:slot.role,source:slot.source,uploadId:slot.uploadId,prompt:slot.prompt})).digest("hex");
+      if(!source||source.key!==`${revision.sourcePrefix}assets/${slot.id}.png`||source.inputHash!==expected)throw new Error("A draft revision cannot change its saved image identities.");
+      const saved=state.imageAssets[slot.id];
+      if(saved){if(saved.key!==key||saved.sha256!==source.sha256||saved.inputHash!==expected)throw new Error("The saved revision image changed.");continue;}
+      if(build.stage==="images")await report("supplied_image");
+      const bytes=await runtime.storage.get(source.key,8_000_000);
+      if(createHash("sha256").update(bytes).digest("hex")!==source.sha256)throw new Error("A saved draft image could not be verified.");
+      await runtime.storage.put(key,bytes,"image/png");
+      state.imageAssets[slot.id]={...source,key};
+      if(slot.id==="hero")state.heroKey=key;
+      state.provenance=revision.sourceProvenance;await persist();
+    }
+  };
   if(build.stage==="generate"){
+    if(state.draftRevision){
+      const revision=state.draftRevision;
+      if(revision.mode!=="ai"||!revision.target||!revision.instruction||!state.blueprint)throw new Error("The draft revision request is incomplete.");
+      await reuseRevisionImages();
+      // The scoped editor sees the actual previous render. A saved paid response
+      // is replayed without another browser pass or provider request.
+      const screenshots=state.generationResponse===undefined?(await runtime.qa((await withSite(build,state,runtime)).files)).screenshots:undefined;
+      await report("generating");
+      const result=await generateSiteDraftRevision({plan:build.plan,previousBlueprint:state.blueprint,target:revision.target,instruction:revision.instruction,assets:factoryBuildAssetDescriptors(build),repairScreenshots:screenshots},async request=>{
+        if(state.generationResponse!==undefined)return state.generationResponse;
+        const raw=await runtime.execute(build)(request);
+        if(Buffer.byteLength(JSON.stringify(raw))>1_000_000)throw new SiteGenerationResponseError("The draft correction exceeded its saved-data limit.");
+        state.generationResponse=raw;await persist();return raw;
+      });
+      state.blueprint=result.blueprint;delete state.generationResponse;await advance("images");return;
+    }
     await report("generating");
     const result=await generatePortableSite({plan:build.plan,assets:factoryBuildAssetDescriptors(build)},async request=>{
       // Human-approved input is immutable. Revalidate a saved paid response on
@@ -98,6 +136,7 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
     state.blueprint=result.blueprint;delete state.generationResponse;await advance("images");return;
   }
   if(build.stage==="images"){
+    await reuseRevisionImages();
     if(!state.blueprint)throw new Error("The website blueprint is missing.");
     const slots=resolveFactoryBuildImages(build,state.blueprint);
     state.imageAssets={...state.imageAssets};
@@ -203,17 +242,12 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
     const rememberFailure=async(site:Awaited<ReturnType<typeof withSite>>,qa:Awaited<ReturnType<typeof inspect>>)=>{
       if(qa.passed){if(state.lastFailedQa){delete state.lastFailedQa;await persist();}return;}
       const visual=state.review?.fingerprint===createHash("sha256").update(JSON.stringify(site.manifest)).digest("hex")?state.review.result:undefined;
-      const report:FactoryBuildFailureQa={checkedAt:qa.checkedAt,issues:qa.issues.slice(0,30).map(issue=>({...issue,code:issue.code.slice(0,100),message:issue.message.slice(0,1000),page:issue.page.slice(0,180)})),screenshots:{},
+      const report:FactoryBuildFailureQa={checkedAt:qa.checkedAt,issues:boundedFactoryFailureIssues(qa.issues),screenshots:{},
         ...(visual?{designReview:{summary:visual.summary,reviewedPages:visual.reviewedPages,imageCount:visual.imageCount,...(visual.reviewVersion?{reviewVersion:visual.reviewVersion,overallScore:visual.overallScore,scorecard:visual.scorecard}:{})}}:{})};
       state.lastFailedQa=report;await persist();
       // Keep diagnostic images private. Store the useful errors first so a
       // screenshot-storage interruption cannot erase the original QA finding.
-      for(const view of ["desktop","mobile"] as const){
-        const shot=qa.screenshots.find(shot=>shot.page==="index.html"&&shot.viewport===view);
-        if(!shot)continue;
-        const key=`${build.storagePrefix}failed/screenshots/${view}.png`;
-        try{await runtime.storage.put(key,shot.bytes,"image/png");report.screenshots[view]=key;}catch{continue;}
-      }
+      await saveFactoryFailureScreenshots({report,qa,prefix:build.storagePrefix,pages:site.manifest.files.filter(file=>file.path.endsWith(".html")).map(file=>file.path),storage:runtime.storage});
       await persist();
     };
     await report("preparing");
@@ -223,7 +257,7 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
       // Scorecard failures can follow up to 20 optional review warnings. Keep
       // actual blockers inside the bounded correction request before refinements.
       const issues=[...qa.issues.filter(issue=>issue.severity==="error"),...qa.issues.filter(issue=>issue.severity==="warning")].slice(0,20),blueprintHash=createHash("sha256").update(JSON.stringify(state.blueprint)).digest("hex");
-      const revised=await generatePortableSite({plan:build.plan,previousBlueprint:state.blueprint,repairIssues:issues,assets:factoryBuildAssetDescriptors(build)},async request=>{
+      const revised=await generatePortableSite({plan:build.plan,previousBlueprint:state.blueprint,repairIssues:issues,repairScreenshots:qa.screenshots,assets:factoryBuildAssetDescriptors(build)},async request=>{
         const raw=await boundedExecute("repair")(request);
         if(Buffer.byteLength(JSON.stringify(raw))>1_000_000)throw new SiteGenerationResponseError("The website correction exceeded its saved-data limit.");
         state.repairResponse={blueprintHash,issues,raw};await persist();return raw;

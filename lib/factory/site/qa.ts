@@ -128,7 +128,7 @@ export async function checkPortableSite(input:{files:SiteFiles;browser:Browser})
           // Accessibility probes focus the skip link and can scroll the page.
           // Capture the actual resting design after those interaction checks.
           await page.evaluate(async()=>{if(document.activeElement instanceof HTMLElement)document.activeElement.blur();window.scrollTo({top:0,behavior:"instant"});await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));});
-          const regions=await page.evaluate(()=>[...document.querySelectorAll("main > section,main > header,main > .hero,main > .contact-composition")].slice(0,16).map((el,index)=>{const rect=el.getBoundingClientRect();return {id:el.id||`section-${index}`,top:Math.max(0,Math.round(rect.top+scrollY)),height:Math.round(rect.height)};}).filter(region=>region.height>0));
+          const regions=await page.evaluate(()=>[...document.querySelectorAll("main > section,main > header,main > .hero,main > .contact-composition,main > .contact-composition > section")].slice(0,20).map((el,index)=>{const rect=el.getBoundingClientRect();return {id:el.id||(el.classList.contains("contact-composition")?"contact-composition":el.classList.contains("hero")?"__intro__":`section-${index}`),top:Math.max(0,Math.round(rect.top+scrollY)),height:Math.round(rect.height)};}).filter(region=>region.height>0));
           screenshots.push({page:file,viewport:viewport.name,regions,bytes:await page.screenshot({fullPage:true,animations:"disabled",timeout:10000})});
         } catch {issues.push({code:"qa_interrupted",message:"Browser checks did not complete for this page.",page:file,viewport:viewport.name,severity:"error"});}
         finally{await page.close();}

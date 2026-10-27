@@ -11,6 +11,7 @@ import {factoryPreviewUrl} from "./build-data";
 import {factoryBuildConfiguration} from "./build-config";
 import type {FactoryClaimedBuild,FactoryBuildStage,FactoryBuildStageResult,FactoryBuildFinish,FactoryBuildManifest,FactoryBuildQa} from "./build-types";
 import {maximumReviewAttempts} from "./build-types";
+import {factoryDraftSnapshot} from "./draft-snapshot";
 
 const uuid=z.string().uuid();
 const dollars=z.coerce.number().finite().min(1).refine(v=>Math.abs(Math.round(v*100)-v*100)<1e-8,"Use at most two decimal places.");
@@ -45,7 +46,7 @@ async function buildTransaction<T>(work:(db:PoolClient)=>Promise<T>){const db=aw
 async function snapshotUploads(db:PoolClient,projectId:string,workspaceId:string){
   return (await db.query(`SELECT id,filename,role,alt,content_type AS "contentType",byte_size AS "byteSize",storage_key AS "storageKey",created_at AS "createdAt" FROM factory_uploads WHERE project_id=$1 AND workspace_id=$2 AND status='ready' ORDER BY created_at,id LIMIT 20`,[projectId,workspaceId])).rows.map(u=>({...u,createdAt:new Date(u.createdAt).toISOString()}));
 }
-function preserveBuildInputs(saved:Record<string,unknown>,updated:Record<string,unknown>){return {...updated,inputUploads:saved.inputUploads??[]};}
+function preserveBuildInputs(saved:Record<string,unknown>,updated:Record<string,unknown>){return {...updated,inputUploads:saved.inputUploads??[],...(saved.draftRevision?{draftRevision:saved.draftRevision}:{})};}
 /** Requires an existing approval row. Called in the approval transaction; never from research completion. */
 export async function queueApprovedFactoryBuild(db:PoolClient,requestId:string){
   const approved=(await db.query(`SELECT r.*,p.id project,l.anonymized_at FROM factory_build_requests r JOIN factory_projects p ON p.id=r.project_id AND p.workspace_id=r.workspace_id JOIN leads l ON l.id=p.lead_id AND l.workspace_id=p.workspace_id JOIN workspaces w ON w.id=p.workspace_id WHERE r.id=$1 AND l.anonymized_at IS NULL AND w.status='active' FOR UPDATE OF p`,[requestId])).rows[0];
@@ -130,7 +131,8 @@ export async function finishFactoryBuild(input:FactoryBuildFinish){
     const expected=factoryPreviewUrl(row.preview_token),checked=Date.parse(input.verification.checkedAt);
     if(!expected||input.verification.url!==expected||input.verification.status!==200||!Number.isFinite(checked)||checked>Date.now()+30000||checked<Date.now()-300000)throw new FactoryInputError("Verify the real hosted preview before marking this website ready.");
     if(!isDeepStrictEqual(input.manifest,row.manifest)||input.sourceKey!==row.source_key)throw new FactoryInputError("The verified preview must match the published artifact manifest.");
-    await db.query(`UPDATE factory_build_versions SET status='ready',manifest=$3::jsonb,qa_report=$4::jsonb,source_key=$5,verification=$6::jsonb,working_data='{}',lease_token=NULL,lease_until=NULL,ready_at=now(),notified_at=now(),updated_at=now() WHERE id=$1 AND lease_token=$2`,[input.versionId,input.leaseToken,JSON.stringify(input.manifest),JSON.stringify(input.qaReport),input.sourceKey,JSON.stringify(input.verification)]);
+    const snapshot=factoryDraftSnapshot(row.working_data,row.storage_prefix);
+    await db.query(`UPDATE factory_build_versions SET status='ready',manifest=$3::jsonb,qa_report=$4::jsonb,source_key=$5,verification=$6::jsonb,draft_snapshot=$7::jsonb,working_data='{}',lease_token=NULL,lease_until=NULL,ready_at=now(),notified_at=now(),updated_at=now() WHERE id=$1 AND lease_token=$2`,[input.versionId,input.leaseToken,JSON.stringify(input.manifest),JSON.stringify(input.qaReport),input.sourceKey,JSON.stringify(input.verification),snapshot?JSON.stringify(snapshot):null]);
     await db.query("UPDATE factory_build_requests SET status='ready' WHERE id=$1",[row.build_request_id]);
     await db.query(`INSERT INTO factory_messages(id,workspace_id,project_id,role,body,request_id) VALUES($1,$2,$3,'assistant',$4,$5) ON CONFLICT(project_id,request_id) DO NOTHING`,[randomUUID(),row.workspace_id,row.project_id,`Website version ${row.version} is ready. Open its preview or download the source from the website build panel.`,`build-ready:${row.id}`]);
     await insertAuditLog(db,{workspaceId:row.workspace_id,action:"factory.build_ready",targetType:"factory_project",targetId:row.project_id,metadata:{versionId:row.id,version:row.version}});return true;
@@ -163,6 +165,7 @@ export async function retryFactoryBuild(context:DashboardContext,input:unknown){
     const request=`${context.user.id}:${data.requestId}`;
     if((await db.query("SELECT 1 FROM factory_build_retries WHERE version_id=$1 AND request_key=$2",[row.id,request])).rowCount)return {projectId:row.project_id};
     if(row.status!=="failed")throw new FactoryInputError("Only a failed website build can be retried.");
+    if((await db.query("SELECT 1 FROM factory_build_versions WHERE project_id=$1 AND workspace_id=$2 AND id<>$3 AND (version>$4 OR status IN ('queued','running')) LIMIT 1",[row.project_id,context.workspace.id,row.id,row.version])).rowCount)throw new FactoryInputError("Open the newest website version before retrying. Earlier drafts stay preserved in version history.");
     if(row.retry_count>=3)throw new FactoryInputError("This website version has reached its three retry limit. Review the failure before requesting another approved version.");
     await db.query("INSERT INTO factory_build_retries(version_id,request_key) VALUES($1,$2)",[row.id,request]);
     await db.query("UPDATE factory_build_versions SET status='queued',retry_count=retry_count+1,error=NULL,updated_at=now() WHERE id=$1",[row.id]);

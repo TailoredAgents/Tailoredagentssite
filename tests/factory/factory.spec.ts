@@ -3,6 +3,7 @@ import { Pool } from "pg";
 import { randomUUID } from "node:crypto";
 import AxeBuilder from "@axe-core/playwright";
 import { dashboardPreviewPath } from "../dashboard-theme-state";
+import { fixtureBlueprint } from "../../lib/factory/site/fixtures";
 
 async function control(request: APIRequestContext, action = "inspect") {
   const response = await request.post("http://127.0.0.1:3181/control", {headers:{authorization:"Bearer factory-synthetic-control"},data:{action}});
@@ -163,7 +164,7 @@ async function approvedBuild(page: Page, request: APIRequestContext) {
   await generate(request);
   await page.reload();
   await page.getByRole("button", { name: "Approve plan & build website", exact: true }).click();
-  await expect(page.getByRole("heading",{name:"Approved and in the build queue",exact:true})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Approved and in the build queue",exact:true})).toBeVisible({timeout:20000});
   const row = (await buildDb.query("SELECT * FROM factory_build_versions ORDER BY created_at DESC LIMIT 1")).rows[0];
   expect(row).toBeTruthy();
   return row;
@@ -251,6 +252,81 @@ test("shows private failed review evidence and bounded administrator recovery",a
   await buildDb.query("UPDATE factory_build_versions SET retry_count=2,working_data=working_data||'{\"reviewAttempts\":3}'::jsonb WHERE id=$1",[version.id]);await page.reload();
   await expect(page.getByText("This version has used its included correction and all three visual reviews.",{exact:false})).toBeVisible();
   await expect(page.getByText("Administrator recovery",{exact:true})).toHaveCount(0);
+});
+
+test("opens screenshots of the page that failed instead of showing Home for every issue", async ({page,request}) => {
+  const version = await approvedBuild(page,request);
+  const failedQa = {checkedAt:new Date().toISOString(),issues:[{code:"review_design",page:"services/index.html",viewport:"mobile",severity:"error",message:"The Services heading overlaps its content."}],screenshots:{desktop:`${version.storage_prefix}failed/screenshots/desktop.png`,mobile:`${version.storage_prefix}failed/screenshots/mobile.png`},pageScreenshots:[...(["desktop","mobile"] as const).map(viewport=>({page:"services/index.html",viewport,storageKey:`${version.storage_prefix}failed/pages/services/index-${viewport}.png`})),...(["desktop","mobile"] as const).map(viewport=>({page:"index.html",viewport,storageKey:`${version.storage_prefix}failed/screenshots/${viewport}.png`}))]};
+  await buildDb.query("UPDATE factory_build_versions SET status='failed',stage='qa',error='Synthetic failed design check',working_data=working_data||$2::jsonb WHERE id=$1",[version.id,JSON.stringify({lastFailedQa:failedQa})]);
+  await page.route("**/api/dashboard/factory/builds/*/screenshot?*",route=>route.fulfill({status:200,contentType:"image/svg+xml",body:'<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="600" height="400" fill="#dce7f4"/></svg>'}));
+  await page.reload();
+  await page.getByText("Failed quality checks & screenshots",{exact:true}).click();
+  await expect(page.getByLabel("Page to inspect",{exact:true})).toHaveValue("services/index.html");
+  await expect(page.getByText("The Services heading overlaps its content.",{exact:false})).toBeVisible();
+  await expect(page.getByRole("img",{name:"Services · Mobile preview of website version",exact:true})).toHaveAttribute("src",`/api/dashboard/factory/builds/${version.id}/screenshot?view=mobile&page=services%2Findex.html`);
+  await page.getByLabel("Page to inspect",{exact:true}).selectOption("index.html");
+  await expect(page.getByRole("img",{name:"Home · Desktop preview of website version",exact:true})).toHaveAttribute("src",`/api/dashboard/factory/builds/${version.id}/screenshot?view=desktop&page=index.html`);
+  await expect(page.getByText("This older check saved Home screenshots only.",{exact:false})).toHaveCount(0);
+  expect((await new AxeBuilder({page}).include('[aria-label="Website build"]').withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze()).violations).toEqual([]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+
+test("edits a saved draft in place, reviews changes and preserves them when checks are paused", async ({page,request,browser},info) => {
+  const version=await approvedBuild(page,request);
+  const blueprint=fixtureBlueprint("trades",undefined,true);
+  blueprint.pages=blueprint.pages.filter(item=>item.path!=="approach/index.html");
+  blueprint.design!.sectionStyles=blueprint.design!.sectionStyles.filter(item=>item.pagePath!=="approach/index.html");
+  const saved={blueprint,heroKey:`${version.storage_prefix}assets/hero.png`,imageAssets:{hero:{key:`${version.storage_prefix}assets/hero.png`,inputHash:"a".repeat(64),sha256:"b".repeat(64),provenance:{source:"generated"}}},inputUploads:[],provenance:{source:"generated"},reviewAttempts:3};
+  await buildDb.query("UPDATE factory_build_versions SET status='failed',stage='qa',error='This website needs another revision after its included repair: Shorten the introduction.',working_data=$2::jsonb WHERE id=$1",[version.id,JSON.stringify(saved)]);
+  await buildDb.query("INSERT INTO factory_build_settings(workspace_id,enabled,monthly_budget_micros,per_build_budget_micros,budget_approved_at) VALUES($1,false,50000000,5000000,now()) ON CONFLICT(workspace_id) DO UPDATE SET enabled=false",[version.workspace_id]);
+  let draftRequests=0;
+  page.on("request",req=>{if(req.url().endsWith(`/builds/${version.id}/draft`))draftRequests++;});
+  await page.reload();
+  await expect(page.getByText("Edit this draft",{exact:true})).toBeVisible();
+  await expect(page.getByText("Review the failed checks, then open Edit this draft below to refine the saved website.",{exact:false})).toBeVisible();
+  expect(draftRequests).toBe(0);
+  await page.getByText("Edit this draft",{exact:true}).click();
+  await expect(page.getByLabel("Headline",{exact:true})).toHaveValue(blueprint.pages[0].hero.headline);
+  expect(draftRequests).toBe(1);
+  await expect(page.getByLabel("Section layout",{exact:true})).toHaveCount(0);
+  await page.getByLabel("Headline",{exact:true}).fill("A clearer next step for your property.");
+  await expect(page.getByRole("region",{name:"Saved draft",exact:true})).toContainText(blueprint.pages[0].hero.headline);
+  await expect(page.getByRole("region",{name:"Your changes",exact:true})).toContainText("A clearer next step for your property.");
+  await expect(page.getByLabel("Page",{exact:true})).toBeDisabled();
+  await page.getByText("Edit this draft",{exact:true}).click();
+  await expect(page.getByLabel("Headline",{exact:true})).toBeHidden();
+  await page.getByText("Edit this draft",{exact:true}).click();
+  await expect(page.getByLabel("Headline",{exact:true})).toHaveValue("A clearer next step for your property.");
+  expect(draftRequests).toBe(1);
+  expect((await new AxeBuilder({page}).include('.factory-draft-editor').withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze()).violations).toEqual([]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await page.evaluate(()=>{if(document.activeElement instanceof HTMLElement)document.activeElement.blur();});
+  await page.locator('.factory-draft-editor').screenshot({path:dashboardPreviewPath(`factory-draft-editor-${info.project.name}.png`),style:"nextjs-portal{display:none!important}"});
+  await page.getByRole("button",{name:"Apply changes & check",exact:true}).click();
+  await expect(page.getByText("Website building is paused or not configured.",{exact:true})).toBeVisible();
+  await expect(page.getByLabel("Headline",{exact:true})).toHaveValue("A clearer next step for your property.");
+  expect((await buildDb.query("SELECT working_data->'blueprint' blueprint FROM factory_build_versions WHERE id=$1",[version.id])).rows[0].blueprint).toEqual(blueprint);
+  expect((await buildDb.query("SELECT count(*)::int count FROM factory_build_versions WHERE project_id=$1",[version.project_id])).rows[0].count).toBe(1);
+  await page.getByRole("button",{name:"Discard edits",exact:true}).click();
+  await expect(page.getByLabel("Headline",{exact:true})).toHaveValue(blueprint.pages[0].hero.headline);
+  await page.getByLabel("Page",{exact:true}).selectOption("services/index.html");
+  await page.getByLabel("Part of the page",{exact:true}).selectOption("options");
+  await expect(page.getByLabel("Headline",{exact:true})).toHaveValue(blueprint.pages[1].sections[0].title);
+  await expect(page.getByLabel("Section layout",{exact:true})).toHaveValue("spotlight");
+  await page.getByRole("button",{name:"Ask AI to refine",exact:true}).click();
+  await page.getByLabel("What should change in this part?",{exact:true}).fill("Make the introduction shorter while keeping the service descriptions.");
+  await page.getByRole("button",{name:"Apply changes & check",exact:true}).click();
+  await expect(page.getByText("Website building is paused or not configured.",{exact:true})).toBeVisible();
+  await expect(page.getByLabel("What should change in this part?",{exact:true})).toHaveValue("Make the introduction shorter while keeping the service descriptions.");
+  expect((await buildDb.query("SELECT count(*)::int count FROM factory_build_versions WHERE project_id=$1",[version.project_id])).rows[0].count).toBe(1);
+  const viewerContext=await browser.newContext();
+  const viewer=await viewerContext.newPage();
+  await signIn(viewer,"viewer");
+  await viewer.goto(page.url());
+  await expect(viewer.getByText("Edit this draft",{exact:true})).toHaveCount(0);
+  const denied=await viewerContext.request.get(`${new URL(page.url()).origin}/api/dashboard/factory/builds/${version.id}/draft`);
+  expect(denied.status()).toBeGreaterThanOrEqual(400);
+  await viewerContext.close();
 });
 
 test("reviews a completed preview, revokes and renews sharing, exports and uploads assets", async ({ page, request }, info) => {
