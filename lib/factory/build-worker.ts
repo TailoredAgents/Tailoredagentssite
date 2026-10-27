@@ -15,7 +15,8 @@ import {renderPortableSite} from "./site/render";
 import {reviewSiteDepth} from "./site/quality";
 import {checkPortableSite} from "./site/qa";
 import {screenshotPath} from "./site/qa";
-import {preparePortableImages} from "./site/images";
+import {preparePortableImages,preparePortableLogo,portableMobileImageBudget} from "./site/images";
+import {factoryBuildAssetDescriptors,resolveFactoryBuildImages,type FactorySavedImage} from "./build-assets";
 import {reviewPortableSite,parseSiteReview,SiteReviewResponseError,type SiteReview} from "./site/review";
 import {checkSiteDelivery} from "./site/performance";
 import {createPortableExport} from "./site/package";
@@ -25,17 +26,24 @@ import type {FactoryClaimedBuild,FactoryBuildManifest,FactoryBuildQa} from "./bu
 import {maximumReviewAttempts} from "./build-types";
 import type {FactoryBuildActivity,FactoryBuildActivityStep} from "./build-progress";
 
-type Working={generationResponse?:unknown;activity?:FactoryBuildActivity;blueprint?:SiteBlueprint;heroKey?:string;provenance?:unknown;qaReport?:FactoryBuildQa;manifest?:FactoryBuildManifest;sourceKey?:string;repaired?:boolean;
-  reviewAttempts?:number;review?:{fingerprint:string;result:SiteReview};reviewResponse?:{fingerprint:string;raw:unknown};checkedManifest?:FactoryBuildManifest};
+type Working={generationResponse?:unknown;activity?:FactoryBuildActivity;blueprint?:SiteBlueprint;heroKey?:string;provenance?:unknown;imageAssets?:Record<string,FactorySavedImage>;qaReport?:FactoryBuildQa;manifest?:FactoryBuildManifest;sourceKey?:string;repaired?:boolean;
+  reviewAttempts?:number;review?:{fingerprint:string;result:SiteReview};reviewResponse?:{fingerprint:string;raw:unknown;requireScorecard?:boolean;imageCount?:number};checkedManifest?:FactoryBuildManifest};
 class FactoryBuildQualityError extends Error{}
-export type FactoryBuildRuntime={storage:FactoryStorage;execute(build:FactoryClaimedBuild):SiteModelExecutor;hero(build:FactoryClaimedBuild,prompt:string):Promise<{bytes:Uint8Array;provenance:unknown}>;qa(files:SiteFiles):Promise<SiteQaResult>;verify(build:FactoryClaimedBuild,manifest:FactoryBuildManifest):Promise<{url:string;status:200;checkedAt:string}>};
+export type FactoryBuildRuntime={storage:FactoryStorage;execute(build:FactoryClaimedBuild):SiteModelExecutor;hero(build:FactoryClaimedBuild,prompt:string,slotId?:string):Promise<{bytes:Uint8Array;provenance:unknown}>;qa(files:SiteFiles):Promise<SiteQaResult>;verify(build:FactoryClaimedBuild,manifest:FactoryBuildManifest):Promise<{url:string;status:200;checkedAt:string}>};
 function working(build:FactoryClaimedBuild):Working{return build.workingData as Working;}
 function checkDeadline(build:FactoryClaimedBuild){if(!Number.isFinite(Date.parse(build.leaseUntil))||Date.parse(build.leaseUntil)<=Date.now())throw new Error("The website worker lease expired.");}
 async function withSite(build:FactoryClaimedBuild,state:Working,runtime:FactoryBuildRuntime){
   if(!state.blueprint||state.heroKey!==`${build.storagePrefix}assets/hero.png`)throw new Error("The saved website assets are incomplete.");
-  const blueprint=validateSiteBlueprint(state.blueprint,build.plan),bundle=portableBundle(blueprint);
-  const image=await runtime.storage.get(state.heroKey,8_000_000);
-  return {bundle,...renderPortableSite(bundle,await preparePortableImages(image))};
+  const blueprint=validateSiteBlueprint(state.blueprint,build.plan,factoryBuildAssetDescriptors(build)),bundle=portableBundle(blueprint);
+  const assets:SiteFiles={},slots=resolveFactoryBuildImages(build,blueprint),mobileBytes=portableMobileImageBudget(slots.filter(slot=>slot.role==="photo").length);
+  for(const slot of slots){
+    const saved=state.imageAssets?.[slot.id],key=`${build.storagePrefix}assets/${slot.id}.png`;
+    if(saved&&saved.key!==key||!saved&&slot.id!=="hero")throw new Error("A saved image is outside its approved build.");
+    const image=await runtime.storage.get(key,8_000_000);
+    if(saved&&createHash("sha256").update(image).digest("hex")!==saved.sha256)throw new Error("A saved website image changed after preparation.");
+    Object.assign(assets,slot.role==="logo"?await preparePortableLogo(image,slot.id):await preparePortableImages(image,slot.id,{mobileBytes}));
+  }
+  return {bundle,...renderPortableSite(bundle,assets)};
 }
 export async function verifyHostedFactoryBuild(build:FactoryClaimedBuild,manifest:FactoryBuildManifest){
   const url=factoryPreviewUrl(build.previewToken);if(!url)throw new Error("The preview domain is not configured.");
@@ -77,7 +85,7 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
   const advance=async(nextStage:"images"|"qa"|"publish"|"verify")=>{if(!await saveFactoryBuildStage({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,nextStage,workingData:state as Record<string,unknown>,manifest:state.manifest,qaReport:state.qaReport,sourceKey:state.sourceKey}))throw new Error("This website build was paused or removed.");};
   if(build.stage==="generate"){
     await report("generating");
-    const result=await generatePortableSite({plan:build.plan,assets:build.uploads.map((u,i)=>({id:u.id,path:i?`reference-${i}.png`:"assets/images/hero.png",alt:"Team-provided reference image",provenance:"provided"}))},async request=>{
+    const result=await generatePortableSite({plan:build.plan,assets:factoryBuildAssetDescriptors(build)},async request=>{
       // Human-approved input is immutable. Revalidate a saved paid response on
       // explicit retry instead of charging again for the same generation.
       if(state.generationResponse!==undefined)return state.generationResponse;
@@ -85,22 +93,48 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
       if(Buffer.byteLength(JSON.stringify(raw))>1_000_000)throw new SiteGenerationResponseError("The website response exceeded its saved-data limit.");
       state.generationResponse=raw;await persist();return raw;
     });
+    resolveFactoryBuildImages(build,result.blueprint);
     state.blueprint=result.blueprint;delete state.generationResponse;await advance("images");return;
   }
   if(build.stage==="images"){
     if(!state.blueprint)throw new Error("The website blueprint is missing.");
-    const supplied=build.uploads[0];
-    await report(supplied?"supplied_image":"generating_image");
-    if(supplied){
-      const bytes=await runtime.storage.get(supplied.storageKey,8_000_000);
-      state.heroKey=`${build.storagePrefix}assets/hero.png`;
-      await runtime.storage.put(state.heroKey,bytes,"image/png");
-      state.provenance={kind:"provided",filename:supplied.filename,uploadId:supplied.id,notice:"Image supplied by the team; confirm publishing rights before launch."};
-      state.blueprint.heroImage.alt="Team-provided reference image";state.blueprint.heroImage.caption="Team-provided image for this website concept.";
-    }else{
-      const image=await runtime.hero(build,state.blueprint.heroImage.prompt);
-      state.heroKey=`${build.storagePrefix}assets/hero.png`;await runtime.storage.put(state.heroKey,image.bytes,"image/png");state.provenance=image.provenance;
+    const slots=resolveFactoryBuildImages(build,state.blueprint);
+    state.imageAssets={...state.imageAssets};
+    for(const slot of slots){
+      const key=`${build.storagePrefix}assets/${slot.id}.png`,inputHash=createHash("sha256").update(JSON.stringify({id:slot.id,role:slot.role,source:slot.source,uploadId:slot.uploadId,prompt:slot.prompt})).digest("hex");
+      const saved=state.imageAssets[slot.id];
+      if(saved){
+        if(saved.key!==key||saved.inputHash!==inputHash)throw new Error("An approved image changed after its preparation.");
+        const bytes=await runtime.storage.get(key,8_000_000);
+        if(createHash("sha256").update(bytes).digest("hex")!==saved.sha256)throw new Error("A saved website image could not be verified.");
+        continue;
+      }
+      await report(slot.source==="provided"?"supplied_image":"generating_image");
+      let bytes:Uint8Array,provenance:unknown;
+      if(slot.id==="hero"&&state.heroKey===key){
+        // A one-image build saved by an older worker can resume without paying
+        // for that image again when its next-stage transition was interrupted.
+        bytes=await runtime.storage.get(key,8_000_000);provenance=state.provenance;
+      }else if(slot.source==="provided"){
+        const supplied=build.uploads.find(upload=>upload.id===slot.uploadId)!;
+        bytes=await runtime.storage.get(supplied.storageKey,8_000_000);
+        provenance={kind:"provided",role:slot.role,filename:supplied.filename,uploadId:supplied.id,notice:"Image supplied by the team; confirm publishing rights before launch."};
+        if(slot.id==="hero"){
+          state.blueprint.heroImage.alt=supplied.alt?.trim()||"Business photo supplied by the team";
+          state.blueprint.heroImage.caption="Team-provided image for this website concept.";
+        }
+      }else{
+        // Each request independently reserves against the existing monthly and
+        // per-build allowance. A failed later slot cannot regenerate saved ones.
+        const image=await runtime.hero(build,slot.prompt,slot.id);bytes=image.bytes;provenance=image.provenance;
+      }
+      await runtime.storage.put(key,bytes,"image/png");
+      state.imageAssets[slot.id]={key,inputHash,sha256:createHash("sha256").update(bytes).digest("hex"),provenance};
+      if(slot.id==="hero"){state.heroKey=key;state.provenance=provenance;}
+      // Persist every successful image before attempting another paid request.
+      await persist();
     }
+    state.provenance={version:2,assets:slots.map(slot=>({id:slot.id,role:slot.role,sha256:state.imageAssets![slot.id].sha256,provenance:state.imageAssets![slot.id].provenance}))};
     await advance("qa");return;
   }
   if(build.stage==="qa"){
@@ -136,7 +170,7 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
       if(state.review?.fingerprint!==fingerprint){
         let result:SiteReview|undefined;
         if(state.reviewResponse?.fingerprint===fingerprint){
-          try{result=parseSiteReview(state.reviewResponse.raw,state.blueprint!.pages.map(p=>p.path));}
+          try{result=parseSiteReview(state.reviewResponse.raw,state.blueprint!.pages.map(p=>p.path),{requireScorecard:state.reviewResponse.requireScorecard===true,imageCount:state.reviewResponse.imageCount});}
           catch(error){if(!(error instanceof SiteReviewResponseError))throw error;}
         }
         if(!result){
@@ -146,7 +180,8 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
             // Keep the paid response private before local validation can reject it.
             // No screenshots, request prompts or credentials are stored here.
             if(Buffer.byteLength(JSON.stringify(raw))>100000)throw new SiteReviewResponseError("The design review response exceeds its saved-data limit.");
-            state.reviewResponse={fingerprint,raw};await persist();return raw;
+            const imageCount=(request.body.input as Array<{content?:Array<{type?:string}>}>).flatMap(message=>message.content||[]).filter(item=>item.type==="input_image").length;
+            state.reviewResponse={fingerprint,raw,requireScorecard:true,imageCount};await persist();return raw;
           });
         }
         state.review={fingerprint,result};
@@ -158,7 +193,7 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
     await report("preparing");
     let site=await withSite(build,state,runtime),qa=await review(site,await inspect(site.files));
     if(!qa.passed&&!state.repaired){
-      const revised=await generatePortableSite({plan:build.plan,previousBlueprint:state.blueprint,repairIssues:qa.issues},boundedExecute("repair"));
+      const revised=await generatePortableSite({plan:build.plan,previousBlueprint:state.blueprint,repairIssues:qa.issues,assets:factoryBuildAssetDescriptors(build)},boundedExecute("repair"));
       state.blueprint=revised.blueprint;
       await persist();
       site=await withSite(build,state,runtime);qa=await review(site,await inspect(site.files));
@@ -171,7 +206,7 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
     for(const shot of qa.screenshots){const key=`${build.storagePrefix}pages/${screenshotPath(shot.page,shot.viewport)}`;await runtime.storage.put(key,shot.bytes,"image/png");pageScreenshots.push({page:shot.page,viewport:shot.viewport,storageKey:key});}
     const visual=state.review!.result;
     state.qaReport={passed:true,checks:["Approved page identities and content depth","Distinct content and concrete business claims","Desktop and mobile visual/content review","Mobile image and page-size budgets","Desktop and mobile layouts","Local links and images","Demo navigation and forms","Serious and critical accessibility checks","No external requests"],warnings:qa.issues.filter(i=>i.severity==="warning").map(i=>i.message),screenshots,
-      designReview:{summary:visual.summary,reviewedPages:visual.reviewedPages,imageCount:visual.imageCount},delivery:{pages:qa.delivery.pages},pageScreenshots};
+      designReview:{summary:visual.summary,reviewedPages:visual.reviewedPages,imageCount:visual.imageCount,...(visual.reviewVersion?{reviewVersion:visual.reviewVersion,overallScore:visual.overallScore,scorecard:visual.scorecard}:{})},delivery:{pages:qa.delivery.pages},...(qa.labPerformance?{labPerformance:qa.labPerformance}:{}),pageScreenshots};
     // Freeze the checked bytes before publication. A deployment between stages
     // must not re-render this version with a different template or encoder.
     for(const file of site.manifest.files)await runtime.storage.put(`${build.storagePrefix}checked/${file.path}`,site.files[file.path],file.contentType);

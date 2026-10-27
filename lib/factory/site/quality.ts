@@ -14,6 +14,18 @@ const pageAliases=[
 ];
 const alias=(title:string)=>pageAliases.findIndex(group=>group.includes(title));
 
+/** A valid URL can still do the wrong thing. Keep these checks narrow: a link
+ * offering to schedule a call may correctly open a form, but “Call Cosmo's”
+ * promises the phone dialer, not another service section. */
+export function actionDestinationIssue(label:string,href:string):string|null {
+  const text=normalize(label);
+  if(/^(?:call|dial|phone)(?: |$)/.test(text)&&!/^call ?back\b/.test(text)&&!/^tel:\+?\d/.test(href))
+    return `The “${label.slice(0,100)}” action must dial the approved phone number, or use an accurate contact/inquiry label when no number is available.`;
+  if(/^email(?: |$)/.test(text)&&!/^mailto:[^\s@]+@[^\s@]+/.test(href))
+    return `The “${label.slice(0,100)}” action must open the approved email address, or be relabelled to match its actual destination.`;
+  return null;
+}
+
 function pageMatch(plannedTitle:string,page:SiteBlueprint["pages"][number]):number {
   const wanted=normalize(plannedTitle),title=normalize(page.title),path=normalize(page.path.replace(/\/?index\.html$/,""))||"home";
   if(alias(wanted)===0&&page.path!=="index.html")return 0;
@@ -42,6 +54,7 @@ function missingPages(blueprint:SiteBlueprint,plan:FactoryPlanContent):string[] 
 export function publicSiteCopy(blueprint:SiteBlueprint):Array<{page:string;text:string}> {
   return blueprint.pages.map(page=>({page:page.path,text:[
     blueprint.brandName,blueprint.tagline,blueprint.heroImage.alt,blueprint.heroImage.caption,
+    ...(blueprint.media||[]).flatMap(media=>[media.alt,media.caption]),
     page.title,page.description,...Object.values(page.hero),
     ...page.sections.flatMap(section=>[section.eyebrow,section.title,section.body,...section.items.flatMap(item=>[item.title,item.body])]),
     ...(blueprint.interactions?.forms.filter(f=>f.pagePath===page.path).map(f=>f.submitLabel)||[]),
@@ -115,22 +128,32 @@ export function reviewSiteDepth(blueprint:SiteBlueprint,plan:FactoryPlanContent)
   const previous:Array<{path:string;blocks:string[]}>=[];
   for(const page of blueprint.pages){
     const sections=page.sections.filter(s=>s.kind!=="contact");
-    const minimum=page.path==="index.html"?4:2;
     // An approved contact/coverage page can be a focused inquiry utility, not a second sales page.
     // Count substantive form/direct-contact guidance only there; a form cannot exempt a thin service page.
     const inquiryPage=page.path!=="index.html"&&plan.pages.some(p=>[3,4].includes(alias(normalize(p.title)))&&pageMatch(p.title,page)>0)
       &&blueprint.interactions?.forms.some(f=>f.pagePath===page.path&&page.sections.some(s=>s.id===f.sectionId&&s.kind==="contact"));
     const usefulContacts=inquiryPage?page.sections.filter(s=>s.kind==="contact"&&s.title.trim()&&normalize(s.body).split(" ").length>=12).length:0;
-    if(sections.length+usefulContacts<minimum) add(page.path,"thin_page",`Provide at least ${minimum} useful sections on this page; use approved services, explanatory guidance, process and relevant questions rather than padding. Focused contact/coverage pages may use substantive inquiry guidance with a configured form.`);
+    const usefulSections=sections.filter(section=>section.title.trim()&&(normalize(section.body).split(" ").length>=12||section.items.some(item=>normalize(item.body).split(" ").length>=12)));
+    // Purpose takes precedence over a prescribed section count. A focused form
+    // page or one substantial service presentation can be complete. Home needs
+    // enough distinct material to introduce the offer and help a visitor decide.
+    const complete=page.path==="index.html"?usefulSections.length>=2:usefulSections.length>0||usefulContacts>0;
+    if(!complete)add(page.path,"thin_page",page.path==="index.html"?"The homepage needs useful material explaining the offer and helping a visitor decide on a next step. Add missing reader value, not extra sections or words for a quota.":"This page does not yet fulfil its approved purpose. Add a useful explanation, service detail or focused inquiry utility; a section count alone is not a quality target.");
     for(const section of sections){
-      if(["services","features","process","faq"].includes(section.kind)&&section.items.length<2)
-        add(page.path,"empty_collection",`The ${section.id} section needs at least two useful items or a more suitable section type.`);
+      if(["services","features","process","faq"].includes(section.kind)&&section.items.length===0)
+        add(page.path,"empty_collection",`The ${section.id} section has no useful items. Supply the content its purpose requires or choose a suitable prose section.`);
     }
     const blocks=substantiveBlocks(page),duplicate=previous.find(other=>repeatedContent(blocks,other.blocks));
     if(duplicate)add(page.path,"repeated_page",`Most substantive copy repeats ${duplicate.path}, even if headings differ. Give this page a distinct purpose and useful content from the approved plan.`);
     previous.push({path:page.path,blocks});
-    if(sections.length>=4&&new Set(sections.map(s=>s.layout)).size<3)
-      add(page.path,"repeated_layout","Use at least three complementary section layouts for this page instead of repeating the same treatment throughout.");
+    if("presentation" in blueprint){
+      const substantial=sections.flatMap(section=>[section.body,...section.items.map(item=>item.body)]).map(normalize).filter(body=>body.split(" ").length>=12);
+      const repeated=([...new Set(substantial)]).filter(body=>substantial.filter(value=>value===body).length>=3);
+      if(repeated.length)add(page.path,"repeated_padding","Three or more content blocks repeat the same explanation. Give each retained block a distinct visitor purpose or remove the repetition.");
+      const publicSections=sections.map(section=>[section.title,section.body,...section.items.map(item=>item.body)].join(" "));
+      if(publicSections.filter(copy=>/\b(?:awaiting confirmation|pending confirmation|details (?:remain|are) unconfirmed|before making (?:any )?arrangements|prepare (?:for|an?|your) (?:inquiry|conversation))\b/i.test(copy)).length>=3)
+        add(page.path,"uncertainty_dominates_copy","Internal uncertainty or inquiry-preparation instructions dominate several sections. Keep honest general explanations and customer benefits public, and move unresolved factual details into the internal handoff without inventing claims.");
+    }
   }
   for(const copy of publicSiteCopy(blueprint)){
     const unsupported=unsupportedClaims(copy.text,plan);

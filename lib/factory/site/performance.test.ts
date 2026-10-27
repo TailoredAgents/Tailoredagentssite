@@ -1,30 +1,44 @@
 import {describe,expect,it} from "vitest";
 import {checkSiteDelivery,deliveryBudgets} from "./performance";
 import type {SiteFiles} from "./artifacts";
-
 const bytes=(size:number)=>new Uint8Array(size);
-describe("Portable-site delivery resource budgets",()=>{
-  it("accounts for each page, shared local code and the correct responsive image",()=>{
-    const files:SiteFiles={"index.html":bytes(100),"services/index.html":bytes(200),"assets/site.css":bytes(50),"assets/runtime.js":bytes(25),"assets/images/hero-mobile.webp":bytes(1000),"assets/images/hero-desktop.webp":bytes(2000),"assets/images/hero.png":bytes(3_000_000)};
-    expect(checkSiteDelivery(files)).toEqual({pages:[{page:"index.html",mobileBytes:1175,desktopBytes:2175},{page:"services/index.html",mobileBytes:1275,desktopBytes:2275}],issues:[]});
+const html=(prefix="",lazy=false)=>Buffer.from(`<link rel="stylesheet" href="${prefix}assets/site.css"><script src="${prefix}assets/runtime.js"></script><picture><source media="(max-width: 700px)" srcset="${prefix}assets/images/hero-mobile.webp"><img ${lazy?'loading="lazy" ':""}src="${prefix}assets/images/hero-desktop.webp"></picture>`);
+const basic=():SiteFiles=>({"index.html":html(),"services/index.html":html("../"),"assets/site.css":Buffer.from("body{color:#333}"),"assets/runtime.js":bytes(25),"assets/images/hero-mobile.webp":bytes(1000),"assets/images/hero-desktop.webp":bytes(2000),"assets/images/unused.webp":bytes(3_000_000)});
+
+describe("Portable-site delivery accounting",()=>{
+  it("resolves actual page dependencies and picture choices, excluding unused artifacts",()=>{
+    const files=basic(),result=checkSiteDelivery(files);
+    for(const page of result.pages){
+      const shared=files[page.page].byteLength+files["assets/site.css"].byteLength+25;
+      expect(page.mobileBytes).toBe(shared+1000);expect(page.desktopBytes).toBe(shared+2000);
+      expect(page.mobileInitialBytes).toBe(page.mobileBytes);expect(page.mobileResources).not.toContain("assets/images/unused.webp");
+      expect(page.mobileResources).toContain("assets/images/hero-mobile.webp");expect(page.desktopResources).toContain("assets/images/hero-desktop.webp");
+    }
+    expect(result.issues).toEqual([]);
   });
-  it("supports legacy bundles by counting their original PNG on both viewports",()=>{
-    const result=checkSiteDelivery({"index.html":bytes(100),"assets/site.css":bytes(50),"assets/runtime.js":bytes(25),"assets/images/hero.png":bytes(3_000_000)});
-    expect(result.pages).toEqual([{page:"index.html",mobileBytes:3_000_175,desktopBytes:3_000_175}]);
-    expect(result.issues.map(issue=>issue.code)).toEqual(expect.arrayContaining(["mobile_image_budget","desktop_image_budget","mobile_page_budget"]));
+  it("counts local CSS fonts and multiple images once per page, but distinguishes lazy initial loading",()=>{
+    const files=basic();files["assets/site.css"]=Buffer.from('@font-face{font-family:Brand;src:url("fonts/brand.woff2")}');files["assets/fonts/brand.woff2"]=bytes(9000);
+    files["index.html"]=Buffer.concat([html(),html("",true),Buffer.from('<img loading="lazy" src="assets/images/story.webp">')]);files["assets/images/story.webp"]=bytes(20000);
+    const page=checkSiteDelivery(files).pages.find(p=>p.page==="index.html")!;
+    expect(page.mobileResources.filter(p=>p==="assets/fonts/brand.woff2")).toHaveLength(1);
+    expect(page.mobileBytes-page.mobileInitialBytes).toBe(20000);
+    expect(page.desktopBytes-page.desktopInitialBytes).toBe(20000);
   });
-  it("accepts exact limits and rejects over-budget images or each oversized HTML page",()=>{
-    const files:SiteFiles={"index.html":bytes(deliveryBudgets.mobilePageBytes-deliveryBudgets.mobileHeroBytes),"assets/images/hero-mobile.webp":bytes(deliveryBudgets.mobileHeroBytes),"assets/images/hero-desktop.webp":bytes(deliveryBudgets.desktopHeroBytes)};
+  it("handles legacy PNG markup and a source-set selection without guessing fixed filenames",()=>{
+    const files:SiteFiles={"index.html":Buffer.from('<img src="assets/old.png"><img src="assets/fallback.webp" srcset="assets/small.webp 480w, assets/large.webp 1600w" sizes="100vw">'),"assets/old.png":bytes(100),"assets/small.webp":bytes(200),"assets/large.webp":bytes(500),"assets/fallback.webp":bytes(999)};
+    const page=checkSiteDelivery(files).pages[0];expect(page.mobileBytes).toBe(files["index.html"].byteLength+300);expect(page.desktopBytes).toBe(files["index.html"].byteLength+600);
+  });
+  it("accepts image limits exactly and flags over-budget actual dependencies",()=>{
+    const files=basic();files["assets/images/hero-mobile.webp"]=bytes(deliveryBudgets.mobileHeroBytes);files["assets/images/hero-desktop.webp"]=bytes(deliveryBudgets.desktopHeroBytes);
     expect(checkSiteDelivery(files).issues).toEqual([]);
-    files["assets/images/hero-mobile.webp"]=bytes(deliveryBudgets.mobileHeroBytes+1);files["assets/images/hero-desktop.webp"]=bytes(deliveryBudgets.desktopHeroBytes+1);files["services/index.html"]=bytes(600000);
+    files["assets/images/hero-mobile.webp"]=bytes(deliveryBudgets.mobileHeroBytes+1);files["assets/images/hero-desktop.webp"]=bytes(deliveryBudgets.desktopHeroBytes+1);
+    files["assets/site.css"]=Buffer.concat([Buffer.from("body{}"),bytes(600000)]);
     const issues=checkSiteDelivery(files).issues;
-    expect(issues.filter(issue=>issue.code==="mobile_page_budget").map(issue=>issue.page)).toEqual(["index.html","services/index.html"]);
-    expect(issues.filter(issue=>issue.code.endsWith("image_budget"))).toHaveLength(2);expect(issues.every(issue=>issue.severity==="error")).toBe(true);
+    expect(issues.filter(i=>i.code==="mobile_page_budget")).toHaveLength(2);
+    expect(issues.filter(i=>i.code==="mobile_image_budget")).toHaveLength(2);
+    expect(issues.filter(i=>i.code==="desktop_image_budget")).toHaveLength(2);
   });
-  it("reports bytes rather than claiming network timing, Lighthouse or Core Web Vitals measurements",()=>{
-    const result=checkSiteDelivery({"index.html":bytes(100)});
-    expect(Object.keys(result).sort()).toEqual(["issues","pages"]);
-    expect(Object.keys(result.pages[0]).sort()).toEqual(["desktopBytes","mobileBytes","page"]);
-    expect(result).not.toHaveProperty("lcp");expect(result).not.toHaveProperty("milliseconds");expect(result).not.toHaveProperty("score");
+  it("does not label byte estimates as measured loading performance",()=>{
+    const result=checkSiteDelivery(basic());expect(result).not.toHaveProperty("lcp");expect(result).not.toHaveProperty("score");expect(result).not.toHaveProperty("milliseconds");
   });
 });

@@ -3,22 +3,60 @@ import { designFamilies } from "./families";
 import { relativeSiteLink,siteManifest,type SiteFiles } from "./artifacts";
 import type { PortableSiteBundle,SiteBlueprint } from "./types";
 import { validateBlueprintStructure } from "./validate";
-import { portablePolishCss,portableDesignCss } from "./polish";
+import { portablePolishCss,portableDesignCss,portablePresentationCss } from "./polish";
 import { siteDesignCss,colorLuminance } from "./design";
-import { portableHeroImages } from "./images";
+import { portableHeroImages,portableSlotImages,portableLogoImage } from "./images";
 import {configuredDemoForm,configuredFormRuntime} from "./interactions";
+import {portableFontCss,portableFontFiles} from "./fonts";
 
 const escape=(value:string)=>value.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]!);
-export const trustedSiteRuntime=`(()=>{'use strict';const toggle=document.querySelector('[data-menu-toggle]'),menu=document.getElementById('site-menu');function close(){if(toggle&&menu){toggle.setAttribute('aria-expanded','false');menu.classList.remove('is-open');}}if(toggle&&menu){toggle.addEventListener('click',()=>{const open=toggle.getAttribute('aria-expanded')!=='true';toggle.setAttribute('aria-expanded',String(open));menu.classList.toggle('is-open',open);});menu.querySelectorAll('a').forEach(a=>a.addEventListener('click',close));document.addEventListener('keydown',e=>{if(e.key==='Escape'){close();toggle.focus();}});}${configuredFormRuntime}document.querySelectorAll('[data-demo-form]').forEach(form=>{form.addEventListener('submit',e=>{e.preventDefault();const output=form.querySelector('[data-demo-feedback]');if(output){output.textContent='This is a website preview. Your message was not sent or stored. The live form will be connected before launch.';output.hidden=false;output.focus();}});});})();`;
-export const siteCsp="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'none'; connect-src 'none'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'; manifest-src 'none'";
+const serviceTabsRuntime=`document.querySelectorAll('[data-service-tabs]').forEach(group=>{const list=group.querySelector('[data-tab-list]'),tabs=Array.from(group.querySelectorAll('[data-service-tab]')),panels=Array.from(group.querySelectorAll('[data-service-panel]'));if(!list||!tabs.length||tabs.length!==panels.length)return;group.classList.add('tabs-enhanced');list.setAttribute('role','tablist');list.setAttribute('aria-orientation','vertical');function select(index,focus){tabs.forEach((tab,i)=>{tab.setAttribute('role','tab');tab.setAttribute('aria-selected',String(i===index));tab.tabIndex=i===index?0:-1;panels[i].setAttribute('role','tabpanel');panels[i].hidden=i!==index;});if(focus)tabs[index].focus();}tabs.forEach((tab,index)=>{tab.addEventListener('click',()=>select(index,false));tab.addEventListener('keydown',e=>{let next=index;if(e.key==='ArrowDown'||e.key==='ArrowRight')next=(index+1)%tabs.length;else if(e.key==='ArrowUp'||e.key==='ArrowLeft')next=(index+tabs.length-1)%tabs.length;else if(e.key==='Home')next=0;else if(e.key==='End')next=tabs.length-1;else return;e.preventDefault();select(next,true);});});select(0,false);});`;
+export const trustedSiteRuntime=`(()=>{'use strict';const toggle=document.querySelector('[data-menu-toggle]'),menu=document.getElementById('site-menu');function close(){if(toggle&&menu){toggle.setAttribute('aria-expanded','false');menu.classList.remove('is-open');}}if(toggle&&menu){toggle.addEventListener('click',()=>{const open=toggle.getAttribute('aria-expanded')!=='true';toggle.setAttribute('aria-expanded',String(open));menu.classList.toggle('is-open',open);});menu.querySelectorAll('a').forEach(a=>a.addEventListener('click',close));document.addEventListener('keydown',e=>{if(e.key==='Escape'){close();toggle.focus();}});}${serviceTabsRuntime}${configuredFormRuntime}document.querySelectorAll('[data-demo-form]').forEach(form=>{form.addEventListener('submit',e=>{e.preventDefault();const output=form.querySelector('[data-demo-feedback]');if(output){output.textContent='This is a website preview. Your message was not sent or stored. The live form will be connected before launch.';output.hidden=false;output.focus();}});});})();`;
+export const siteCsp="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'none'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'; manifest-src 'none'";
+
+function inquiryTarget(b:SiteBlueprint,page:SiteBlueprint["pages"][number]){
+  const form=b.interactions?.forms.find(f=>f.pagePath===page.path)||b.interactions?.forms.find(f=>b.pages.some(p=>p.path===f.pagePath&&/^contact(?: us)?$/i.test(p.title)))||b.interactions?.forms[0];
+  if(form)return form.pagePath===page.path?`#${form.sectionId}`:`${relativeSiteLink(page.path,form.pagePath)}#${form.sectionId}`;
+  return `#${page.sections.find(s=>s.kind==="contact")?.id||"contact"}`;
+}
+/** CTA wording must agree with its destination on every page, including the
+ * secondary action. Browsing services is different from requesting service. */
+export function siteActionTarget(label:string,b:SiteBlueprint,page:SiteBlueprint["pages"][number],fallback:string,explicitTarget=false){
+  if(/^\s*(?:call|dial|phone|ring)\b/i.test(label)&&!/^\s*call ?back\b/i.test(label)&&b.contact.phone)return `tel:${b.contact.phone.replace(/[^+0-9]/g,"")}`;
+  if(/^\s*(?:email|e-mail)\b/i.test(label)&&b.contact.email)return `mailto:${b.contact.email}`;
+  // A configured item already names its intended page/section. Preserve that
+  // choice; only literal dial/email promises require a protocol destination.
+  if(explicitTarget)return fallback;
+  if(/\b(?:contact|inquir|request|book|schedule|estimate|quote|appointment)|get in touch|let.s (?:talk|begin)|talk (?:to|with)/i.test(label))return inquiryTarget(b,page);
+  const kind=/\b(?:explore|view|our|see|discover|browse)\b.*\bservices\b|^services$/i.test(label)?"services":/\b(?:our story|our company|about us|meet the team)\b/i.test(label)?"about":null;
+  if(kind){
+    const destination=b.pages.find(p=>p.path!=="index.html"&&(kind==="services"?/^services$/i.test(p.title):/^about(?: us)?|our (?:company|story)$/i.test(p.title)));
+    if(destination&&destination.path!==page.path)return relativeSiteLink(page.path,destination.path);
+    const section=page.sections.find(s=>s.kind===kind);if(section)return `#${section.id}`;
+  }
+  return fallback;
+}
+function heroHeadline(text:string,emphasis:string|null|undefined){
+  const index=emphasis?text.indexOf(emphasis):-1;
+  return index<0?escape(text):`${escape(text.slice(0,index))}<em>${escape(emphasis!)}</em>${escape(text.slice(index+emphasis!.length))}`;
+}
+type ImageMarkup=(assetId:string,lazy?:boolean)=>string;
 
 function luminance(hex:string){const rgb=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255).map(v=>v<=0.04045?v/12.92:((v+.055)/1.055)**2.4);return .2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2];}
 function contactMarkup(blueprint:SiteBlueprint){return [blueprint.contact.email?`<a href="mailto:${escape(blueprint.contact.email)}">${escape(blueprint.contact.email)}</a>`:"",blueprint.contact.phone?`<a href="tel:${escape(blueprint.contact.phone.replace(/[^+0-9]/g,""))}">${escape(blueprint.contact.phone)}</a>`:"",blueprint.contact.address?`<p>${escape(blueprint.contact.address)}</p>`:""].filter(Boolean).join("");}
 function demoForm(){return `<form data-demo-form class="contact-form"><div class="form-row"><label>Your name<input name="name" autocomplete="name" placeholder="Your name" required maxlength="100"></label><label>Email address<input type="email" name="email" autocomplete="email" placeholder="you@example.com" required maxlength="200"></label></div><label>How can we help?<textarea name="message" rows="4" placeholder="Tell us a little about what you have in mind" required maxlength="2000"></textarea></label><button class="button button-primary" type="submit">Preview inquiry <span aria-hidden="true">↗</span></button><p class="form-note">Demo form — messages are not sent from this preview.</p><p data-demo-feedback role="status" tabindex="-1" hidden></p></form>`;}
 
-function sectionMarkup(section:SiteBlueprint["pages"][number]["sections"][number],index:number,blueprint:SiteBlueprint,storyImage:string,pagePath:string,contactTarget:string){
+function sectionMarkup(section:SiteBlueprint["pages"][number]["sections"][number],index:number,blueprint:SiteBlueprint,imageMarkup:ImageMarkup,pagePath:string,contactTarget:string){
   const eyebrow=section.eyebrow?`<p class="eyebrow">${escape(section.eyebrow)}</p>`:"";
   const heading=`<div class="section-heading">${eyebrow}<h2>${escape(section.title)}</h2>${section.body?`<p class="section-copy">${escape(section.body)}</p>`:""}</div>`;
+  const bindings=blueprint.presentation?.sectionImages.filter(binding=>binding.pagePath===pagePath&&binding.sectionId===section.id)||[];
+  const photo=(assetId:string,className:string)=>{
+    const caption=assetId==="hero"?blueprint.heroImage.caption:blueprint.media?.find(m=>m.id===assetId)?.caption;
+    return `<figure class="${className}">${imageMarkup(assetId,true)}${caption?`<figcaption>${escape(caption)}</figcaption>`:""}</figure>`;
+  };
+  // Remove only obvious list numbering; preserve service names such as
+  // "24-Hour Support" and "3-Step Planning" whose numbers carry meaning.
+  const itemTitle=(title:string)=>blueprint.presentation?title.replace(/^\s*0?[1-9](?:\s+[—–:-]\s+|\.\s+)/,""):title;
   let content="";
   if(section.kind==="faq")content=`<div class="faq-list">${section.items.map(item=>`<details><summary>${escape(item.title)}<span aria-hidden="true">+</span></summary><p>${escape(item.body)}</p></details>`).join("")}</div>`;
   else if(section.kind==="contact"){
@@ -28,50 +66,73 @@ function sectionMarkup(section:SiteBlueprint["pages"][number]["sections"][number
     const actions=blueprint.interactions?.actions.filter(a=>a.pagePath===pagePath&&a.sectionId===section.id)||[];
     const items=section.items.map((item,itemIndex)=>{
       const action=actions.find(a=>a.itemIndex===itemIndex);
-      const destination=action?`${relativeSiteLink(pagePath,action.targetPage)}${action.targetSection?`#${action.targetSection}`:""}`:"";
+      const destination=action?siteActionTarget(action.label,blueprint,blueprint.pages.find(p=>p.path===pagePath)!,`${relativeSiteLink(pagePath,action.targetPage)}${action.targetSection?`#${action.targetSection}`:""}`,true):"";
       return `<div class="contact-item"><h3>${escape(item.title)}</h3><p>${escape(item.body)}</p>${action?`<a class="text-link" href="${escape(destination)}">${escape(action.label)} <span aria-hidden="true">↗</span></a>`:""}</div>`;
     }).join("");
     content=`<div class="contact-details">${contactMarkup(blueprint)}${items}${!form&&!actions.length&&contactPage?`<a href="${escape(relativeSiteLink(pagePath,contactPage.pagePath))}#${escape(contactPage.sectionId)}">Start an inquiry <span aria-hidden="true">↗</span></a>`:""}</div>${form?configuredDemoForm(form):blueprint.interactions?"":demoForm()}`;
   }
-  else content=`<div class="section-items">${section.items.map((item,i)=>{
+  else {
+    const items=section.items.map((item,i)=>{
     const detail=section.kind==="services"?blueprint.pages.find(p=>p.path!==pagePath&&p.path!=="index.html"&&p.title.toLowerCase()===item.title.toLowerCase()):null;
     const specified=blueprint.interactions?.actions.find(a=>a.pagePath===pagePath&&a.sectionId===section.id&&a.itemIndex===i);
-    const destination=specified?`${relativeSiteLink(pagePath,specified.targetPage)}${specified.targetSection?`#${specified.targetSection}`:""}`:detail?relativeSiteLink(pagePath,detail.path):contactTarget;
+    const page=blueprint.pages.find(p=>p.path===pagePath)!;
+    const destination=specified?siteActionTarget(specified.label,blueprint,page,`${relativeSiteLink(pagePath,specified.targetPage)}${specified.targetSection?`#${specified.targetSection}`:""}`,true):detail?relativeSiteLink(pagePath,detail.path):contactTarget;
     const action=specified||section.kind==="services"?`<a class="service-link" href="${escape(destination)}">${escape(specified?.label||(detail?"Explore this service":"Discuss your needs"))}<span aria-hidden="true">↗</span></a>`:"";
-    return `<article class="feature-item"><span class="item-number" aria-hidden="true">${section.layout==="checklist"?"✓":String(i+1).padStart(2,"0")}</span><div><h3>${escape(item.title)}</h3><p>${escape(item.body)}</p>${action}</div></article>`;
-  }).join("")}</div>`;
-  const illustration=section.kind==="about"&&section.layout==="split"?`<figure class="story-image">${storyImage}<figcaption>${escape(blueprint.heroImage.caption)}</figcaption></figure>`:"";
+    const imageBinding=bindings.find(binding=>binding.itemIndex===i);
+    const panelAttrs=section.layout==="service-tabs"?` id="${escape(section.id)}-panel-${i}" aria-labelledby="${escape(section.id)}-tab-${i}" data-service-panel tabindex="0"`:"";
+    const numbering=section.layout==="service-tabs"?"":`<span class="item-number" aria-hidden="true">${section.layout==="checklist"?"✓":String(i+1).padStart(2,"0")}</span>`;
+    return `<article class="feature-item${imageBinding?" has-item-image":""}"${panelAttrs}>${imageBinding?photo(imageBinding.assetId,"item-image"):""}${blueprint.presentation?"":numbering}<div${blueprint.presentation?' class="item-body"':""}>${blueprint.presentation?numbering:""}<h3>${escape(itemTitle(item.title))}</h3><p>${escape(item.body)}</p>${action}</div></article>`;
+    }).join("");
+    const tabList=section.layout==="service-tabs"?`<div class="service-tab-list" data-tab-list aria-label="${escape(section.title)}">${section.items.map((item,i)=>`<button type="button" id="${escape(section.id)}-tab-${i}" data-service-tab aria-controls="${escape(section.id)}-panel-${i}"><span>${escape(itemTitle(item.title))}</span><span aria-hidden="true">↗</span></button>`).join("")}</div>`:"";
+    content=tabList?`<div class="service-tabs" data-service-tabs>${tabList}<div class="section-items service-panels">${items}</div></div>`:`<div class="section-items">${items}</div>`;
+  }
+  const sectionImage=bindings.find(binding=>binding.itemIndex===null);
+  const illustration=sectionImage?photo(sectionImage.assetId,"story-image section-image"):!blueprint.presentation&&section.kind==="about"&&section.layout==="split"?photo("hero","story-image"):"";
   const tone=blueprint.design?.sectionStyles.find(s=>s.pagePath===pagePath&&s.sectionId===section.id)?.tone;
   const copyOnly=!section.items.length&&section.kind!=="contact"&&!illustration;
-  return `<section id="${escape(section.id)}" class="site-section section-${section.kind} layout-${section.layout} section-order-${index%2}${tone?` tone-${tone}`:""}${copyOnly?" is-copy-only":""}" aria-labelledby="${escape(section.id)}-heading"><div class="section-inner">${heading.replace("<h2>",`<h2 id="${escape(section.id)}-heading">`)}${illustration}${content}</div></section>`;
+  const hasForm=section.kind==="contact"&&blueprint.interactions?.forms.some(form=>form.pagePath===pagePath&&form.sectionId===section.id);
+  return `<section id="${escape(section.id)}" class="site-section section-${section.kind} layout-${section.layout} section-order-${index%2}${tone?` tone-${tone}`:""}${copyOnly?" is-copy-only":""}${sectionImage?" has-section-image":""}${hasForm?" with-demo-form":""}" aria-labelledby="${escape(section.id)}-heading"><div class="section-inner">${heading.replace("<h2>",`<h2 id="${escape(section.id)}-heading">`)}${illustration}${content}</div></section>`;
 }
 
 export function renderPortableSite(bundle:PortableSiteBundle,assets:Record<string,Uint8Array>) {
   const b=validateBlueprintStructure(bundle.blueprint),family=designFamilies[b.family],encoder=new TextEncoder(),files:SiteFiles={};
-  const imageSet=portableHeroImages(assets),{width,height}=imageSet.fallback;
+  const imageSet=portableHeroImages(assets);
+  const imageSets:Record<string,ReturnType<typeof portableHeroImages>>={hero:imageSet};
   Object.assign(files,imageSet.files);
+  for(const media of b.media||[]){
+    const set=media.role==="logo"?portableLogoImage(assets,media.id):portableSlotImages(assets,media.id);
+    imageSets[media.id]=set;Object.assign(files,set.files);
+  }
+  if(b.presentation)Object.assign(files,portableFontFiles(b.presentation.fontTheme));
   files["assets/runtime.js"]=encoder.encode(trustedSiteRuntime);
   // Black/white crossover guarantees readable button text even when the model
   // picks a mid-tone accent; a near-black swatch can miss WCAG's 4.5:1 threshold.
   const ink=luminance(b.accent)>.179?"#000000":"#ffffff";
-  files["assets/site.css"]=encoder.encode(`:root{--background:${family.background};--surface:${family.surface};--ink:${family.ink};--muted:${family.muted};--accent:${b.accent};--accent-ink:${ink};--radius:${family.radius};--heading-font:${b.fontPair==="editorial"?'Georgia,"Times New Roman",serif':b.fontPair==="humanist"?'"Trebuchet MS",Arial,sans-serif':'Arial,Helvetica,sans-serif'};}\n${portableSiteCss}\n${portablePolishCss}\n${b.design?`${portableDesignCss}\n${siteDesignCss(b)}`:""}`);
+  files["assets/site.css"]=encoder.encode(`:root{--background:${family.background};--surface:${family.surface};--ink:${family.ink};--muted:${family.muted};--accent:${b.accent};--accent-ink:${ink};--radius:${family.radius};--heading-font:${b.fontPair==="editorial"?'Georgia,"Times New Roman",serif':b.fontPair==="humanist"?'"Trebuchet MS",Arial,sans-serif':'Arial,Helvetica,sans-serif'};}\n${portableSiteCss}\n${portablePolishCss}\n${b.design?`${portableDesignCss}\n${siteDesignCss(b)}`:""}\n${b.presentation?`${portablePresentationCss}\n${portableFontCss(b.presentation.fontTheme,b.design?.typography.weight)}`:""}`);
   for(const page of b.pages){
     const local=(target:string)=>relativeSiteLink(page.path,target);
-    const imageMarkup=(lazy=false)=>{
-      const img=`<img src="${escape(local(imageSet.fallback.path))}" alt="${escape(b.heroImage.alt)}" width="${width}" height="${height}" ${lazy?'loading="lazy"':'fetchpriority="high"'} decoding="async">`;
-      return imageSet.variants.length?`<picture><source type="image/webp" media="(max-width: 760px)" srcset="${escape(local(imageSet.variants[0].path))}">${img}</picture>`:img;
+    const imageMarkup:ImageMarkup=(assetId,lazy=false)=>{
+      const set=imageSets[assetId];if(!set)throw new Error(`Missing approved image asset: ${assetId}`);
+      const meta=assetId==="hero"?b.heroImage:b.media!.find(m=>m.id===assetId)!;
+      const isLogo=b.media?.some(m=>m.id===assetId&&m.role==="logo");
+      const img=`<img src="${escape(local(set.fallback.path))}" alt="${escape(meta.alt)}" width="${set.fallback.width}" height="${set.fallback.height}" ${lazy?'loading="lazy"':isLogo?'loading="eager"':'fetchpriority="high"'} decoding="async">`;
+      return set.variants.length?`<picture><source type="image/webp" media="(max-width: 760px)" srcset="${escape(local(set.variants[0].path))}">${img}</picture>`:img;
     };
     const nav=b.pages.map(p=>`<a href="${escape(local(p.path))}"${p.path===page.path?' aria-current="page"':""}>${escape(p.path==="index.html"?"Home":p.title)}</a>`).join("");
-    const contactSection=page.sections.find(s=>s.kind==="contact"),contactTarget=`#${contactSection?.id||"contact"}`;
-    const heroImage=`<figure class="hero-image">${imageMarkup()}<figcaption>${escape(b.heroImage.caption)}</figcaption></figure>`;
+    const contactSection=page.sections.find(s=>s.kind==="contact"),contactTarget=inquiryTarget(b,page);
+    const heroAssetId=b.presentation?.pageImages.find(binding=>binding.pagePath===page.path)?.assetId||"hero";
+    const heroCaption=heroAssetId==="hero"?b.heroImage.caption:b.media!.find(m=>m.id===heroAssetId)!.caption;
+    const heroImage=`<figure class="hero-image">${imageMarkup(heroAssetId)}${heroCaption?`<figcaption>${escape(heroCaption)}</figcaption>`:""}</figure>`;
     const callTarget=b.contact.phone?`tel:${b.contact.phone.replace(/[^+0-9]/g,"")}`:null;
-    const primaryTarget=/\bcall\b/i.test(page.hero.primaryCta)&&callTarget?callTarget:contactTarget;
+    const primaryTarget=siteActionTarget(page.hero.primaryCta,b,page,contactTarget);
+    const secondaryTarget=siteActionTarget(page.hero.secondaryCta,b,page,page.sections[0]?`#${page.sections[0].id}`:contactTarget);
     const breadcrumb=page.path==="index.html"?"":`<div class="page-breadcrumb"><a href="${escape(local("index.html"))}">Home</a><span aria-hidden="true">/</span><span>${escape(page.title)}</span></div>`;
     const mobileContact=`<div class="mobile-contact" aria-label="Quick contact">${callTarget?`<a class="button mobile-call" href="${escape(callTarget)}">Call now</a>`:""}<a class="button button-primary" href="${contactTarget}">Get in touch</a></div>`;
-    const heroCopy=`<div class="hero-copy">${breadcrumb}<p class="eyebrow"><span aria-hidden="true"></span>${escape(page.hero.eyebrow||b.tagline)}</p><h1>${escape(page.hero.headline)}</h1><p class="hero-description">${escape(page.hero.body)}</p><div class="hero-actions"><a class="button button-primary" href="${escape(primaryTarget)}">${escape(page.hero.primaryCta)}<span aria-hidden="true">↗</span></a>${page.hero.secondaryCta&&page.sections[0]?`<a class="text-link" href="#${escape(page.sections[0].id)}">${escape(page.hero.secondaryCta)} <span aria-hidden="true">↓</span></a>`:""}</div></div>`;
-    const sections=page.sections.map((section,index)=>sectionMarkup(section,index,b,imageMarkup(true),page.path,contactTarget)).join("");
+    const heroCopy=`<div class="hero-copy">${breadcrumb}<p class="eyebrow"><span aria-hidden="true"></span>${escape(page.hero.eyebrow||b.tagline)}</p><h1>${heroHeadline(page.hero.headline,b.presentation?.heroEmphasis)}</h1><p class="hero-description">${escape(page.hero.body)}</p><div class="hero-actions"><a class="button button-primary" href="${escape(primaryTarget)}">${escape(page.hero.primaryCta)}<span aria-hidden="true">↗</span></a>${page.hero.secondaryCta?`<a class="text-link" href="${escape(secondaryTarget)}">${escape(page.hero.secondaryCta)} <span aria-hidden="true">↗</span></a>`:""}</div></div>`;
+    const sections=page.sections.map((section,index)=>sectionMarkup(section,index,b,imageMarkup,page.path,contactTarget)).join("");
+    const brandContents=b.presentation?.logoAssetId?`<span class="brand-logo">${imageMarkup(b.presentation.logoAssetId)}</span>`:b.presentation?`<span class="brand-wordmark">${escape(b.brandName)}</span>`:`<span class="brand-symbol" aria-hidden="true">${escape(b.brandName.charAt(0))}</span><span>${escape(b.brandName)}</span>`;
     const closing=contactSection?"":`<section id="contact" class="site-section section-contact layout-split"><div class="section-inner"><div class="section-heading"><p class="eyebrow">Let's talk</p><h2>A good place to start.</h2><p class="section-copy">Tell us what you have in mind, and take the next step.</p><div class="contact-details">${contactMarkup(b)}</div></div>${b.interactions?"":demoForm()}</div></section>`;
-    files[page.path]=encoder.encode(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta http-equiv="Content-Security-Policy" content="${escape(siteCsp)}"><meta name="description" content="${escape(page.description)}"><meta name="color-scheme" content="${(b.design?colorLuminance(b.design.palette.background)<.179:b.family==="hospitality")?"dark":"light"}"><title>${escape(page.title)} | ${escape(b.brandName)}</title><link rel="stylesheet" href="${escape(local("assets/site.css"))}"><script src="${escape(local("assets/runtime.js"))}" defer></script></head><body data-page="${page.path}" class="${b.design?"design-v1 ":""}family-${b.family} composition-${b.composition} ${page.path==="index.html"?"page-home":"page-inner"}"><a class="skip-link" href="#page-content">Skip to content</a><div class="preview-notice" role="note">Website concept <span>·</span> Forms are demonstrations</div><header class="site-header"><a class="brand" href="${escape(local("index.html"))}" aria-label="${escape(b.brandName)} home"><span class="brand-symbol" aria-hidden="true">${escape(b.brandName.charAt(0))}</span><span>${escape(b.brandName)}</span></a><button type="button" class="menu-toggle" data-menu-toggle aria-controls="site-menu" aria-expanded="false">Menu <span aria-hidden="true">☰</span></button><nav id="site-menu" aria-label="Primary navigation">${nav}<a class="nav-contact" href="${contactTarget}">Get in touch <span aria-hidden="true">↗</span></a></nav></header><main id="page-content"><section class="site-hero"><div class="hero-inner">${heroCopy}${heroImage}</div><div class="hero-index" aria-hidden="true"><span>${escape(b.tagline||family.name)}</span><span>01 — ${String(b.pages.length).padStart(2,"0")}</span></div></section>${sections}${closing}</main><footer class="site-footer"><div><a class="footer-brand" href="${escape(local("index.html"))}">${escape(b.brandName)}</a><p>${escape(b.tagline)}</p></div><nav class="footer-navigation" aria-label="Footer navigation">${nav}</nav><p>Website concept by Tailored Agents.<br>Business details and integrations are reviewed before launch.</p></footer>${mobileContact}</body></html>`);
+    files[page.path]=encoder.encode(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta http-equiv="Content-Security-Policy" content="${escape(siteCsp)}"><meta name="description" content="${escape(page.description)}"><meta name="color-scheme" content="${(b.design?colorLuminance(b.design.palette.background)<.179:b.family==="hospitality")?"dark":"light"}"><title>${escape(page.title)} | ${escape(b.brandName)}</title><link rel="stylesheet" href="${escape(local("assets/site.css"))}"><script src="${escape(local("assets/runtime.js"))}" defer></script></head><body data-page="${page.path}" class="${b.design?"design-v1 ":""}${b.presentation?`presentation-v1 font-${b.presentation.fontTheme} `:""}family-${b.family} composition-${b.composition} ${page.path==="index.html"?"page-home":"page-inner"}"><a class="skip-link" href="#page-content">Skip to content</a><div class="preview-notice" role="note">Website concept <span>·</span> Forms are demonstrations</div><header class="site-header"><a class="brand" href="${escape(local("index.html"))}" aria-label="${escape(b.brandName)} home">${brandContents}</a><button type="button" class="menu-toggle" data-menu-toggle aria-controls="site-menu" aria-expanded="false">Menu <span aria-hidden="true">☰</span></button><nav id="site-menu" aria-label="Primary navigation">${nav}<a class="nav-contact" href="${escape(contactTarget)}">Get in touch <span aria-hidden="true">↗</span></a></nav></header><main id="page-content"><section class="site-hero"><div class="hero-inner">${heroCopy}${heroImage}</div><div class="hero-index" aria-hidden="true"><span>${escape(b.tagline||family.name)}</span><span>01 — ${String(b.pages.length).padStart(2,"0")}</span></div></section>${sections}${closing}</main><footer class="site-footer"><div><a class="footer-brand${b.presentation?.logoAssetId?" has-logo":""}" href="${escape(local("index.html"))}" aria-label="${escape(b.brandName)} home">${b.presentation?.logoAssetId?brandContents:escape(b.brandName)}</a><p>${escape(b.tagline)}</p></div><nav class="footer-navigation" aria-label="Footer navigation">${nav}</nav><p>Website concept by Tailored Agents.<br>Business details and integrations are reviewed before launch.</p></footer>${mobileContact}</body></html>`);
   }
   files["robots.txt"]=encoder.encode("User-agent: *\nDisallow: /\n");
   return {files,manifest:siteManifest(files),runtimeSha256:createHash("sha256").update(trustedSiteRuntime).digest("hex")};

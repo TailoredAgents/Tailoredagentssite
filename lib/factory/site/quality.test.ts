@@ -1,7 +1,7 @@
 import {describe,it,expect} from "vitest";
 import {familyForPlan} from "./families";
 import {fixtureBlueprint,fixtureSitePlan} from "./fixtures";
-import {publicSiteCopy,reviewSiteDepth} from "./quality";
+import {actionDestinationIssue,publicSiteCopy,reviewSiteDepth} from "./quality";
 
 describe("Website design direction and content depth",()=>{
   it.each(["Cosmo's heating and air conditioning website redesign","New website for cooling and heat pump maintenance","Air conditioning installation"])("recognizes the trade in %s",text=>expect(familyForPlan(text)).toBe("trades"));
@@ -34,10 +34,23 @@ describe("Website design direction and content depth",()=>{
     expect(reviewSiteDepth(b,plan).some(i=>i.page===path&&i.code==="thin_page")).toBe(true);
     b.interactions!.forms.push({pagePath:path,sectionId:"inquiry",fields:["message"],submitLabel:"Preview inquiry"});
     b.pages.at(-1)!.sections[1].body="Call us.";
-    expect(reviewSiteDepth(b,plan).some(i=>i.page===path&&i.code==="thin_page")).toBe(true);
+    expect(reviewSiteDepth(b,plan).some(i=>i.page===path&&i.code==="thin_page")).toBe(false);
     b.pages.at(-1)!.title="Services";b.pages.at(-1)!.path="services-extra/index.html";
     b.interactions!.forms[0].pagePath="services-extra/index.html";
     expect(reviewSiteDepth(b,plan).some(i=>i.page==="services-extra/index.html"&&i.code==="thin_page")).toBe(true);
+  });
+  it("accepts useful concise pages rather than enforcing section or layout quotas",()=>{
+    const b=fixtureBlueprint("trades","split",true);b.pages[0].sections=b.pages[0].sections.slice(0,2);b.pages[2].sections=b.pages[2].sections.slice(0,1);
+    for(const section of b.pages[0].sections)section.layout="rows";
+    expect(reviewSiteDepth(b,fixtureSitePlan).filter(i=>i.code==="thin_page"||i.code==="repeated_layout")).toEqual([]);
+  });
+  it("checks direct action promises without confusing a scheduling invitation for a dialer",()=>{
+    expect(actionDestinationIssue("Call Cosmo’s","services/index.html#cooling")).toContain("must dial");
+    expect(actionDestinationIssue("Call our team","tel:+17025550199")).toBeNull();
+    expect(actionDestinationIssue("Schedule a call","contact/index.html")).toBeNull();
+    expect(actionDestinationIssue("Callback request","contact/index.html")).toBeNull();
+    expect(actionDestinationIssue("Email Cosmo’s","#inquiry")).toContain("email address");
+    expect(actionDestinationIssue("Email our team","mailto:team@example.test")).toBeNull();
   });
   it("rejects substituted pages even when the total page count is correct",()=>{
     const blueprint=fixtureBlueprint("trades","split",true);

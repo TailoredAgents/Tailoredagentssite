@@ -5,7 +5,7 @@ import {execFile} from "node:child_process";
 import {promisify} from "node:util";
 import {tmpdir} from "node:os";
 import path from "node:path";
-import {preparePortableImages,portableHeroImages,portableImagePaths,portableImageLimits} from "./images";
+import {preparePortableImages,portableHeroImages,portableImagePaths,portableImageLimits,portableSlotImages,preparePortableLogo,portableLogoImage,portableAllImages,portableMobileImageBudget} from "./images";
 import {fixtureBlueprint,fixtureHeroSvg,fixtureSitePlan} from "./fixtures";
 import {portableBundle} from "./validate";
 import {renderPortableSite} from "./render";
@@ -24,6 +24,20 @@ function responsiveSite(){
   return {...files,...assets,"index.html":Buffer.from(html)};
 }
 describe("Portable image delivery",()=>{
+  it("keeps section photos distinct and supplied logos transparent, lossless and within delivery bounds",async()=>{
+    const photo=await preparePortableImages(original,"service-detail"),logo=await sharp({create:{width:900,height:300,channels:4,background:{r:24,g:78,b:106,alpha:.25}}}).png().toBuffer();
+    const logoFiles=await preparePortableLogo(logo,"brand-logo"),logoSet=portableLogoImage(logoFiles,"brand-logo"),photoSet=portableSlotImages(photo,"service-detail");
+    expect(Object.keys(photo)).toEqual(["assets/images/service-detail-mobile.webp","assets/images/service-detail-desktop.webp"]);
+    expect(photoSet.fallback.width).toBe(1536);expect(logoSet.fallback).toMatchObject({width:600,height:200});
+    const logoMeta=await sharp(logoFiles[logoSet.fallback.path]).metadata();expect(logoMeta.hasAlpha).toBe(true);expect(logoMeta.exif).toBeUndefined();
+    expect(logoSet.fallback.bytes).toBeLessThanOrEqual(100000);
+    expect(Object.keys(portableAllImages({...assets,...photo,...logoFiles}).files)).toHaveLength(5);
+    expect(()=>portableAllImages({...assets,...photo,"assets/images/service-detail.webp":logoFiles[logoSet.fallback.path]})).toThrow("duplicate");
+    await expect(preparePortableLogo(logo,"hero")).rejects.toThrow("cannot replace");
+    await expect(preparePortableLogo(logo,"brand-mobile")).rejects.toThrow("reserved");
+    await expect(preparePortableImages(original,"../private")).rejects.toThrow("invalid ID");
+    expect(()=>portableSlotImages({"assets/images/detail.png":original},"detail")).toThrow("valid local PNG");
+  });
   it("makes deterministic decodable mobile/desktop WebP derivatives without publishing metadata or originals",async()=>{
     expect(await preparePortableImages(original)).toEqual(assets);
     expect(Object.keys(assets)).toEqual([portableImagePaths.mobile,portableImagePaths.desktop]);
@@ -46,6 +60,19 @@ describe("Portable image delivery",()=>{
     expect(set.variants[0].bytes).toBeLessThanOrEqual(250_000);expect(set.variants[1].bytes).toBeLessThanOrEqual(400_000);
     expect(set.fallback.width).toBeLessThanOrEqual(1600);expect(set.fallback.width).toBeGreaterThanOrEqual(960);
     for(const image of Object.values(result))expect(image.byteLength).toBeLessThan(noisy.byteLength);
+  },30000);
+  it("shares a bounded mobile photo allowance across rich sites while preserving the one-image policy",async()=>{
+    const width=1000,height=700,pixels=Buffer.alloc(width*height*3);let seed=47201;
+    for(let i=0;i<pixels.length;i++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;pixels[i]=seed>>>24;}
+    const noisy=await sharp(pixels,{raw:{width,height,channels:3}}).png().toBuffer();
+    expect(portableMobileImageBudget(1)).toBe(250000);expect(portableMobileImageBudget(3)).toBe(150000);expect(portableMobileImageBudget(5)).toBe(90000);
+    let total=0;
+    for(const id of ["hero","detail","atmosphere"]){const result=await preparePortableImages(noisy,id,{mobileBytes:portableMobileImageBudget(3)}),variant=portableSlotImages(result,id).variants[0];expect(variant.bytes).toBeLessThanOrEqual(150000);total+=variant.bytes;}
+    expect(total).toBeLessThanOrEqual(450000);
+    const narrow=await preparePortableImages(noisy,"detail",{mobileBytes:portableMobileImageBudget(5)});
+    expect(portableSlotImages(narrow,"detail").variants[0].bytes).toBeLessThanOrEqual(90000);
+    await expect(preparePortableImages(noisy,"detail",{mobileBytes:0})).rejects.toThrow("Invalid mobile");
+    expect(()=>portableMobileImageBudget(6)).toThrow("photo count");
   },30000);
   it("preserves alpha, portrait composition and small sources without enlargement",async()=>{
     const png=await sharp({create:{width:300,height:600,channels:4,background:{r:35,g:60,b:90,alpha:.3}}}).png().toBuffer();
@@ -80,7 +107,7 @@ describe("Portable image delivery",()=>{
     const variants=portableHeroImages(assets).variants,sourceSet=variants.map(v=>`${v.path} ${v.width}w`).join(", ");
     expect(()=>assertPortableSiteSafety({...files,"index.html":Buffer.from(text(files["index.html"]).replace(`srcset="${portableImagePaths.mobile}"`,`srcset="${sourceSet}" sizes="(max-width: 760px) 100vw, 50vw"`))})).not.toThrow();
     expect(()=>assertPortableSiteSafety({...files,[portableImagePaths.legacy]:original})).toThrow("stay private");
-    expect(()=>assertPortableSiteSafety({...files,"assets/images/customer-secret.webp":assets[portableImagePaths.mobile]})).toThrow("Unexpected");
+    expect(()=>assertPortableSiteSafety({...files,"assets/images/customer-secret.webp":assets[portableImagePaths.mobile]})).toThrow();
   });
   it("rejects remote, escaped, missing and mismatched responsive assets before browser execution",()=>{
     const files=responsiveSite(),html=text(files["index.html"]);

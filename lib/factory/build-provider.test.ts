@@ -68,4 +68,12 @@ describe("Website provider cost and request bounds",()=>{
     await expect(generateFactoryHero({...build,stage:"images"},"Illustrative image with sufficient prompt length.")).rejects.toThrow();
     expect(mocks.uncertain).toHaveBeenCalledWith("cost-1");expect(mocks.normalize).not.toHaveBeenCalled();
   });
+  it("records separate image-slot reservations and rejects unconfigured or denied image calls before HTTP",async()=>{
+    vi.stubEnv("FACTORY_OPENAI_API_KEY","");vi.stubEnv("OPENAI_API_KEY","");const fetcher=vi.fn();vi.stubGlobal("fetch",fetcher);
+    await expect(generateFactoryHero({...build,stage:"images"},"A sufficiently detailed illustrative scene.","service-photo")).rejects.toBeInstanceOf(FactoryBuildRequestNotAttemptedError);
+    expect(mocks.reserve).not.toHaveBeenCalled();
+    vi.stubEnv("FACTORY_OPENAI_API_KEY","synthetic-test-key");mocks.reserve.mockRejectedValueOnce(new FactoryBuildBudgetError("Remaining image allowance exceeded"));
+    await expect(generateFactoryHero({...build,stage:"images"},"A sufficiently detailed illustrative scene.","service-photo")).rejects.toBeInstanceOf(FactoryBuildRequestNotAttemptedError);
+    expect(mocks.reserve).toHaveBeenCalledWith(expect.objectContaining({requestKey:expect.stringMatching(/^image:service-photo:/),reservedMicros:2_000_000}));expect(fetcher).not.toHaveBeenCalled();expect(mocks.attempt).not.toHaveBeenCalled();
+  });
 });

@@ -66,7 +66,13 @@ export function applyApprovedDesign(b:SiteBlueprint,plan:FactoryPlanContent):Sit
   if(!constraints.palette.surface&&contrastRatio(palette.ink,palette.surface)<4.5)palette.surface=palette.background;
   // An unapproved helper color can be adjusted; an explicit inaccessible choice is reported by validation.
   if(!constraints.palette.muted&&[palette.background,palette.surface].some(bg=>contrastRatio(palette.muted,bg)<4.5))palette.muted=palette.ink;
-  return {...b,accent:palette.accent,fontPair:constraints.typography.heading==="geometric"?"modern":constraints.typography.heading||b.fontPair,
+  let presentation=b.presentation;
+  if(presentation&&constraints.typography.heading){
+    const serif=constraints.typography.heading==="editorial",themeIsSerif=presentation.fontTheme==="editorial"||presentation.fontTheme==="warm";
+    if(serif&&!themeIsSerif)presentation={...presentation,fontTheme:"editorial"};
+    if(!serif&&themeIsSerif)presentation={...presentation,fontTheme:constraints.typography.heading==="geometric"?"technical":"studio"};
+  }
+  return {...b,...(presentation?{presentation}:{}),accent:palette.accent,fontPair:constraints.typography.heading==="geometric"?"modern":constraints.typography.heading||b.fontPair,
     design:{...design,palette,typography:{...design.typography,...constraints.typography}}};
 }
 

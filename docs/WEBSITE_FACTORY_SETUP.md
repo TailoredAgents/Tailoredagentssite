@@ -60,7 +60,9 @@ The planning context includes standard lead fields, shared lead notes, planning 
 
 ## Required configuration
 
-Apply all website migrations through `0032_factory_preview_names.sql` before serving these pages. The existing Render build command runs `npm run db:migrate`; confirm the deployment actually succeeded. No Mail migration is required. Research keeps its existing configuration; building needs the separate Render storage/preview setup below.
+Apply all website migrations through `0033_factory_brand_assets.sql` before serving these pages. The existing Render build command runs `npm run db:migrate`; confirm the deployment actually succeeded. No Mail migration is required. Research keeps its existing configuration; building needs the separate Render storage/preview setup below.
+
+The October 27 [quality upgrade](WEBSITE_BUILDER_QUALITY_UPGRADE.md) needs no new service, key or subscription. Deploy both the CRM and existing builder from the same release. Optional uploads now distinguish logo/photos and are frozen at approval; old uploads remain photos. New builds can use multiple responsive local images and bundled licensed fonts. Existing published previews are unchanged. Run the free benchmark command in the upgrade document to check the renderer without paid generation. A new client build still requires its exact plan approval.
 
 | Setting | Service | Behavior |
 | --- | --- | --- |

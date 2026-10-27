@@ -1,0 +1,67 @@
+# Website Builder quality upgrade — October 27, 2026
+
+## Authorization and objective
+
+Austin approved implementation after comparing the system's Cosmo v3 (~65/100 subjective prospect impression) with his handmade Cosmo mockup (~90/100). These are human impression benchmarks, not measured conversion or performance scores. Goal: consistently client-ready, distinctive sites with a simple salesperson workflow. Do not claim that implementation alone proves generated sites reach 90.
+
+Reference: https://cosmos-heating-air.onrender.com/ . Existing generated preview: https://tailored-agents-site-previews.onrender.com/p/cosmos-heating-air-v3/ . Use composition, identity, concise benefit-led copy and varied imagery as references; do not copy unverified business claims into a new approved plan.
+
+## Preserve
+
+- Any lead can be researched and planned; no mandatory business name, website, location or industry.
+- Lead → review/discuss direction → exact human plan approval → build → open/share.
+- Research/planning $25/month; builds/images $50/month and $5/site maximum. Keep existing reservations, uncertain charges, bounded retries and prior working previews.
+- Actual source/asset export and shared Render preview hosting.
+- No automatic paid rebuild of Cosmo's or other existing approved/ready projects just to demonstrate the upgrade. A materially changed creative direction needs a new reviewed plan.
+- Visitor chatbot and finished-site editing copilot remain separate follow-on work; this release is the design/review quality foundation.
+
+## Implementation checklist
+
+- [x] Broaden creative research/planning guidance: audience benefit, brand direction, purposeful pages, authorized asset opportunities, uncertainty internal.
+- [x] Version-compatible presentation/media schema: supplied logos/photos, distinct hero/section images, purposeful compositions and locally bundled licensed fonts.
+- [x] Durable image slots with bounded generation, snapshots of approved uploads, retry reuse and provenance/export.
+- [x] Premium responsive rendering, service tabs/gallery/story layouts, exact semantic Call/Email/Contact actions.
+- [x] Human-calibratable quality rubric, useful screenshot closeups, bounded targeted corrections, purpose-based copy review.
+- [x] Actual resource accounting including fonts/multiple images, accessible browser interactions and honest lab measurements.
+- [x] Several industry/sparse-input fixtures, desktop/mobile visual inspection, functional/security/approval-budget regressions.
+- [ ] Deployment verification and explicit remaining pilot work. Existing immutable previews preserved.
+
+## Research applied
+
+- v0 documents reusable design systems and browser critique/iteration: https://v0.app/docs/design-systems-2 and https://v0.app/docs/agentic-features . We are implementing these principles in our own portable system, not moving hosting or buying another service.
+- OpenAI recommends task-specific evaluations, reference/pairwise comparisons and calibration with human judgments: https://developers.openai.com/api/docs/guides/evaluation-best-practices . Use our own benchmark harness, not the deprecated hosted Evals platform.
+- Google Core Web Vitals: https://web.dev/articles/vitals . Resource budgets and deterministic local checks do not establish real-user field performance.
+- New strict structured-output fields must all be required (nullable for absent choices); preserve parsing of older saved responses: https://developers.openai.com/api/docs/guides/structured-outputs .
+
+## Resume log
+
+- Started from clean main `44ff36e`, synchronized with origin/main. Work divided among renderer/design, assets/durable worker, evaluation/benchmarks; root handles schema, creative prompts, security boundary, integration and release.
+- Actual root cause: fixed structured site assembler, single repeated hero, system-font-only styling, review restricted to these capabilities; existing screenshot review and repairs already exist and must be improved rather than duplicated.
+- Implementation is complete. Final release checks and live verification are recorded below. No new paid website generation or build approval has been submitted for this upgrade.
+
+## Implemented behavior
+
+- New builds use explicit presentation version 1; older stored responses, paid image checkpoints and immutable completed exports remain usable. A repair may improve legacy typography/layout using its existing hero without requesting new imagery.
+- Optional uploads distinguish a real logo from business photos, with a short optional description. Approval freezes roles, descriptions and upload IDs. No lead field or upload becomes mandatory. The first supplied photo remains the hero; a logo is never stretched into a hero.
+- A site can use a hero and up to four supporting assets, including at most one provided logo and two extra generated photos. Each paid image is independently reserved, hashed and saved before the next request. Retry reuses successful slots. Image prompts/identities stay fixed during repair; public alt text and captions can be corrected.
+- Licensed local DM Sans, Manrope and DM Serif Display subsets ship inside exports with their licenses. Exact font bytes and declarations are validated; no third-party font request is added.
+- New layout options include photo grids, alternating image/story sections and keyboard-accessible service tabs. Hero, section and item placements are explicit; unavailable placements fail before image generation. Call and Email labels resolve to actual approved contact channels. Explicit internal links retain their configured targets.
+- Reviews score first impression, composition, imagery, writing, business usefulness and mobile presentation. The initial target is 85 overall with a 75 dimension floor. Scores are fallible AI judgments requiring human calibration, not certifications or proven client ratings. Up to four readable screenshot crops supplement full-page views; existing repair/request caps remain.
+- Photos share a conservative 450 KB mobile allowance when multiple slots exist, while the existing 800 KB per-page resource gate counts actual selected images, CSS, scripts and fonts. Local paint/layout observations are saved separately and are **not** real-user Core Web Vitals or a mobile network speed test.
+- Salespeople still review/discuss the plan, approve once, then use Open website / Copy preview link. Optional assets and quality details remain secondary disclosures.
+
+## Repeatable free benchmarks
+
+Run `node --conditions=react-server --import tsx scripts/evaluate-factory-benchmarks.ts [outputDirectory]`.
+
+Five cases cover trades, wellness, hospitality, professional services and sparse unknown-business input. Each emits portable files, desktop/mobile screenshots, actual delivery checks, a report and an unfilled human-review scorecard. The fixture artwork is intentionally synthetic, and no provider request is made. All five cases and 26 page/viewport captures passed local checks. Root visually inspected the trades desktop/mobile output; renderer review also inspected wellness desktop and professional mobile. Separate renderer cases cover all six supported families, including editorial.
+
+These fixtures prove supported rendering and checks, not that live generated sites now score 90. Next pilot: prepare a revised Cosmo direction, let Austin review/approve it, inspect the resulting real desktop/mobile build against his reference, and record quality, latency and actual spend. Repeat on different approved industries before claiming consistency.
+
+## Verification and release
+
+- Desktop/phone salesperson suite: 12 scenarios passed across the initial eight successful cases and four targeted reruns after updating obsolete upload-label expectations. Logo role/description transport, scorecard disclosure, accessibility, overflow, approval, exports and sharing were covered.
+- Independent review fixed explicit contact-target precedence, ambiguous logo names, unsupported item-image placements, long-name mobile overflow, paid-image caption repair and legacy presentation repair.
+- A parallel test run accidentally shared the disposable build database and was invalidated; final database verification is performed with one owner. No production database was used by tests.
+- Final isolated comprehensive suite: **258 tests passed across 26 files**, including all three planning/worker/build PostgreSQL integration suites. Lint and the production build (including TypeScript) passed. The expanded 100 KB QA report bound was tested with a ten-page scorecard/resource/lab report and an oversized rejection.
+- Deployed commit and live verification: pending release verification.

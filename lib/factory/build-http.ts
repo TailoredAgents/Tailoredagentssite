@@ -32,7 +32,7 @@ export async function uploadFactoryImage(request:Request,projectId:string){
     const bytes=await normalizeFactoryImage(new Uint8Array(await file.arrayBuffer()));
     const filename=(Array.from(file.name).map(c=>c==="/"||c==="\\"||c.charCodeAt(0)<32?"_":c).join("").slice(0,170)||"reference-image")+".png";
     const storage=factoryStorage();
-    const upload=await registerFactoryUpload(context,{projectId,filename,contentType:"image/png",byteSize:bytes.length,sha256:createHash("sha256").update(bytes).digest("hex")});uploadId=upload.id;
+    const upload=await registerFactoryUpload(context,{projectId,filename,role:form.get("role")||"photo",alt:form.get("alt")||"",contentType:"image/png",byteSize:bytes.length,sha256:createHash("sha256").update(bytes).digest("hex")});uploadId=upload.id;
     await storage.put(upload.storageKey,bytes,"image/png");
     await completeFactoryUpload(context,upload.id);
     return Response.json({ok:true},{headers:factoryPrivateHeaders});

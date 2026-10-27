@@ -14,6 +14,7 @@ import type {FactoryClaimedBuild,FactoryBuildQa,FactoryBuildManifest} from "./bu
 import type {FactoryPlanContent} from "./types";
 import {fixtureBlueprint} from "./site/fixtures";
 import type {SiteBlueprint} from "./site/types";
+import type {SiteScorecard} from "./site/review";
 import {runFactoryBuildWorkerStep,type FactoryBuildRuntime} from "./build-worker";
 vi.mock("server-only",()=>({}));
 vi.mock("./build-config",()=>({factoryBuildConfiguration:()=>({configured:true,reason:null})}));
@@ -47,6 +48,9 @@ async function toVerification(){
   }return job;
 }
 function finish(job:FactoryClaimedBuild){return finishFactoryBuild({versionId:job.id,leaseToken:job.leaseToken,manifest,qaReport:qa(job),sourceKey:`${job.storagePrefix}source.zip`,verification:{url:`https://previews.example.test/p/${job.previewToken}/`,status:200,checkedAt:new Date().toISOString()}});}
+function scoredReview<T extends object>(value:T){return {...value,scorecard:Object.fromEntries(["firstImpression","composition","imagery","copy","usefulness","mobile"].map(key=>[key,{score:90,evidence:[{page:"index.html",observation:"Synthetic evidence: the fixture is intentionally evaluated by injected providers."}],improvement:"Preserve the approved synthetic test composition."}]))};}
+function mediaBlueprint(){const result=structuredClone(blueprint),items=result.pages[0].sections.find(section=>section.id==="services")!.items;["Describe your central objective and explore the information needed to define a useful starting point. Bring the questions that matter most to you.","Compare different approaches to your project and consider the practical constraints behind each option. Identify the decisions that need further discussion before choosing a direction.","Outline a manageable next step with clear priorities and responsibilities. Use your initial discussion to determine which information is needed before a scope can be agreed."].forEach((body,index)=>{items[index].body=body;});return result;}
+
 async function fixtureRuntime(){
   const objects=new Map<string,Uint8Array>(),image=new Uint8Array(await sharp({create:{width:1200,height:800,channels:3,background:"#456078"}}).png().toBuffer());
   const runtime:FactoryBuildRuntime={storage:{async put(key,bytes){objects.set(key,Uint8Array.from(bytes));},async get(key){const value=objects.get(key);if(!value)throw Error("Fixture object missing");return value;},async deletePrefix(prefix){for(const key of objects.keys())if(key.startsWith(prefix))objects.delete(key);}},
@@ -58,7 +62,7 @@ async function fixtureRuntime(){
         try{await attemptFactoryBuildCost(id,build.leaseToken);}
         catch(error){if(error instanceof FactoryBuildBudgetError)throw new FactoryBuildRequestNotAttemptedError(error.message);throw error;}
         await settleFactoryBuildCost(id,{actualMicros:100000,providerId:"synthetic-model"});
-        return {id:"synthetic-model",status:"completed",usage:{input_tokens:1000,output_tokens:2000},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(request.stage==="review"?{verdict:"pass",summary:"The synthetic design follows the approved direction.",issues:[]}:blueprint)}]}]};
+        return {id:"synthetic-model",status:"completed",usage:{input_tokens:1000,output_tokens:2000},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(request.stage==="review"?scoredReview({verdict:"pass",summary:"The synthetic design follows the approved direction.",issues:[]}):blueprint)}]}]};
       }catch(error){await uncertainFactoryBuildCost(id);throw error;}
     },
     async hero(build){const id=await reserveFactoryBuildCost({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,requestKey:"fixture-image",reservedMicros:2000000});await attemptFactoryBuildCost(id,build.leaseToken);await settleFactoryBuildCost(id,{actualMicros:130000,providerId:"synthetic-image"});return {bytes:image,provenance:{kind:"generated",model:"synthetic-fixture"}};},
@@ -126,6 +130,35 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     await expect(saveFactoryBuildStage({versionId:current.id,leaseToken:current.leaseToken,stage:"publish",nextStage:"verify",workingData:{},manifest:{...manifest,files:[{...manifest.files[0],path:"../source.zip"}]},qaReport:qa(current),sourceKey:`${current.storagePrefix}source.zip`})).rejects.toThrow("unsafe path");
     await expect(saveFactoryBuildStage({versionId:current.id,leaseToken:current.leaseToken,stage:"publish",nextStage:"verify",workingData:{},manifest,qaReport:{...qa(current),passed:false},sourceKey:`${current.storagePrefix}source.zip`})).rejects.toThrow("passing desktop/mobile");
   });
+  it("preserves a full ten-page quality report through publication while enforcing its 100 KB ceiling",async()=>{
+    const project=await prepared();await enable();let current=(await claimFactoryBuild())!;
+    for(const [stage,nextStage] of [["generate","images"],["images","qa"],["qa","publish"]] as const){
+      expect(await saveFactoryBuildStage({versionId:current.id,leaseToken:current.leaseToken,stage,nextStage,workingData:{}})).toBe(true);
+      current=(await claimFactoryBuild())!;
+    }
+    const pages=Array.from({length:10},(_,index)=>index===0?"index.html":`service-${index}-a-detailed-customer-service-overview/index.html`);
+    const scorecard=Object.fromEntries(["firstImpression","composition","imagery","copy","usefulness","mobile"].map(dimension=>[dimension,{score:88,
+      evidence:[0,1].map(index=>({page:pages[index],observation:`Synthetic ${dimension} evidence. `.padEnd(500,"e")})),
+      improvement:`Optional synthetic ${dimension} refinement. `.padEnd(500,"i"),
+    }])) as SiteScorecard;
+    const report:FactoryBuildQa={...qa(current),checks:["Ten-page synthetic QA fixture"],warnings:Array.from({length:20},(_,index)=>`Synthetic optional refinement ${index}. `.padEnd(700,"w")),
+      designReview:{reviewVersion:2,overallScore:88,summary:"Synthetic full-size assessment. ".padEnd(1400,"s"),reviewedPages:pages,imageCount:24,scorecard},
+      delivery:{pages:pages.map(page=>({page,mobileBytes:650000,desktopBytes:900000,mobileInitialBytes:300000,desktopInitialBytes:450000,
+        mobileResources:[page,"assets/site.css","assets/runtime.js",...Array.from({length:5},(_,index)=>`assets/images/illustrative-business-photo-${index}-mobile.webp`),...Array.from({length:4},(_,index)=>`assets/fonts/licensed-display-family-${index}.woff2`)],
+        desktopResources:[page,"assets/site.css","assets/runtime.js",...Array.from({length:5},(_,index)=>`assets/images/illustrative-business-photo-${index}-desktop.webp`),...Array.from({length:4},(_,index)=>`assets/fonts/licensed-display-family-${index}.woff2`)],
+      }))},
+      labPerformance:pages.flatMap(page=>(["desktop","mobile"] as const).map(viewport=>({page,viewport,environment:"isolated-local-chromium" as const,network:"in-memory-unthrottled" as const,domContentLoadedMs:120,loadMs:150,firstContentfulPaintMs:140,largestContentfulPaintMs:160,cumulativeLayoutShift:0.01,longTaskCount:0,measurementWindowMs:250}))),
+      pageScreenshots:pages.flatMap((page,index)=>(["desktop","mobile"] as const).map(viewport=>({page,viewport,storageKey:`${current.storagePrefix}pages/screenshots/page-${index}-${viewport}.png`})))};
+    const size=Buffer.byteLength(JSON.stringify(report));expect(size).toBeGreaterThan(30000);expect(size).toBeLessThan(100000);
+    const fullManifest:FactoryBuildManifest={entrypoint:"index.html",files:pages.map(page=>({...manifest.files[0],path:page}))};
+    const publish={versionId:current.id,leaseToken:current.leaseToken,stage:"publish" as const,nextStage:"verify" as const,workingData:{},manifest:fullManifest,sourceKey:`${current.storagePrefix}source.zip`};
+    await expect(saveFactoryBuildStage({...publish,qaReport:{...report,warnings:[...report.warnings,"x".repeat(100001)]}})).rejects.toThrow("saved-data limit");
+    expect((await pool.query("SELECT stage,status,qa_report FROM factory_build_versions WHERE id=$1",[current.id])).rows[0]).toMatchObject({stage:"publish",status:"running",qa_report:null});
+    expect(await saveFactoryBuildStage({...publish,qaReport:report})).toBe(true);
+    current=(await claimFactoryBuild())!;expect(current.stage).toBe("verify");
+    expect(await finishFactoryBuild({versionId:current.id,leaseToken:current.leaseToken,manifest:fullManifest,qaReport:report,sourceKey:`${current.storagePrefix}source.zip`,verification:{url:`https://previews.example.test/p/${current.previewToken}/`,status:200,checkedAt:new Date().toISOString()}})).toBe(true);
+    const saved=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];expect(saved.status).toBe("ready");expect(saved.qaReport).toEqual(report);
+  });
   it("serializes concurrent reservations, counts uncertain costs, and refuses replayed provider attempts",async()=>{
     await prepared();await enable(2,1);const job=(await claimFactoryBuild())!;
     const requests=await Promise.allSettled([reserveFactoryBuildCost({versionId:job.id,leaseToken:job.leaseToken,stage:"generate",requestKey:"one",reservedMicros:600000}),reserveFactoryBuildCost({versionId:job.id,leaseToken:job.leaseToken,stage:"generate",requestKey:"two",reservedMicros:600000})]);
@@ -170,6 +203,57 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     const source=await getFactorySourceDownload(member,result.versions[0].id),archive=unzipStored(objects.get(source.storageKey)!);expect(archive.has("build.mjs")).toBe(true);expect(archive.has("render.yaml")).toBe(true);expect(archive.has("package-lock.json")).toBe(true);expect(archive.has("site/services/index.html")).toBe(true);expect(archive.has("site/assets/images/hero.png")).toBe(false);expect(archive.has("site/assets/images/hero-mobile.webp")).toBe(true);expect(archive.has("site/assets/images/hero-desktop.webp")).toBe(true);expect(result.versions[0].qaReport?.designReview?.reviewedPages).toEqual(["index.html","services/index.html"]);expect(result.versions[0].qaReport?.pageScreenshots).toHaveLength(4);
     const prefix=source.storageKey.slice(0,-"source.zip".length);for(const [name,bytes]of archive)if(name.startsWith("site/"))expect(bytes).toEqual(Buffer.from(objects.get(`${prefix}preview/${name.slice(5)}`)!));
     expect(result.monthSpentMicros).toBe(330000);expect((await pool.query("SELECT count(*)::int n FROM factory_build_costs WHERE status='settled'")).rows[0].n).toBe(3);
+  });
+  it("freezes approved logo and photo roles and publishes every selected optimized asset through the complete worker",async()=>{
+    const project=await prepared(false),{runtime,objects}=await fixtureRuntime();
+    const image=await sharp({create:{width:900,height:600,channels:4,background:{r:42,g:88,b:74,alpha:.6}}}).png().toBuffer();
+    async function upload(role:"logo"|"photo",filename:string,alt:string){const saved=await registerFactoryUpload(member,{projectId:project.projectId,role,alt,filename,contentType:"image/png",byteSize:image.length,sha256:"a".repeat(64)});objects.set(saved.storageKey,image);await completeFactoryUpload(member,saved.id);return saved;}
+    const logo=await upload("logo","brand.png","Approved business logo"),hero=await upload("photo","hero.png","Team supplied main business photo"),detail=await upload("photo","detail.png","Team supplied detail photo");
+    await expect(upload("logo","replacement.png","Another logo")).rejects.toThrow("existing logo");
+    await approveFactoryPlan(member,{projectId:project.projectId,planId:project.planId});
+    await pool.query("UPDATE factory_uploads SET alt='Changed after approval' WHERE id=$1",[hero.id]);
+    const saved=(await pool.query("SELECT working_data FROM factory_build_versions WHERE project_id=$1",[project.projectId])).rows[0].working_data.inputUploads;
+    expect(saved.find((item:{id:string})=>item.id===hero.id)).toMatchObject({role:"photo",alt:"Team supplied main business photo"});
+    const concept=mediaBlueprint();
+    concept.media=[{id:"brand",role:"logo",source:"provided",uploadId:logo.id,prompt:"",alt:"Approved business logo",caption:"Team-provided logo"},{id:"detail",role:"photo",source:"provided",uploadId:detail.id,prompt:"",alt:"Team supplied detail photo",caption:"Team-provided business photo"},{id:"atmosphere",role:"photo",source:"generated",uploadId:null,prompt:"Illustrative architectural detail with natural light and considered material, no text.",alt:"Illustrative architectural detail",caption:"Illustrative concept imagery"}];
+    concept.presentation={version:1,fontTheme:"studio",heroEmphasis:null,logoAssetId:"brand",pageImages:[{pagePath:"services/index.html",assetId:"detail"}],sectionImages:[{pagePath:"index.html",sectionId:"benefits",assetId:"atmosphere",itemIndex:null}]};
+    const execute=runtime.execute;runtime.execute=build=>async request=>{const response=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};if(request.stage!=="review")response.output[0].content[0].text=JSON.stringify(concept);return response;};
+    await enable();for(let step=0;step<5;step++){const result=await runFactoryBuildWorkerStep(runtime);expect(result.status,JSON.stringify((await getFactoryProjectBuilds(member,project.projectId))!.versions[0])).toBe("processed");}
+    const result=(await getFactoryProjectBuilds(member,project.projectId))!,version=result.versions[0],archive=unzipStored(objects.get((await getFactorySourceDownload(member,version.id)).storageKey)!);
+    for(const name of ["brand.webp","hero-mobile.webp","detail-desktop.webp","atmosphere-mobile.webp"])expect(archive.has(`site/assets/images/${name}`)).toBe(true);
+    expect(archive.get("site/index.html")!.toString()).toContain("brand.webp");expect(archive.get("site/services/index.html")!.toString()).toContain("detail-desktop.webp");
+    expect(version.qaReport?.designReview).toMatchObject({reviewVersion:2,overallScore:90});
+    expect(result.monthSpentMicros).toBe(330000);expect((await pool.query("SELECT count(*)::int n FROM factory_build_costs WHERE stage='images'")).rows[0].n).toBe(1);
+  });
+  it("retains an uncertain image charge and retries only its slot while preserving earlier prepared images",async()=>{
+    const project=await prepared(),{runtime}=await fixtureRuntime(),concept=mediaBlueprint(),execute=runtime.execute;
+    concept.media=[{id:"detail",role:"photo",source:"generated",uploadId:null,prompt:"Illustrative architectural close-up with intentional natural lighting and no text.",alt:"Illustrative detail",caption:"Illustrative concept image"}];
+    concept.presentation={version:1,fontTheme:"studio",heroEmphasis:null,logoAssetId:null,pageImages:[{pagePath:"services/index.html",assetId:"detail"}],sectionImages:[]};
+    runtime.execute=build=>async request=>{const response=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};if(request.stage!=="review")response.output[0].content[0].text=JSON.stringify(concept);return response;};
+    const image=await sharp({create:{width:1000,height:700,channels:3,background:"#466c60"}}).png().toBuffer(),calls:string[]=[];let fail=true;
+    runtime.hero=async(build,_prompt,id="hero")=>{
+      calls.push(id);const cost=await reserveFactoryBuildCost({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,requestKey:`fixture-image:${id}:${randomUUID()}`,reservedMicros:2000000});
+      await attemptFactoryBuildCost(cost,build.leaseToken);
+      if(id==="detail"&&fail){fail=false;await uncertainFactoryBuildCost(cost);throw new Error("Synthetic ambiguous provider failure");}
+      await settleFactoryBuildCost(cost,{actualMicros:130000});return {bytes:image,provenance:{kind:"synthetic-test"}};
+    };
+    await enable();expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
+    const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];
+    expect(calls).toEqual(["hero","detail"]);expect((await pool.query("SELECT status,reserved_micros FROM factory_build_costs WHERE status='uncertain'")).rows[0]).toEqual({status:"uncertain",reserved_micros:"2000000"});
+    await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});
+    for(let step=0;step<4;step++){const result=await runFactoryBuildWorkerStep(runtime);expect(result.status,JSON.stringify((await getFactoryProjectBuilds(member,project.projectId))!.versions[0])).toBe("processed");}
+    expect(calls).toEqual(["hero","detail","detail"]);expect((await getFactoryProjectBuilds(member,project.projectId))!.monthSpentMicros).toBe(2460000);
+    expect((await pool.query("SELECT count(*)::int n FROM factory_build_costs WHERE status='uncertain'")).rows[0].n).toBe(1);
+  });
+  it("does not accept a newly saved unscored review as a legacy review on explicit retry",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute;let reviews=0;
+    runtime.execute=build=>async request=>{const response=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};if(request.stage==="review"&&++reviews===1)response.output[0].content[0].text=JSON.stringify({verdict:"pass",summary:"Synthetic assessment omitted its required scorecard.",issues:[]});return response;};
+    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
+    const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];expect(version.error).toContain("scorecard");
+    expect((await pool.query("SELECT working_data FROM factory_build_versions WHERE id=$1",[version.id])).rows[0].working_data.reviewResponse.requireScorecard).toBe(true);
+    await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});for(let step=0;step<3;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect(reviews).toBe(2);expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].qaReport?.designReview?.reviewVersion).toBe(2);
   });
   it("saves live activity before work, exposes only safe progress, and clears it between stages",async()=>{
     const project=await prepared();await enable();const {runtime}=await fixtureRuntime();
@@ -233,7 +317,7 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
       const response=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};
       if(request.stage==="review"){
         reviews++;
-        response.output[0].content[0].text=JSON.stringify(reviews===1?{verdict:"revise",summary:"The heading needs a clearer subject.",issues:[{page:"index.html",category:"content",severity:"error",message:"Make the homepage heading describe the proposed service."}]}:{verdict:"pass",summary:"The revised direction is clear.",issues:[]});
+        response.output[0].content[0].text=JSON.stringify(scoredReview(reviews===1?{verdict:"revise",summary:"The heading needs a clearer subject.",issues:[{page:"index.html",category:"content",severity:"error",message:"Make the homepage heading describe the proposed service."}]}:{verdict:"pass",summary:"The revised direction is clear.",issues:[]}));
       }
       if(request.stage==="repair"){repairs++;const changed=structuredClone(blueprint);changed.pages[0].hero.headline="Explore a practical service concept";response.output[0].content[0].text=JSON.stringify(changed);}
       return response;
@@ -249,7 +333,7 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     let reviews=0,repairs=0;
     runtime.execute=build=>async request=>{
       const response=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};
-      if(request.stage==="review"){reviews++;response.output[0].content[0].text=JSON.stringify({verdict:"revise",summary:"A material copy issue remains.",issues:[{page:"index.html",category:"content",severity:"error",message:"Replace unsupported business claims with proposed service explanations."}]});}
+      if(request.stage==="review"){reviews++;response.output[0].content[0].text=JSON.stringify(scoredReview({verdict:"revise",summary:"A material copy issue remains.",issues:[{page:"index.html",category:"content",severity:"error",message:"Replace unsupported business claims with proposed service explanations."}]}));}
       if(request.stage==="repair"){repairs++;const changed=structuredClone(blueprint);changed.pages[0].hero.headline="Explore the proposed direction";response.output[0].content[0].text=JSON.stringify(changed);}
       return response;
     };
@@ -275,6 +359,7 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});
     for(let step=0;step<3;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
     expect(reviews).toBe(1);expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].status).toBe("ready");
+    expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].qaReport?.designReview?.imageCount).toBe(8);
   });
   it("retains an invalid paid assessment and recovers through one explicit retry, repair and final review",async()=>{
     const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute;
@@ -283,7 +368,7 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
       const response=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};
       if(request.stage==="review"){
         reviews++;
-        response.output[0].content[0].text=JSON.stringify(reviews===1?{verdict:"pass",summary:"Invalid path.",issues:[{page:"all",category:"design",severity:"warning",message:"Tighten the heading."}]}:reviews===2?{summary:"Fix the heading.",issues:[{page:"index.html",category:"content",severity:"error",message:"Explain the service in the heading."}]}:{summary:"Ready to share.",issues:[]});
+        response.output[0].content[0].text=JSON.stringify(scoredReview(reviews===1?{verdict:"pass",summary:"Invalid path.",issues:[{page:"all",category:"design",severity:"warning",message:"Tighten the heading."}]}:reviews===2?{summary:"Fix the heading.",issues:[{page:"index.html",category:"content",severity:"error",message:"Explain the service in the heading."}]}:{summary:"Ready to share.",issues:[]}));
       }
       if(request.stage==="repair"){repairs++;const changed=structuredClone(blueprint);changed.pages[0].hero.headline="Explore the proposed service experience";response.output[0].content[0].text=JSON.stringify(changed);}
       return response;
@@ -344,7 +429,7 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
       if(request.stage==="repair"&&denyRepair){denyRepair=false;throw new FactoryBuildRequestNotAttemptedError("Synthetic pre-request allowance denial.");}
       const response=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};
       if(request.stage==="review"){
-        reviews++;response.output[0].content[0].text=JSON.stringify(reviews===1?{verdict:"revise",summary:"The heading needs a clear subject.",issues:[{page:"index.html",category:"content",severity:"error",message:"Describe the proposed service in the main heading."}]}:{verdict:"pass",summary:"The revised service direction is clear.",issues:[]});
+        reviews++;response.output[0].content[0].text=JSON.stringify(scoredReview(reviews===1?{verdict:"revise",summary:"The heading needs a clear subject.",issues:[{page:"index.html",category:"content",severity:"error",message:"Describe the proposed service in the main heading."}]}:{verdict:"pass",summary:"The revised service direction is clear.",issues:[]}));
       }
       if(request.stage==="repair"){repairs++;const changed=structuredClone(blueprint);changed.pages[0].hero.headline="Explore this proposed service direction";response.output[0].content[0].text=JSON.stringify(changed);}
       return response;
@@ -380,7 +465,7 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
       if(request.stage==="repair"&&pauseRepair){pauseRepair=false;await saveFactoryBuildSettings(owner,{enabled:false,monthlyBudgetDollars:50,perBuildBudgetDollars:5});}
       const response=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};
       if(request.stage==="review"){
-        reviews++;response.output[0].content[0].text=JSON.stringify(reviews===1?{verdict:"revise",summary:"Make the main heading clearer.",issues:[{page:"index.html",category:"content",severity:"error",message:"Explain the proposed service in the homepage heading."}]}:{verdict:"pass",summary:"The revised heading is clear.",issues:[]});
+        reviews++;response.output[0].content[0].text=JSON.stringify(scoredReview(reviews===1?{verdict:"revise",summary:"Make the main heading clearer.",issues:[{page:"index.html",category:"content",severity:"error",message:"Explain the proposed service in the homepage heading."}]}:{verdict:"pass",summary:"The revised heading is clear.",issues:[]}));
       }
       if(request.stage==="repair"){repairs++;const changed=structuredClone(blueprint);changed.pages[0].hero.headline="A proposed service with a clear direction";response.output[0].content[0].text=JSON.stringify(changed);}
       return response;

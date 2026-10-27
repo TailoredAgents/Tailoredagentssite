@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
+import type {SiteLabPerformance} from "./performance";
 
 export type SiteFiles = Record<string, Uint8Array>;
 export type SiteManifest = {entrypoint:"index.html";files:Array<{path:string;contentType:string;size:number;sha256:string}>};
 export type SiteIssue = {code:string;message:string;page:string;viewport?:"desktop"|"mobile";severity:"error"|"warning"};
-export type SiteQaResult = {passed:boolean;issues:SiteIssue[];checkedAt:string;screenshots:Array<{page:string;viewport:"desktop"|"mobile";bytes:Uint8Array}>};
+export type SiteQaResult = {passed:boolean;issues:SiteIssue[];checkedAt:string;labPerformance?:SiteLabPerformance[];screenshots:Array<{page:string;viewport:"desktop"|"mobile";bytes:Uint8Array;regions?:Array<{id:string;top:number;height:number}>}>};
 export const siteLimits={maximumFiles:80,maximumFileBytes:8_000_000,maximumTotalBytes:40_000_000,maximumPages:10};
 
 /** One portable POSIX path under this project; never an absolute/escaped path. */
@@ -14,7 +15,7 @@ export function safeSitePath(value:string) {
   return value;
 }
 export function siteContentType(value:string) {
-  const types:Record<string,string>={".html":"text/html; charset=utf-8",".css":"text/css; charset=utf-8",".js":"text/javascript; charset=utf-8",".png":"image/png",".jpg":"image/jpeg",".jpeg":"image/jpeg",".webp":"image/webp",".svg":"image/svg+xml",".txt":"text/plain; charset=utf-8",".json":"application/json"};
+  const types:Record<string,string>={".html":"text/html; charset=utf-8",".css":"text/css; charset=utf-8",".js":"text/javascript; charset=utf-8",".png":"image/png",".jpg":"image/jpeg",".jpeg":"image/jpeg",".webp":"image/webp",".svg":"image/svg+xml",".woff2":"font/woff2",".txt":"text/plain; charset=utf-8",".json":"application/json"};
   const type=types[path.posix.extname(value)];if(!type)throw new Error("The site contains an unsupported artifact type.");return type;
 }
 export function siteManifest(files:SiteFiles):SiteManifest {

@@ -2,20 +2,22 @@ import { parse, type DefaultTreeAdapterTypes } from "parse5";
 import path from "node:path";
 import { siteManifest, type SiteFiles } from "./artifacts";
 import { siteCsp, trustedSiteRuntime } from "./render";
-import { portableHeroImages,portableImagePaths } from "./images";
+import { portableAllImages } from "./images";
+import { portableFontPaths,portableFontLicensePath,stripApprovedFontCss } from "./fonts";
 
 /** Defense in depth at the browser boundary: even a corrupted stored bundle
  * cannot introduce executable code, remote resources, frames or form delivery.
  */
 export function assertPortableSiteSafety(files:SiteFiles) {
   siteManifest(files);
-  const imageSet=portableHeroImages(files),imageVariants=[imageSet.fallback,...imageSet.variants];
-  if(imageSet.variants.length&&files[portableImagePaths.legacy])throw new Error("The original PNG must stay private when responsive imagery is published.");
+  const imageSet=portableAllImages(files),imageVariants=imageSet.variants;
+  const imageFiles=new Set(Object.keys(imageSet.files));
+  const fontFiles=new Set([...portableFontPaths,portableFontLicensePath]);
   const text=(name:string)=>Buffer.from(files[name]||[]).toString("utf8");
   if(text("assets/runtime.js")!==trustedSiteRuntime)throw new Error("Only the trusted preview runtime can execute during website QA.");
-  if(/@import|url\s*\(|image-set\s*\(|expression\s*\(/i.test(text("assets/site.css")))throw new Error("Portable styles cannot load resources or execute expressions.");
+  if(/@import|url\s*\(|image-set\s*\(|expression\s*\(/i.test(stripApprovedFontCss(text("assets/site.css"),files)))throw new Error("Portable styles cannot load resources or execute expressions.");
   for(const name of Object.keys(files)){
-    if(!/^(?:index\.html|[a-z][a-z0-9-]{0,48}\/index\.html|assets\/(?:site\.css|runtime\.js|images\/(?:hero\.png|hero-(?:mobile|desktop)\.webp))|robots\.txt)$/.test(name))throw new Error("Unexpected public preview artifact.");
+    if(!imageFiles.has(name)&&!fontFiles.has(name)&&!/^(?:index\.html|[a-z][a-z0-9-]{0,48}\/index\.html|assets\/(?:site\.css|runtime\.js)|robots\.txt)$/.test(name))throw new Error("Unexpected public preview artifact.");
     if(!name.endsWith(".html"))continue;
     const tree=parse(text(name));let scripts=0,styles=0,csp=0;
     const local=(value:string,target:string)=>value===path.posix.relative(path.posix.dirname(name),target);

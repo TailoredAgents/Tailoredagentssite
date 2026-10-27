@@ -8,7 +8,7 @@ export async function normalizeFactoryImage(bytes:Uint8Array){
   if(!(signature.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))||(signature[0]===255&&signature[1]===216)||(signature.toString("ascii",0,4)==="RIFF"&&signature.toString("ascii",8,12)==="WEBP")))throw new FactoryInputError("Choose a PNG, JPEG, or WebP image.");
   try{
     const image=sharp(bytes,{limitInputPixels:24_000_000,animated:false,failOn:"error"}),meta=await image.metadata();
-    if(!["png","jpeg","webp"].includes(meta.format||"")||!meta.width||!meta.height)throw new FactoryInputError("Choose a PNG, JPEG, or WebP image.");
+    if(!["png","jpeg","webp"].includes(meta.format||"")||!meta.width||!meta.height||(meta.pages||1)!==1)throw new FactoryInputError("Choose a still PNG, JPEG, or WebP image.");
     const output=await image.rotate().resize({width:1800,height:1800,fit:"inside",withoutEnlargement:true}).png({compressionLevel:9}).toBuffer();
     if(output.byteLength>8_000_000)throw new FactoryInputError("This image is too large after processing. Choose a smaller image.");
     return output;

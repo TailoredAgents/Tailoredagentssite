@@ -5,7 +5,8 @@ vi.mock("server-only",()=>({}));
 import {factoryModelPolicy,factoryUsageCost} from "../config";
 import type {SiteQaResult} from "./artifacts";
 import {fixtureBlueprint,fixtureSitePlan} from "./fixtures";
-import {reviewPortableSite,parseSiteReview,SiteReviewResponseError} from "./review";
+import {reviewPortableSite,parseSiteReview,SiteReviewResponseError,type SiteScorecard} from "./review";
+import {siteQualityRubric} from "./benchmarks";
 import type {SiteModelRequest} from "./types";
 
 let desktop:Buffer,mobile:Buffer;
@@ -13,7 +14,8 @@ beforeAll(async()=>{
   desktop=await sharp({create:{width:2000,height:1200,channels:3,background:"#15374a"}}).png().toBuffer();
   mobile=await sharp({create:{width:390,height:3000,channels:4,background:"#c6e8ef"}}).png().toBuffer();
 });
-const response=(result:unknown={verdict:"pass",summary:"The approved concept is coherent and legible.",issues:[]})=>({id:"synthetic-review",status:"completed",usage:{input_tokens:1000,output_tokens:500},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(result)}]}]});
+const passingScorecard=()=>Object.fromEntries(Object.keys(siteQualityRubric.dimensions).map(key=>[key,{score:88,evidence:[{page:"index.html",observation:"Synthetic fixture evidence for a deliberately composed and legible section."}],improvement:"Optional: tighten the closing section spacing while preserving its hierarchy."}])) as SiteScorecard;
+const response=(result:Record<string,unknown>={verdict:"pass",summary:"The approved concept is coherent and legible.",issues:[]})=>({id:"synthetic-review",status:"completed",usage:{input_tokens:1000,output_tokens:500},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify({scorecard:passingScorecard(),...result})}]}]});
 function input(multiplePages=false){
   const blueprint=fixtureBlueprint("trades","split",multiplePages);
   const screenshots:SiteQaResult["screenshots"]=blueprint.pages.flatMap(page=>[{page:page.path,viewport:"desktop" as const,bytes:desktop},{page:page.path,viewport:"mobile" as const,bytes:mobile}]);
@@ -21,31 +23,57 @@ function input(multiplePages=false){
 }
 
 describe("Website visual/content review (local images and mocked provider only)",()=>{
+  it("preserves saved legacy reports but requires an evidence-backed scorecard for new paid reviews",async()=>{
+    const raw=response({summary:"Saved legacy review.",issues:[],scorecard:undefined});
+    expect(parseSiteReview(raw,["index.html"])).not.toHaveProperty("scorecard");
+    await expect(reviewPortableSite(input(),async()=>raw)).rejects.toThrow("omitted its evidence-backed quality scorecard");
+  });
+  it("computes quality from scored evidence, pauses weak dimensions and supplies bounded repair instructions",()=>{
+    const scorecard=passingScorecard();scorecard.copy.score=55;scorecard.copy.improvement="Replace repeated preparation instructions in the services and approach sections with distinct customer benefits from the approved scope.";
+    const review=parseSiteReview(response({summary:"Material writing refinement needed.",issues:[],scorecard}),["index.html"]);
+    expect(review.overallScore).toBe(83);expect(review.reviewVersion).toBe(2);
+    expect(review.issues).toEqual([expect.objectContaining({code:"review_quality_copy",severity:"error",message:expect.stringContaining("Replace repeated preparation")})]);
+    for(const dimension of Object.values(scorecard)){dimension.score=65;dimension.improvement="Shorten the generic introduction and give this named section a clear, industry-specific visitor benefit.";}
+    expect(parseSiteReview(response({summary:"Generic draft.",issues:[],scorecard}),["index.html"]).issues).toHaveLength(3);
+  });
+  it("does not allow high aesthetic scores to erase material factual defects",()=>{
+    const review=parseSiteReview(response({summary:"Polished but unsupported claim.",issues:[{page:"index.html",category:"plan",severity:"error",message:"Remove the unconfirmed license claim."}]}),["index.html"]);
+    expect(review.overallScore).toBe(88);expect(review.issues[0].severity).toBe("error");
+  });
+  it("rejects fabricated evidence locations and unsupported score-only failure",()=>{
+    const scorecard=passingScorecard();scorecard.mobile.evidence[0].page="unknown.html";
+    expect(()=>parseSiteReview(response({summary:"Invalid evidence.",issues:[],scorecard}),["index.html"])).toThrow("scorecard referenced an unknown page");
+    scorecard.mobile.evidence[0].page="index.html";scorecard.mobile.score=40;scorecard.mobile.improvement="None";
+    expect(()=>parseSiteReview(response({summary:"Invalid low score.",issues:[],scorecard}),["index.html"])).toThrow("concrete repair instruction");
+  });
   it("reviews every page in desktop/mobile and submits bounded real local JPEGs with no tools",async()=>{
     const execute=vi.fn(async(_request:SiteModelRequest)=>response()),source=input(true);
     const result=await reviewPortableSite(source,execute);
-    expect(result.reviewedPages).toEqual(source.blueprint.pages.map(page=>page.path));expect(result.imageCount).toBe(6);
+    expect(result.reviewedPages).toEqual(source.blueprint.pages.map(page=>page.path));expect(result.imageCount).toBe(10);
     expect(execute).toHaveBeenCalledOnce();
     const request=execute.mock.calls[0][0];
-    expect(request).toMatchObject({stage:"review",model:"gpt-6.1-sol",maxOutputTokens:3000});
-    expect(request.body).toMatchObject({model:factoryModelPolicy.model,store:false,truncation:"disabled",max_output_tokens:3000,text:{format:{type:"json_schema",name:"factory_site_review",strict:true}}});
+    expect(request).toMatchObject({stage:"review",model:"gpt-6.1-sol",maxOutputTokens:4500});
+    expect(request.body).toMatchObject({model:factoryModelPolicy.model,store:false,truncation:"disabled",max_output_tokens:4500,text:{format:{type:"json_schema",name:"factory_site_review",strict:true}}});
     expect(request.body.tools).toBeUndefined();expect(request.body.instructions).toContain("untrusted data");expect(request.body.instructions).toContain("Missing business information is not a reason to fail");
     const schema=(request.body.text as {format:{schema:{properties:Record<string,any>;required:string[]}}}).format.schema;
     expect(schema.properties.verdict).toBeUndefined();expect(schema.required).not.toContain("verdict");
+    expect(schema.required).toContain("scorecard");
     expect(schema.properties.issues.items.properties.page.enum).toEqual(source.blueprint.pages.map(p=>p.path));
     const content=(request.body.input as Array<{content:Array<{type:string;text?:string;image_url?:string;detail?:string}>}>)[0].content;
     expect(JSON.parse(content[0].text!)).toMatchObject({approvedPlan:source.plan,website:source.blueprint});
     for(const page of source.blueprint.pages)for(const viewport of ["desktop","mobile"]){
       expect(content.filter(item=>item.text===`Rendered page: ${page.path}; ${viewport} full-page overview.`)).toHaveLength(1);
     }
-    const images=content.filter(item=>item.type==="input_image");expect(images).toHaveLength(6);
+    const images=content.filter(item=>item.type==="input_image");expect(images).toHaveLength(10);
+    expect(content.filter(item=>item.text?.includes("readable opening detail"))).toHaveLength(2);
+    expect(content.filter(item=>item.text?.includes("readable section detail"))).toHaveLength(2);
     let imageBytes=0;
     for(const image of images){
       expect(image.image_url).toMatch(/^data:image\/jpeg;base64,/);expect(image.detail).toBe("high");
       const bytes=Buffer.from(image.image_url!.split(",")[1],"base64");imageBytes+=bytes.length;
       const metadata=await sharp(bytes).metadata();expect(metadata.format).toBe("jpeg");expect(metadata.width!).toBeLessThanOrEqual(1600);expect(metadata.height!).toBeLessThanOrEqual(2400);expect(bytes.length).toBeLessThanOrEqual(500000);
     }
-    expect(request.reservedMicros).toBe(factoryUsageCost(request.inputBytes-imageBytes+8192+images.length*32768,3000,0));
+    expect(request.reservedMicros).toBe(factoryUsageCost(request.inputBytes-imageBytes+8192+images.length*32768,4500,0));
   });
   it("supplies a conservative reservation before the executor can make a billable call",async()=>{
     const execute=vi.fn(async(request:SiteModelRequest)=>{
@@ -108,7 +136,7 @@ describe("Website visual/content review (local images and mocked provider only)"
     }
   });
   it("rejects output beyond its size limit",async()=>{
-    const execute=vi.fn(async()=>({...response(),output:[{type:"message",content:[{type:"output_text",text:"x".repeat(20001)}]}]}));
+    const execute=vi.fn(async()=>({...response(),output:[{type:"message",content:[{type:"output_text",text:"x".repeat(30001)}]}]}));
     await expect(reviewPortableSite(input(),execute)).rejects.toThrow("response exceeds");expect(execute).toHaveBeenCalledOnce();
   });
 });

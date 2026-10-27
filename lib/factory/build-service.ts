@@ -28,7 +28,12 @@ function validateArtifacts(prefix:string,manifest:FactoryBuildManifest,qa:Factor
   for(const file of manifest.files){const mime=/^([a-z]+\/[-a-z0-9+.]+)(?:;\s*charset=utf-8)?$/i.exec(file.contentType)?.[1]?.toLowerCase();if(!safePath.test(file.path)||seen.has(file.path)||!Number.isSafeInteger(file.size)||file.size<0||file.size>10485760||!/^[0-9a-f]{64}$/.test(file.sha256)||!["text/html","text/css","text/plain","application/javascript","text/javascript","image/png","image/jpeg","image/webp","image/svg+xml","image/x-icon","image/vnd.microsoft.icon","font/woff","font/woff2"].includes(mime||""))throw new FactoryInputError("A preview artifact has an unsafe path or invalid metadata.");seen.add(file.path);size+=file.size;}
   if(!seen.has("index.html")||size>52428800)throw new FactoryInputError("The preview is missing its homepage or exceeds its size limit.");
   if(sourceKey!==`${prefix}source.zip`||!qa.passed||!Array.isArray(qa.checks)||!Array.isArray(qa.warnings)||!qa.screenshots||![qa.screenshots.desktop,qa.screenshots.mobile].every(key=>typeof key==="string"&&validObjectKey(key,prefix)&&key.endsWith(".png")))throw new FactoryInputError("A portable source archive and passing desktop/mobile checks are required.");
-  jsonSize(manifest,120000);jsonSize(qa,30000);
+  // Ten pages can include 20 screenshots/lab observations, dependency lists,
+  // a six-dimension evidence scorecard and bounded review warnings. The former
+  // 30 KB ceiling rejected valid rich reports after paid work had completed.
+  // Keep a separate 100 KB ceiling; screenshot bytes and model prompts remain
+  // outside this JSON report and the existing artifact/file limits still apply.
+  jsonSize(manifest,120000);jsonSize(qa,100000);
 }
 async function lockedVersion(db:PoolClient,versionId:string,workspaceId?:string){
   // Project first, then version, matching deletion's project-to-child cascades.
@@ -38,7 +43,7 @@ async function lockedVersion(db:PoolClient,versionId:string,workspaceId?:string)
 }
 async function buildTransaction<T>(work:(db:PoolClient)=>Promise<T>){const db=await getDatabasePool().connect();try{await db.query("BEGIN");const result=await work(db);await db.query("COMMIT");return result;}catch(error){await db.query("ROLLBACK");throw error;}finally{db.release();}}
 async function snapshotUploads(db:PoolClient,projectId:string,workspaceId:string){
-  return (await db.query(`SELECT id,filename,content_type AS "contentType",byte_size AS "byteSize",storage_key AS "storageKey",created_at AS "createdAt" FROM factory_uploads WHERE project_id=$1 AND workspace_id=$2 AND status='ready' ORDER BY created_at,id LIMIT 20`,[projectId,workspaceId])).rows.map(u=>({...u,createdAt:new Date(u.createdAt).toISOString()}));
+  return (await db.query(`SELECT id,filename,role,alt,content_type AS "contentType",byte_size AS "byteSize",storage_key AS "storageKey",created_at AS "createdAt" FROM factory_uploads WHERE project_id=$1 AND workspace_id=$2 AND status='ready' ORDER BY created_at,id LIMIT 20`,[projectId,workspaceId])).rows.map(u=>({...u,createdAt:new Date(u.createdAt).toISOString()}));
 }
 function preserveBuildInputs(saved:Record<string,unknown>,updated:Record<string,unknown>){return {...updated,inputUploads:saved.inputUploads??[]};}
 /** Requires an existing approval row. Called in the approval transaction; never from research completion. */
@@ -177,13 +182,14 @@ async function sharing(context:DashboardContext,input:unknown,restore:boolean){
 export async function revokeFactoryPreview(context:DashboardContext,input:unknown){return sharing(context,input,false);}
 export async function restoreFactoryPreview(context:DashboardContext,input:unknown){return sharing(context,input,true);}
 export async function registerFactoryUpload(context:DashboardContext,input:unknown){
-  const data=z.object({projectId:uuid,filename:z.string().trim().min(1).max(180).refine(s=>!s.includes("/")&&!s.includes("\\")&&!hasControl(s)),contentType:z.enum(["image/png","image/jpeg","image/webp"]),byteSize:z.number().int().min(1).max(10485760),sha256:z.string().regex(/^[0-9a-f]{64}$/)}).parse(input);
+  const data=z.object({projectId:uuid,filename:z.string().trim().min(1).max(180).refine(s=>!s.includes("/")&&!s.includes("\\")&&!hasControl(s)),role:z.enum(["photo","logo"]).default("photo"),alt:z.string().trim().max(240).refine(s=>!hasControl(s)).default(""),contentType:z.enum(["image/png","image/jpeg","image/webp"]),byteSize:z.number().int().min(1).max(10485760),sha256:z.string().regex(/^[0-9a-f]{64}$/)}).parse(input);
   return factoryTransaction(context.workspace.id,async db=>{
     await authorizeFactory(db,context,"edit");
     const project=await db.query("SELECT id FROM factory_projects WHERE id=$1 AND workspace_id=$2 FOR UPDATE",[data.projectId,context.workspace.id]);if(!project.rowCount)throw new FactoryInputError("This planning workspace is no longer available.");
+    if(data.role==="logo"&&(await db.query("SELECT 1 FROM factory_uploads WHERE project_id=$1 AND workspace_id=$2 AND role='logo' LIMIT 1",[data.projectId,context.workspace.id])).rowCount)throw new FactoryInputError("Remove the existing logo before adding its replacement.");
     const totals=(await db.query("SELECT count(*)::int count,COALESCE(sum(byte_size),0)::bigint size FROM factory_uploads WHERE project_id=$1 AND workspace_id=$2",[data.projectId,context.workspace.id])).rows[0];if(totals.count>=20||Number(totals.size)+data.byteSize>52428800)throw new FactoryInputError("This website already has its 20-file or 50 MB upload allowance.");
     const id=randomUUID(),ext={"image/png":"png","image/jpeg":"jpg","image/webp":"webp"}[data.contentType],storageKey=`factory/${context.workspace.id}/${data.projectId}/uploads/${id}.${ext}`;
-    await db.query("INSERT INTO factory_uploads(id,workspace_id,project_id,storage_key,filename,content_type,byte_size,sha256,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)",[id,context.workspace.id,data.projectId,storageKey,data.filename,data.contentType,data.byteSize,data.sha256,context.user.id]);return {id,storageKey};
+    await db.query("INSERT INTO factory_uploads(id,workspace_id,project_id,storage_key,filename,content_type,byte_size,sha256,created_by,role,alt) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",[id,context.workspace.id,data.projectId,storageKey,data.filename,data.contentType,data.byteSize,data.sha256,context.user.id,data.role,data.alt]);return {id,storageKey};
   });
 }
 export async function completeFactoryUpload(context:DashboardContext,uploadId:string){
