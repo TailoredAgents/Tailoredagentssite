@@ -36,13 +36,14 @@ export function FactoryProject({ data, actorId, builds }: { data: FactoryProject
   }, [polling, router]);
 
   const currentBuild=[...builds.versions].sort((a,b)=>b.version-a.version)[0];
-  const currentStep=latestApproved&&!activeJob?(currentBuild?.status==="ready"?3:2):1;
-  const planningOpen=!latestApproved||Boolean(activeJob)||hasDraft;
+  const reviewingPlan=!latestApproved||Boolean(activeJob)||data.project.status==="failed";
+  const currentStep=reviewingPlan?1:currentBuild?.status==="ready"?3:2;
+  const planningOpen=reviewingPlan||hasDraft;
   return <>
     <div className="factory-heading"><div><span className="factory-eyebrow"><Sparkles size={14}/>Website Builder</span><h1>{data.project.leadName || "Untitled lead"}</h1><p>{data.project.companyName ? `${data.project.companyName} · ` : ""}{currentStep===3?"Your website is ready to open and share.":currentStep===2?"Follow your approved site's progress below.":"Review the direction, add your ideas, then approve the build."}</p></div>{currentStep===3 && data.project.latestBuild?.status === "ready" ? <FactoryPreviewStatus build={data.project.latestBuild}/> : <FactoryStatus status={data.project.status}/>}</div>
     <FactoryReadOnly canEdit={data.canEdit}/>
     <ol className="factory-steps" aria-label="Website project progress">{["Choose a lead","Review the plan","Build website","Open & share"].map((label,index)=><li className={index===currentStep?"is-current":index<currentStep?"is-complete":""} aria-current={index===currentStep?"step":undefined} key={label}><span>{index<currentStep?<Check size={13}/>:index+1}</span>{label}</li>)}</ol>
-    {latestApproved?<FactoryBuildPanel data={builds} actorId={actorId}/>:builds.versions.length?<details className="factory-panel factory-disclosure"><summary>Earlier website versions</summary><FactoryBuildPanel data={builds} actorId={actorId}/></details>:null}
+    {!reviewingPlan?<FactoryBuildPanel data={builds} actorId={actorId}/>:builds.versions.length?<details className="factory-panel factory-disclosure"><summary>Earlier website versions</summary><FactoryBuildPanel data={builds} actorId={actorId}/></details>:null}
     {latestApproved&&!builds.versions.length?<div className="factory-notice is-success"><Check size={19}/><div><strong>Approved plan saved for the build queue</strong><p>Your approval is saved. Building starts when the builder is enabled and ready.</p></div></div>:null}
     <details className="factory-planning-area" open={planningOpen} key={`${latest?.id || "initial"}-${Boolean(latestApproved)}`}><summary>{latestApproved?"Plan & project history":"Review and shape your website"}<span>{latestApproved?"View the approved direction or plan a new version":"Step 2 · Your approval comes before building"}</span></summary>
     <FactorySetupNotice {...data}/>

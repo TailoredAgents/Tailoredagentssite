@@ -272,4 +272,13 @@ test("reviews a completed preview, revokes and renews sharing, exports and uploa
   await expect(page.getByRole("link", {name:"View website",exact:true})).toBeVisible();
   await page.goto(`/dashboard/leads/${(await control(request)).leadId}`);
   await expect(page.getByRole("link", { name: "View website", exact: true })).toBeVisible();
+  // A failed new planning request must not disappear behind an older ready site.
+  await buildDb.query("UPDATE factory_projects SET status='failed' WHERE id=$1",[version.project_id]);
+  await buildDb.query("UPDATE factory_jobs SET status='failed',error='Synthetic revision interruption' WHERE project_id=$1",[version.project_id]);
+  await page.goto(`/dashboard/sales/factory/${version.project_id}`);
+  await expect(page.getByText("Research needs attention",{exact:true})).toBeVisible();
+  await expect(page.locator(".factory-planning-area")).toHaveAttribute("open","");
+  await expect(page.locator('.factory-steps [aria-current="step"]')).toHaveText(/Review the plan/);
+  await page.getByText("Earlier website versions",{exact:true}).click();
+  await expect(page.getByRole("link",{name:"Open website",exact:true})).toBeVisible();
 });
