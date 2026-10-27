@@ -300,6 +300,31 @@ describe.skipIf(!url)("Meta durable lead intake", () => {
     await runMetaLeadWorker();
     expect((await pool.query("SELECT * FROM leads")).rowCount).toBe(1);
   });
+  it("recovers an exhausted receipt with a missing email answer exactly once", async () => {
+    await pool.query("INSERT INTO sms_numbers(id,workspace_id,account_sid,provider_sid,phone) VALUES($1,$2,$3,$4,'+16785417725')", [randomUUID(),ws,process.env.TWILIO_ACCOUNT_SID,'PN'+'1'.repeat(32)]);
+    await saveLeadAlertSettings(context("owner"), {enabled:true,recipients});
+    const sparse = { ...providerLead(), field_data: [
+      { name: "email" },
+      { name: "full_name", values: ["Sparse Lead"] },
+      { name: "phone", values: ["6785550101"] },
+      { name: "service_interest", values: ["New website"] },
+    ] };
+    remote.fetch.mockResolvedValue(sparse);
+    await enqueueMetaLeads(payload());
+    await pool.query("UPDATE meta_lead_events SET status='failed',attempts=12,error_code='import_failed'");
+    await retryMetaImports(context("owner"));
+    const results = await Promise.all([runMetaLeadWorker(), runMetaLeadWorker()]);
+    expect(results.every(result => result.failed === 0)).toBe(true);
+    expect((await pool.query("SELECT status,error_code,attempts FROM meta_lead_events")).rows).toEqual([{status:"imported",error_code:null,attempts:1}]);
+    expect((await pool.query("SELECT name,email,phone FROM leads")).rows).toEqual([{name:"Sparse Lead",email:null,phone:"+16785550101"}]);
+    expect((await pool.query("SELECT id FROM lead_sms_alerts")).rowCount).toBe(3);
+    await enqueueMetaLeads(payload());
+    await retryMetaImports(context("owner"));
+    await runMetaLeadWorker();
+    expect((await pool.query("SELECT id FROM leads")).rowCount).toBe(1);
+    expect((await pool.query("SELECT id FROM lead_sms_alerts")).rowCount).toBe(3);
+    expect(remote.send).not.toHaveBeenCalled();
+  });
   it("recovers expired leases and refuses a provider identity mismatch", async () => {
     await enqueueMetaLeads(payload());
     await pool.query(

@@ -79,9 +79,9 @@ export function MetaSettingsPanel({
         </p>
         {state?.needsAttention && (
           <p>
-            Some leads could not be retrieved. Check the Page token and
-            lead-access permissions. Queued imports retry automatically; stopped
-            imports can be retried below.
+            Some leads could not be imported. Their notifications are saved for
+            recovery. Check the Meta connection and submitted-data handling.
+            Queued imports retry automatically; stopped imports can be retried below.
           </p>
         )}
         {admin && failed > 0 && (

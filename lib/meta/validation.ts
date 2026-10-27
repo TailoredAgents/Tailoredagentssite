@@ -33,7 +33,9 @@ export const providerLeadSchema = z.object({
     .array(
       z.object({
         name: z.string().max(200),
-        values: z.array(z.string().max(4000)).max(30),
+        // Meta can retain an unanswered field's name while omitting values.
+        // Keep the rest of the lead instead of rejecting a missing answer.
+        values: z.array(z.string().max(4000)).max(30).nullish().transform(values => values ?? []),
       }),
     )
     .max(100),

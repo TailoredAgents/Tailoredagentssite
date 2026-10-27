@@ -44,6 +44,33 @@ describe("Meta payload boundaries", () => {
     });
     expect(lead.description).toContain("your goal: Improve my website");
   });
+  it.each([
+    {label:"omitted",values:undefined}, {label:"null",values:null}, {label:"empty",values:[]},
+  ])("imports a lead when an unanswered field is $label", ({values}) => {
+    const lead = mapMetaLead({
+      id: "111111", form_id: "222222", created_time: "2026-10-27T02:50:00Z",
+      field_data: [
+        { name: "email", ...(values === undefined ? {} : { values }) },
+        { name: "company_name" },
+        { name: "full_name", values: ["Sparse Lead"] },
+        { name: "phone", values: ["6785550101"] },
+        { name: "service_interest", values: ["New website"] },
+      ],
+    });
+    expect(lead).toMatchObject({ name: "Sparse Lead", email: null, organization: "", phone: "+16785550101" });
+    expect(lead.description).toContain("service interest: New website");
+    expect(lead.description).not.toContain("undefined");
+  });
+  it.each([
+    {label:"scalar string",values:"answer"}, {label:"number",values:123},
+    {label:"object",values:{}}, {label:"non-string item",values:[null]},
+    {label:"oversized answer",values:["x".repeat(4001)]}, {label:"too many answers",values:Array(31).fill("answer")},
+  ])("still rejects $label", ({values}) => {
+    expect(() => mapMetaLead({
+      id: "111111", form_id: "222222", created_time: "2026-10-27T02:50:00Z",
+      field_data: [{ name: "email", values }],
+    })).toThrow();
+  });
   it.each(["None", " NONE ", "N/A", "n.a.", "Not applicable", "No company", "Not yet", "—"])("keeps a person's identity when the company answer is %s", company => {
     const lead=mapMetaLead({id:"111111",form_id:"222222",created_time:"2026-10-23T16:00:00Z",field_data:[{name:"full_name",values:["Jordan Smith"]},{name:"company_name",values:[company]}]});
     expect(lead.organization).toBe("");
