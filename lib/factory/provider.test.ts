@@ -4,6 +4,7 @@ const costs=vi.hoisted(()=>({reserve:vi.fn(),attempt:vi.fn(),settle:vi.fn(),unce
 vi.mock("./budget",()=>({reserveFactoryCost:costs.reserve,attemptFactoryCost:costs.attempt,settleFactoryCost:costs.settle,uncertainFactoryCost:costs.uncertain}));
 import { extractFactoryResearch,parseFactoryPlan,researchFactoryLead,planFactoryWebsite,type FactorySnapshot } from "./provider";
 import { factoryReservation,factoryUsageCost,factoryModelPolicy } from "./config";
+import { websitePlanningContract,websiteQualityStandards } from "./website-standards";
 const request=vi.fn();
 const ctx={workspaceId:"w",projectId:"p",jobId:"j",leaseToken:"l",attempt:1};
 const snapshot:FactorySnapshot={lead:{organization:"None",website_url:null},notes:[],messages:[],previousPlan:null,contextNotice:"Sparse fixture"};
@@ -81,6 +82,9 @@ describe("Factory provider boundaries (synthetic responses only)",()=>{
     const result=await planFactoryWebsite(ctx,snapshot,{text:"A possible match",sources:[source]});
     const body=JSON.parse(request.mock.calls[0][1].body);
     expect(body.text.format.strict).toBe(true);expect(body.text.format.name).toBe("factory_plan");expect(body.tools).toBeUndefined();expect(result.plan.sources).toEqual([source]);
+    expect(body.instructions).toContain(websiteQualityStandards);expect(body.instructions).toContain(websitePlanningContract);
+    const inputBytes=Buffer.byteLength(JSON.stringify({snapshot,research:{text:"A possible match",sources:[source]}}))+Buffer.byteLength(body.instructions)+Buffer.byteLength(JSON.stringify(body.text.format.schema));
+    expect(costs.reserve).toHaveBeenCalledWith({...ctx,stage:"plan",micros:factoryReservation("plan",inputBytes)});
   });
   it("never retries an ambiguous transport error and retains its uncertain receipt",async()=>{
     request.mockRejectedValue(new Error("Socket lost"));await expect(researchFactoryLead(ctx,snapshot)).rejects.toThrow();

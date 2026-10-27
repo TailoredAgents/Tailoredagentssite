@@ -8,6 +8,7 @@ import {fixtureBlueprint,fixtureSitePlan} from "./fixtures";
 import {reviewPortableSite,parseSiteReview,SiteReviewResponseError,type SiteScorecard} from "./review";
 import {siteQualityRubric} from "./benchmarks";
 import type {SiteModelRequest} from "./types";
+import {websiteQualityStandards} from "../website-standards";
 
 let desktop:Buffer,mobile:Buffer;
 beforeAll(async()=>{
@@ -55,6 +56,7 @@ describe("Website visual/content review (local images and mocked provider only)"
     expect(request).toMatchObject({stage:"review",model:"gpt-6.1-sol",maxOutputTokens:4500});
     expect(request.body).toMatchObject({model:factoryModelPolicy.model,store:false,truncation:"disabled",max_output_tokens:4500,text:{format:{type:"json_schema",name:"factory_site_review",strict:true}}});
     expect(request.body.tools).toBeUndefined();expect(request.body.instructions).toContain("untrusted data");expect(request.body.instructions).toContain("Missing business information is not a reason to fail");
+    expect(request.body.instructions).toContain(websiteQualityStandards);
     const schema=(request.body.text as {format:{schema:{properties:Record<string,any>;required:string[]}}}).format.schema;
     expect(schema.properties.verdict).toBeUndefined();expect(schema.required).not.toContain("verdict");
     expect(schema.required).toContain("scorecard");

@@ -1,5 +1,7 @@
 # Website Builder quality upgrade — October 27, 2026
 
+Ongoing policy: [shared Website Builder standards](WEBSITE_BUILDER_STANDARDS.md) now carry the general lessons from this pilot into planning, generation and review. Individual client choices remain specific to their approved plan.
+
 ## Authorization and objective
 
 Austin approved implementation after comparing the system's Cosmo v3 (~65/100 subjective prospect impression) with his handmade Cosmo mockup (~90/100). These are human impression benchmarks, not measured conversion or performance scores. Goal: consistently client-ready, distinctive sites with a simple salesperson workflow. Do not claim that implementation alone proves generated sites reach 90.

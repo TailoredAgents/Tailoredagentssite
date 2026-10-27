@@ -4,6 +4,8 @@ import {generatePortableSite,siteUsage} from "./provider";
 import {fixtureBlueprint,fixtureSitePlan} from "./fixtures";
 import {validateSiteBlueprint} from "./validate";
 import type {SiteModelRequest} from "./types";
+import {websiteQualityStandards} from "../website-standards";
+import {factoryUsageCost} from "../config";
 const response=(blueprint:unknown,status="completed")=>({id:"resp_synthetic_site",status,usage:{input_tokens:4000,output_tokens:2000},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(blueprint)}]}]});
 
 describe("Portable site provider (synthetic responses only)",()=>{
@@ -13,6 +15,10 @@ describe("Portable site provider (synthetic responses only)",()=>{
     expect(result.bundle.imageSlots).toHaveLength(1);expect(result.usage.estimatedMicros).toBeGreaterThan(0);
     const request=execute.mock.calls[0][0];expect(request.body).toMatchObject({model:"gpt-6.1-sol",store:false,max_output_tokens:12000,text:{format:{type:"json_schema",name:"factory_site_blueprint",strict:true}}});
     expect(request.body.tools).toBeUndefined();expect(request.reservedMicros).toBeGreaterThan(result.usage.estimatedMicros);expect(request.body.instructions).toContain("untrusted data");expect(request.body.instructions).toContain("possible matches and assumptions are not established facts");
+    expect(request.body.instructions).toContain(websiteQualityStandards);
+    const body=request.body as {instructions:string;input:Array<{content:string}>;text:{format:{schema:unknown}}};
+    expect(request.inputBytes).toBe(Buffer.byteLength(body.input[0].content)+Buffer.byteLength(body.instructions)+Buffer.byteLength(JSON.stringify(body.text.format.schema)));
+    expect(request.reservedMicros).toBe(factoryUsageCost(request.inputBytes+8192,12000,0));
   });
   it("treats sparse/fake details as valid while rejecting invented contact facts",()=>{
     const blueprint=fixtureBlueprint();expect(validateSiteBlueprint(blueprint,fixtureSitePlan).contact.email).toBeNull();
