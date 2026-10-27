@@ -2,7 +2,15 @@
 
 Connection owner: Jeffrey, assigned by Austin October 23, 2026. See [new jeffrey.md](../new%20jeffrey.md#meta-leads--connection-and-remaining-checks) for remaining acceptance checks. Austin retains business-account ownership and can supply needed asset access. Jeffrey's SEO and shared-email handoffs continue alongside this work.
 
-**Current acceptance:** the app is published, the Facebook Page and both webhook subscriptions are connected, and imports are enabled. Jeffrey confirmed a Meta test-form submission appeared in CRM Leads on October 24. Production permission/App Review requirements remain unresolved; ordinary public submissions, Instagram placement delivery and the remaining live checks are still unverified. Austin previously confirmed website PageView and Lead events after a saved website-review inquiry. Pixel/Dataset ID is **1785858192683666**. Preserve this working installation; the setup sections below are reference, not a request to create duplicate assets. Conversions API is not implemented.
+**Current acceptance:** the app is published, the Facebook Page and both webhook subscriptions are connected, and imports are enabled. Jeffrey confirmed a Meta test-form submission appeared in CRM Leads on October 24. On October 27, a real Facebook lead reported by Austin was recovered from its saved receipt after correcting unanswered-field handling; see the incident record below. Production permission/App Review requirements remain unresolved; this successful retrieval does not settle those requirements or establish Instagram-placement delivery. Austin previously confirmed website PageView and Lead events after a saved website-review inquiry. Pixel/Dataset ID is **1785858192683666**. Preserve this working installation; the setup sections below are reference, not a request to create duplicate assets. Conversions API is not implemented.
+
+## Missing-answer recovery — October 27, 2026
+
+The October 26 submission at **10:50:47 PM EDT** arrived as a durable webhook receipt at **10:50:54 PM**. Graph retrieval succeeded, but Meta returned an `email` field without a `values` property. The previous required-array validation rejected the entire lead; the receipt exhausted its 12 attempts. The cause was input validation, not missing Page access. The separately reported Next.js RSC/`cachefn` errors were not the recorded import failure; their request-level origin has not been established.
+
+Fix `f933d85` accepts omitted/null/empty answers while retaining populated-value type and size limits. Render deployment `dep-dbgas4s9v7es73e995eg` became live at **14:00:45 UTC**. Retrying through CRM Settings imported the original receipt at **14:01:38 UTC** on the first new attempt. A read-only production check confirmed exactly one matching CRM lead, a saved phone, no invented email, and one alert each for the three enabled teammates. After the scheduled worker run, all three alerts showed **delivered**, with no error codes. No migration or credential changes were required.
+
+Validation: **43 Meta tests passed**, including a disposable-PostgreSQL recovery test with overlapping workers and replay, plus typecheck, lint and the production build. Live recovery and the single-row count were verified separately; a deliberate production webhook replay and interruption test remain unperformed.
 
 ## Verified live connection — October 24, 2026
 
@@ -120,7 +128,9 @@ The existing `tailored-agents-search-console-sync` cron calls the shared worker 
 
 Set `META_LEADS_ENABLED=false` on the website service and redeploy to pause Graph retrieval while retaining signed incoming receipts. Preserve the app secret, verification token, Page ID and subscriptions so the receiver can continue saving notifications. Reporting, calls and SEO keep using the existing shared worker; do not pause that job just to pause Meta imports.
 
-After correcting Page permissions or replacing the Page token privately, set the flag back to `true` and redeploy. Pending receipts resume through the shared worker; owner/admin retry in Settings → Facebook & Instagram makes exhausted imports eligible again. Preserve `meta_lead_events` and existing Leads during rollback. A successful configuration check alone does not prove queued leads have imported; verify their status and the saved CRM record.
+Identify the failure before changing credentials: a saved receipt can fail during retrieval, answer validation or database import. After correcting the cause, keep `META_LEADS_ENABLED=true` and deploy any needed fix. Pending receipts resume through the shared worker; owner/admin retry in Settings → Facebook & Instagram makes exhausted imports eligible again. Preserve `meta_lead_events` and existing Leads during rollback. A successful configuration check alone does not prove queued leads have imported; verify their status and the saved CRM record.
+
+Unanswered Meta fields may contain a field name without `values`, or use null/empty values. The importer treats these as unanswered and preserves the other supplied details; it does not require an email or company name. Non-array populated values, non-string answers and oversized inputs remain invalid. Regression coverage includes exhausted-receipt recovery, simultaneous workers, webhook replay and exactly one queued SMS alert per enabled teammate.
 
 ## 4. Publish useful forms and tagged ads
 
@@ -156,7 +166,7 @@ The existing Resend notifications for saved **website** inquiries are independen
 
 - Conversions API for server-confirmed website events, sharing the same event ID/name with the Pixel to deduplicate browser/server delivery. This release only sends the browser event.
 - Feedback of qualified/won outcomes to Meta after agreeing on the exact sales-stage meaning and permitted event fields. A CRM `won` status is not a paid purchase.
-- Owner routing rules, team alerts, historical form backfill/reconciliation, and optional multi-Page/client isolation. The current connector receives new submissions for one internal business Page; it does not import old leads automatically.
+- Owner routing rules, historical form backfill/reconciliation, and optional multi-Page/client isolation. Team SMS alerts are implemented below. The current connector receives new submissions for one internal business Page; it does not import old leads automatically.
 - Ad-spend/ROI reporting is separate from capturing leads and UTM source details.
 
 ## Implementation references
