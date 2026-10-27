@@ -389,3 +389,15 @@ Post-deployment acceptance: the CRM health endpoint returned 200; the Cosmo shor
 Next: Austin reviews and approves the exact v2 plan. Compare the resulting desktop/mobile website with v1, review content and crops, inspect the exported project, and record actual review/build cost and elapsed time. Calibrate the reviewer against human judgments across representative industries and sparse briefs before claiming consistently excellent results.
 
 **Still to build:** the finished-site editing copilot with version comparisons/restore; optional visitor-facing business chatbot and its separate usage cap; dedicated asset roles/reference-image understanding; broader performance measurements; and real production forms, booking, SEO launch configuration and customer deployment finishing. Planning chat continues to revise plans only.
+
+## Cosmo's v2 review-response recovery October 27, 2026
+
+Austin approved plan v2 at 1:14 PM EDT. Build `e9e70bbc-4d85-4172-ab07-777916aec155` completed its five-page blueprint and hero image, then failed at QA at 1:18 PM. The review provider response was settled (22,618 input / 500 output tokens), but no parsed assessment was saved. The original precise local validation failure cannot be recovered: the old code retained only a generic error and the provider response used `store:false`. Do not claim a specific original parser error from this evidence.
+
+The three settled receipts total **$0.272883** (generation $0.126908, image $0.013326, review $0.132649). These are ledger estimates from reported usage, not a reconciled provider invoice. No uncertain charge is outstanding. Existing v1 remains ready and unchanged.
+
+Recovery changes save bounded raw review responses privately before validation, provide safe specific diagnostics, constrain issue page paths in the provider schema, and derive pass/fail directly from issue severity. Legacy reports remain readable and contradictory legacy verdicts remain rejected. A valid saved assessment can be reused without paid generation. The original response is unavailable, so this build needs a fresh assessment of its saved pages/image.
+
+Normal builds still need at most two assessments and one repair. An explicit failed-build retry can use one extra review request, capped at **three requests total** for the version; there are no blind automatic retries. Pre-dispatch denial restores its attempt slot, while attempted/uncertain work and all previous charges remain counted. Research/build monthly and per-site allowances are unchanged. Remaining material issues still block publication.
+
+Local verification: **50 focused review/provider/build integration tests**, lint, type checks and the Next.js production build passed. Tests cover saved-response reuse, invalid response -> explicit retry -> repair -> final review, and the hard three-request ceiling without clearing spend. Deployment and live retry acceptance remain pending at this checkpoint.

@@ -220,9 +220,45 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
     expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");expect(reviews).toBe(1);
     const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];
+    // Simulate interruption between saving the response and its parsed report.
+    await pool.query("UPDATE factory_build_versions SET working_data=working_data-'review' WHERE id=$1",[version.id]);
     await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});
     for(let step=0;step<3;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
     expect(reviews).toBe(1);expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].status).toBe("ready");
+  });
+  it("retains an invalid paid assessment and recovers through one explicit retry, repair and final review",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute;
+    let reviews=0,repairs=0;
+    runtime.execute=build=>async request=>{
+      const response=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};
+      if(request.stage==="review"){
+        reviews++;
+        response.output[0].content[0].text=JSON.stringify(reviews===1?{verdict:"pass",summary:"Invalid path.",issues:[{page:"all",category:"design",severity:"warning",message:"Tighten the heading."}]}:reviews===2?{summary:"Fix the heading.",issues:[{page:"index.html",category:"content",severity:"error",message:"Explain the service in the heading."}]}:{summary:"Ready to share.",issues:[]});
+      }
+      if(request.stage==="repair"){repairs++;const changed=structuredClone(blueprint);changed.pages[0].hero.headline="Explore the proposed service experience";response.output[0].content[0].text=JSON.stringify(changed);}
+      return response;
+    };
+    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
+    const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];
+    expect(version.error).toContain("unknown page");
+    const state=(await pool.query("SELECT working_data FROM factory_build_versions WHERE id=$1",[version.id])).rows[0].working_data;
+    expect(state.reviewResponse.raw.output[0].content[0].text).toContain('"page":"all"');expect(state.reviewAttempts).toBe(1);expect(state.review).toBeUndefined();
+    await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});
+    for(let step=0;step<3;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect(reviews).toBe(3);expect(repairs).toBe(1);expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].status).toBe("ready");
+    expect((await pool.query("SELECT count(*)::int n FROM factory_build_costs WHERE status='settled'")).rows[0].n).toBe(6);
+  });
+  it("stops after three unusable review responses across explicit retries and keeps all charges",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute;let reviews=0;
+    runtime.execute=build=>async request=>{const response=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};if(request.stage==="review"){reviews++;response.output[0].content[0].text="not an assessment";}return response;};
+    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    for(let attempt=0;attempt<4;attempt++){
+      if(attempt){const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});}
+      expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
+    }
+    expect(reviews).toBe(3);const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];expect(version.error).toContain("three allowed requests");expect(version.previewUrl).toBeNull();
+    expect((await pool.query("SELECT count(*)::int n FROM factory_build_costs WHERE stage='qa' AND status='settled'")).rows[0].n).toBe(3);
   });
   it("reserves visual review within the original per-site cap before any review provider call",async()=>{
     await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute;

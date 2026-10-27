@@ -5,7 +5,7 @@ vi.mock("server-only",()=>({}));
 import {factoryModelPolicy,factoryUsageCost} from "../config";
 import type {SiteQaResult} from "./artifacts";
 import {fixtureBlueprint,fixtureSitePlan} from "./fixtures";
-import {reviewPortableSite} from "./review";
+import {reviewPortableSite,parseSiteReview,SiteReviewResponseError} from "./review";
 import type {SiteModelRequest} from "./types";
 
 let desktop:Buffer,mobile:Buffer;
@@ -30,6 +30,9 @@ describe("Website visual/content review (local images and mocked provider only)"
     expect(request).toMatchObject({stage:"review",model:"gpt-6.1-sol",maxOutputTokens:3000});
     expect(request.body).toMatchObject({model:factoryModelPolicy.model,store:false,truncation:"disabled",max_output_tokens:3000,text:{format:{type:"json_schema",name:"factory_site_review",strict:true}}});
     expect(request.body.tools).toBeUndefined();expect(request.body.instructions).toContain("untrusted data");expect(request.body.instructions).toContain("Missing business information is not a reason to fail");
+    const schema=(request.body.text as {format:{schema:{properties:Record<string,any>;required:string[]}}}).format.schema;
+    expect(schema.properties.verdict).toBeUndefined();expect(schema.required).not.toContain("verdict");
+    expect(schema.properties.issues.items.properties.page.enum).toEqual(source.blueprint.pages.map(p=>p.path));
     const content=(request.body.input as Array<{content:Array<{type:string;text?:string;image_url?:string;detail?:string}>}>)[0].content;
     expect(JSON.parse(content[0].text!)).toMatchObject({approvedPlan:source.plan,website:source.blueprint});
     for(const page of source.blueprint.pages)for(const viewport of ["desktop","mobile"]){
@@ -76,6 +79,14 @@ describe("Website visual/content review (local images and mocked provider only)"
     expect(warning.issues).toEqual([{page:"index.html",code:"review_design",severity:"warning",message:"The closing section could use a little less padding."}]);
     const error=await reviewPortableSite(input(),async()=>response({verdict:"revise",summary:"Fix mobile hierarchy.",issues:[{page:"index.html",category:"mobile",severity:"error",message:"Shorten the hero heading so the primary action remains near the introduction."}]}));
     expect(error.issues[0]).toMatchObject({code:"review_mobile",severity:"error"});
+  });
+  it("derives new review outcomes from issues and gives safe diagnostic errors for saved responses",()=>{
+    const issue={page:"index.html",category:"content",severity:"error",message:"Clarify the service heading."};
+    expect(parseSiteReview(response({summary:"Correct this heading.",issues:[issue]}),["index.html"]).issues[0].severity).toBe("error");
+    expect(parseSiteReview(response({summary:"Ready to share.",issues:[]}),["index.html"]).issues).toEqual([]);
+    const raw=response({summary:"Private text must not leak through validation errors.",issues:[{...issue,category:"invalid"}]});
+    try{parseSiteReview(raw,["index.html"]);throw new Error("Expected assessment rejection");}
+    catch(error){expect(error).toBeInstanceOf(SiteReviewResponseError);expect((error as Error).message).toContain("assessment format");expect((error as Error).message).not.toContain("Private text");}
   });
   it("rejects issues for unknown pages and inconsistent pass/revise verdicts",async()=>{
     const issue={page:"secret/index.html",category:"content",severity:"error",message:"Fix the title."};

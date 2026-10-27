@@ -15,15 +15,16 @@ import {reviewSiteDepth} from "./site/quality";
 import {checkPortableSite} from "./site/qa";
 import {screenshotPath} from "./site/qa";
 import {preparePortableImages} from "./site/images";
-import {reviewPortableSite,type SiteReview} from "./site/review";
+import {reviewPortableSite,parseSiteReview,SiteReviewResponseError,type SiteReview} from "./site/review";
 import {checkSiteDelivery} from "./site/performance";
 import {createPortableExport} from "./site/package";
 import type {SiteFiles,SiteQaResult} from "./site/artifacts";
 import type {SiteModelExecutor,SiteBlueprint} from "./site/types";
 import type {FactoryClaimedBuild,FactoryBuildManifest,FactoryBuildQa} from "./build-types";
+import {maximumReviewAttempts} from "./build-types";
 
 type Working={blueprint?:SiteBlueprint;heroKey?:string;provenance?:unknown;qaReport?:FactoryBuildQa;manifest?:FactoryBuildManifest;sourceKey?:string;repaired?:boolean;
-  reviewAttempts?:number;review?:{fingerprint:string;result:SiteReview};checkedManifest?:FactoryBuildManifest};
+  reviewAttempts?:number;review?:{fingerprint:string;result:SiteReview};reviewResponse?:{fingerprint:string;raw:unknown};checkedManifest?:FactoryBuildManifest};
 class FactoryBuildQualityError extends Error{}
 export type FactoryBuildRuntime={storage:FactoryStorage;execute(build:FactoryClaimedBuild):SiteModelExecutor;hero(build:FactoryClaimedBuild,prompt:string):Promise<{bytes:Uint8Array;provenance:unknown}>;qa(files:SiteFiles):Promise<SiteQaResult>;verify(build:FactoryClaimedBuild,manifest:FactoryBuildManifest):Promise<{url:string;status:200;checkedAt:string}>};
 function working(build:FactoryClaimedBuild):Working{return build.workingData as Working;}
@@ -120,8 +121,21 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
       if(!qa.passed)return qa;
       const fingerprint=createHash("sha256").update(JSON.stringify(site.manifest)).digest("hex");
       if(state.review?.fingerprint!==fingerprint){
-        if((state.reviewAttempts||0)>=2)throw new FactoryBuildQualityError("The visual review used its two allowed attempts. Update the plan and approve a new version to continue; your previous preview is preserved.");
-        const result=await reviewPortableSite({plan:build.plan,blueprint:state.blueprint!,screenshots:qa.screenshots},boundedExecute("review"));
+        let result:SiteReview|undefined;
+        if(state.reviewResponse?.fingerprint===fingerprint){
+          try{result=parseSiteReview(state.reviewResponse.raw,state.blueprint!.pages.map(p=>p.path));}
+          catch(error){if(!(error instanceof SiteReviewResponseError))throw error;}
+        }
+        if(!result){
+          if((state.reviewAttempts||0)>=maximumReviewAttempts)throw new FactoryBuildQualityError("The visual review used its three allowed requests, including recovery. Update the plan and approve a new version to continue; your previous preview is preserved.");
+          result=await reviewPortableSite({plan:build.plan,blueprint:state.blueprint!,screenshots:qa.screenshots},async request=>{
+            const raw=await boundedExecute("review")(request);
+            // Keep the paid response private before local validation can reject it.
+            // No screenshots, request prompts or credentials are stored here.
+            if(Buffer.byteLength(JSON.stringify(raw))>100000)throw new SiteReviewResponseError("The design review response exceeds its saved-data limit.");
+            state.reviewResponse={fingerprint,raw};await persist();return raw;
+          });
+        }
         state.review={fingerprint,result};
         await persist();
       }
@@ -179,7 +193,7 @@ export async function runFactoryBuildWorkerStep(injected?:FactoryBuildRuntime){
   const build=await claimFactoryBuild();if(!build)return cleanup?{status:"cleaned" as const,more:true}:{status:"idle" as const,more:false};
   try{await performFactoryBuildStage(build,runtime);return {status:"processed" as const,stage:build.stage,more:true};}
   catch(error){
-    const message=error instanceof FactoryBuildBudgetError||error instanceof FactoryBuildQualityError?error.message:"This website build could not complete. Check the builder connection and saved progress before retrying. Attempted AI usage remains counted.";
+    const message=error instanceof FactoryBuildBudgetError||error instanceof FactoryBuildQualityError||error instanceof SiteReviewResponseError?error.message:"This website build could not complete. Check the builder connection and saved progress before retrying. Attempted AI usage remains counted.";
     await failFactoryBuild({versionId:build.id,leaseToken:build.leaseToken,error:message});
     return {status:"failed" as const,stage:build.stage,more:true};
   }

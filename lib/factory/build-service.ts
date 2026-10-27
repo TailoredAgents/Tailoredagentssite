@@ -10,6 +10,7 @@ import {FactoryInputError} from "./types";
 import {factoryPreviewUrl} from "./build-data";
 import {factoryBuildConfiguration} from "./build-config";
 import type {FactoryClaimedBuild,FactoryBuildStage,FactoryBuildStageResult,FactoryBuildFinish,FactoryBuildManifest,FactoryBuildQa} from "./build-types";
+import {maximumReviewAttempts} from "./build-types";
 
 const uuid=z.string().uuid();
 const dollars=z.coerce.number().finite().min(1).refine(v=>Math.abs(Math.round(v*100)-v*100)<1e-8,"Use at most two decimal places.");
@@ -105,7 +106,7 @@ export async function rollbackFactoryBuildAttempt(input:{versionId:string;leaseT
   if(input.stage!=="qa"||!["review","repair"].includes(input.kind))throw new FactoryInputError("Only a website QA attempt can be restored.");
   if(input.kind==="review"){
     const previous=input.previousValue===undefined?0:input.previousValue;
-    if(typeof previous!=="number"||!Number.isInteger(previous)||previous<0||previous>1||input.expectedValue!==previous+1)throw new FactoryInputError("Invalid review attempt restoration.");
+    if(typeof previous!=="number"||!Number.isInteger(previous)||previous<0||previous>=maximumReviewAttempts||input.expectedValue!==previous+1)throw new FactoryInputError("Invalid review attempt restoration.");
   }else if(input.expectedValue!==true||(input.previousValue!==undefined&&input.previousValue!==false))throw new FactoryInputError("Invalid repair attempt restoration.");
   const field=input.kind==="review"?"reviewAttempts":"repaired";
   return buildTransaction(async db=>{
