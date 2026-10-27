@@ -1,6 +1,6 @@
 # Website Builder: design alignment and content quality
 
-Implementation checkpoint: October 27, 2026. This follows the [saved-draft editor](WEBSITE_BUILDER_DRAFT_EDITING.md). Austin authorized improving initial layouts, content depth and the connection between planning and building, then assessing Cosmo from its saved draft. Deployment, final validation counts and observed live quality belong in the release evidence below; implementation alone does not establish them.
+October 27, 2026. This follows the [saved-draft editor](WEBSITE_BUILDER_DRAFT_EDITING.md). Austin authorized improving initial layouts, content depth and the connection between planning and building, then assessing Cosmo from its saved draft. Implementation, deployment and actual local output evidence are recorded separately below.
 
 ## What changes for the salesperson
 
@@ -67,4 +67,27 @@ Existing public previews remain immutable. A live correction creates a separate 
 
 ## Release evidence
 
-Final validation counts, deployment commits and actual saved-draft observations are to be added after the combined release checks. Synthetic tests establish the supported contract; they do not establish a live AI-generated site's appeal or conversion performance.
+- Initial release `b08706bfeb3625b618de4ab24c9ec73344676322` is verified live on the [CRM](https://dashboard.render.com/web/srv-db6hod8473hc739q2uo0/deploys/dep-dbgj72lg1s2s73c8j64g) and [builder](https://dashboard.render.com/cron/crn-dbfth6uk1f9s73amh7ig/deploys/dep-dbgj72tg1s2s73c8j7n0). The production health endpoint returned 200. Cosmo's historical approved v8 correctly shows only its recorded colors, with no invented structured recipe.
+- The initial release passed 294 Factory unit tests, two desktop/phone planning browser flows, lint, type checking and production build. The 38 focused renderer checks overlap with the unit total. Five industry/sparse-input benchmarks had zero browser/content/delivery findings. These synthetic checks establish supported behavior, not prospect appeal or a higher AI review score.
+- The signed-in owner downloaded the private diagnostic for Cosmo website v6 using the new authorized route. Its original approved v8 plan, blueprint and two image files were replayed locally against the old and updated renderers. No model requests, database writes, new approval, retry or publication occurred. [Live diagnostic control](previews/factory-diagnostic-live-cosmos.png).
+- All five actual pages passed desktop/mobile browser, content and asset-budget checks. The first comparison exposed short inner statements that still inherited oversized presentation; a focused follow-up makes these content-sized while preserving Home, long copy, image bindings and selected density. Final follow-up measurements and deployment are recorded below.
+- Actual saved content remains a separate issue: Services repeats its topic framing and About repeatedly describes clarity/conversation. Prepared corrections are in [Cosmo saved-draft corrections](COSMO_SAVED_DRAFT_CORRECTIONS.md). New planner instructions do not retroactively rewrite saved content.
+- Cosmo's recorded production result remains v6 failed at 82/100. Its v3 public preview remains available. Local technical checks do not replace the normal visual assessment or authorize publishing an unchecked draft. Existing approval and budget ceilings remain intact.
+
+### Actual saved-draft comparison
+
+The final renderer follow-up `54589ab` passed 21 focused inner-page/Contact browser checks, lint, type checking and a production build. The isolated replay used identical saved plan, blueprint and normalized image bytes for both versions. Every page passed desktop/phone browser, content and delivery checks with zero findings. Root and two independent reviewers inspected the actual screenshots.
+
+Final code **`54589ab5017f375b84ea10d11b4eebd380be890a`** is verified as the last successfully deployed commit on both the [CRM](https://dashboard.render.com/web/srv-db6hod8473hc739q2uo0/deploys/dep-dbgjb52vcj2c73aku1b0) and [builder](https://dashboard.render.com/cron/crn-dbfth6uk1f9s73amh7ig/deploys/dep-dbgjb5avcj2c73aku260). No paid build was triggered as part of deployment verification.
+
+| Page | Desktop height: before → after | Phone height: before → after |
+| --- | --- | --- |
+| About | 2,152 → 1,522 px | 2,317 → 2,094 px |
+| Services | 3,225 → 2,706 px | 4,044 → 3,823 px |
+| Contact | 1,492 → 1,492 px | 1,863 → 1,825 px |
+
+All three short desktop statement bands fell from approximately 399 to 213 px. The Cooling spotlight changed from 723 to 490 px. These measurements show removal of excess space, not a conversion score. Section order, words, business channels, actions, images and the approved two demonstration forms stayed intact. Home and Service Areas were intentionally preserved.
+
+Actual local delivery accounting: approximately 208 KB for the full mobile Home page and 462 KB desktop, with inner pages about 104–108 KB. These are local resource totals, not deployed field Core Web Vitals or user-network speed claims. No AI requests were made during the comparison.
+
+Evidence: [About desktop, local render](previews/cosmos-v6-local-about-desktop.png), [Contact phone, local render](previews/cosmos-v6-local-contact-mobile.png). These images show the unpublished saved draft rerendered with the updated software; they are not a new public Cosmo preview.
