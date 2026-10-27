@@ -1,5 +1,6 @@
 import type { FactoryPlanContent } from "../types";
 import { designFamilies } from "./families";
+import { assertFactoryDesignRecipe } from "../design-recipe";
 import type { SiteBlueprint, SiteDesign } from "./types";
 
 export function colorLuminance(hex:string){
@@ -56,7 +57,15 @@ export function approvedDesignConstraints(plan:FactoryPlanContent){
   if(body==="modern"||body==="humanist")typography.body=body;
   if(!heading&&!body){const general=font(type);if(general){typography.heading=general;if(general==="modern"||general==="humanist")typography.body=general;}}
   if(/\bbold\b|\bstrong\b/.test(type))typography.weight=700;
-  return {palette,typography};
+  const recipe=plan.design.recipe;
+  if(recipe){
+    assertFactoryDesignRecipe(recipe);
+    // Curated font themes are the actual bundled fonts. Resolve their heading
+    // role before generation, rather than allowing prose and renderer to diverge.
+    typography.heading=recipe.fontTheme==="technical"?"geometric":["editorial","warm"].includes(recipe.fontTheme)?"editorial":"modern";
+    typography.body="modern";
+  }
+  return {palette,typography,...(recipe?{recipe}: {})};
 }
 
 export function defaultSiteDesign(b:SiteBlueprint):SiteDesign {
@@ -67,20 +76,23 @@ export function defaultSiteDesign(b:SiteBlueprint):SiteDesign {
 
 /** Approved labeled choices take precedence over a model's defaults, including during repair. */
 export function applyApprovedDesign(b:SiteBlueprint,plan:FactoryPlanContent):SiteBlueprint {
-  const constraints=approvedDesignConstraints(plan),design=b.design||defaultSiteDesign(b);
+  const constraints=approvedDesignConstraints(plan),recipe=constraints.recipe;
+  const directed=recipe?{...b,family:recipe.family,composition:recipe.composition}:b;
+  const design=b.design||defaultSiteDesign(directed);
   const palette={...design.palette,...constraints.palette};
   // A plan's light/dark background may require a matching neutral surface when none was specified.
   if(!constraints.palette.surface&&contrastRatio(palette.ink,palette.surface)<4.5)palette.surface=palette.background;
   // An unapproved helper color can be adjusted; an explicit inaccessible choice is reported by validation.
   if(!constraints.palette.muted&&[palette.background,palette.surface].some(bg=>contrastRatio(palette.muted,bg)<4.5))palette.muted=palette.ink;
-  let presentation=b.presentation;
+  let presentation=b.presentation||(recipe?{version:1 as const,fontTheme:recipe.fontTheme,heroEmphasis:null,logoAssetId:null,pageImages:[],sectionImages:[]}:undefined);
+  if(presentation&&recipe)presentation={...presentation,fontTheme:recipe.fontTheme};
   if(presentation&&constraints.typography.heading){
     const serif=constraints.typography.heading==="editorial",themeIsSerif=presentation.fontTheme==="editorial"||presentation.fontTheme==="warm";
     if(serif&&!themeIsSerif)presentation={...presentation,fontTheme:"editorial"};
     if(!serif&&themeIsSerif)presentation={...presentation,fontTheme:constraints.typography.heading==="geometric"?"technical":"studio"};
   }
-  return {...b,...(presentation?{presentation}:{}),accent:palette.accent,fontPair:constraints.typography.heading==="geometric"?"modern":constraints.typography.heading||b.fontPair,
-    design:{...design,palette,typography:{...design.typography,...constraints.typography}}};
+  return {...directed,...(presentation?{presentation}:{}),accent:palette.accent,fontPair:constraints.typography.heading==="geometric"?"modern":constraints.typography.heading||b.fontPair,
+    design:{...design,...(recipe?{density:recipe.density,radius:recipe.radius}:{}),palette,typography:{...design.typography,...constraints.typography}}};
 }
 
 export function siteDesignCss(b:SiteBlueprint){

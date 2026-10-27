@@ -92,10 +92,10 @@ describe("Compact dedicated contact pages",()=>{
 
       const layout=await page.evaluate(()=>{
         const direct=document.getElementById("direct-contact")!.getBoundingClientRect(),inquiry=document.getElementById("inquiry")!.getBoundingClientRect(),input=document.querySelector("#inquiry input")!.getBoundingClientRect();
-        return {overflow:document.documentElement.scrollWidth>innerWidth+2,sideBySide:inquiry.left>=direct.right-1,stacked:inquiry.top>=direct.bottom-1,firstInputTop:input.top+scrollY,overlap:Math.max(0,Math.min(direct.right,inquiry.right)-Math.max(direct.left,inquiry.left))*Math.max(0,Math.min(direct.bottom,inquiry.bottom)-Math.max(direct.top,inquiry.top))};
+        return {overflow:document.documentElement.scrollWidth>innerWidth+2,sideBySide:inquiry.left>=direct.right-1,stacked:inquiry.top>=direct.bottom-1,firstInputTop:input.top+scrollY,inputWidth:input.width,overlap:Math.max(0,Math.min(direct.right,inquiry.right)-Math.max(direct.left,inquiry.left))*Math.max(0,Math.min(direct.bottom,inquiry.bottom)-Math.max(direct.top,inquiry.top))};
       });
       expect(layout.overflow).toBe(false);expect(layout.overlap).toBe(0);
-      if(width>760)expect(layout.sideBySide).toBe(true);else expect(layout.stacked).toBe(true);
+      if(width>760)expect(layout.sideBySide).toBe(true);else {expect(layout.stacked).toBe(true);expect(layout.inputWidth).toBeGreaterThanOrEqual(width-90);}
       expect(layout.firstInputTop).toBeLessThanOrEqual(width>760?800:1400);
       await writeFile(path.join(output,`contact-${width}.png`),await page.screenshot({fullPage:true,animations:"disabled"}));
 

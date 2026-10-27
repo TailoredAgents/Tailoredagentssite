@@ -5,6 +5,7 @@ vi.mock("./budget",()=>({reserveFactoryCost:costs.reserve,attemptFactoryCost:cos
 import { extractFactoryResearch,parseFactoryPlan,researchFactoryLead,planFactoryWebsite,type FactorySnapshot } from "./provider";
 import { factoryReservation,factoryUsageCost,factoryModelPolicy } from "./config";
 import { websitePlanningContract,websiteQualityStandards } from "./website-standards";
+import { factoryDesignCapabilities } from "./design-recipe";
 const request=vi.fn();
 const ctx={workspaceId:"w",projectId:"p",jobId:"j",leaseToken:"l",attempt:1};
 const snapshot:FactorySnapshot={lead:{organization:"None",website_url:null},notes:[],messages:[],previousPlan:null,contextNotice:"Sparse fixture"};
@@ -83,8 +84,24 @@ describe("Factory provider boundaries (synthetic responses only)",()=>{
     const body=JSON.parse(request.mock.calls[0][1].body);
     expect(body.text.format.strict).toBe(true);expect(body.text.format.name).toBe("factory_plan");expect(body.tools).toBeUndefined();expect(result.plan.sources).toEqual([source]);
     expect(body.instructions).toContain(websiteQualityStandards);expect(body.instructions).toContain(websitePlanningContract);
-    const inputBytes=Buffer.byteLength(JSON.stringify({snapshot,research:{text:"A possible match",sources:[source]}}))+Buffer.byteLength(body.instructions)+Buffer.byteLength(JSON.stringify(body.text.format.schema));
+    expect(JSON.parse(body.input[0].content).rendererCapabilities).toEqual(factoryDesignCapabilities);
+    expect(body.text.format.schema.properties.plan.properties.design.required).toContain("recipe");
+    const inputBytes=Buffer.byteLength(JSON.stringify({snapshot,research:{text:"A possible match",sources:[source]},rendererCapabilities:factoryDesignCapabilities}))+Buffer.byteLength(body.instructions)+Buffer.byteLength(JSON.stringify(body.text.format.schema));
     expect(costs.reserve).toHaveBeenCalledWith({...ctx,stage:"plan",micros:factoryReservation("plan",inputBytes)});
+  });
+  it("saves a supported concrete design and rejects conflicting choices before approval",()=>{
+    const recipe={version:1 as const,family:"trades" as const,composition:"framed" as const,fontTheme:"technical" as const,density:"compact" as const,radius:"soft" as const};
+    const content={...plan(),design:{...plan().design,recipe}};
+    const result=parseFactoryPlan({changed:true,reply:"Review this concrete direction",changeSummary:"Set a framed geometric design",plan:content},{text:"",sources:[]},null);
+    expect(result.plan.design.recipe).toEqual(recipe);
+    expect(()=>parseFactoryPlan({changed:true,reply:"Review",changeSummary:"Invalid",plan:{...content,design:{...content.design,recipe:{...recipe,composition:"minimal"}}}},{text:"",sources:[]},null)).toThrow("does not support");
+    expect(()=>parseFactoryPlan({changed:true,reply:"Review",changeSummary:"Conflicting",plan:{...content,design:{...content.design,recipe:{...recipe,fontTheme:"editorial"}}}},{text:"",sources:[]},null)).toThrow("heading typography");
+    expect(()=>parseFactoryPlan({changed:true,reply:"Review",changeSummary:"Unsupported",plan:{...content,design:{...content.design,recipe:{...recipe,fontTheme:"remote-font"}}}},{text:"",sources:[]},null)).toThrow();
+  });
+  it("does not retrofit or change a design recipe when the user only asks a question",()=>{
+    const previous={...plan(),sources:[]};
+    const result=parseFactoryPlan({changed:false,reply:"The prior direction remains",changeSummary:"Answered question",plan:{...plan(),design:{...plan().design,recipe:{version:1,family:"professional",composition:"minimal",fontTheme:"technical",density:"compact",radius:"square"}}}},{text:"",sources:[]},previous);
+    expect(result.plan).toBe(previous);expect(result.plan.design.recipe).toBeUndefined();
   });
   it("never retries an ambiguous transport error and retains its uncertain receipt",async()=>{
     request.mockRejectedValue(new Error("Socket lost"));await expect(researchFactoryLead(ctx,snapshot)).rejects.toThrow();

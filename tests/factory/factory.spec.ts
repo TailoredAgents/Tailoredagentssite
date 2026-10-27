@@ -157,6 +157,22 @@ test("keeps paused work and drafts, recovers provider failure, and restricts vie
 
 const buildDb = new Pool({ connectionString: "postgresql://ta_test@127.0.0.1:55433/ta_factory_browser_test", max: 1 });
 test.afterAll(async () => { await buildDb.end(); });
+test("shows the saved visual direction before approval without starting a website",async({page,request},info)=>{
+  await signIn(page);await control(request,"enabled");await openLeadPlan(page,(await control(request)).leadId);
+  await generate(request);await page.reload();
+  const visual=page.getByRole("figure",{name:"Planned visual direction"});
+  await expect(visual).toBeVisible();await expect(visual.getByText("Centered opening",{exact:true})).toBeVisible();
+  await expect(visual.getByText("Clean studio typography",{exact:true})).toBeVisible();
+  await expect(visual.getByText("#3769B2",{exact:true})).toBeVisible();
+  await expect(visual.locator('.factory-direction-sketch')).toHaveClass(/is-centered/);
+  const state=await control(request);expect(state.builds).toHaveLength(0);
+  expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze()).violations).toEqual([]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await visual.screenshot({path:dashboardPreviewPath(`factory-plan-direction-${info.project.name}.png`),style:"nextjs-portal{display:none!important}"});
+  // The exact saved recipe travels with the plan being approved.
+  const plan=(await buildDb.query("SELECT content FROM factory_plans WHERE id=$1",[state.plans[0].id])).rows[0].content;
+  expect(plan.design.recipe).toMatchObject({composition:"centered",fontTheme:"studio",density:"balanced"});
+});
 async function approvedBuild(page: Page, request: APIRequestContext) {
   await signIn(page);
   await control(request, "enabled");

@@ -7,6 +7,7 @@ import {validateSiteBlueprint} from "./validate";
 import type {SiteModelRequest} from "./types";
 import {websiteQualityStandards} from "../website-standards";
 import {factoryUsageCost} from "../config";
+import type {FactoryDesignRecipe} from "../types";
 const response=(blueprint:unknown,status="completed")=>({id:"resp_synthetic_site",status,usage:{input_tokens:4000,output_tokens:2000},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(blueprint)}]}]});
 
 describe("Portable site provider (synthetic responses only)",()=>{
@@ -26,6 +27,19 @@ describe("Portable site provider (synthetic responses only)",()=>{
     blueprint.contact.email="made-up@example.test";expect(()=>validateSiteBlueprint(blueprint,fixtureSitePlan)).toThrow("Contact details");
     const plan={...fixtureSitePlan,knownDetails:[{label:"Email",value:"made-up@example.test",basis:"possible_match" as const,sourceIds:[]}]};expect(()=>validateSiteBlueprint(blueprint,plan)).toThrow();
     plan.knownDetails[0].basis="submitted" as never;expect(validateSiteBlueprint(blueprint,plan).contact.email).toBe("made-up@example.test");
+  });
+  it("keeps the approved recipe over inferred industry and a different generated direction",async()=>{
+    const recipe:FactoryDesignRecipe={version:1,family:"professional",composition:"minimal",fontTheme:"technical",density:"compact",radius:"square"};
+    const plan={...fixtureSitePlan,design:{...fixtureSitePlan.design,recipe}};
+    const result=await generatePortableSite({plan,family:"trades"},async request=>{
+      const context=JSON.parse((request.body.input as Array<{content:string}>)[0].content);
+      expect(context.family).toBe("professional");expect(context.approvedDesignConstraints.recipe).toEqual(recipe);
+      expect(context.rendererCapabilities.families.professional.compositions).toContain("minimal");
+      return response(fixtureBlueprint());
+    });
+    expect(result.blueprint).toMatchObject({family:"professional",composition:"minimal",presentation:{fontTheme:"technical"},design:{density:"compact",radius:"square"}});
+    expect(result.blueprint.pages).toEqual(fixtureBlueprint().pages);
+    expect(result.blueprint.contact).toEqual(fixtureBlueprint().contact);
   });
   it("rejects invalid paths, duplicate ids, unsupported compositions and claims",()=>{
     for(const path of ["../secret.html","https://evil.test/","/index.html","a/b/index.html"]){const b=fixtureBlueprint();b.pages[0].path=path;expect(()=>validateSiteBlueprint(b,fixtureSitePlan)).toThrow();}

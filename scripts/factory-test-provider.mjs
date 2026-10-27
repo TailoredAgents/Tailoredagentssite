@@ -65,7 +65,7 @@ const server=createServer(async(req,res)=>{
       assumptions:["Use a working concept title until branding is provided."],
       pages:[{title:"Home",purpose:"Explain the offering and invite an inquiry",sections:["Clear introduction","Services","Contact"]},{title:"Services",purpose:commercial?"Explain commercial roofing services":"Leave service descriptions ready for confirmed details",sections:["Service overview","Request an estimate"]}],
       callsToAction:[commercial?"Request a roofing estimate":"Discuss your project"],
-      design:{direction:commercial?"Confident industrial design with a clear business focus":"Warm, readable editorial design",palette:["Deep slate","Soft ivory","Blue accent"],typography:"Clear sans-serif headings and readable body text",imagery:"Illustrative concept imagery; no invented completed projects"},
+      design:{direction:commercial?"Confident industrial design with a clear business focus":"Warm, readable editorial design",palette:["Background: #F5F7FA","Surface: #FFFFFF","Ink: #172B46","Muted: #50617A","Accent: #3769B2","AccentSecondary: #C5CFEF"],recipe:{version:1,family:commercial?"trades":"general",composition:commercial?"split":"centered",fontTheme:"studio",density:commercial?"compact":"balanced",radius:"soft"},typography:"Clear sans-serif headings and readable body text",imagery:"Illustrative concept imagery; no invented completed projects"},
       previewFeatures:["Responsive navigation","Demonstration inquiry form"],productionIntegrations:["Connect the real inquiry form","Confirm business content and domain"],
     };
     return json(res,200,{id:`resp_factory_fixture_${calls}`,status:"completed",usage:{input_tokens:1200,output_tokens:800},output:research?[

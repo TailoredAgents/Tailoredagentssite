@@ -4,21 +4,12 @@ import type { FactoryPlanContent } from "./types";
 import { factoryModelPolicy, factoryReservation, factoryUsageCost } from "./config";
 import { attemptFactoryCost, reserveFactoryCost, settleFactoryCost, uncertainFactoryCost, type FactoryCostRequest } from "./budget";
 import { websitePlanningContract, websiteQualityStandards } from "./website-standards";
+import { assertFactoryDesignRecipe, factoryDesignCapabilities } from "./design-recipe";
+import { approvedDesignConstraints } from "./site/design";
+import { factoryPlanSchema, factoryPlanResponseSchema, factoryPlanGenerationSchema } from "./plan-schema";
+export { factoryPlanSchema, factoryPlanResponseSchema, factoryPlanGenerationSchema } from "./plan-schema";
 
 const copy = z.string().trim().min(1);
-const shortList = z.array(copy.max(1000)).max(16);
-export const factoryPlanSchema = z.object({
-  summary: copy.max(2000), goal: copy.max(1000), audience: copy.max(1000),
-  knownDetails: z.array(z.object({label:copy.max(150),value:copy.max(1200),basis:z.enum(["submitted","sourced","possible_match","assumption"]),sourceIds:z.array(copy.max(80)).max(8)}).strict()).max(24),
-  uncertainties: shortList, assumptions: shortList,
-  pages: z.array(z.object({title:copy.max(150),purpose:copy.max(1000),sections:z.array(copy.max(300)).max(12)}).strict()).min(1).max(10),
-  callsToAction: z.array(copy.max(300)).max(8),
-  design: z.object({direction:copy.max(1500),palette:z.array(copy.max(120)).max(8),typography:copy.max(700),imagery:copy.max(1200)}).strict(),
-  previewFeatures: shortList, productionIntegrations: shortList,
-}).strict();
-export const factoryPlanResponseSchema = z.object({
-  changed:z.boolean(),reply:copy.max(6000),changeSummary:copy.max(2000),plan:factoryPlanSchema,
-}).strict();
 export type FactoryResearch = { text: string; sources: FactoryPlanContent["sources"] };
 export type FactorySnapshot = {
   lead: Record<string,string|null>; notes: string[];
@@ -49,7 +40,7 @@ async function responseJson(body: unknown): Promise<unknown> {
 }
 
 async function callModel(context: RequestContext, stage:"research"|"plan", instructions:string, input:unknown, structured:boolean) {
-  const serialized=JSON.stringify(input), schema=structured?z.toJSONSchema(factoryPlanResponseSchema,{target:"draft-7"}):undefined;
+  const serialized=JSON.stringify(input), schema=structured?z.toJSONSchema(factoryPlanGenerationSchema,{target:"draft-7"}):undefined;
   const bytes=Buffer.byteLength(serialized)+Buffer.byteLength(instructions)+Buffer.byteLength(JSON.stringify(schema||{}));
   // No arbitrary tools, remote conversation state, or provider-managed storage.
   const cost=await reserveFactoryCost({...context,stage,micros:factoryReservation(stage,bytes)});
@@ -106,7 +97,8 @@ export const factoryPlanInstructions = `Produce a website proposal for human rev
 Use the supplied sources only: knownDetails.sourceIds must refer to an actual source id in the provided research or previous plan. A 'sourced' detail needs at least one supporting source. Submitted information is attributed as submitted, not independently verified; possible_match remains uncertain. Sources support only the cited business, never an assumed identity. Clearly record conflicting/missing details and assumptions. Never invent real business facts, testimonials, certifications, addresses, staff, projects, prices, phones or requested services. Do not infer 'no website' from an unsuccessful search or 'wants redesign' from an old site. Provide a useful general site plan with optional questions even with no reliable company details. There are no required lead fields.
 Propose goal, audience, pages/sections, calls to action, a differentiated design/palette/typography/imagery direction, preview capabilities and production integrations still needed. Treat this as a creative brief: goal identifies the visitor benefit and main action; audience identifies their practical concern; design.direction states one coherent visual concept and why it fits; each page has a distinct purpose. Decide the marketing message before enumerating sections. Prefer concise benefit-led copy, clear approved service concepts and a fact-supported company story to repeated advice about preparing an inquiry. No universal page, section or word-count quota. Keep uncertain operating details and research gaps in uncertainties/assumptions, not the proposed public headline. If reliable business facts are sparse, propose an attractive clearly provisional concept without requiring more information.
 Give every intended webpage its own entry in the pages array. A five-page proposal must list all five pages; mentioning them only in summary, previewFeatures or Home's sections does not create those pages. Any page count stated in summary or previewFeatures must agree with the actual pages array. Use concise section labels and a clear purpose per page instead of drafting full website copy inside the plan; preserve enough response space to list every intended page. Do not invent extra pages to meet a standard quota.
-The builder supports curated locally bundled sans/serif font themes, mixed headline emphasis, immersive/split/editorial hero compositions, service tabs, alternating photo stories and photo-led grids. Recommend intentional typography, a labeled palette with Background/Surface/Ink/Muted/Accent/AccentSecondary roles and strong contrast, and a small coherent image set. Use supplied logos/photos when authorized; otherwise propose illustrative imagery and a typographic identity without pretending a fabricated logo belongs to the business. Typically one hero plus one or two purposeful supporting images is enough; less is appropriate when it serves the concept. Generated imagery must not pretend to show actual staff or completed projects. Demo forms/payment/booking are demonstrations until separately connected. Keep the plan realistic and concise. Do not promise a live chatbot, custom third-party integrations or finished-site editing that this builder does not yet implement.
+The builder supports curated locally bundled sans/serif font themes, mixed headline emphasis, immersive/split/editorial hero compositions, service tabs, alternating photo stories and photo-led grids. Choose design.recipe from the supplied rendererCapabilities: one supported family and its homepage composition, fontTheme, density and radius. This is an explicit proposed design choice for human approval, not an industry guess or an additional lead requirement. Let the business and approved references guide it; a trades business does not have to look industrial. Describe the same choices in plain language in design.direction and typography. studio/technical use sans headings; editorial/warm use serif headings. Select one coherent direction rather than alternatives joined by 'or'. For an unchanged historical plan that has no recipe, recipe may be null; never silently retrofit one while changed=false.
+Recommend a labeled palette with Background/Surface/Ink/Muted/Accent/AccentSecondary roles and strong contrast, and a small coherent image set. Assign the surface colors a purpose: base reading canvas, grouped content surface, and one or two purposeful contrasting landmarks. Use supplied logos/photos when authorized; otherwise propose illustrative imagery and a typographic identity without pretending a fabricated logo belongs to the business. Typically one hero plus one or two purposeful supporting images is enough; less is appropriate when it serves the concept. Generated imagery must not pretend to show actual staff or completed projects. Demo forms do not deliver messages; booking/payment require separate integrations. Keep the plan realistic and concise. Saved drafts support bounded text/layout corrections and an AI section edit within approved scope; do not promise arbitrary code editing, a live chatbot or custom third-party integrations.
 ${websiteQualityStandards}
 ${websitePlanningContract}
 For a revision, preserve useful previous decisions and incorporate the latest chat. Return changed=true if the proposed plan actually changed, with a concrete changeSummary. If the user only asks a question or acknowledges the plan, return changed=false, explain in reply, and preserve the previous plan. First proposals always have changed=true. Reply is planning discussion, never a claim that a website exists. Human approval of the exact latest version is still required before building.`;
@@ -156,10 +148,16 @@ export function parseFactoryPlan(raw:unknown,research:FactoryResearch,previous:F
   if(previous && !result.changed)return {...result,plan:previous};
   assertDeclaredPageCount(result.plan);
   const plan={...result.plan,sources:research.sources};
+  if(plan.design.recipe){
+    assertFactoryDesignRecipe(plan.design.recipe);
+    const heading=approvedDesignConstraints({...plan,design:{...plan.design,recipe:null}}).typography.heading;
+    const serifTheme=["editorial","warm"].includes(plan.design.recipe.fontTheme);
+    if(heading&&(heading==="editorial")!==serifTheme)throw new Error("The proposed font theme disagrees with its heading typography. Choose one consistent design before approval.");
+  }
   if(Buffer.byteLength(JSON.stringify(plan))>40000)throw new Error("The proposed plan exceeds its saved context size limit.");
   return {...result,changed:true,plan};
 }
 export async function planFactoryWebsite(context:RequestContext,snapshot:FactorySnapshot,research:FactoryResearch):Promise<FactoryPlanResult> {
-  const result=await callModel(context,"plan",factoryPlanInstructions,{snapshot,research},true);
+  const result=await callModel(context,"plan",factoryPlanInstructions,{snapshot,research,rendererCapabilities:factoryDesignCapabilities},true);
   return parseFactoryPlan(JSON.parse(outputText(result)),research,snapshot.previousPlan);
 }

@@ -1,12 +1,21 @@
 export class FactoryAccessError extends Error {}
 export class FactoryInputError extends Error {}
+/** Concrete renderer choices approved with a plan; absent on historical plans. */
+export type FactoryDesignRecipe = {
+  version: 1;
+  family: import("./site/types").DesignFamilyId;
+  composition: import("./site/types").HeroComposition;
+  fontTheme: "studio" | "editorial" | "warm" | "technical";
+  density: "compact" | "balanced" | "airy";
+  radius: "square" | "soft" | "rounded";
+};
 export type FactoryPlanContent = {
   summary: string; goal: string; audience: string;
   knownDetails: Array<{ label: string; value: string; basis: "submitted" | "sourced" | "possible_match" | "assumption"; sourceIds: string[] }>;
   uncertainties: string[]; assumptions: string[];
   pages: Array<{ title: string; purpose: string; sections: string[] }>;
   callsToAction: string[];
-  design: { direction: string; palette: string[]; typography: string; imagery: string };
+  design: { direction: string; palette: string[]; typography: string; imagery: string; recipe?: FactoryDesignRecipe | null };
   previewFeatures: string[]; productionIntegrations: string[];
   sources: Array<{ id: string; title: string; url: string; retrievedAt: string; evidence: string }>;
 };

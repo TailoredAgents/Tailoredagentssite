@@ -94,7 +94,11 @@ function sectionMarkup(section:SiteBlueprint["pages"][number]["sections"][number
     const items=section.items.map((item,itemIndex)=>{
       const action=actions.find(a=>a.itemIndex===itemIndex);
       const destination=action?siteActionTarget(action.label,blueprint,blueprint.pages.find(p=>p.path===pagePath)!,`${relativeSiteLink(pagePath,action.targetPage)}${action.targetSection?`#${action.targetSection}`:""}`,true):"";
-      return `<div class="contact-item"><h3>${escape(item.title)}</h3><p>${escape(item.body)}</p>${action?`<a class="text-link" href="${escape(destination)}">${escape(action.label)} <span aria-hidden="true">↗</span></a>`:""}</div>`;
+      // When the heading is already the action label, make it the link once.
+      // Do not merge merely similar labels or alter the configured destination.
+      const sameLabel=blueprint.presentation&&action&&item.title.normalize("NFKC").trim().replace(/\s+/g," ").toLowerCase()===action.label.normalize("NFKC").trim().replace(/\s+/g," ").toLowerCase();
+      const linkedHeading=sameLabel?`<a class="contact-heading-link" href="${escape(destination)}">${escape(item.title)} <span aria-hidden="true">↗</span></a>`:escape(item.title);
+      return `<div class="contact-item"><h3>${linkedHeading}</h3><p>${escape(item.body)}</p>${action&&!sameLabel?`<a class="text-link" href="${escape(destination)}">${escape(action.label)} <span aria-hidden="true">↗</span></a>`:""}</div>`;
     }).join("");
     const details=`${sectionContactMarkup(blueprint,pagePath,section.id)}${items}${!form&&!actions.length&&contactPage?`<a href="${escape(relativeSiteLink(pagePath,contactPage.pagePath))}#${escape(contactPage.sectionId)}">${blueprint.presentation?"Preview inquiry":"Start an inquiry"} <span aria-hidden="true">↗</span></a>`:""}`;
     hasContactDetails=Boolean(details);
@@ -125,12 +129,18 @@ function sectionMarkup(section:SiteBlueprint["pages"][number]["sections"][number
   const copyOnly=!section.items.length&&section.kind!=="contact"&&!illustration;
   const hasForm=section.kind==="contact"&&blueprint.interactions?.forms.some(form=>form.pagePath===pagePath&&form.sectionId===section.id);
   const page=blueprint.pages.find(page=>page.path===pagePath)!;
+  // Short text-led inner sections need less breathing room than a Home feature
+  // or an image story. Keep expressive statements, long copy and every explicit
+  // image composition intact; the selected density still controls the spacing.
+  const words=[section.title,section.body,...section.items.flatMap(item=>[item.title,item.body])].join(" ").trim().split(/\s+/).length;
+  const compactContent=blueprint.presentation&&pagePath!=="index.html"&&section.kind!=="contact"&&section.kind!=="statement"&&!bindings.length&&words<=(copyOnly?110:360);
+  const readingSection=compactContent&&copyOnly&&Boolean(section.body)&&words<=110;
   // A final direct-contact band has no form to fill its second grid column.
   // Use that column for its existing channels/actions; keep all copy intact.
   const contactClosing=blueprint.presentation&&blueprint.interactions&&!isContactPage(page)&&section.kind==="contact"&&!hasForm&&!sectionImage&&index===page.sections.length-1;
   const compactInquiry=blueprint.presentation&&!isContactPage(page)&&hasForm&&!sectionImage;
   const inquiryContext=blueprint.presentation&&pagePath!=="index.html"&&!isContactPage(page)&&copyOnly&&!sectionImage&&blueprint.interactions?.forms.some(form=>form.pagePath===pagePath&&form.sectionId===page.sections[index+1]?.id);
-  return `<section id="${escape(section.id)}" class="site-section section-${section.kind} layout-${section.layout} section-order-${index%2}${tone?` tone-${tone}`:""}${copyOnly?" is-copy-only":""}${sectionImage?" has-section-image":""}${hasForm?" with-demo-form":""}${contactClosing?` contact-closing${hasContactDetails?"":" contact-copy-only"}`:""}${compactInquiry?" compact-inquiry":""}${inquiryContext?" inquiry-context":""}" aria-labelledby="${escape(section.id)}-heading"><div class="section-inner">${heading.replace("<h2>",`<h2 id="${escape(section.id)}-heading">`)}${illustration}${content}</div></section>`;
+  return `<section id="${escape(section.id)}" class="site-section section-${section.kind} layout-${section.layout} section-order-${index%2}${tone?` tone-${tone}`:""}${copyOnly?" is-copy-only":""}${sectionImage?" has-section-image":""}${hasForm?" with-demo-form":""}${compactContent?" compact-content":""}${readingSection?" reading-section":""}${contactClosing?` contact-closing${hasContactDetails?"":" contact-copy-only"}`:""}${compactInquiry?" compact-inquiry":""}${inquiryContext?" inquiry-context":""}" aria-labelledby="${escape(section.id)}-heading"><div class="section-inner">${heading.replace("<h2>",`<h2 id="${escape(section.id)}-heading">`)}${illustration}${content}</div></section>`;
 }
 
 export function renderPortableSite(bundle:PortableSiteBundle,assets:Record<string,Uint8Array>) {

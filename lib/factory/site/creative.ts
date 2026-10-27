@@ -11,9 +11,14 @@ export const creativeDirections:Record<DesignFamilyId,{intent:string;composition
 };
 
 export const creativeBenchmark={
-  version:1,
+  version:2,
   standard:"A tailored marketing concept should feel as deliberately composed as a human-designed prospect presentation, not a form-filling guide.",
-  referenceLessons:["Recognizable supplied branding rather than a generic letter badge when an approved logo exists.","Hero image, typography and headline support the same customer benefit.","Alternating visual scale and content purpose instead of repeated grids and repeated inquiry advice.","A business-specific story based on eligible facts; absent proof is omitted, never manufactured.","Every visible action delivers what its label promises; mobile crops and line breaks are intentional."],
+  referenceLessons:["Recognizable supplied branding rather than a generic letter badge when an approved logo exists.","Hero image, typography and headline support the same customer benefit.","Alternating visual scale and content purpose instead of repeated grids and repeated inquiry advice.","Inner pages expand on their own topic; concise Home previews link to those details rather than repeating them verbatim.","A page with little content uses a focused composition instead of stretching into oversized bands; Contact can finish after its useful channels and form.","A business-specific story based on eligible facts; absent proof is omitted, never manufactured.","Every visible action delivers what its label promises; mobile crops and line breaks are intentional."],
+  sectionPurposeExamples:[
+    {purpose:"Help a visitor compare proposed service concepts",composition:"Rows for precise distinctions, service-tabs for a small related set, or showcase for one principal offer",copy:"Give each option its own useful explanation; use only the actions that have real approved destinations."},
+    {purpose:"Explain an approved approach",composition:"A short timeline for actual steps, or feature-list for independent principles",copy:"Explain what each step contributes without inventing company policies or turning every page into inquiry preparation."},
+    {purpose:"Make contact straightforward",composition:"Compact direct-channel group beside the sole form on desktop; stacked in the same order on mobile",copy:"One helpful introduction, actual channels and the configured form. Do not repeat the same invitation in another closing band."},
+  ],
   weakExample:{headline:"Heating and cooling help starts here",body:"Prepare your questions, organize your observations and discuss possible next steps.",problem:"Generic promise and procedural copy; it does not explain the proposed offer or desired customer outcome."},
   strongerExample:{headline:"A more comfortable place to come home to.",body:"Explore heating and cooling options for the rooms where life happens.",note:"An illustrative writing direction only; adapt to the approved industry and offerings, without claiming unverified capabilities."},
 };

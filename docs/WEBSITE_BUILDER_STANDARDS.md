@@ -2,6 +2,8 @@
 
 Version: **2026-10-27**. Austin requested that lessons from the Cosmo pilot become project-wide standards. The executable source is [`lib/factory/website-standards.ts`](../lib/factory/website-standards.ts), included in planning, website generation/repair and visual-review instructions. Changes to that source follow normal code review, tests and deployment; a chat instruction for one lead is not a global standard.
 
+**Latest implementation checkpoint — design alignment:** new/revised plans can carry an explicit renderer-supported family, Home composition, bundled font theme, spacing density and corner treatment. The builder honors these exact approved choices alongside semantic palette roles. The plan's visual outline explains those choices before approval; it is not a finished preview. Shared instructions now emphasize distinct page/section purposes and useful inner-page depth without adding quotas or lead requirements. Historical plans and published previews are unchanged. See [design alignment and remaining acceptance work](WEBSITE_BUILDER_DESIGN_ALIGNMENT.md); release verification is recorded there separately from the earlier releases below.
+
 ## What every project should get
 
 - A clear visitor benefit, useful next action and coherent identity appropriate to the business. Adapt typography, colors, composition, page count and content to the brief.
@@ -20,6 +22,7 @@ These are design principles, not a required template. Cosmo's five pages, two fo
 | Area | Contract |
 | --- | --- |
 | Page structure | Every planned page has its own entry. The blueprint supports at most eight physical content sections per page, excluding hero/navigation; combine related ideas where appropriate. Eight is a ceiling, not a target. |
+| Design choices | New proposals choose `design.recipe` using the actual renderer family/composition map, bundled font theme, density and radius. Labeled palette roles and the recipe remain exact approved choices. Historical plans may omit the recipe; never retrofit it without a changed plan and human approval. |
 | Actions | The planning summary has at most eight entries. Group related actions only with explicit individual labels/destinations in preview requirements. Do not drop actions or invent routes to fit. |
 | Contact lists | Deduplication applies across contact sections. On a dedicated text-only Contact page whose first two sections are direct channels and the sole form, the renderer composes them side by side on desktop and stacks them on mobile; it omits redundant hero/mobile contact actions. Section IDs, content, tones, form fields and order remain unchanged. Explicit section imagery and more complex compositions retain their own layout. |
 | Forms | Specify location, purpose, supported fields and preview submit label. Supported fields: name, email, phone, location, message, preferredContact and contactDetail. The last two are paired. Labels/options and no-send/no-store behavior come from trusted renderer code; do not promise custom fields or custom success wording. |
