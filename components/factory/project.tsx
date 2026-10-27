@@ -21,12 +21,19 @@ export function FactoryProject({ data, actorId, builds }: { data: FactoryProject
   const displayed = plans.find((plan) => plan.id === selectedPlanId) || latest;
   const activeJob = data.jobs.find((job) => job.status === "running") || data.jobs.find((job) => job.status === "queued");
   const processing = Boolean(activeJob && (activeJob.status === "running" || activeJob.stage === "plan"));
-  const polling = Boolean(activeJob && data.config.configured && data.settings.researchEnabled) || (builds.settings.enabled && builds.config.configured && builds.versions.some((version) => version.status === "queued" || version.status === "running"));
+  const polling = Boolean(activeJob && data.config.configured && data.settings.researchEnabled) || builds.versions.some((version) => version.status === "queued" || version.status === "running");
   const latestJob = [...data.jobs].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
   const approval = displayed ? data.buildRequests.find((request) => request.planId === displayed.id) : undefined;
   const hasReadyWebsite = builds.versions.some((version) => version.status === "ready");
   const latestApproved = latest && data.buildRequests.some((request) => request.planId === latest.id);
-  useEffect(() => { if (!polling) return; const timer = window.setInterval(() => { if (document.visibilityState === "visible") router.refresh(); }, 6000); return () => window.clearInterval(timer); }, [polling, router]);
+  useEffect(() => {
+    if (!polling) return;
+    const refresh = () => { if (document.visibilityState === "visible") router.refresh(); };
+    const timer = window.setInterval(refresh, 6000);
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", refresh); window.removeEventListener("focus", refresh); };
+  }, [polling, router]);
 
   return <>
     <div className="factory-heading"><div><span className="factory-eyebrow"><Sparkles size={14} />Website planning workspace</span><h1>{data.project.leadName || "Untitled lead"}</h1><p>{data.project.companyName ? `${data.project.companyName} · ` : ""}{hasReadyWebsite ? "Your approved website, source files, and planning history." : "Shape the proposal together before a single page is built."}</p></div>{data.project.latestBuild?.status === "ready" ? <FactoryPreviewStatus build={data.project.latestBuild} /> : <FactoryStatus status={data.project.status} />}</div>

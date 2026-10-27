@@ -141,6 +141,34 @@ async function approvedBuild(page: Page, request: APIRequestContext) {
   return row;
 }
 
+test("updates build activity automatically without losing the salesperson's draft", async ({ page, request }, info) => {
+  const version = await approvedBuild(page, request);
+  const panel = page.getByRole("region", { name: "Website build", exact: true });
+  await page.getByLabel("Your direction", { exact: true }).fill("Keep this unsent direction while the site builds.");
+  const progress = async (status: string, stage: string, step: string) => {
+    await buildDb.query("UPDATE factory_build_versions SET status=$2,stage=$3,working_data=$4,updated_at=now() WHERE id=$1", [version.id,status,stage,{activity:{stage,step,startedAt:new Date().toISOString()}}]);
+  };
+  await progress("running", "generate", "generating");
+  await expect(panel.getByText("Designing and writing the website pages", { exact: true })).toBeVisible({timeout:20000});
+  await progress("running", "qa", "design_review");
+  await expect(panel.getByText("Reviewing the design and content", { exact: true })).toBeVisible({timeout:20000});
+  await expect(panel.locator('[aria-current="step"]')).toContainText("Quality checks");
+  await expect(panel.locator(".is-complete")).toHaveCount(2);
+  await progress("running", "qa", "repairing");
+  await expect(panel.getByText("Applying corrections from the quality review", { exact: true })).toBeVisible({timeout:20000});
+  await expect(page.getByLabel("Your direction", { exact: true })).toHaveValue("Keep this unsent direction while the site builds.");
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  expect((await new AxeBuilder({page}).include('[aria-label="Website build"]').withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze()).violations).toEqual([]);
+  await panel.screenshot({path:dashboardPreviewPath(`factory-live-progress-${info.project.name}.png`)});
+  await progress("queued", "publish", "saving");
+  await expect(panel.getByRole("heading", {name:"Next: Publishing",exact:true})).toBeVisible({timeout:20000});
+  await expect(panel.locator('[aria-current="step"]')).toContainText("Waiting");
+  await progress("failed", "publish", "publishing");
+  await expect(panel.getByRole("heading", {name:"This build needs attention",exact:true})).toBeVisible({timeout:20000});
+  await expect(panel.locator('[aria-current="step"]')).toContainText("Stopped here");
+  await expect(panel.getByText("Updates automatically", {exact:true})).toHaveCount(0);
+});
+
 test("shows build limits, paused and failed stages, and preserves upload errors", async ({ page, request }) => {
   const version = await approvedBuild(page, request);
   await expect(page.getByRole("heading", { name: "Approved and in the build queue", exact: true })).toBeVisible();
@@ -173,9 +201,8 @@ test("reviews a completed preview, revokes and renews sharing, exports and uploa
   await buildDb.query("UPDATE factory_build_versions SET status='ready',stage='verify',source_key=$2,qa_report=$3,ready_at=now() WHERE id=$1", [version.id, `${version.storage_prefix}source.zip`, qa]);
   await page.route("**/api/dashboard/factory/builds/*/screenshot?*", route => route.fulfill({ status: 200, contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500"><rect width="800" height="500" fill="#eef2f6"/><rect width="800" height="70" fill="#10243b"/><rect x="40" y="120" width="430" height="35" fill="#315bb0"/><rect x="40" y="180" width="300" height="15" fill="#96a6bb"/><rect x="40" y="240" width="160" height="50" rx="8" fill="#315bb0"/><rect x="520" y="110" width="240" height="260" rx="12" fill="#c5d3e6"/></svg>' }));
   await page.route("**/api/dashboard/factory/builds/*/source", route => route.fulfill({ status: 200, contentType: "application/zip", headers: { "content-disposition": 'attachment; filename="website-v1.zip"' }, body: Buffer.from("Synthetic download transport; export contents are tested separately.") }));
-  await page.reload();
   const preview = page.getByRole("link", { name: "Open website preview", exact: true });
-  await expect(preview).toHaveAttribute("href", /^https:\/\/factory-previews\.example\.test\/p\//);
+  await expect(preview).toHaveAttribute("href", `https://www.tailoredagents.com/preview/${version.preview_slug}`, { timeout: 20000 });
   await expect(page.getByText("Website v1 · approved plan v1", { exact: true })).toBeVisible();
   await page.getByText("Quality checks & handoff notes", { exact: true }).click();
   await expect(page.getByText("Connect the real inquiry form before launch", { exact: true })).toBeVisible();

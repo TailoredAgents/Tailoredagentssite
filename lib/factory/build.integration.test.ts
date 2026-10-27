@@ -171,6 +171,28 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     const prefix=source.storageKey.slice(0,-"source.zip".length);for(const [name,bytes]of archive)if(name.startsWith("site/"))expect(bytes).toEqual(Buffer.from(objects.get(`${prefix}preview/${name.slice(5)}`)!));
     expect(result.monthSpentMicros).toBe(330000);expect((await pool.query("SELECT count(*)::int n FROM factory_build_costs WHERE status='settled'")).rows[0].n).toBe(3);
   });
+  it("saves live activity before work, exposes only safe progress, and clears it between stages",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime();
+    const original={...runtime},seen:string[]=[];
+    const check=async(expected:string)=>{
+      const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];
+      expect(version.status).toBe("running");expect(version.activity?.step).toBe(expected);
+      expect(Date.parse(version.updatedAt)).toBeGreaterThanOrEqual(Date.parse(version.activity!.startedAt)-1000);
+      expect(version).not.toHaveProperty("workingData");expect(version).not.toHaveProperty("blueprint");
+      seen.push(expected);
+    };
+    runtime.execute=build=>async request=>{await check(request.stage==="review"?"design_review":"generating");return original.execute(build)(request);};
+    runtime.hero=async(...args)=>{await check("generating_image");return original.hero(...args);};
+    runtime.qa=async(...args)=>{await check("browser_checks");return original.qa(...args);};
+    runtime.verify=async(...args)=>{await check("verifying");return original.verify(...args);};
+    const save=runtime.storage.put;
+    runtime.storage.put=async(key,...args)=>{if(key.includes("/checked/"))await check("saving");if(key.includes("/preview/"))await check("publishing");await save(key,...args);};
+    for(let stage=0;stage<5;stage++){
+      expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+      expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].activity).toBeNull();
+    }
+    expect(new Set(seen)).toEqual(new Set(["generating","generating_image","browser_checks","design_review","saving","publishing","verifying"]));
+  });
   it("keeps failed verification private and preserves artifacts for an explicit retry",async()=>{
     const project=await prepared();await enable();const {runtime,objects}=await fixtureRuntime();for(let step=0;step<4;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
     runtime.verify=async()=>{throw Error("Unreachable hosted preview");};expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");const row=(await pool.query("SELECT id,preview_token,source_key FROM factory_build_versions WHERE project_id=$1",[project.projectId])).rows[0];

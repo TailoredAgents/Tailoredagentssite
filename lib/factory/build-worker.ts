@@ -22,8 +22,9 @@ import type {SiteFiles,SiteQaResult} from "./site/artifacts";
 import type {SiteModelExecutor,SiteBlueprint} from "./site/types";
 import type {FactoryClaimedBuild,FactoryBuildManifest,FactoryBuildQa} from "./build-types";
 import {maximumReviewAttempts} from "./build-types";
+import type {FactoryBuildActivity,FactoryBuildActivityStep} from "./build-progress";
 
-type Working={blueprint?:SiteBlueprint;heroKey?:string;provenance?:unknown;qaReport?:FactoryBuildQa;manifest?:FactoryBuildManifest;sourceKey?:string;repaired?:boolean;
+type Working={activity?:FactoryBuildActivity;blueprint?:SiteBlueprint;heroKey?:string;provenance?:unknown;qaReport?:FactoryBuildQa;manifest?:FactoryBuildManifest;sourceKey?:string;repaired?:boolean;
   reviewAttempts?:number;review?:{fingerprint:string;result:SiteReview};reviewResponse?:{fingerprint:string;raw:unknown};checkedManifest?:FactoryBuildManifest};
 class FactoryBuildQualityError extends Error{}
 export type FactoryBuildRuntime={storage:FactoryStorage;execute(build:FactoryClaimedBuild):SiteModelExecutor;hero(build:FactoryClaimedBuild,prompt:string):Promise<{bytes:Uint8Array;provenance:unknown}>;qa(files:SiteFiles):Promise<SiteQaResult>;verify(build:FactoryClaimedBuild,manifest:FactoryBuildManifest):Promise<{url:string;status:200;checkedAt:string}>};
@@ -70,14 +71,18 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
     async deletePrefix(...args){checkDeadline(build);await dependencies.storage.deletePrefix(...args);},
   }};
   const state:Working={...working(build)};
+  const persist=async()=>{if(!await saveFactoryBuildProgress({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,workingData:state as Record<string,unknown>}))throw new Error("This website build was paused or removed.");};
+  const report=async(step:FactoryBuildActivityStep)=>{state.activity={stage:build.stage,step,startedAt:new Date().toISOString()};await persist();};
   const advance=async(nextStage:"images"|"qa"|"publish"|"verify")=>{if(!await saveFactoryBuildStage({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,nextStage,workingData:state as Record<string,unknown>,manifest:state.manifest,qaReport:state.qaReport,sourceKey:state.sourceKey}))throw new Error("This website build was paused or removed.");};
   if(build.stage==="generate"){
+    await report("generating");
     const result=await generatePortableSite({plan:build.plan,assets:build.uploads.map((u,i)=>({id:u.id,path:i?`reference-${i}.png`:"assets/images/hero.png",alt:"Team-provided reference image",provenance:"provided"}))},runtime.execute(build));
     state.blueprint=result.blueprint;await advance("images");return;
   }
   if(build.stage==="images"){
     if(!state.blueprint)throw new Error("The website blueprint is missing.");
     const supplied=build.uploads[0];
+    await report(supplied?"supplied_image":"generating_image");
     if(supplied){
       const bytes=await runtime.storage.get(supplied.storageKey,8_000_000);
       state.heroKey=`${build.storagePrefix}assets/hero.png`;
@@ -91,14 +96,13 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
     await advance("qa");return;
   }
   if(build.stage==="qa"){
-    const persist=async()=>{if(!await saveFactoryBuildProgress({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,workingData:state as Record<string,unknown>}))throw new Error("This website build was paused or removed.");};
     const boundedExecute=(kind:"review"|"repair"):SiteModelExecutor=>async request=>{
       const previousReviews=state.reviewAttempts,previousRepair=state.repaired;
       // Preprocessing has completed. Save intent before entering the provider so
       // an ambiguous request cannot become an unbounded paid retry.
       if(kind==="review")state.reviewAttempts=(previousReviews||0)+1;
       else state.repaired=true;
-      await persist();
+      await report(kind==="review"?"design_review":"repairing");
       try{return await runtime.execute(build)(request);}
       catch(error){
         // Only the provider's explicit pre-request marker restores this slot.
@@ -113,6 +117,7 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
       }
     };
     const inspect = async (files:SiteFiles) => {
+      await report(state.repaired?"rechecking":"browser_checks");
       const browserQa=await runtime.qa(files),depth=reviewSiteDepth(state.blueprint!,build.plan),delivery=checkSiteDelivery(files);
       const issues=[...browserQa.issues,...depth,...delivery.issues];
       return {...browserQa,passed:browserQa.passed&&!issues.some(i=>i.severity==="error"),issues,delivery};
@@ -142,6 +147,7 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
       const issues=[...qa.issues,...state.review.result.issues];
       return {...qa,issues,passed:!issues.some(i=>i.severity==="error")};
     };
+    await report("preparing");
     let site=await withSite(build,state,runtime),qa=await review(site,await inspect(site.files));
     if(!qa.passed&&!state.repaired){
       const revised=await generatePortableSite({plan:build.plan,previousBlueprint:state.blueprint,repairIssues:qa.issues},boundedExecute("repair"));
@@ -150,6 +156,7 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
       site=await withSite(build,state,runtime);qa=await review(site,await inspect(site.files));
     }
     if(!qa.passed)throw new FactoryBuildQualityError(`This website needs another revision after its included repair: ${qa.issues.filter(i=>i.severity==="error").slice(0,2).map(i=>i.message).join(" ").slice(0,1000)}`);
+    await report("saving");
     const screenshots={desktop:`${build.storagePrefix}screenshots/desktop.png`,mobile:`${build.storagePrefix}screenshots/mobile.png`};
     for(const view of ["desktop","mobile"] as const){const shot=qa.screenshots.find(s=>s.page==="index.html"&&s.viewport===view);if(!shot)throw new Error("Desktop and mobile screenshots are required.");await runtime.storage.put(screenshots[view],shot.bytes,"image/png");}
     const pageScreenshots:NonNullable<FactoryBuildQa["pageScreenshots"]>=[];
@@ -164,6 +171,7 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
     await advance("publish");return;
   }
   if(build.stage==="publish"){
+    await report("publishing");
     if(!state.checkedManifest||!state.blueprint||!state.qaReport?.passed)throw new FactoryBuildQualityError("This build does not have a frozen, reviewed website. Update its plan and approve a new version; completed previews are preserved.");
     const files:SiteFiles={};
     for(const file of state.checkedManifest.files){
@@ -178,6 +186,7 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
     await runtime.storage.put(state.sourceKey,archive.sourceZip,"application/zip");await advance("verify");return;
   }
   if(!state.manifest||!state.qaReport||!state.sourceKey)throw new Error("The published website is incomplete.");
+  await report("verifying");
   const verification=await runtime.verify(build,state.manifest);
   if(!await finishFactoryBuild({versionId:build.id,leaseToken:build.leaseToken,manifest:state.manifest,qaReport:state.qaReport,sourceKey:state.sourceKey,verification}))throw new Error("This website build was paused or removed.");
 }
