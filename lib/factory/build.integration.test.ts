@@ -193,6 +193,31 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     }
     expect(new Set(seen)).toEqual(new Set(["generating","generating_image","browser_checks","design_review","saving","publishing","verifying"]));
   });
+  it("retains rejected paid generation for diagnosis and never charges again just to revalidate it",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute;let requests=0;
+    runtime.execute=build=>async request=>{
+      requests++;const raw=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};
+      const invalid=structuredClone(blueprint);invalid.interactions!.forms=[{pagePath:"index.html",sectionId:"missing",fields:["name"],submitLabel:"Preview"}];
+      raw.output[0].content[0].text=JSON.stringify(invalid);return raw;
+    };
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
+    const row=(await pool.query("SELECT * FROM factory_build_versions WHERE project_id=$1",[project.projectId])).rows[0];
+    expect(row.working_data.generationResponse).toBeTruthy();expect(row.error).toContain("A form references a missing");
+    expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0]).not.toHaveProperty("generationResponse");
+    await retryFactoryBuild(member,{versionId:row.id,requestId:randomUUID()});
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");expect(requests).toBe(1);
+    expect((await getFactoryProjectBuilds(member,project.projectId))!.monthSpentMicros).toBe(100000);
+    expect((await pool.query("SELECT count(*)::int n FROM factory_build_costs")).rows[0].n).toBe(1);
+  });
+  it("resumes saved generation after interruption without a new provider request",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime();
+    const raw={id:"resp_saved_fixture",status:"completed",usage:{input_tokens:1000,output_tokens:2000},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(blueprint)}]}]};
+    await pool.query("UPDATE factory_build_versions SET working_data=working_data||$2::jsonb WHERE project_id=$1",[project.projectId,JSON.stringify({generationResponse:raw})]);
+    runtime.execute=()=>async()=>{throw Error("A saved response must not be regenerated");};
+    expect(await runFactoryBuildWorkerStep(runtime)).toMatchObject({status:"processed",stage:"generate"});
+    const row=(await pool.query("SELECT stage,working_data FROM factory_build_versions WHERE project_id=$1",[project.projectId])).rows[0];
+    expect(row.stage).toBe("images");expect(row.working_data.blueprint).toBeTruthy();expect(row.working_data.generationResponse).toBeUndefined();
+  });
   it("keeps failed verification private and preserves artifacts for an explicit retry",async()=>{
     const project=await prepared();await enable();const {runtime,objects}=await fixtureRuntime();for(let step=0;step<4;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
     runtime.verify=async()=>{throw Error("Unreachable hosted preview");};expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");const row=(await pool.query("SELECT id,preview_token,source_key FROM factory_build_versions WHERE project_id=$1",[project.projectId])).rows[0];

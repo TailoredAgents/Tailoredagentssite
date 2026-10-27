@@ -4,6 +4,7 @@ import { safeSitePath } from "./artifacts";
 import { designFamilyIds,heroCompositions,sectionLayouts,siteFormFields,type SiteBlueprint,type PortableSiteBundle } from "./types";
 import { designFamilies } from "./families";
 import { contrastRatio } from "./design";
+import { SiteBlueprintError } from "./errors";
 const text=z.string().trim().max(1400),short=z.string().trim().max(180);
 const color=z.string().regex(/^#[0-9a-fA-F]{6}$/);
 const sectionId=z.string().regex(/^[a-z][a-z0-9-]{0,40}$/);
@@ -35,42 +36,42 @@ export const siteGenerationSchema=siteBlueprintSchema.extend({design:siteDesignS
 
 export function validateBlueprintStructure(value:unknown):SiteBlueprint {
   const data=siteBlueprintSchema.parse(value),paths=new Set<string>();
-  if(Buffer.byteLength(JSON.stringify(data))>65000)throw new Error("The website proposal exceeds its content limit.");
-  if(!designFamilies[data.family].compositions.includes(data.composition))throw new Error("Choose one of this design family's supported compositions.");
-  for(const page of data.pages){safeSitePath(page.path);if(!/^(index\.html|[a-z][a-z0-9-]{0,48}\/index\.html)$/.test(page.path)||paths.has(page.path))throw new Error("The website contains an invalid or duplicate page path.");paths.add(page.path);
-    const ids=new Set<string>();for(const section of page.sections){if(ids.has(section.id)||ids.has(`${section.id}-heading`)||["page-content","site-menu","demo-feedback"].includes(section.id)||(section.id==="contact"&&section.kind!=="contact"))throw new Error("The website contains duplicate or reserved section identifiers.");ids.add(section.id);ids.add(`${section.id}-heading`);}}
-  if(!paths.has("index.html"))throw new Error("The website needs a homepage.");
+  if(Buffer.byteLength(JSON.stringify(data))>65000)throw new SiteBlueprintError("The website proposal exceeds its content limit.");
+  if(!designFamilies[data.family].compositions.includes(data.composition))throw new SiteBlueprintError("Choose one of this design family's supported compositions.");
+  for(const page of data.pages){try{safeSitePath(page.path);}catch{throw new SiteBlueprintError("The website contains an invalid page path.");}if(!/^(index\.html|[a-z][a-z0-9-]{0,48}\/index\.html)$/.test(page.path)||paths.has(page.path))throw new SiteBlueprintError("The website contains an invalid or duplicate page path.");paths.add(page.path);
+    const ids=new Set<string>();for(const section of page.sections){if(ids.has(section.id)||ids.has(`${section.id}-heading`)||["page-content","site-menu","demo-feedback"].includes(section.id)||(section.id==="contact"&&section.kind!=="contact"))throw new SiteBlueprintError("The website contains duplicate or reserved section identifiers.");ids.add(section.id);ids.add(`${section.id}-heading`);}}
+  if(!paths.has("index.html"))throw new SiteBlueprintError("The website needs a homepage.");
   if(data.interactions){
     const forms=new Set<string>(),actions=new Set<string>();
     for(const form of data.interactions.forms){
       const section=data.pages.find(p=>p.path===form.pagePath)?.sections.find(s=>s.id===form.sectionId);
       const key=`${form.pagePath}#${form.sectionId}`;
-      if(!section||section.kind!=="contact"||forms.has(key))throw new Error("A form references a missing, duplicate or non-contact section.");
-      if(new Set(form.fields).size!==form.fields.length||form.fields.includes("preferredContact")!==form.fields.includes("contactDetail"))throw new Error("Form fields must be unique; preferred contact and contact detail must be used together.");
+      if(!section||section.kind!=="contact"||forms.has(key))throw new SiteBlueprintError("A form references a missing, duplicate or non-contact section.");
+      if(new Set(form.fields).size!==form.fields.length||form.fields.includes("preferredContact")!==form.fields.includes("contactDetail"))throw new SiteBlueprintError("Form fields must be unique; preferred contact and contact detail must be used together.");
       forms.add(key);
     }
     for(const action of data.interactions.actions){
       const section=data.pages.find(p=>p.path===action.pagePath)?.sections.find(s=>s.id===action.sectionId),target=data.pages.find(p=>p.path===action.targetPage);
       const key=`${action.pagePath}#${action.sectionId}:${action.itemIndex}`;
-      if(!section||!["services","features"].includes(section.kind)||!section.items[action.itemIndex]||actions.has(key)||!target||(action.targetSection&&!target.sections.some(s=>s.id===action.targetSection)))throw new Error("A website action references a missing or duplicate item, page or section.");
+      if(!section||!["services","features"].includes(section.kind)||!section.items[action.itemIndex]||actions.has(key)||!target||(action.targetSection&&!target.sections.some(s=>s.id===action.targetSection)))throw new SiteBlueprintError("A website action references a missing or duplicate item, page or section.");
       actions.add(key);
     }
   }
   if(data.design){
     const palette=data.design.palette;
-    for(const foreground of [palette.ink,palette.muted])for(const background of [palette.background,palette.surface])if(contrastRatio(foreground,background)<4.5)throw new Error("Website palette text must have at least 4.5:1 contrast on its backgrounds.");
+    for(const foreground of [palette.ink,palette.muted])for(const background of [palette.background,palette.surface])if(contrastRatio(foreground,background)<4.5)throw new SiteBlueprintError("Website palette text must have at least 4.5:1 contrast on its backgrounds.");
     const styled=new Set<string>();for(const style of data.design.sectionStyles){
       const key=`${style.pagePath}#${style.sectionId}`;
-      if(styled.has(key)||!data.pages.some(p=>p.path===style.pagePath&&p.sections.some(s=>s.id===style.sectionId)))throw new Error("A design tone references a missing or duplicate website section.");styled.add(key);
+      if(styled.has(key)||!data.pages.some(p=>p.path===style.pagePath&&p.sections.some(s=>s.id===style.sectionId)))throw new SiteBlueprintError("A design tone references a missing or duplicate website section.");styled.add(key);
     }
   }
   return data;
 }
 export function validateSiteBlueprint(value:unknown,plan:FactoryPlanContent):SiteBlueprint {
   const data=validateBlueprintStructure(value);
-  for(const claim of data.factualClaims){const detail=plan.knownDetails[claim.detailIndex];if(!detail||!["submitted","sourced"].includes(detail.basis)||!detail.value.toLowerCase().includes(claim.text.toLowerCase()))throw new Error("A website fact is not supported by the approved plan.");}
+  for(const claim of data.factualClaims){const detail=plan.knownDetails[claim.detailIndex];if(!detail||!["submitted","sourced"].includes(detail.basis)||!detail.value.toLowerCase().includes(claim.text.toLowerCase()))throw new SiteBlueprintError("A website fact is not supported by the approved plan.");}
   const eligibleFacts=plan.knownDetails.filter(d=>["submitted","sourced"].includes(d.basis)).map(d=>d.value.toLowerCase());
-  for(const value of Object.values(data.contact)){if(value&&!eligibleFacts.some(f=>f.includes(value.toLowerCase())))throw new Error("Contact details must come from confirmed or submitted facts in the approved plan.");}
+  for(const value of Object.values(data.contact)){if(value&&!eligibleFacts.some(f=>f.includes(value.toLowerCase())))throw new SiteBlueprintError("Contact details must come from confirmed or submitted facts in the approved plan.");}
   return data;
 }
 export function portableBundle(blueprint:SiteBlueprint):PortableSiteBundle {

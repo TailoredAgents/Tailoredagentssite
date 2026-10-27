@@ -4,8 +4,9 @@ import { factoryModelPolicy,factoryUsageCost } from "../config";
 import { designFamilies,familyForPlan } from "./families";
 import { siteGenerationSchema,validateSiteBlueprint,portableBundle } from "./validate";
 import { applyApprovedDesign,approvedDesignConstraints } from "./design";
+import { SiteBlueprintError,SiteGenerationResponseError } from "./errors";
 import type { SiteGenerationInput,SiteModelExecutor,SiteUsage } from "./types";
-const envelope=z.object({id:z.string().min(1).max(300),status:z.string(),usage:z.object({input_tokens:z.number().int().nonnegative(),output_tokens:z.number().int().nonnegative()}),output:z.array(z.object({type:z.string(),content:z.array(z.object({type:z.string(),text:z.string().optional()})).optional()}))});
+const envelope=z.object({id:z.string().min(1).max(300),status:z.string(),incomplete_details:z.object({reason:z.string()}).nullable().optional(),usage:z.object({input_tokens:z.number().int().nonnegative(),output_tokens:z.number().int().nonnegative()}),output:z.array(z.object({type:z.string(),content:z.array(z.object({type:z.string(),text:z.string().optional()})).optional()}))});
 export function siteUsage(raw:unknown):SiteUsage {
   const value=envelope.parse(raw);return {providerId:value.id,inputTokens:value.usage.input_tokens,outputTokens:value.usage.output_tokens,estimatedMicros:factoryUsageCost(value.usage.input_tokens,value.usage.output_tokens,0)};
 }
@@ -30,13 +31,27 @@ export async function generatePortableSite(input:SiteGenerationInput,execute:Sit
   const body={model:factoryModelPolicy.model,service_tier:"default",store:false,prompt_cache_options:{mode:"implicit",ttl:"30m"},reasoning:{effort:"low"},truncation:"disabled",max_output_tokens:maxOutputTokens,
     instructions:siteGenerationInstructions,input:[{role:"user",content}],text:{format:{type:"json_schema",name:"factory_site_blueprint",strict:true,schema}}};
   const raw=await execute({stage:input.repairIssues?.length?"repair":"generate",model:factoryModelPolicy.model,body,inputBytes:bytes,maxOutputTokens,reservedMicros:factoryUsageCost(bytes+8192,maxOutputTokens,0)});
-  const result=envelope.parse(raw),usage=siteUsage(result);if(result.status!=="completed")throw new Error("The website blueprint response did not complete.");
-  if(result.output.some(o=>o.type!=="message"&&o.type!=="reasoning"))throw new Error("Website design cannot invoke external tools.");
-  const text=result.output.filter(o=>o.type==="message").flatMap(o=>o.content||[]).filter(c=>c.type==="output_text").map(c=>c.text||"").join("");
-  if(Buffer.byteLength(text)>100000)throw new Error("The website blueprint response exceeded its size limit.");
-  const parsed=siteGenerationSchema.parse(JSON.parse(text));
-  const blueprint=validateSiteBlueprint(applyApprovedDesign(parsed,input.plan),input.plan);
-  // Repairs reuse the initial asset instead of charging for another hero image.
-  if(input.previousBlueprint&&input.repairIssues?.length)blueprint.heroImage=input.previousBlueprint.heroImage;
-  return {blueprint,bundle:portableBundle(blueprint),usage};
+  try {
+    const result=envelope.parse(raw),usage=siteUsage(result);
+    if(result.status!=="completed")throw new SiteGenerationResponseError(result.incomplete_details?.reason==="max_output_tokens"?"The website blueprint response did not complete because it reached the output limit. The builder needs to adjust this request before retrying.":"The website blueprint response did not complete. Review the saved response before another generation attempt.");
+    if(result.output.some(o=>o.type!=="message"&&o.type!=="reasoning"))throw new SiteGenerationResponseError("Website design cannot invoke external tools.");
+    const content=result.output.filter(o=>o.type==="message").flatMap(o=>o.content||[]);
+    if(content.some(c=>c.type==="refusal"))throw new SiteGenerationResponseError("The AI declined this website request. Review the approved plan before trying again.");
+    const text=content.filter(c=>c.type==="output_text").map(c=>c.text||"").join("");
+    if(Buffer.byteLength(text)>100000)throw new SiteGenerationResponseError("The website blueprint response exceeded its size limit.");
+    const parsed=siteGenerationSchema.parse(JSON.parse(text));
+    const blueprint=validateSiteBlueprint(applyApprovedDesign(parsed,input.plan),input.plan);
+    // Repairs reuse the initial asset instead of charging for another hero image.
+    if(input.previousBlueprint&&input.repairIssues?.length)blueprint.heroImage=input.previousBlueprint.heroImage;
+    return {blueprint,bundle:portableBundle(blueprint),usage};
+  } catch(error) {
+    if(error instanceof SiteGenerationResponseError)throw error;
+    if(error instanceof SiteBlueprintError)throw new SiteGenerationResponseError(`The generated website did not pass validation: ${error.message}`);
+    if(error instanceof z.ZodError){
+      const fields=[...new Set(error.issues.slice(0,3).map(issue=>issue.path.filter(part=>typeof part==="number"||typeof part==="string"&&/^[a-zA-Z][a-zA-Z0-9_]*$/.test(part)).join(".").slice(0,100)||"response"))].join(", ");
+      throw new SiteGenerationResponseError(`The AI returned an invalid website structure (${fields}). Review the saved response before retrying.`);
+    }
+    if(error instanceof SyntaxError)throw new SiteGenerationResponseError("The AI returned unreadable website data. Review the saved response before retrying.");
+    throw error;
+  }
 }

@@ -9,6 +9,7 @@ import {claimFactoryBuild,saveFactoryBuildStage,saveFactoryBuildProgress,rollbac
 import {FactoryBuildBudgetError} from "./build-budget";
 import {factorySiteExecutor,generateFactoryHero,FactoryBuildRequestNotAttemptedError} from "./build-provider";
 import {generatePortableSite} from "./site/provider";
+import {SiteGenerationResponseError} from "./site/errors";
 import {portableBundle,validateSiteBlueprint} from "./site/validate";
 import {renderPortableSite} from "./site/render";
 import {reviewSiteDepth} from "./site/quality";
@@ -24,7 +25,7 @@ import type {FactoryClaimedBuild,FactoryBuildManifest,FactoryBuildQa} from "./bu
 import {maximumReviewAttempts} from "./build-types";
 import type {FactoryBuildActivity,FactoryBuildActivityStep} from "./build-progress";
 
-type Working={activity?:FactoryBuildActivity;blueprint?:SiteBlueprint;heroKey?:string;provenance?:unknown;qaReport?:FactoryBuildQa;manifest?:FactoryBuildManifest;sourceKey?:string;repaired?:boolean;
+type Working={generationResponse?:unknown;activity?:FactoryBuildActivity;blueprint?:SiteBlueprint;heroKey?:string;provenance?:unknown;qaReport?:FactoryBuildQa;manifest?:FactoryBuildManifest;sourceKey?:string;repaired?:boolean;
   reviewAttempts?:number;review?:{fingerprint:string;result:SiteReview};reviewResponse?:{fingerprint:string;raw:unknown};checkedManifest?:FactoryBuildManifest};
 class FactoryBuildQualityError extends Error{}
 export type FactoryBuildRuntime={storage:FactoryStorage;execute(build:FactoryClaimedBuild):SiteModelExecutor;hero(build:FactoryClaimedBuild,prompt:string):Promise<{bytes:Uint8Array;provenance:unknown}>;qa(files:SiteFiles):Promise<SiteQaResult>;verify(build:FactoryClaimedBuild,manifest:FactoryBuildManifest):Promise<{url:string;status:200;checkedAt:string}>};
@@ -76,8 +77,15 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
   const advance=async(nextStage:"images"|"qa"|"publish"|"verify")=>{if(!await saveFactoryBuildStage({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,nextStage,workingData:state as Record<string,unknown>,manifest:state.manifest,qaReport:state.qaReport,sourceKey:state.sourceKey}))throw new Error("This website build was paused or removed.");};
   if(build.stage==="generate"){
     await report("generating");
-    const result=await generatePortableSite({plan:build.plan,assets:build.uploads.map((u,i)=>({id:u.id,path:i?`reference-${i}.png`:"assets/images/hero.png",alt:"Team-provided reference image",provenance:"provided"}))},runtime.execute(build));
-    state.blueprint=result.blueprint;await advance("images");return;
+    const result=await generatePortableSite({plan:build.plan,assets:build.uploads.map((u,i)=>({id:u.id,path:i?`reference-${i}.png`:"assets/images/hero.png",alt:"Team-provided reference image",provenance:"provided"}))},async request=>{
+      // Human-approved input is immutable. Revalidate a saved paid response on
+      // explicit retry instead of charging again for the same generation.
+      if(state.generationResponse!==undefined)return state.generationResponse;
+      const raw=await runtime.execute(build)(request);
+      if(Buffer.byteLength(JSON.stringify(raw))>1_000_000)throw new SiteGenerationResponseError("The website response exceeded its saved-data limit.");
+      state.generationResponse=raw;await persist();return raw;
+    });
+    state.blueprint=result.blueprint;delete state.generationResponse;await advance("images");return;
   }
   if(build.stage==="images"){
     if(!state.blueprint)throw new Error("The website blueprint is missing.");
@@ -202,7 +210,7 @@ export async function runFactoryBuildWorkerStep(injected?:FactoryBuildRuntime){
   const build=await claimFactoryBuild();if(!build)return cleanup?{status:"cleaned" as const,more:true}:{status:"idle" as const,more:false};
   try{await performFactoryBuildStage(build,runtime);return {status:"processed" as const,stage:build.stage,more:true};}
   catch(error){
-    const message=error instanceof FactoryBuildBudgetError||error instanceof FactoryBuildQualityError||error instanceof SiteReviewResponseError?error.message:"This website build could not complete. Check the builder connection and saved progress before retrying. Attempted AI usage remains counted.";
+    const message=error instanceof FactoryBuildBudgetError||error instanceof FactoryBuildQualityError||error instanceof SiteReviewResponseError||error instanceof SiteGenerationResponseError?error.message:"This website build could not complete. Check the builder connection and saved progress before retrying. Attempted AI usage remains counted.";
     await failFactoryBuild({versionId:build.id,leaseToken:build.leaseToken,error:message});
     return {status:"failed" as const,stage:build.stage,more:true};
   }

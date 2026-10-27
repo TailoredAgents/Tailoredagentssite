@@ -41,4 +41,13 @@ describe("Portable site provider (synthetic responses only)",()=>{
     await expect(generatePortableSite({plan:fixtureSitePlan},async()=>({...response(fixtureBlueprint()),output:[{type:"web_search_call"}]}))).rejects.toThrow("external tools");
     expect(()=>siteUsage({id:"bad",status:"completed",output:[]})).toThrow();
   });
+  it("reports useful validation errors without exposing returned values",async()=>{
+    const invalid=fixtureBlueprint();invalid.interactions!.forms=[{pagePath:"index.html",sectionId:"missing",fields:["name"],submitLabel:"Preview"}];
+    await expect(generatePortableSite({plan:fixtureSitePlan},async()=>response(invalid))).rejects.toThrow("A form references a missing, duplicate or non-contact section");
+    const badField={...fixtureBlueprint(),fontPair:"private-provider-value"};
+    let message="";try{await generatePortableSite({plan:fixtureSitePlan},async()=>response(badField));}catch(error){message=(error as Error).message;}
+    expect(message).toContain("fontPair");expect(message).not.toContain("private-provider-value");
+    await expect(generatePortableSite({plan:fixtureSitePlan},async()=>({...response(fixtureBlueprint(),"incomplete"),incomplete_details:{reason:"max_output_tokens"}}))).rejects.toThrow("output limit");
+    await expect(generatePortableSite({plan:fixtureSitePlan},async()=>({...response(fixtureBlueprint()),output:[{type:"message",content:[{type:"refusal",refusal:"private refusal detail"}]}]}))).rejects.toThrow("AI declined");
+  });
 });
