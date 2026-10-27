@@ -60,6 +60,14 @@ Keep exact human plan approval; sparse leads remain supported. Preserve $25/mont
 - Final code release **`8a08a94ec41d53afa0deda12ce5f0b1a4dfdc6a4` is verified live on CRM, builder and preview/storage**. The signed-in Cosmo project now explicitly says all three visual reviews were used and directs to revised-plan approval; the futile administrator retry is absent. Failed quality findings and private screenshot downloads were verified. Live evidence: `C:/Users/xenon/.codex/visualizations/2026/10/27/website-builder-audit-live-result.png`.
 - No further build/research request was made after the third review. Renderer follow-ups apply to future approved builds; the audit does not claim that the revised renderer has earned a new live AI score. Existing published bundles remain unchanged.
 
+## Cosmo revised-plan handoff — 5:51 PM EDT
+
+- Austin authorized preparing the next proposal after the audit explanation. The live project now has **plan version 7, Ready to review**. No new website build was approved or started; exhausted website v4 was not retried, and ready website v3 remains the existing preview.
+- Plan v6 introduced the focused revision: a compact Contact page with one direct-channel group and one form, specific service-topic actions, compact inner introductions, below-image captions, normal-flow mobile controls and tighter spacing. Review caught one malformed action instruction; v7 corrects it to seven valid plan-summary entries, with three distinct Services topic actions retained in the page requirements.
+- Verified the returned full v7 proposal in the signed-in CRM: exactly five distinct pages (Home, Services, Service Areas, About, Contact); unchanged five-field Contact and four-field Service Areas demonstration forms, notices, validation and submitted-state confirmations; correct business telephone/email targets and three Home service-anchor destinations. The navy/teal local-sans-serif direction, purposeful imagery, evidence boundaries, desktop/mobile acceptance checks and existing spending limits remain in the plan.
+- **Next action belongs to Austin:** review plan v7 and click **Approve plan & build website** in [the Cosmo project](https://www.tailoredagents.com/dashboard/sales/factory/7663f9da-2652-46b5-93dc-74881ea1d39e). After approval, inspect the actual generated desktop/mobile output; plan correctness does not establish the finished site's visual quality.
+- Screenshot evidence: `C:/Users/xenon/.codex/visualizations/2026/10/27/cosmo-plan-v7-approval.png`. This handoff changed the live planning record only; no application code or configuration changed.
+
 ## Remaining priorities
 
 1. **Reduce avoidable image spend:** run image-independent content/page/fact checks before imagery, with a deliberate path to use the existing single correction. Simply rejecting every imperfect saved generation would strand builds and remove their repair opportunity; do not implement that shortcut.
