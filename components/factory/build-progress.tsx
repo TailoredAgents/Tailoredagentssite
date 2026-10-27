@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CheckCheck, CircleAlert, Clock3, LoaderCircle, RefreshCw } from "lucide-react";
 import { LocalTime } from "@/components/sales/date-time-field";
 import { buildActivities } from "@/lib/factory/build-progress";
+import { factoryBuildRecovery } from "@/lib/factory/workflow";
 import type { FactoryBuildStage, FactoryBuildVersion } from "@/lib/factory/build-types";
 
 const stages: Array<{ value: FactoryBuildStage; label: string; detail: string }> = [
@@ -41,7 +42,7 @@ export function BuildProgress({ version, configured, enabled }: { version: Facto
   return <>
     <div className={`factory-build-headline ${ready ? "is-ready" : ""}`} role="status" aria-live="polite" aria-atomic="true">
       {ready ? <CheckCheck size={23} /> : failed ? <CircleAlert size={23} /> : queued || version.status === "cancelled" ? <Clock3 size={23} /> : <LoaderCircle size={23} className="factory-spin" />}
-      <div><h3>{headline}</h3><p>{ready ? <>Checked <LocalTime value={version.readyAt || version.createdAt} />. The source download belongs to this exact website version.</> : detail}</p>{failed && activity ? <p>Stopped during: {buildActivities[activity.step].label.toLowerCase()}.</p> : null}</div>
+      <div><h3>{headline}</h3><p>{ready ? <>Checked <LocalTime value={version.readyAt || version.createdAt} />. Open the site or copy its link to share.</> : failed ? factoryBuildRecovery(version.error).summary : detail}</p>{failed && activity ? <p>Stopped during: {buildActivities[activity.step].label.toLowerCase()}.</p> : null}{failed?<details className="factory-error-details"><summary>Error details</summary><p>{detail}</p></details>:null}</div>
     </div>
     {!ready && version.status !== "cancelled" ? <ol className="factory-build-stages" aria-label="Build progress">
       {stages.map((stage, step) => {

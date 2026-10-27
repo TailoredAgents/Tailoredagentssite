@@ -18,5 +18,5 @@ export function StartFactoryButton({ leadId, disabled = false }: { leadId: strin
     }
     catch { return { status: "error", message: "The workspace could not be opened. Please try again." } as FactoryActionState; }
   }, { status: "idle" });
-  return <form action={action} className="factory-start" aria-label="Open website planning workspace"><input type="hidden" name="leadId" value={leadId} /><button className="dashboard-secondary-button" disabled={disabled || pending} type="submit">{pending ? <LoaderCircle size={16} className="signin-spinner" /> : <Sparkles size={16} aria-hidden="true" />}{pending ? "Opening…" : "Research & plan website"}</button>{state.message && state.status === "error" ? <p role="alert">{state.message}</p> : null}</form>;
+  return <form action={action} className="factory-start" aria-label="Create website mockup"><input type="hidden" name="leadId" value={leadId} /><button className="dashboard-secondary-button" disabled={disabled || pending} type="submit">{pending ? <LoaderCircle size={16} className="signin-spinner" /> : <Sparkles size={16} aria-hidden="true" />}{pending ? "Opening…" : "Create website mockup"}</button>{state.message && state.status === "error" ? <p role="alert">{state.message}</p> : null}</form>;
 }

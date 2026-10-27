@@ -5,7 +5,7 @@ import { afterAll,beforeAll,beforeEach,describe,expect,it,vi } from "vitest";
 import type { DashboardContext } from "@/lib/dashboard/data";
 import { getDatabasePool } from "@/lib/dashboard/db";
 import { startFactory,sendFactoryMessage,approveFactoryPlan,saveFactorySettings,retryFactoryJob,enqueueFactoryLead } from "./service";
-import { getFactoryProject,getFactoryWorkspace,getFactoryLeadProject } from "./data";
+import { getFactoryProject,getFactoryWorkspace,getFactoryLeadProject,getFactoryLeadChoices } from "./data";
 import { createManualLead } from "@/lib/operations/manual-leads";
 import { storePublicInquiry } from "@/lib/operations/public-inquiries";
 vi.mock("server-only",()=>({}));
@@ -64,6 +64,22 @@ describe.skipIf(!url)("Website Factory planning authorization and durable workfl
     await expect(chat(projectId,"x",randomUUID(),other)).rejects.toThrow("no longer available");
     await pool.query("UPDATE workspace_memberships SET status='suspended' WHERE user_id=$1",[member.user.id]);
     await expect(getFactoryWorkspace(member)).rejects.toThrow("workspace access");
+  });
+  it("finds only available workspace leads and reopens existing projects without side effects",async()=>{
+    const foreignId=randomUUID(),removedId=randomUUID();
+    await pool.query("INSERT INTO leads(id,workspace_id,name,organization,source) VALUES($1,$2,'New foreign person','','manual'),($3,$4,'New removed person','','manual')",[foreignId,otherWs,removedId,ws]);
+    await pool.query("UPDATE leads SET anonymized_at=now() WHERE id=$1",[removedId]);
+    const initial=await getFactoryLeadChoices(member," NEW ");
+    expect(initial.canEdit).toBe(true);
+    expect(initial.leads).toEqual([{id:leadId,name:"New person",company:"",email:null,phone:null,projectId:null}]);
+    expect((await pool.query("SELECT count(*)::int n FROM factory_jobs")).rows[0].n).toBe(0);
+    expect((await getFactoryLeadChoices(member,"%" )).leads).toEqual([]);
+    const {projectId}=await startFactory(member,{leadId});
+    expect((await getFactoryLeadChoices(viewer,"person")).canEdit).toBe(false);
+    expect((await getFactoryLeadChoices(viewer,"person")).leads[0].projectId).toBe(projectId);
+    expect((await getFactoryLeadChoices(other,"")).leads.map(l=>l.id)).toEqual([foreignId]);
+    await pool.query("UPDATE workspace_memberships SET status='suspended' WHERE user_id=$1",[member.user.id]);
+    await expect(getFactoryLeadChoices(member,"")).rejects.toThrow("workspace access");
   });
   it("stores preapproval chat and references once even while paid research is disabled",async()=>{
     const {projectId}=await startFactory(owner,{leadId});const requestId=randomUUID();

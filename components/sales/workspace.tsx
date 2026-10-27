@@ -6,7 +6,7 @@ export function SalesHeader({ title, subtitle, active, children }: { title: stri
   const tabs = [
     { key: "pipeline", href: "/dashboard/sales", label: "Pipeline", icon: LayoutGrid },
     { key: "today", href: "/dashboard/sales/today", label: "My day", icon: CalendarClock },
-    { key: "mockups", href: "/dashboard/sales/mockups", label: "Mockups", icon: Sparkles },
+    { key: "mockups", href: "/dashboard/sales/factory", label: "Website Builder", icon: Sparkles },
     { key: "imports", href: "/dashboard/sales/imports", label: "Calling lists", icon: Upload },
   ] as const;
   return <>

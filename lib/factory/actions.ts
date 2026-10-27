@@ -11,7 +11,7 @@ async function change(form:FormData,work:(context:Awaited<ReturnType<typeof requ
     if(form.has("referenceUrls"))input.referenceUrls=String(form.get("referenceUrls")??"").split(/\r?\n/).map(v=>v.trim()).filter(Boolean);
     for(const key of ["researchEnabled","autoResearch"])input[key]=form.get(key)==="on"||form.get(key)==="true";
     const result=await work(context,input);
-    revalidatePath("/dashboard/sales/factory");
+    revalidatePath("/dashboard/sales/factory");revalidatePath("/dashboard/sales/factory/settings");revalidatePath("/dashboard/sales/factory/new");
     revalidatePath("/dashboard/sales/mockups");
     if(result.projectId)revalidatePath(`/dashboard/sales/factory/${result.projectId}`);
     revalidatePath("/dashboard/leads");

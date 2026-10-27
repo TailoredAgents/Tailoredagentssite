@@ -21,7 +21,7 @@ export function PageFinder({ destinations }: { destinations: Destination[] }) {
     window.addEventListener("keydown", keydown);
     return () => window.removeEventListener("keydown", keydown);
   }, []);
-  const results = destinations.filter(item => `${item.label} ${item.group}`.toLowerCase().includes(query.trim().toLowerCase()));
+  const results = destinations.filter(item => `${item.label} ${item.group} ${item.href === "/dashboard/sales/factory" ? "mockups website plans previews studio" : ""}`.toLowerCase().includes(query.trim().toLowerCase()));
   return <>
     <button ref={trigger} className="workspace-page-finder-trigger" type="button" onClick={open}><Search size={16} aria-hidden="true" /><span>Find a page</span><kbd>Ctrl K</kbd></button>
     <dialog className="workspace-page-finder" ref={dialog} aria-labelledby={titleId} onClose={() => trigger.current?.focus()} onClick={(event) => { if (event.target === event.currentTarget) close(); }}>

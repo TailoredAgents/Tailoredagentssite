@@ -121,14 +121,16 @@ test("reviewed prospect import, scheduled sales and mockup handoff convert into 
   await expect(page.locator(`.sales-task-full time[datetime="${expectedIso}"]`)).toBeVisible();
   await expect(page.locator(".sales-task-full")).toContainText("2:30");
 
-  const request = page.getByRole("form", { name: "Request website mockup", exact: true });
+  await page.getByText("Manual mockup tracking", {exact:true}).click();
+  const request = page.getByRole("form", { name: "Request manual mockup", exact: true });
   await request.getByLabel("Brief *", { exact: true }).fill("Build a refined home services homepage with a clear appointment request and local service areas.");
-  await request.getByRole("button", { name: "Request website mockup", exact: true }).click();
+  await request.getByRole("button", { name: "Request manual mockup", exact: true }).click();
   const mockup = page.getByRole("form", { name: "Update mockup", exact: true });
   await expect(mockup).toBeVisible();
-  await expect(page.getByRole("form", { name: "Request website mockup", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("form", { name: "Request manual mockup", exact: true })).toHaveCount(0);
   await page.reload();
   expect(await rows("SELECT id FROM crm_mockups WHERE opportunity_id=$1", [id])).toHaveLength(1);
+  await page.getByText("Manual mockup tracking", {exact:true}).click();
   await mockup.getByRole("combobox", { name: "Status", exact: true }).selectOption("ready");
   const previewUrl = `https://example.test/previews/${info.project.name}-${run}`;
   await mockup.getByLabel("Preview URL", { exact: true }).fill(previewUrl);

@@ -13,7 +13,7 @@ export function FactoryStatus({ status }: { status: FactoryProjectSummary["statu
 
 export function FactorySetupNotice({ settings, config, canManage }: Pick<FactoryWorkspace, "settings" | "config" | "canManage">) {
   if (settings.researchEnabled && config.configured) return null;
-  return <div className="factory-notice is-warning"><CircleAlert size={19} aria-hidden="true" /><div><strong>{!config.configured ? "Research setup needed" : "AI research is paused"}</strong><p>{!config.configured ? config.reason || "An administrator needs to finish the AI research setup." : "Research requests and your chat are saved. They will start when an administrator enables research."} {!config.configured ? "You can still open a planning workspace and add details. No AI research runs until setup is complete and research is enabled." : ""} {canManage ? <Link href="/dashboard/sales/factory#research-settings">Review research settings</Link> : null}</p></div></div>;
+  return <div className="factory-notice is-warning"><CircleAlert size={19} aria-hidden="true" /><div><strong>{!config.configured ? "Research setup needed" : "AI research is paused"}</strong><p>{!config.configured ? config.reason || "An administrator needs to finish the AI research setup." : "Research requests and your chat are saved. They will start when an administrator enables research."} {!config.configured ? "You can still open a planning workspace and add details. No AI research runs until setup is complete and research is enabled." : ""} {canManage ? <Link href="/dashboard/sales/factory/settings#research-settings">Review research settings</Link> : null}</p></div></div>;
 }
 
 export function FactoryBuildNotice() {

@@ -1,5 +1,16 @@
 # Website Factory: research, planning and website builds
 
+## Salesperson workflow (October 27 update)
+
+1. Open **Website Builder** in the dashboard sidebar. **Create website mockup** lets you search for a lead by name, company, email or phone. A lead’s own page has the same entry point. Missing company, website or location details do not block starting.
+2. Review the proposed direction and pages. Use **Your direction → Update the plan** to add context or request changes. **Full plan** and **Research & sources** contain the details. Unsent chat drafts are preserved and must be sent or cleared before approval.
+3. Select **Approve plan & build website** after reviewing the latest version. Approval applies to that exact plan. The page follows real build stages automatically; you can leave and return.
+4. When ready, choose **Open website** or **Copy preview link** at the top of the project. Source downloads and sharing controls are in **Download source & sharing options**. To plan a new version, expand **Plan & project history**. Planning chat does not edit already published files.
+
+The workspace filters are **Needs review**, **Building**, **Ready to share** and **Needs attention**. Error details stay visible in the project’s error disclosure; revised-plan/technical failures explain the required next step rather than encouraging blind retries. Administrators can retry technical failures after fixing the cause. Budget and retry enforcement are unchanged.
+
+Research and building controls now live under **Website Builder → Builder settings**. **Manual mockups** is the older team-built preview tracker; saving a brief there does not start AI generation. Existing project/preview URLs remain valid.
+
 **Verified recovery complete — October 27, 2:57 PM EDT:** Cosmo website v3 (`d6efcb6c-9358-443a-933d-35f7016aca03`) is READY, QA passed, published and hosted-file verification completed. Builder `35bb20094c0c860139ac5418bdee9152809e3dbc`, deployment `dep-dbgf748m7kps73c0uapg`, was verified Live before resuming QA. Public URL: https://www.tailoredagents.com/preview/cosmos-heating-air-v3 . CRM offers the matching source ZIP. Live browser inspection confirmed the newer design and navigation from the Services closing Contact link to the Contact page. Proof: [CRM ready](previews/cosmos-v3-ready.png). Final ledger estimates for v3 including earlier failures: generation $0.269556 (two original requests), image $0.013546 (one), QA/review/repair $0.588265 (four), total $0.871367. Recovery reused captured generation, then the saved blueprint/image; no budget or attempt counters were reset.
 
 Optional review follow-ups remain: reduce concept framing on About and duplicate timeline numbering. Manual inspection additionally found the legacy hero secondary-action renderer always targets the first section even when the label says Call/Email/Contact; explicit hero action targets should be addressed in a future builder release and acceptance checks. These do not change the resolved validation/contrast failures; do not claim every CTA has been verified semantically. Ready artifacts stay immutable and v1 remains available.
@@ -36,12 +47,12 @@ The standalone builder CLI correction subsequently deployed successfully from so
 
 ## What this release does
 
-Open **Sales → Website mockups → Website planning**, or start/open the planning workspace from a lead. A lead needs no company name, website, location, industry, or other specific business field to enter this workflow. Missing or questionable information should yield an explicitly provisional, useful general concept.
+Open **Website Builder** in the sidebar, or create/open a website project from a lead. A lead needs no company name, website, location, industry, or other specific business field to enter this workflow. Missing or questionable information should yield an explicitly provisional, useful general concept.
 
 1. A deliberate start creates a durable research request. After automatic intake is enabled, new Meta, website and manual leads can create the same request automatically. Existing leads are never silently backfilled.
 2. The worker saves a research result, then uses a separate bounded request to produce the proposed plan. Findings, possible matches, submitted details, assumptions and unknowns remain distinct.
 3. Teammates can discuss the plan and supply public reference URLs in the persistent chat. New directions create a revised plan when needed; a clarification can preserve the current version. While an agent is processing the saved context, the chat draft remains available and can be sent afterward.
-4. **Approve vN & queue build** records the exact current plan and its approver. Stale plans and plans with pending revisions cannot be approved. Repeated requests do not duplicate the build request.
+4. **Approve plan & build website** records the exact current plan and its approver. Stale plans and plans with pending revisions cannot be approved. Repeated requests do not duplicate the build request.
 
 **Milestone 2 has produced the first approved website:** exact approvals produce durable website-build versions. The pipeline prepares portable static source and one hero image, checks layouts, publishes and verifies hosted bytes before exposing a preview URL. Hero uploads and source ZIP are included; actual website editing through chat remains milestone 3. All Render services are deployed and building is enabled. Austin confirmed Cosmo's v1; the first quality release still needs its own deployed, human-approved v2 acceptance. Earlier dated checkpoints preserve the initial infrastructure evidence.
 

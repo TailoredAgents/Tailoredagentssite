@@ -24,7 +24,7 @@ async function signIn(page: Page, role = "owner") {
 }
 async function openLeadPlan(page: Page, leadId: string) {
   await page.goto(`/dashboard/leads/${leadId}`);
-  await page.getByRole("button",{name:"Research & plan website",exact:true}).click();
+  await page.getByRole("button",{name:"Create website mockup",exact:true}).click();
   await expect(page).toHaveURL(/\/dashboard\/sales\/factory\/[0-9a-f-]+$/);
 }
 async function generate(request: APIRequestContext) {
@@ -38,9 +38,37 @@ async function generate(request: APIRequestContext) {
 }
 test.beforeEach(async({request})=>{await control(request,"reset");});
 
-test("researches a sparse lead, refines through chat, and approves only the reviewed plan",async({page,request},info)=>{
+test("finds the builder from navigation, chooses a sparse lead and reopens the same project",async({page,request},info)=>{
   await signIn(page);
   await page.goto("/dashboard/sales/factory");
+  await expect(page.locator('a[href="/dashboard/sales/factory"]').filter({hasText:"Website Builder"}).first()).toBeAttached();
+  await page.getByRole("link",{name:"Create website mockup",exact:true}).first().click();
+  await expect(page).toHaveURL(/\/factory\/new$/);
+  await page.getByLabel("Find a lead",{exact:true}).fill("no-matching-lead");
+  await page.getByRole("button",{name:"Search",exact:true}).click();
+  await expect(page.getByRole("heading",{name:"No leads found",exact:true})).toBeVisible();
+  await page.getByLabel("Find a lead",{exact:true}).fill("");
+  await page.getByRole("button",{name:"Search",exact:true}).click();
+  const start=page.getByRole("button",{name:"Create website mockup",exact:true});
+  await expect(start).toHaveCount(1);
+  expect((await control(request)).calls).toBe(0);
+  expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze()).violations).toEqual([]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await page.screenshot({path:dashboardPreviewPath(`factory-choose-lead-${info.project.name}.png`),fullPage:true,style:"nextjs-portal{display:none!important}"});
+  await start.click();
+  await expect(page).toHaveURL(/\/factory\/[0-9a-f-]+$/);
+  const existing=page.url();
+  await page.goto("/dashboard/sales/factory/new");
+  await page.getByRole("link",{name:"Open website project",exact:true}).click();
+  await expect(page).toHaveURL(existing);
+  expect((await control(request)).jobs).toHaveLength(1);
+  expect((await control(request)).builds).toHaveLength(0);
+  expect((await control(request)).calls).toBe(0);
+});
+
+test("researches a sparse lead, refines through chat, and approves only the reviewed plan",async({page,request},info)=>{
+  await signIn(page);
+  await page.goto("/dashboard/sales/factory/settings");
   await page.getByLabel("Enable AI research").check();
   await page.getByLabel("Research new leads automatically").check();
   await page.getByLabel("Monthly research limit (USD)").fill("25");
@@ -53,26 +81,26 @@ test("researches a sparse lead, refines through chat, and approves only the revi
   expect(state.builds).toHaveLength(0);
   await page.reload();
   await expect(page.getByRole("heading",{name:"Proposed website plan",exact:true})).toBeVisible();
-  await expect(page.getByText("Company name and service area are not confirmed.",{exact:true})).toBeVisible();
+  await expect(page.locator(".factory-plan-summary").getByText("Company name and service area are not confirmed.",{exact:true})).toBeVisible();
   await page.getByLabel("Your direction",{exact:true}).fill("They mostly do commercial roofing. Emphasize estimate requests.");
-  await expect(page.getByRole("button",{name:"Approve v1 & queue build",exact:true})).toBeDisabled();
+  await expect(page.getByRole("button",{name:"Approve plan & build website",exact:true})).toBeDisabled();
   await page.reload();
   await expect(page.getByLabel("Your direction",{exact:true})).toHaveValue("They mostly do commercial roofing. Emphasize estimate requests.");
-  await page.getByRole("button",{name:"Send to planning agent",exact:true}).click();
+  await page.getByRole("button",{name:"Update the plan",exact:true}).click();
   await expect(page.getByLabel("Your direction",{exact:true})).toHaveValue("");
-  await expect(page.getByRole("button",{name:"Approve v1 & queue build",exact:true})).toBeDisabled();
+  await expect(page.getByRole("button",{name:"Approve plan & build website",exact:true})).toBeDisabled();
   state=await generate(request);
   expect(state.plans).toHaveLength(2);
   expect(state.builds).toHaveLength(0);
   await page.reload();
-  await expect(page.getByRole("button",{name:"Approve v2 & queue build",exact:true})).toBeEnabled();
+  await expect(page.getByRole("button",{name:"Approve plan & build website",exact:true})).toBeEnabled();
   await expect(page.getByText("Changed the audience and service direction to commercial roofing.",{exact:true}).first()).toBeVisible();
   const versions=page.getByLabel("Plan version",{exact:true});
   await versions.selectOption(state.plans[0].id);
-  await expect(page.getByRole("button",{name:"Approve v1 & queue build",exact:true})).toBeDisabled();
+  await expect(page.getByRole("button",{name:"Approve plan & build website",exact:true})).toBeDisabled();
   await versions.selectOption(state.plans[1].id);
   await page.getByLabel("Your direction",{exact:true}).fill("No change please. Thanks for the explanation.");
-  await page.getByRole("button",{name:"Send to planning agent",exact:true}).click();
+  await page.getByRole("button",{name:"Update the plan",exact:true}).click();
   await expect(page.getByLabel("Your direction",{exact:true})).toHaveValue("");
   state=await generate(request);
   expect(state.plans).toHaveLength(2);
@@ -81,14 +109,14 @@ test("researches a sparse lead, refines through chat, and approves only the revi
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   await page.evaluate(()=>window.scrollTo(0,0));
   await page.screenshot({path:dashboardPreviewPath(`factory-plan-${info.project.name}.png`),fullPage:true,style:"nextjs-portal{display:none!important}"});
-  await page.getByRole("button",{name:"Approve v2 & queue build",exact:true}).click();
-  await expect(page.getByText("Approved plan saved for the build queue",{exact:true})).toBeVisible();
+  await page.getByRole("button",{name:"Approve plan & build website",exact:true}).click();
+  await expect(page.getByRole("heading",{name:"Approved and in the build queue",exact:true})).toBeVisible();
   state=await control(request);
   expect(state.builds).toEqual([{plan_id:state.plans[1].id,status:"awaiting_builder"}]);
   await page.reload();
   expect((await control(request)).builds).toHaveLength(1);
   await page.goto("/dashboard/sales/factory");
-  await expect(page.getByText("Approved for build",{exact:true})).toBeVisible();
+  await expect(page.getByRole("link",{name:"View progress",exact:true})).toBeVisible();
   expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze()).violations).toEqual([]);
   await page.screenshot({path:dashboardPreviewPath(`factory-queue-${info.project.name}.png`),fullPage:true,style:"nextjs-portal{display:none!important}"});
 });
@@ -97,7 +125,7 @@ test("keeps paused work and drafts, recovers provider failure, and restricts vie
   await signIn(page);
   await openLeadPlan(page,(await control(request)).leadId);
   await page.getByLabel("Your direction",{exact:true}).fill("No company name yet. Keep the plan general.");
-  await page.getByRole("button",{name:"Send to planning agent",exact:true}).click();
+  await page.getByRole("button",{name:"Update the plan",exact:true}).click();
   await expect(page.getByLabel("Your direction",{exact:true})).toHaveValue("");
   expect((await step(request)).checked).toBe(0);
   expect((await control(request)).calls).toBe(0);
@@ -119,7 +147,7 @@ test("keeps paused work and drafts, recovers provider failure, and restricts vie
   await viewer.goto(target);
   await expect(viewer.getByText("Read-only access",{exact:true})).toBeVisible();
   await expect(viewer.getByLabel("Your direction",{exact:true})).toBeDisabled();
-  await expect(viewer.getByRole("button",{name:"Approve v1 & queue build",exact:true})).toBeDisabled();
+  await expect(viewer.getByRole("button",{name:"Approve plan & build website",exact:true})).toBeDisabled();
   await viewer.goto("/dashboard/sales/factory");
   await expect(viewer.getByRole("button",{name:"Save research settings",exact:true})).toHaveCount(0);
   await viewerContext.close();
@@ -134,8 +162,8 @@ async function approvedBuild(page: Page, request: APIRequestContext) {
   await openLeadPlan(page, (await control(request)).leadId);
   await generate(request);
   await page.reload();
-  await page.getByRole("button", { name: "Approve v1 & queue build", exact: true }).click();
-  await expect(page.getByText("Approved plan saved for the build queue", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Approve plan & build website", exact: true }).click();
+  await expect(page.getByRole("heading",{name:"Approved and in the build queue",exact:true})).toBeVisible();
   const row = (await buildDb.query("SELECT * FROM factory_build_versions ORDER BY created_at DESC LIMIT 1")).rows[0];
   expect(row).toBeTruthy();
   return row;
@@ -144,6 +172,7 @@ async function approvedBuild(page: Page, request: APIRequestContext) {
 test("updates build activity automatically without losing the salesperson's draft", async ({ page, request }, info) => {
   const version = await approvedBuild(page, request);
   const panel = page.getByRole("region", { name: "Website build", exact: true });
+  await page.locator(".factory-planning-area > summary").filter({hasText:"Plan & project history"}).click();
   await page.getByLabel("Your direction", { exact: true }).fill("Keep this unsent direction while the site builds.");
   const progress = async (status: string, stage: string, step: string) => {
     await buildDb.query("UPDATE factory_build_versions SET status=$2,stage=$3,working_data=$4,updated_at=now() WHERE id=$1", [version.id,status,stage,{activity:{stage,step,startedAt:new Date().toISOString()}}]);
@@ -172,11 +201,14 @@ test("updates build activity automatically without losing the salesperson's draf
 test("shows build limits, paused and failed stages, and preserves upload errors", async ({ page, request }) => {
   const version = await approvedBuild(page, request);
   await expect(page.getByRole("heading", { name: "Approved and in the build queue", exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open website preview", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Open website", exact: true })).toHaveCount(0);
   await buildDb.query("UPDATE factory_build_versions SET status='failed',stage='images',error='Synthetic image provider interruption' WHERE id=$1", [version.id]);
   await page.reload();
+  await page.getByText("Error details",{exact:true}).click();
   await expect(page.getByText("Synthetic image provider interruption", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Retry website build", exact: true })).toBeDisabled();
+  await page.locator(".factory-planning-area > summary").filter({hasText:"Plan & project history"}).click();
+  await page.getByText("Optional website image",{exact:true}).click();
   const file = page.getByLabel("Choose a hero image", { exact: true });
   await file.setInputFiles({ name: "too-large.png", mimeType: "image/png", buffer: Buffer.alloc(5 * 1024 * 1024 + 1) });
   await page.getByRole("button", { name: "Upload image", exact: true }).click();
@@ -186,7 +218,7 @@ test("shows build limits, paused and failed stages, and preserves upload errors"
   await page.getByRole("button", { name: "Upload image", exact: true }).click();
   await expect(page.getByText("Synthetic storage unavailable", { exact: true })).toBeVisible();
   expect(await file.evaluate((element: HTMLInputElement) => element.files?.[0]?.name)).toBe("logo.png");
-  await page.goto("/dashboard/sales/factory#build-settings");
+  await page.goto("/dashboard/sales/factory/settings#build-settings");
   await expect(page.getByLabel("Enable website building", { exact: true })).toBeDisabled();
   await expect(page.getByLabel("Monthly build limit (USD)", { exact: true })).toHaveValue("50");
   await expect(page.getByLabel("Per-website limit (USD)", { exact: true })).toHaveValue("5");
@@ -201,11 +233,16 @@ test("reviews a completed preview, revokes and renews sharing, exports and uploa
   await buildDb.query("UPDATE factory_build_versions SET status='ready',stage='verify',source_key=$2,qa_report=$3,ready_at=now() WHERE id=$1", [version.id, `${version.storage_prefix}source.zip`, qa]);
   await page.route("**/api/dashboard/factory/builds/*/screenshot?*", route => route.fulfill({ status: 200, contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500"><rect width="800" height="500" fill="#eef2f6"/><rect width="800" height="70" fill="#10243b"/><rect x="40" y="120" width="430" height="35" fill="#315bb0"/><rect x="40" y="180" width="300" height="15" fill="#96a6bb"/><rect x="40" y="240" width="160" height="50" rx="8" fill="#315bb0"/><rect x="520" y="110" width="240" height="260" rx="12" fill="#c5d3e6"/></svg>' }));
   await page.route("**/api/dashboard/factory/builds/*/source", route => route.fulfill({ status: 200, contentType: "application/zip", headers: { "content-disposition": 'attachment; filename="website-v1.zip"' }, body: Buffer.from("Synthetic download transport; export contents are tested separately.") }));
-  const preview = page.getByRole("link", { name: "Open website preview", exact: true });
+  const preview = page.getByRole("link", { name: "Open website", exact: true });
   await expect(preview).toHaveAttribute("href", `https://www.tailoredagents.com/preview/${version.preview_slug}`, { timeout: 20000 });
   await expect(page.getByText("Website v1 · approved plan v1", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button",{name:"Copy preview link",exact:true})).toBeVisible();
+  await expect(page.locator(".factory-planning-area")).not.toHaveAttribute("open","");
+  await expect(page.getByLabel("Your direction",{exact:true})).toBeHidden();
+  await page.screenshot({path:dashboardPreviewPath(`factory-ready-${info.project.name}.png`),fullPage:true,style:"nextjs-portal{display:none!important}"});
   await page.getByText("Quality checks & handoff notes", { exact: true }).click();
   await expect(page.getByText("Connect the real inquiry form before launch", { exact: true })).toBeVisible();
+  await page.getByText("Download source & sharing options",{exact:true}).click();
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("link", { name: "Download source ZIP", exact: true }).click();
   expect((await downloadPromise).suggestedFilename()).toBe("website-v1.zip");
@@ -218,6 +255,8 @@ test("reviews a completed preview, revokes and renews sharing, exports and uploa
     await buildDb.query("INSERT INTO factory_uploads(id,workspace_id,project_id,storage_key,filename,content_type,byte_size,sha256,status,created_by) VALUES($1,$2,$3,$4,'client-logo.png','image/png',1000,$5,'ready','factory-owner')", [randomUUID(), version.workspace_id, version.project_id, `fixture/${randomUUID()}.png`, "a".repeat(64)]);
     await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ ok: true }) });
   });
+  await page.locator(".factory-planning-area > summary").filter({hasText:"Plan & project history"}).click();
+  await page.getByText("Optional website image",{exact:true}).click();
   await page.getByLabel("Choose a hero image", { exact: true }).setInputFiles({ name: "client-logo.png", mimeType: "image/png", buffer: Buffer.from("Synthetic image transport") });
   await page.getByRole("button", { name: "Upload image", exact: true }).click();
   await expect(page.getByText("client-logo.png", { exact: true })).toBeVisible();
@@ -229,8 +268,8 @@ test("reviews a completed preview, revokes and renews sharing, exports and uploa
   await page.getByRole("button", { name: "Remove client-logo.png from future builds", exact: true }).click();
   await expect(page.getByText("client-logo.png", { exact: true })).toHaveCount(0);
   await page.goto("/dashboard/sales/factory");
-  await page.getByRole("button", { name: "Previews ready", exact: true }).click();
-  await expect(page.getByText("Preview ready", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Ready to share", exact: true }).click();
+  await expect(page.getByRole("link", {name:"View website",exact:true})).toBeVisible();
   await page.goto(`/dashboard/leads/${(await control(request)).leadId}`);
-  await expect(page.getByRole("link", { name: "Website preview ready", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "View website", exact: true })).toBeVisible();
 });

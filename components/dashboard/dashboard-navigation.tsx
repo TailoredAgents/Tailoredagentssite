@@ -44,7 +44,7 @@ const navigationGroups = [
     items: [
       { label: "Leads", href: "/dashboard/leads", icon: UsersRound },
       { label: "Sales", href: "/dashboard/sales", icon: Columns3 },
-      { label: "Mockups", href: "/dashboard/sales/mockups", icon: PanelsTopLeft },
+      { label: "Website Builder", href: "/dashboard/sales/factory", icon: PanelsTopLeft },
       { label: "Calling lists", href: "/dashboard/sales/imports", icon: ListFilter },
     ],
   },
@@ -104,9 +104,10 @@ export function DashboardNavigation({ context }: { context: DashboardContext }) 
 
   function isCurrent(href: string) {
     if (href === "/dashboard/sales/today" && pathname.startsWith("/dashboard/tasks/")) return true;
+    if (href === "/dashboard/sales/factory" && pathname.startsWith("/dashboard/sales/mockups")) return true;
     if (href === "/dashboard/sales") {
       return pathname === href || (
-        pathname.startsWith(`${href}/`) && !["today", "mockups", "imports"].includes(pathname.split("/")[3] ?? "")
+        pathname.startsWith(`${href}/`) && !["today", "mockups", "imports", "factory"].includes(pathname.split("/")[3] ?? "")
       );
     }
     return href === "/dashboard" ? pathname === href : pathname.startsWith(href);

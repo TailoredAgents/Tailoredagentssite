@@ -57,6 +57,19 @@ export async function getFactoryLeadProject(context: DashboardContext, leadId: s
     return row?projectDto(row):null;
   });
 }
+export async function getFactoryLeadChoices(context: DashboardContext, query: string) {
+  return factoryTransaction(context.workspace.id, async db => {
+    const role = await authorizeFactory(db, context);
+    const search = query.trim().slice(0, 120);
+    const rows = (await db.query<{id:string;name:string|null;organization:string|null;email:string|null;phone:string|null;projectId:string|null}>(`
+      SELECT l.id,l.name,l.organization,l.email,l.phone,p.id AS "projectId"
+      FROM leads l LEFT JOIN factory_projects p ON p.lead_id=l.id AND p.workspace_id=l.workspace_id
+      WHERE l.workspace_id=$1 AND l.anonymized_at IS NULL
+        AND ($2='' OR strpos(lower(concat_ws(' ',l.name,l.organization,l.email,l.phone)),lower($2))>0)
+      ORDER BY l.created_at DESC,l.id LIMIT 50`, [context.workspace.id, search])).rows;
+    return {canEdit:role!=="viewer",leads:rows.map(row=>({id:row.id,name:leadDisplayName(row),company:leadCompanyName(row),email:row.email,phone:row.phone,projectId:row.projectId}))};
+  });
+}
 export async function getFactoryProject(context: DashboardContext, projectId: string): Promise<FactoryProjectWorkspace|null> {
   return factoryTransaction(context.workspace.id,async db=>{
     const role = await authorizeFactory(db,context);
