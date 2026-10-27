@@ -21,7 +21,7 @@ These are design principles, not a required template. Cosmo's five pages, two fo
 | --- | --- |
 | Page structure | Every planned page has its own entry. The blueprint supports at most eight physical content sections per page, excluding hero/navigation; combine related ideas where appropriate. Eight is a ceiling, not a target. |
 | Actions | The planning summary has at most eight entries. Group related actions only with explicit individual labels/destinations in preview requirements. Do not drop actions or invent routes to fit. |
-| Contact lists | Deduplication applies across contact sections, not every navigation or mobile shortcut. |
+| Contact lists | Deduplication applies across contact sections. On a dedicated text-only Contact page whose first two sections are direct channels and the sole form, the renderer composes them side by side on desktop and stacks them on mobile; it omits redundant hero/mobile contact actions. Section IDs, content, tones, form fields and order remain unchanged. Explicit section imagery and more complex compositions retain their own layout. |
 | Forms | Specify location, purpose, supported fields and preview submit label. Supported fields: name, email, phone, location, message, preferredContact and contactDetail. The last two are paired. Labels/options and no-send/no-store behavior come from trusted renderer code; do not promise custom fields or custom success wording. |
 | Confirmation | Form feedback appears after demo submission, not as a separate content section. Live delivery, booking and payment are separate integrations. |
 | Revisions | Preserve useful page identities, form fields/placement, action destinations and design decisions unless the latest human direction changes them. |
@@ -41,3 +41,10 @@ OpenAI's [prompt-engineering guidance](https://developers.openai.com/api/docs/gu
 Initial verification: **71 focused tests across six files passed**, covering planning/provider boundaries, generation, visual review, form/actions, presentation and palette behavior. Lint, TypeScript and production build passed. Independent review found no blocking contract mismatch. No paid generation or modification of a saved client plan was used for this release.
 
 Release **`390175760410f3b0082ebac9eee946856817e8a8`** was verified live on both the CRM (planner) and website-builder services in Render. The public CRM health endpoint returned HTTP 200. Actual design-quality calibration on human-approved generated sites remains ongoing.
+
+## Renderer enforcement after the Cosmo v5 review
+
+- Studio and technical headline emphasis stays in its approved sans family and weight. Editorial/warm themes retain their intentional serif emphasis. Studio no longer ships an unused serif font.
+- Text-only inner introductions use compact heading sizes and spacing, without the decorative Home index rail. Explicitly bound inner hero images retain their own composition.
+- Adjacent direct channels and the inquiry form on a dedicated Contact page use the composition described above. Browser checks cover narrow/mobile/desktop layouts, anchors and demo-form behavior; visual review captures this combined region.
+- Technical recovery rerenders saved content/assets within the existing review and spending allowance. It does not reset attempts, regenerate images, approve a plan or alter a published preview in place.

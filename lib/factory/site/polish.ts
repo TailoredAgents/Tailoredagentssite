@@ -93,7 +93,7 @@ export const portablePresentationCss=`
 .presentation-v1 .section-inner{width:min(1160px,calc(100% - 96px))}
 .presentation-v1 h1,.presentation-v1 h2,.presentation-v1 h3{font-weight:var(--heading-weight);letter-spacing:-.045em;text-wrap:balance}
 .presentation-v1 .hero-copy h1{font-size:clamp(3.25rem,6.2vw,6.4rem);line-height:1.02;max-width:16ch;overflow-wrap:anywhere}
-.presentation-v1 h1 em{font-family:var(--emphasis-font);font-weight:400;letter-spacing:-.045em;font-style:italic}
+.presentation-v1 h1 em{font-family:var(--emphasis-font);font-weight:var(--emphasis-weight);letter-spacing:-.045em;font-style:var(--emphasis-style)}
 .presentation-v1.font-technical h1 em{font-style:normal;text-decoration:underline;text-decoration-color:var(--accent-secondary);text-decoration-thickness:3px;text-underline-offset:.12em}
 .presentation-v1 h2{font-size:clamp(2.35rem,4.2vw,4rem);line-height:1.09;max-width:22ch}
 .presentation-v1 h3{font-size:1.35rem;line-height:1.18}
@@ -187,11 +187,27 @@ export const portablePresentationCss=`
 }
 .presentation-v1.page-inner .hero-inner.hero-text-only{display:block;min-height:0;padding:0;background:none}
 .presentation-v1.page-inner .hero-text-only .hero-copy{max-width:960px;padding:24px 0 32px}
+.presentation-v1.compact-intro .site-hero{padding-top:26px}
+.presentation-v1.compact-intro .hero-text-only .hero-copy{max-width:960px;padding:12px 0 24px}
+.presentation-v1.compact-intro .hero-copy h1{font-size:clamp(2.35rem,3.5vw,3.5rem);max-width:28ch}
+.presentation-v1.compact-intro .page-breadcrumb{margin-bottom:16px}.presentation-v1.compact-intro .hero-copy .eyebrow{margin-bottom:12px}
+.presentation-v1.compact-intro .hero-description{max-width:65ch;margin-top:16px}.presentation-v1.compact-intro .hero-actions{margin-top:20px}
+.presentation-v1 .contact-composition{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:28px;width:min(var(--content-width),calc(100% - 96px));margin:8px auto 48px;align-items:start}
+.presentation-v1 .contact-composition>.site-section{min-width:0;padding:28px;border-radius:var(--radius);border:1px solid color-mix(in srgb,var(--ink) 14%,transparent)}
+.presentation-v1 .contact-composition .section-inner{display:block;width:100%;min-width:0}
+.presentation-v1 .contact-composition .section-heading{margin:0 0 24px}.presentation-v1 .contact-composition h2{font-size:clamp(1.6rem,2.6vw,2.2rem);max-width:26ch}
+.presentation-v1 .contact-composition .eyebrow{margin-bottom:12px}.presentation-v1 .contact-composition .section-copy{margin-top:14px}
+.presentation-v1 .contact-composition .contact-form{width:100%;margin:0;padding:24px;min-width:0}
+.presentation-v1 .contact-composition .contact-details:empty{display:none}.presentation-v1 .contact-composition .with-demo-form .contact-details:not(:empty){margin-bottom:20px}
 .presentation-v1 .hero-image-caption{width:min(var(--content-width),calc(100% - 96px));margin:12px auto 0;color:var(--muted);font-size:.8rem;line-height:1.55;text-align:right}
 @media(max-width:760px){
  .presentation-v1{padding-bottom:0}
  .presentation-v1 .mobile-contact{position:static;inset:auto;z-index:auto;width:calc(100% - 40px);margin:16px auto 0;padding:14px 0;border-top:1px solid color-mix(in srgb,var(--ink) 18%,transparent);border-bottom:1px solid color-mix(in srgb,var(--ink) 18%,transparent);background:none;box-shadow:none}
  .presentation-v1.page-inner .hero-text-only .hero-copy{padding:15px 0 20px}
+ .presentation-v1.compact-intro .site-hero{padding-top:20px}.presentation-v1.compact-intro .hero-text-only .hero-copy{padding:0 0 20px}.presentation-v1.compact-intro .hero-copy h1{font-size:clamp(2rem,8vw,2.7rem)}
+ .presentation-v1 .contact-composition{grid-template-columns:1fr;width:calc(100% - 40px);gap:20px;margin:4px auto 32px}
+ .presentation-v1 .contact-composition>.site-section{padding:22px}.presentation-v1 .contact-composition h2{font-size:1.7rem}
+ .presentation-v1 .contact-composition .contact-form{padding:18px}.presentation-v1 .contact-composition .section-heading{margin-bottom:20px}
  .presentation-v1 .hero-image-caption{width:calc(100% - 40px);text-align:left}
 }
 @media(prefers-reduced-motion:reduce){.presentation-v1 .button{transition:none}.presentation-v1 .button:hover{transform:none}}
