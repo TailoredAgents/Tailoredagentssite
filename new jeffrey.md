@@ -1,6 +1,6 @@
 # Jeffrey — current status and remaining work
 
-Updated after the October 24, 2026 live Meta form test. Mail and SEO figures retain their recorded verification times below. This is the main status checklist for Jeffrey's Meta, shared Sales email and SEO work. Setup commands live in the linked guides. Older release records describe what was true on their recorded dates; completed setup does not need repeating.
+Updated October 27, 2026 for the ongoing Meta App Review test. Mail, SEO and Factory figures retain their recorded verification times below. This is the main status checklist for Jeffrey's Meta, shared Sales email and SEO work. Setup commands live in the linked guides. Older release records describe what was true on their recorded dates; completed setup does not need repeating.
 
 ## Current state
 
@@ -17,12 +17,12 @@ Austin assigned this connection to Jeffrey on October 23. The technical connecti
 
 Remaining work:
 
-- [ ] **Jeffrey with Codex:** `leads_retrieval` shows **Ready for testing** in Meta's dashboard. Open **Review → App Review** to identify the remaining requirements for this own-business integration. Complete any required usage explanations, demonstrations and submissions; [a truthful review draft is prepared](docs/META_SETUP.md#app-review-preparation). Meta's MCP review fields conflict; no completed review appears in its history. Do not infer approval or exemption from publication, token scopes, “Requirements: 0” or the successful test.
+- [ ] **Jeffrey with Codex:** the `leads_retrieval` usage description and agreement are saved. The selected **Marketing API Access Tier** also requires API testing. A read-only batch is running against Tailored Agents' own advertising account, with a slower pace after one rate-limit response; [test details and pending verification](docs/META_SETUP.md#marketing-api-access-tier-testing--october-27-2026). After the batch finishes, confirm Meta credits the calls (its screen allows up to 24 hours), then complete the remaining descriptions, demonstrations and submission. [Review drafts](docs/META_SETUP.md#app-review-preparation) describe the actual app. Successful calls, publication and granted token permissions do not establish final approval.
 - [ ] **Together:** submit an authorized ordinary public form and verify its saved answers. The successful Meta test-tool submission does not establish access to every customer or Instagram placement lead.
 - [ ] **Austin and Devon:** use their own accounts to open the received lead and confirm the details are useful for follow-up.
 - [ ] **Together:** check Instagram placement delivery and phone-only submissions if those are used.
 - [ ] **Codex:** complete live duplicate/recovery checks: replay the same provider lead without creating another CRM record, resume interrupted imports and retry failed imports after fixing access. Existing automated coverage is separate from these production checks.
-- [ ] **Jeffrey with Austin:** decide who checks and assigns new leads, and verify any chosen alert method. Imported Meta leads currently arrive unassigned and do **not** automatically email the team or contact the customer. Older form submissions are not imported automatically.
+- [ ] **Jeffrey with Austin:** decide who checks and assigns new leads, and verify any chosen alert method. Imported Meta leads arrive unassigned and do **not** automatically email the team or contact the customer. Optional [team SMS alerts](docs/META_SETUP.md#team-sms-alerts-october-25-2026) are now implemented; verify the intended settings, recipients and delivery before relying on them. Older form submissions are not imported automatically.
 
 Technical steps and interim alert options: [Meta setup](docs/META_SETUP.md). Website inquiry emails are a separate, working Resend feature; they do not prove Meta alerts work. No new paid alert service has been activated.
 
@@ -85,7 +85,7 @@ During the first free scan, sampled website CPU stayed below 0.04 CPU, memory be
 
 ## Later work
 
-New articles, broader automatic SEO repairs, city-ranking services, Google Business Profile work and client-site SEO are deferred. Meta Conversions API, automated team alerts and qualified/won feedback are later features. Twilio/calling development and the wider agency roadmap remain separate from this checklist; see [the agency roadmap](docs/AGENCY_OS_ROADMAP.md).
+New articles, broader automatic SEO repairs, city-ranking services, Google Business Profile work and client-site SEO are deferred. Meta Conversions API and qualified/won feedback are later features; team SMS alerts are implemented with live acceptance still to verify. Twilio/calling development and the wider agency roadmap remain separate from this checklist; see [the agency roadmap](docs/AGENCY_OS_ROADMAP.md).
 
 Work stays directly on **main**, preserving collaborators' changes. Keep this file as the current status record; keep reusable technical instructions in their setup guides.
 
