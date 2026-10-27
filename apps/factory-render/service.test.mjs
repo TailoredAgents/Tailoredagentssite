@@ -176,7 +176,7 @@ test("startup removes only aged service temporary files and rejects missing secr
 });
 
 test("a slow upload consumes a bounded service slot and releases it when complete", async t => {
-  const f = await fixture(t, { maxActiveRequests: 1 });
+  const f = await fixture(t, { maxActiveRequests: 1, maxQueuedRequests: 0 });
   const started = once(f.server, "request");
   let finish;
   const uploadStatus = new Promise((resolve, reject) => {
@@ -186,6 +186,84 @@ test("a slow upload consumes a bounded service slot and releases it when complet
   await started;
   assert.equal((await fetch(`${f.origin}/health`)).status, 503);
   finish(); assert.equal(await uploadStatus, 204);
+  assert.equal((await fetch(`${f.origin}/health`)).status, 200);
+});
+
+test("a browser-sized preview burst waits for bounded slots instead of losing assets", async t => {
+  let activeResolvers = 0, peakResolvers = 0;
+  const f = await fixture(t, { fetcher: async () => {
+    activeResolvers++; peakResolvers = Math.max(peakResolvers, activeResolvers);
+    await new Promise(resolve => setTimeout(resolve, 100));
+    activeResolvers--;
+    return Response.json({ storagePrefix: `${prefix}preview/`, ready: true, expiresAt: new Date(Date.now() + 60_000).toISOString(), manifest });
+  } });
+  await f.put();
+  const statuses = await Promise.all(Array.from({ length: 8 }, async () => {
+    const response = await fetch(`${f.origin}/p/${token}/`);
+    const body = await response.text();
+    if (response.ok) assert.equal(body, html);
+    return response.status;
+  }));
+  assert.deepEqual(statuses, Array(8).fill(200));
+  assert.ok(peakResolvers <= 4, `Resolver concurrency exceeded the four-request limit: ${peakResolvers}`);
+});
+
+test("the bounded request queue rejects excess work and serves the waiting request after release", async t => {
+  const f = await fixture(t, { maxActiveRequests: 1, maxQueuedRequests: 1 });
+  let finish;
+  const uploadStarted = once(f.server, "request");
+  const uploadStatus = new Promise((resolve, reject) => {
+    const request = httpRequest(f.object(), { method: "PUT", headers: bearer }, response => { response.resume(); resolve(response.statusCode); });
+    request.on("error", reject); request.write("first"); finish = () => request.end("second");
+  });
+  await uploadStarted;
+  const queuedStarted = once(f.server, "request"), queued = fetch(`${f.origin}/health`);
+  await queuedStarted;
+  const excess = await fetch(`${f.origin}/health`);
+  assert.equal(excess.status, 503); assert.equal(excess.headers.get("retry-after"), "1");
+  finish(); assert.equal(await uploadStatus, 204);
+  const accepted = await queued;
+  assert.equal(accepted.status, 200); assert.equal(await accepted.text(), "ready");
+});
+
+test("queue timeout releases its waiting slot without starting storage or resolver work", async t => {
+  let resolverCalls = 0;
+  const f = await fixture(t, { maxActiveRequests: 1, maxQueuedRequests: 1, requestQueueTimeoutMs: 25,
+    fetcher: async () => { resolverCalls++; throw new Error("A timed-out request must never start"); },
+  });
+  let finish;
+  const uploadStarted = once(f.server, "request");
+  const uploadStatus = new Promise((resolve, reject) => {
+    const request = httpRequest(f.object(), { method: "PUT", headers: bearer }, response => { response.resume(); resolve(response.statusCode); });
+    request.on("error", reject); request.write("first"); finish = () => request.end("second");
+  });
+  await uploadStarted;
+  const timedOut = await fetch(`${f.origin}/p/${token}/`);
+  assert.equal(timedOut.status, 503); assert.equal(resolverCalls, 0);
+  const nextStarted = once(f.server, "request"), next = fetch(`${f.origin}/health`);
+  await nextStarted;
+  finish(); assert.equal(await uploadStatus, 204);
+  assert.equal((await next).status, 200);
+});
+
+test("disconnecting a queued client immediately frees queue space and does not take a processing slot", async t => {
+  const f = await fixture(t, { maxActiveRequests: 1, maxQueuedRequests: 1 });
+  let finish;
+  const uploadStarted = once(f.server, "request");
+  const uploadStatus = new Promise((resolve, reject) => {
+    const request = httpRequest(f.object(), { method: "PUT", headers: bearer }, response => { response.resume(); resolve(response.statusCode); });
+    request.on("error", reject); request.write("first"); finish = () => request.end("second");
+  });
+  await uploadStarted;
+  const disconnectedStarted = once(f.server, "request");
+  const disconnected = httpRequest(`${f.origin}/health`);
+  disconnected.on("error", () => {}); disconnected.end();
+  const [, serverResponse] = await disconnectedStarted;
+  const closed = once(serverResponse, "close"); disconnected.destroy(); await closed;
+  const nextStarted = once(f.server, "request"), next = fetch(`${f.origin}/health`);
+  await nextStarted;
+  finish(); assert.equal(await uploadStatus, 204);
+  assert.equal((await next).status, 200);
   assert.equal((await fetch(`${f.origin}/health`)).status, 200);
 });
 

@@ -177,7 +177,11 @@ export async function createDiskStore(directory) {
   };
 }
 
-export async function createFactoryServer({ env = process.env, fetcher = fetch, maxActiveRequests = 4 } = {}) {
+export async function createFactoryServer({ env = process.env, fetcher = fetch, maxActiveRequests = 4, maxQueuedRequests = 24, requestQueueTimeoutMs = 5_000 } = {}) {
+  if (!Number.isSafeInteger(maxActiveRequests) || maxActiveRequests < 1 || maxActiveRequests > 16
+    || !Number.isSafeInteger(maxQueuedRequests) || maxQueuedRequests < 0 || maxQueuedRequests > 48
+    || maxActiveRequests + maxQueuedRequests > 60
+    || !Number.isSafeInteger(requestQueueTimeoutMs) || requestQueueTimeoutMs < 1 || requestQueueTimeoutMs > 60_000) throw new Error("Invalid website request limits");
   env = { ...env, FACTORY_STORAGE_SECRET: env.FACTORY_STORAGE_SECRET?.trim(), FACTORY_PREVIEW_SECRET: env.FACTORY_PREVIEW_SECRET?.trim() };
   if ([env.FACTORY_STORAGE_SECRET, env.FACTORY_PREVIEW_SECRET].some(value => typeof value !== "string" || !/^[\x20-\x7e]{32,4096}$/.test(value))) throw new Error("Website service secrets are not configured");
   if (env.FACTORY_RESOLVER_URL !== "https://www.tailoredagents.com/api/integrations/factory/preview") throw new Error("Website preview resolver is not configured");
@@ -201,11 +205,42 @@ export async function createFactoryServer({ env = process.env, fetcher = fetch, 
     return new Response(Buffer.concat(chunks), { status: result.status, headers: { "content-type": "application/json" } });
   }
   let active = 0;
+  const waiting = [];
+  function releaseSlot() {
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true; active--;
+      while (active < maxActiveRequests && waiting.length) waiting[0].finish(true);
+    };
+  }
+  function acquireSlot(req, res) {
+    if (active < maxActiveRequests) { active++; return Promise.resolve(releaseSlot()); }
+    if (waiting.length >= maxQueuedRequests) return Promise.resolve(null);
+    // Waiting requests have no artifact buffers or resolver work. Their incoming
+    // streams stay paused, and disconnects/timeouts immediately free queue space.
+    return new Promise(resolve => {
+      let settled = false;
+      const cancel = () => entry.finish(false);
+      const entry = { finish(granted) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer); req.off("aborted", cancel); res.off("close", cancel);
+        const index = waiting.indexOf(entry); if (index >= 0) waiting.splice(index, 1);
+        if (granted && !req.aborted && !res.destroyed) { active++; resolve(releaseSlot()); }
+        else resolve(null);
+      } };
+      const timer = setTimeout(cancel, requestQueueTimeoutMs);
+      req.once("aborted", cancel); res.once("close", cancel);
+      waiting.push(entry);
+      if (req.aborted || res.destroyed) cancel();
+    });
+  }
   const server = createServer({ requestTimeout: 65_000, headersTimeout: 15_000, maxHeaderSize: 16_384 }, async (req, res) => {
-    // A finite queue protects the small shared preview service from concurrent
-    // private uploads and public allocations. Streams provide backpressure.
-    if (active >= maxActiveRequests) { req.resume(); safeReply(res, 503); return; }
-    active++;
+    // Normal browser asset bursts wait briefly instead of receiving missing CSS,
+    // fonts or images. Processing concurrency and waiting sockets remain bounded.
+    const release = await acquireSlot(req, res);
+    if (!release) { req.resume(); if (!res.destroyed) { res.setHeader("retry-after", "1"); safeReply(res, 503); } return; }
     let timeout;
     try {
       timeout = setTimeout(() => { req.destroy(); res.destroy(); }, 60_000);
@@ -251,7 +286,7 @@ export async function createFactoryServer({ env = process.env, fetcher = fetch, 
       if (!res.headersSent) res.setHeader("connection", "close");
       req.resume();
       safeReply(res, error instanceof HttpError ? error.status : 503);
-    } finally { clearTimeout(timeout); active--; }
+    } finally { clearTimeout(timeout); release(); }
   });
   server.keepAliveTimeout = 5_000;
   server.maxRequestsPerSocket = 100;
