@@ -51,6 +51,21 @@ async function serve(context:BrowserContext,files:SiteFiles){
   return outside;
 }
 
+function closingAndCoverageFixture(){
+  const b=contactFixture();
+  for(const page of b.pages.filter(page=>page.path!==contactPath)){
+    page.sections.push({id:"next-step",kind:"contact",layout:"band",eyebrow:"Your next step",title:"Talk about the next step for your home.",body:"Share your question and choose a useful starting point for the conversation.",items:[{title:"Preview an inquiry",body:"Include your preferred contact method, city or ZIP code and a short description of the concern."}]});
+    b.interactions!.actions.push({pagePath:page.path,sectionId:"next-step",itemIndex:0,label:"Preview inquiry",targetPage:contactPath,targetSection:"inquiry"});
+  }
+  b.pages.push({path:"areas/index.html",title:"Service Areas",description:"Share your location when asking about service coverage.",hero:{eyebrow:"Location matters",headline:"Start with your city or ZIP code.",body:"Use your location to begin a conversation about coverage and the help you are looking for.",primaryCta:"Preview coverage inquiry",secondaryCta:"Call Northline"},sections:[
+    {id:"area-story",kind:"statement",layout:"editorial",eyebrow:"A useful conversation",title:"A little context helps start the conversation.",body:"Share the concern you want to discuss and the location of the property.",items:[]},
+    {id:"area-context",kind:"statement",layout:"editorial",eyebrow:"Before your inquiry",title:"A clear location helps the team understand your question.",body:"Provide your city or ZIP code and mention any access details that may affect a visit. Coverage and available services are discussed directly with the business.",items:[]},
+    {id:"coverage-inquiry",kind:"contact",layout:"split",eyebrow:"Your location",title:"Preview your coverage inquiry.",body:"Include your city or ZIP code, a short service concern and how you would prefer to hear back.",items:[]},
+  ]});
+  b.interactions!.forms.push({pagePath:"areas/index.html",sectionId:"coverage-inquiry",fields:["location","message","preferredContact","contactDetail"],submitLabel:"Preview coverage inquiry"});
+  return applyApprovedDesign(b,{...fixtureSitePlan,design:{...fixtureSitePlan.design,typography:"Bold sans-serif headings and readable sans-serif body",palette:["Background: #F5F7F8","Surface: #FFFFFF","Ink: #142B40","Muted: #52616B","Accent: #087F8C","Secondary accent: #F3AD46"]}});
+}
+
 describe("Compact dedicated contact pages",()=>{
   it.each([320,390,1440])("keeps direct channels and the five-field inquiry compact and usable at %ipx",async width=>{
     const b=contactFixture(),original=structuredClone(b),{files}=renderPortableSite(portableBundle(b),assets);
@@ -162,5 +177,77 @@ describe("Compact dedicated contact pages",()=>{
     expect(html).toContain('name="preferredContact"');expect(html).toContain('name="contactDetail"');
     if(variation==="legacy")expect(html).toContain('class="hero-index"');
     if(variation==="image-bound")expect(html).toContain('class="story-image section-image"');
+  });
+
+  it.each([320,390,1440])("balances direct-only closing bands and compact coverage forms at %ipx without removing copy",async width=>{
+    const b=closingAndCoverageFixture(),original=structuredClone(b),{files}=renderPortableSite(portableBundle(b),assets),context=await browser.newContext({viewport:{width,height:900}});
+    try{
+      await serve(context,files);const page=await context.newPage();
+      for(const route of b.pages.filter(route=>![contactPath,"areas/index.html"].includes(route.path))){
+        await page.goto(`https://contact-layout.test/${route.path}`);await page.evaluate(()=>document.fonts.ready);
+        const section=page.locator("#next-step");
+        expect(await section.getAttribute("class")).toContain("contact-closing");
+        expect(await section.locator("h2").textContent()).toBe(route.sections.at(-1)!.title);
+        expect(await section.locator(".section-copy").textContent()).toBe(route.sections.at(-1)!.body);
+        expect(await section.locator(".contact-item p").textContent()).toBe(route.sections.at(-1)!.items[0].body);
+        const boxes=await section.evaluate(element=>{
+          const heading=element.querySelector(".section-heading")!.getBoundingClientRect(),details=element.querySelector(".contact-details")!.getBoundingClientRect();
+          return {sideBySide:details.left>=heading.right-1,stacked:details.top>=heading.bottom-1,overflow:document.documentElement.scrollWidth>innerWidth+2,height:element.getBoundingClientRect().height};
+        });
+        expect(boxes.overflow).toBe(false);expect(width>760?boxes.sideBySide:boxes.stacked).toBe(true);
+        if(width>760)expect(boxes.height).toBeLessThan(450);
+        if(route.path==="index.html"){
+          expect(await page.locator(".site-hero .hero-image").count()).toBe(1);expect(await page.locator(".site-hero .hero-index").count()).toBe(1);
+          await writeFile(path.join(output,`closing-${width}.png`),await section.screenshot({animations:"disabled"}));
+        }
+        await section.getByRole("link",{name:"Preview inquiry"}).click();
+        expect(new URL(page.url()).pathname).toBe(`/${contactPath}`);expect(new URL(page.url()).hash).toBe("#inquiry");
+      }
+      await page.goto("https://contact-layout.test/areas/index.html");await page.evaluate(()=>document.fonts.ready);
+      expect(await page.locator(".inquiry-context").count()).toBe(1);expect(await page.locator("#area-context.inquiry-context").count()).toBe(1);
+      expect(await page.locator("#coverage-inquiry.compact-inquiry").count()).toBe(1);
+      expect(await page.locator("#coverage-inquiry form [name]").evaluateAll(elements=>elements.map(element=>element.getAttribute("name")))).toEqual(["location","message","preferredContact","contactDetail"]);
+      const areas=b.pages.at(-1)!;
+      for(const section of areas.sections){expect(await page.locator(`#${section.id} .section-copy`).textContent()).toBe(section.body);expect(await page.locator(`#${section.id}-heading`).textContent()).toBe(section.title);}
+      expect(await page.locator("#area-context h2").evaluate(element=>parseFloat(getComputedStyle(element).fontSize))).toBeLessThanOrEqual(width>760?44.8:31);
+      expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2)).toBe(false);
+      await writeFile(path.join(output,`coverage-${width}.png`),await page.screenshot({fullPage:true,animations:"disabled"}));
+      expect(b).toEqual(original);
+    }finally{await context.close();}
+  },30000);
+
+  it("passes accessibility and full browser QA for closing bands and the coverage inquiry",async()=>{
+    const b=closingAndCoverageFixture(),{files}=renderPortableSite(portableBundle(b),assets),qa=await checkPortableSite({files,browser});
+    expect(qa.issues).toEqual([]);expect(qa.passed).toBe(true);expect(qa.screenshots).toHaveLength(b.pages.length*2);
+  },60000);
+
+  it("uses one content column for fallback contact copy and sparse closing bands without inventing forms",async()=>{
+    for(const fallback of [true,false]){
+      const b=fixtureBlueprint("trades","split");b.presentation={version:1,fontTheme:"studio",heroEmphasis:null,logoAssetId:null,pageImages:[],sectionImages:[]};
+      if(fallback)b.contact={phone:"+16785550101",email:"team@example.test",address:null};
+      else b.pages[0].sections.push({id:"next-step",kind:"contact",layout:"split",eyebrow:"An open conversation",title:"A good starting point.",body:"Bring your questions when the business shares its preferred contact details.",items:[]});
+      const {files}=renderPortableSite(portableBundle(b),assets),context=await browser.newContext({viewport:{width:1440,height:900}});
+      try{
+        await serve(context,files);const page=await context.newPage();await page.goto("https://contact-layout.test/index.html");
+        const closing=page.locator(".contact-closing.contact-copy-only");expect(await closing.count()).toBe(1);
+        expect(await page.locator("main .section-contact").count()).toBe(1);expect(await page.locator("main form").count()).toBe(0);
+        expect(await closing.locator(".section-inner").evaluate(element=>getComputedStyle(element).display)).toBe("block");
+        expect(await closing.locator('a[href^="tel:"]').count()).toBe(fallback?1:0);expect(await closing.locator('a[href^="mailto:"]').count()).toBe(fallback?1:0);
+        expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2)).toBe(false);
+      }finally{await context.close();}
+      delete b.presentation;
+      expect(Buffer.from(renderPortableSite(portableBundle(b),assets).files["index.html"]).toString()).not.toContain("contact-closing");
+    }
+  },30000);
+
+  it("preserves explicit section imagery and legacy layouts around inquiry sections",()=>{
+    const b=closingAndCoverageFixture();
+    b.presentation!.sectionImages=[{pagePath:"index.html",sectionId:"next-step",assetId:"hero",itemIndex:null},{pagePath:"areas/index.html",sectionId:"area-context",assetId:"hero",itemIndex:null},{pagePath:"areas/index.html",sectionId:"coverage-inquiry",assetId:"hero",itemIndex:null}];
+    b.presentation!.pageImages=[{pagePath:"areas/index.html",assetId:"hero"}];
+    const {files}=renderPortableSite(portableBundle(b),assets),home=Buffer.from(files["index.html"]).toString(),areas=Buffer.from(files["areas/index.html"]).toString();
+    expect(home).not.toContain("contact-closing");expect(areas).not.toContain("inquiry-context");expect(areas).not.toContain("compact-inquiry");expect(areas).toContain('class="hero-image"');
+    delete b.presentation;
+    const legacy=renderPortableSite(portableBundle(b),assets).files;
+    expect(Buffer.from(legacy["index.html"]).toString()).not.toContain("contact-closing");expect(Buffer.from(legacy["areas/index.html"]).toString()).not.toContain("compact-inquiry");
   });
 });

@@ -42,11 +42,12 @@ function heroHeadline(text:string,emphasis:string|null|undefined){
 }
 type ImageMarkup=(assetId:string,lazy?:boolean)=>string;
 
+function isContactPage(page:SiteBlueprint["pages"][number]){return /^contact(?: us)?$/i.test(page.title)||/^contact(?:-us)?\//i.test(page.path);}
 /** Two adjacent Contact sections are one task: choose a channel or use the
  * inquiry form. Preserve section identities, copy, tones and keyboard order;
  * explicit imagery and more complex form arrangements keep their own layout. */
 function hasContactComposition(b:SiteBlueprint,page:SiteBlueprint["pages"][number]){
-  if(!b.presentation||!(/^contact(?: us)?$/i.test(page.title)||/^contact(?:-us)?\//i.test(page.path)))return false;
+  if(!b.presentation||!isContactPage(page))return false;
   const [channels,inquiry]=page.sections,forms=b.interactions?.forms.filter(form=>form.pagePath===page.path)||[];
   return channels?.kind==="contact"&&inquiry?.kind==="contact"&&forms.length===1&&forms[0].sectionId===inquiry.id
     &&!b.presentation.sectionImages.some(image=>image.pagePath===page.path&&[channels.id,inquiry.id].includes(image.sectionId));
@@ -83,7 +84,7 @@ function sectionMarkup(section:SiteBlueprint["pages"][number]["sections"][number
   // Remove only obvious list numbering; preserve service names such as
   // "24-Hour Support" and "3-Step Planning" whose numbers carry meaning.
   const itemTitle=(title:string)=>blueprint.presentation?title.replace(/^\s*0?[1-9](?:\s+[—–:-]\s+|\.\s+)/,""):title;
-  let content="";
+  let content="",hasContactDetails=false;
   if(section.kind==="faq")content=`<div class="faq-list">${section.items.map(item=>`<details><summary>${escape(item.title)}<span aria-hidden="true">+</span></summary><p>${escape(item.body)}</p></details>`).join("")}</div>`;
   else if(section.kind==="contact"){
     const form=blueprint.interactions?.forms.find(f=>f.pagePath===pagePath&&f.sectionId===section.id);
@@ -95,7 +96,9 @@ function sectionMarkup(section:SiteBlueprint["pages"][number]["sections"][number
       const destination=action?siteActionTarget(action.label,blueprint,blueprint.pages.find(p=>p.path===pagePath)!,`${relativeSiteLink(pagePath,action.targetPage)}${action.targetSection?`#${action.targetSection}`:""}`,true):"";
       return `<div class="contact-item"><h3>${escape(item.title)}</h3><p>${escape(item.body)}</p>${action?`<a class="text-link" href="${escape(destination)}">${escape(action.label)} <span aria-hidden="true">↗</span></a>`:""}</div>`;
     }).join("");
-    content=`<div class="contact-details">${sectionContactMarkup(blueprint,pagePath,section.id)}${items}${!form&&!actions.length&&contactPage?`<a href="${escape(relativeSiteLink(pagePath,contactPage.pagePath))}#${escape(contactPage.sectionId)}">${blueprint.presentation?"Preview inquiry":"Start an inquiry"} <span aria-hidden="true">↗</span></a>`:""}</div>${form?configuredDemoForm(form):blueprint.interactions?"":demoForm()}`;
+    const details=`${sectionContactMarkup(blueprint,pagePath,section.id)}${items}${!form&&!actions.length&&contactPage?`<a href="${escape(relativeSiteLink(pagePath,contactPage.pagePath))}#${escape(contactPage.sectionId)}">${blueprint.presentation?"Preview inquiry":"Start an inquiry"} <span aria-hidden="true">↗</span></a>`:""}`;
+    hasContactDetails=Boolean(details);
+    content=`<div class="contact-details">${details}</div>${form?configuredDemoForm(form):blueprint.interactions?"":demoForm()}`;
   }
   else {
     const sectionActions=blueprint.interactions?.actions.filter(action=>action.pagePath===pagePath&&action.sectionId===section.id)||[];
@@ -121,7 +124,13 @@ function sectionMarkup(section:SiteBlueprint["pages"][number]["sections"][number
   const tone=blueprint.design?.sectionStyles.find(s=>s.pagePath===pagePath&&s.sectionId===section.id)?.tone;
   const copyOnly=!section.items.length&&section.kind!=="contact"&&!illustration;
   const hasForm=section.kind==="contact"&&blueprint.interactions?.forms.some(form=>form.pagePath===pagePath&&form.sectionId===section.id);
-  return `<section id="${escape(section.id)}" class="site-section section-${section.kind} layout-${section.layout} section-order-${index%2}${tone?` tone-${tone}`:""}${copyOnly?" is-copy-only":""}${sectionImage?" has-section-image":""}${hasForm?" with-demo-form":""}" aria-labelledby="${escape(section.id)}-heading"><div class="section-inner">${heading.replace("<h2>",`<h2 id="${escape(section.id)}-heading">`)}${illustration}${content}</div></section>`;
+  const page=blueprint.pages.find(page=>page.path===pagePath)!;
+  // A final direct-contact band has no form to fill its second grid column.
+  // Use that column for its existing channels/actions; keep all copy intact.
+  const contactClosing=blueprint.presentation&&blueprint.interactions&&!isContactPage(page)&&section.kind==="contact"&&!hasForm&&!sectionImage&&index===page.sections.length-1;
+  const compactInquiry=blueprint.presentation&&!isContactPage(page)&&hasForm&&!sectionImage;
+  const inquiryContext=blueprint.presentation&&pagePath!=="index.html"&&!isContactPage(page)&&copyOnly&&!sectionImage&&blueprint.interactions?.forms.some(form=>form.pagePath===pagePath&&form.sectionId===page.sections[index+1]?.id);
+  return `<section id="${escape(section.id)}" class="site-section section-${section.kind} layout-${section.layout} section-order-${index%2}${tone?` tone-${tone}`:""}${copyOnly?" is-copy-only":""}${sectionImage?" has-section-image":""}${hasForm?" with-demo-form":""}${contactClosing?` contact-closing${hasContactDetails?"":" contact-copy-only"}`:""}${compactInquiry?" compact-inquiry":""}${inquiryContext?" inquiry-context":""}" aria-labelledby="${escape(section.id)}-heading"><div class="section-inner">${heading.replace("<h2>",`<h2 id="${escape(section.id)}-heading">`)}${illustration}${content}</div></section>`;
 }
 
 export function renderPortableSite(bundle:PortableSiteBundle,assets:Record<string,Uint8Array>) {
@@ -171,7 +180,7 @@ export function renderPortableSite(bundle:PortableSiteBundle,assets:Record<strin
     const sections=contactComposition?`<div class="contact-composition">${renderedSections.slice(0,2).join("")}</div>${renderedSections.slice(2).join("")}`:renderedSections.join("");
     const heroIndex=compactIntro?"":`<div class="hero-index" aria-hidden="true"><span>${escape(b.tagline||family.name)}</span><span>01 — ${String(b.pages.length).padStart(2,"0")}</span></div>`;
     const brandContents=b.presentation?.logoAssetId?`<span class="brand-logo">${imageMarkup(b.presentation.logoAssetId)}</span>`:b.presentation?`<span class="brand-wordmark">${escape(b.brandName)}</span>`:`<span class="brand-symbol" aria-hidden="true">${escape(b.brandName.charAt(0))}</span><span>${escape(b.brandName)}</span>`;
-    const closing=contactSection?"":`<section id="contact" class="site-section section-contact layout-split"><div class="section-inner"><div class="section-heading"><p class="eyebrow">Let's talk</p><h2>A good place to start.</h2><p class="section-copy">Tell us what you have in mind, and take the next step.</p><div class="contact-details">${contactMarkup(b)}</div></div>${b.interactions?"":demoForm()}</div></section>`;
+    const closing=contactSection?"":`<section id="contact" class="site-section section-contact layout-split${b.presentation&&b.interactions?" contact-closing contact-copy-only":""}"><div class="section-inner"><div class="section-heading"><p class="eyebrow">Let's talk</p><h2>A good place to start.</h2><p class="section-copy">Tell us what you have in mind, and take the next step.</p><div class="contact-details">${contactMarkup(b)}</div></div>${b.interactions?"":demoForm()}</div></section>`;
     files[page.path]=encoder.encode(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta http-equiv="Content-Security-Policy" content="${escape(siteCsp)}"><meta name="description" content="${escape(page.description)}"><meta name="color-scheme" content="${(b.design?colorLuminance(b.design.palette.background)<.179:b.family==="hospitality")?"dark":"light"}"><title>${escape(page.title)} | ${escape(b.brandName)}</title><link rel="stylesheet" href="${escape(local("assets/site.css"))}"><script src="${escape(local("assets/runtime.js"))}" defer></script></head><body data-page="${page.path}" class="${b.design?"design-v1 ":""}${b.presentation?`presentation-v1 font-${b.presentation.fontTheme} `:""}family-${b.family} composition-${b.composition} ${page.path==="index.html"?"page-home":"page-inner"}${compactIntro?" compact-intro":""}${focusedContact?" focused-contact":""}"><a class="skip-link" href="#page-content">Skip to content</a><div class="preview-notice" role="note">Website concept <span>·</span> Forms are demonstrations</div><header class="site-header"><a class="brand" href="${escape(local("index.html"))}" aria-label="${escape(b.brandName)} home">${brandContents}</a><button type="button" class="menu-toggle" data-menu-toggle aria-controls="site-menu" aria-expanded="false">Menu <span aria-hidden="true">☰</span></button><nav id="site-menu" aria-label="Primary navigation">${nav}<a class="nav-contact" href="${escape(contactTarget)}">Get in touch <span aria-hidden="true">↗</span></a></nav></header><main id="page-content"><section class="site-hero"><div class="hero-inner${heroAssetId?"":" hero-text-only"}">${heroCopy}${heroImage}</div>${heroNote}${heroIndex}</section>${b.presentation?mobileContact:""}${sections}${closing}</main><footer class="site-footer"><div><a class="footer-brand${b.presentation?.logoAssetId?" has-logo":""}" href="${escape(local("index.html"))}" aria-label="${escape(b.brandName)} home">${b.presentation?.logoAssetId?brandContents:escape(b.brandName)}</a><p>${escape(b.tagline)}</p></div><nav class="footer-navigation" aria-label="Footer navigation">${nav}</nav><p>Website concept by Tailored Agents.<br>Business details and integrations are reviewed before launch.</p></footer>${b.presentation?"":mobileContact}</body></html>`);
   }
   files["robots.txt"]=encoder.encode("User-agent: *\nDisallow: /\n");
