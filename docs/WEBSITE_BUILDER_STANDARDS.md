@@ -39,3 +39,5 @@ The planner performs a final consistency check within its existing request and i
 OpenAI's [prompt-engineering guidance](https://developers.openai.com/api/docs/guides/prompt-engineering#version-prompts-in-code) supports keeping production prompts in code, testing representative cases and deploying changes through the application's normal release process. Synthetic request tests verify integration, not the quality of a future generated website.
 
 Initial verification: **71 focused tests across six files passed**, covering planning/provider boundaries, generation, visual review, form/actions, presentation and palette behavior. Lint, TypeScript and production build passed. Independent review found no blocking contract mismatch. No paid generation or modification of a saved client plan was used for this release.
+
+Release **`390175760410f3b0082ebac9eee946856817e8a8`** was verified live on both the CRM (planner) and website-builder services in Render. The public CRM health endpoint returned HTTP 200. Actual design-quality calibration on human-approved generated sites remains ongoing.
