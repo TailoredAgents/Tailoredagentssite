@@ -97,6 +97,26 @@ export async function saveFactoryBuildProgress(input:{versionId:string;leaseToke
   jsonSize(input.workingData,2000000);
   return buildTransaction(async db=>{const row=await activeBuild(db,input.versionId,input.leaseToken);if(!row||row.stage!==input.stage)return false;await db.query("UPDATE factory_build_versions SET working_data=$3::jsonb,updated_at=now() WHERE id=$1 AND lease_token=$2",[input.versionId,input.leaseToken,JSON.stringify(preserveBuildInputs(row.working_data,input.workingData))]);return true;});
 }
+/** Undo only a known pre-request intent, including when an owner just paused
+ * building. Unlike progress saving, this cannot advance, publish, re-enable or
+ * replace working data. The exact current value and live lease must still match.
+ */
+export async function rollbackFactoryBuildAttempt(input:{versionId:string;leaseToken:string;stage:FactoryBuildStage;kind:"review"|"repair";expectedValue:number|boolean;previousValue?:number|boolean}){
+  if(input.stage!=="qa"||!["review","repair"].includes(input.kind))throw new FactoryInputError("Only a website QA attempt can be restored.");
+  if(input.kind==="review"){
+    const previous=input.previousValue===undefined?0:input.previousValue;
+    if(typeof previous!=="number"||!Number.isInteger(previous)||previous<0||previous>1||input.expectedValue!==previous+1)throw new FactoryInputError("Invalid review attempt restoration.");
+  }else if(input.expectedValue!==true||(input.previousValue!==undefined&&input.previousValue!==false))throw new FactoryInputError("Invalid repair attempt restoration.");
+  const field=input.kind==="review"?"reviewAttempts":"repaired";
+  return buildTransaction(async db=>{
+    const row=await lockedVersion(db,input.versionId);
+    if(row.status!=="running"||row.lease_token!==input.leaseToken||row.stage!==input.stage||new Date(row.lease_until).getTime()<=Date.now()||row.working_data[field]!==input.expectedValue)return false;
+    const available=await db.query(`SELECT 1 FROM factory_projects p JOIN workspaces w ON w.id=p.workspace_id JOIN leads l ON l.id=p.lead_id AND l.workspace_id=p.workspace_id WHERE p.id=$1 AND p.workspace_id=$2 AND w.status='active' AND l.anonymized_at IS NULL`,[row.project_id,row.workspace_id]);
+    if(!available.rowCount)return false;
+    const updated=await db.query(`UPDATE factory_build_versions SET working_data=CASE WHEN $6::jsonb IS NULL THEN working_data-$4::text ELSE jsonb_set(working_data,ARRAY[$4::text],$6::jsonb,true) END,updated_at=now() WHERE id=$1 AND lease_token=$2 AND stage=$3 AND status='running' AND lease_until>now() AND working_data->$4::text=$5::jsonb`,[input.versionId,input.leaseToken,input.stage,field,JSON.stringify(input.expectedValue),input.previousValue===undefined?null:JSON.stringify(input.previousValue)]);
+    return Boolean(updated.rowCount);
+  });
+}
 export async function finishFactoryBuild(input:FactoryBuildFinish){
   return buildTransaction(async db=>{
     const row=await activeBuild(db,input.versionId,input.leaseToken);if(!row||row.stage!=="verify")return false;

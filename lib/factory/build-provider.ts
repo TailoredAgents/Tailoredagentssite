@@ -2,14 +2,24 @@ import "server-only";
 import {randomUUID} from "node:crypto";
 import {z} from "zod";
 import type {FactoryClaimedBuild} from "./build-types";
-import {reserveFactoryBuildCost,attemptFactoryBuildCost,settleFactoryBuildCost,uncertainFactoryBuildCost} from "./build-budget";
+import {FactoryBuildBudgetError,reserveFactoryBuildCost,attemptFactoryBuildCost,settleFactoryBuildCost,uncertainFactoryBuildCost} from "./build-budget";
 import {siteUsage} from "./site/provider";
 import type {SiteModelExecutor} from "./site/types";
 import {normalizeFactoryImage} from "./build-images";
 
 export const buildImagePolicy={model:"gpt-image-2.5-flare",size:"1536x1024",quality:"medium",reservationMicros:2_000_000,pricing:"2026-10-26"} as const;
-async function providerJson(path:"responses"|"images/generations",body:unknown,maximum:number){
-  const key=(process.env.FACTORY_OPENAI_API_KEY||process.env.OPENAI_API_KEY||"").trim();if(!key)throw new Error("Website AI is not configured.");
+/** Only a known failure before the HTTP boundary can restore a bounded worker
+ * attempt. Settlement failures and ambiguous requests must never use this type.
+ */
+export class FactoryBuildRequestNotAttemptedError extends FactoryBuildBudgetError {
+  constructor(message:string){super(message);this.name="FactoryBuildRequestNotAttemptedError";}
+}
+function providerKey(){
+  const key=(process.env.FACTORY_OPENAI_API_KEY||process.env.OPENAI_API_KEY||"").trim();
+  if(!key)throw new FactoryBuildRequestNotAttemptedError("Website AI is not configured.");
+  return key;
+}
+async function providerJson(path:"responses"|"images/generations",body:unknown,maximum:number,key=providerKey()){
   const response=await fetch(`https://api.openai.com/v1/${path}`,{method:"POST",headers:{authorization:`Bearer ${key}`,"content-type":"application/json"},body:JSON.stringify(body),redirect:"error",cache:"no-store",signal:AbortSignal.timeout(240000)});
   if(!response.ok||!response.body){await response.body?.cancel();throw new Error("The website provider did not confirm a completed request.");}
   const reader=response.body.getReader(),parts:Uint8Array[]=[];let size=0;
@@ -18,10 +28,16 @@ async function providerJson(path:"responses"|"images/generations",body:unknown,m
 }
 export function factorySiteExecutor(build:FactoryClaimedBuild):SiteModelExecutor {
   return async request=>{
-    const cost=await reserveFactoryBuildCost({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,requestKey:`${request.stage}:${randomUUID()}`,reservedMicros:request.reservedMicros});
+    // Capture configuration before reserving or recording an attempt. Keeping
+    // this key avoids a second configuration check after the attempt is stored.
+    const key=providerKey();
+    let cost:string;
+    try{cost=await reserveFactoryBuildCost({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,requestKey:`${request.stage}:${randomUUID()}`,reservedMicros:request.reservedMicros});}
+    catch(error){if(error instanceof FactoryBuildBudgetError)throw new FactoryBuildRequestNotAttemptedError(error.message);throw error;}
     try{
-      await attemptFactoryBuildCost(cost,build.leaseToken);
-      const raw=await providerJson("responses",request.body,1_000_000),usage=siteUsage(raw);
+      try{await attemptFactoryBuildCost(cost,build.leaseToken);}
+      catch(error){if(error instanceof FactoryBuildBudgetError)throw new FactoryBuildRequestNotAttemptedError(error.message);throw error;}
+      const raw=await providerJson("responses",request.body,1_000_000,key),usage=siteUsage(raw);
       await settleFactoryBuildCost(cost,{actualMicros:usage.estimatedMicros,providerId:usage.providerId,usage:{...usage,model:request.model}});
       return raw;
     }catch(error){await uncertainFactoryBuildCost(cost);throw error;}

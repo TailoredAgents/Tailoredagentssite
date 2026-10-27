@@ -6,9 +6,10 @@ import {afterAll,beforeAll,beforeEach,describe,expect,it,vi} from "vitest";
 import type {DashboardContext} from "@/lib/dashboard/data";
 import {getDatabasePool} from "@/lib/dashboard/db";
 import {approveFactoryPlan,startFactory} from "./service";
-import {claimFactoryBuild,saveFactoryBuildStage,finishFactoryBuild,saveFactoryBuildSettings,failFactoryBuild,retryFactoryBuild,revokeFactoryPreview,restoreFactoryPreview,recoverFactoryBuilds,registerFactoryUpload,completeFactoryUpload,deleteFactoryUpload,claimFactoryStorageCleanup,finishFactoryStorageCleanup,queueApprovedFactoryBuild} from "./build-service";
+import {claimFactoryBuild,saveFactoryBuildStage,finishFactoryBuild,saveFactoryBuildSettings,failFactoryBuild,retryFactoryBuild,revokeFactoryPreview,restoreFactoryPreview,recoverFactoryBuilds,registerFactoryUpload,completeFactoryUpload,deleteFactoryUpload,claimFactoryStorageCleanup,finishFactoryStorageCleanup,queueApprovedFactoryBuild,rollbackFactoryBuildAttempt} from "./build-service";
 import {getFactoryProjectBuilds,getFactoryPreviewResolution,getFactorySourceDownload,getFactoryScreenshotDownload,getFactoryUploadDownload} from "./build-data";
-import {reserveFactoryBuildCost,attemptFactoryBuildCost,settleFactoryBuildCost,uncertainFactoryBuildCost} from "./build-budget";
+import {FactoryBuildBudgetError,reserveFactoryBuildCost,attemptFactoryBuildCost,settleFactoryBuildCost,uncertainFactoryBuildCost} from "./build-budget";
+import {FactoryBuildRequestNotAttemptedError} from "./build-provider";
 import type {FactoryClaimedBuild,FactoryBuildQa,FactoryBuildManifest} from "./build-types";
 import type {FactoryPlanContent} from "./types";
 import {fixtureBlueprint} from "./site/fixtures";
@@ -49,9 +50,19 @@ function finish(job:FactoryClaimedBuild){return finishFactoryBuild({versionId:jo
 async function fixtureRuntime(){
   const objects=new Map<string,Uint8Array>(),image=new Uint8Array(await sharp({create:{width:1200,height:800,channels:3,background:"#456078"}}).png().toBuffer());
   const runtime:FactoryBuildRuntime={storage:{async put(key,bytes){objects.set(key,Uint8Array.from(bytes));},async get(key){const value=objects.get(key);if(!value)throw Error("Fixture object missing");return value;},async deletePrefix(prefix){for(const key of objects.keys())if(key.startsWith(prefix))objects.delete(key);}},
-    execute:build=>async request=>{const id=await reserveFactoryBuildCost({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,requestKey:`fixture-${randomUUID()}`,reservedMicros:request.reservedMicros});await attemptFactoryBuildCost(id,build.leaseToken);await settleFactoryBuildCost(id,{actualMicros:100000,providerId:"synthetic-model"});return {id:"synthetic-model",status:"completed",usage:{input_tokens:1000,output_tokens:2000},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(blueprint)}]}]};},
+    execute:build=>async request=>{
+      let id:string;
+      try{id=await reserveFactoryBuildCost({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,requestKey:`fixture-${randomUUID()}`,reservedMicros:request.reservedMicros});}
+      catch(error){if(error instanceof FactoryBuildBudgetError)throw new FactoryBuildRequestNotAttemptedError(error.message);throw error;}
+      try{
+        try{await attemptFactoryBuildCost(id,build.leaseToken);}
+        catch(error){if(error instanceof FactoryBuildBudgetError)throw new FactoryBuildRequestNotAttemptedError(error.message);throw error;}
+        await settleFactoryBuildCost(id,{actualMicros:100000,providerId:"synthetic-model"});
+        return {id:"synthetic-model",status:"completed",usage:{input_tokens:1000,output_tokens:2000},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(request.stage==="review"?{verdict:"pass",summary:"The synthetic design follows the approved direction.",issues:[]}:blueprint)}]}]};
+      }catch(error){await uncertainFactoryBuildCost(id);throw error;}
+    },
     async hero(build){const id=await reserveFactoryBuildCost({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,requestKey:"fixture-image",reservedMicros:2000000});await attemptFactoryBuildCost(id,build.leaseToken);await settleFactoryBuildCost(id,{actualMicros:130000,providerId:"synthetic-image"});return {bytes:image,provenance:{kind:"generated",model:"synthetic-fixture"}};},
-    async qa(files){expect(files["index.html"]).toBeTruthy();expect(files["services/index.html"]).toBeTruthy();return {passed:true,issues:[],checkedAt:new Date().toISOString(),screenshots:[{page:"index.html",viewport:"desktop",bytes:image},{page:"index.html",viewport:"mobile",bytes:image}]};},
+    async qa(files){expect(files["index.html"]).toBeTruthy();expect(files["services/index.html"]).toBeTruthy();return {passed:true,issues:[],checkedAt:new Date().toISOString(),screenshots:Object.keys(files).filter(p=>p.endsWith(".html")).flatMap(page=>(["desktop","mobile"] as const).map(viewport=>({page,viewport,bytes:image})))};},
     async verify(build,siteManifest){const resolution=await getFactoryPreviewResolution(build.previewToken,{verification:true});expect(resolution?.ready).toBe(false);for(const file of siteManifest.files)expect(objects.get(`${build.storagePrefix}preview/${file.path}`)?.byteLength).toBe(file.size);return {url:`https://previews.example.test/p/${build.previewToken}/`,status:200,checkedAt:new Date().toISOString()};}
   };return {runtime,objects};
 }
@@ -156,14 +167,211 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     const project=await prepared();await enable();const {runtime,objects}=await fixtureRuntime();
     for(const stage of ["generate","images","qa","publish","verify"]){const result=await runFactoryBuildWorkerStep(runtime);expect(result).toMatchObject({status:"processed",stage});}
     const result=(await getFactoryProjectBuilds(member,project.projectId))!;expect(result.versions[0]).toMatchObject({status:"ready",sourceReady:true});expect(result.versions[0].previewUrl).toContain("/preview/");
-    const source=await getFactorySourceDownload(member,result.versions[0].id),archive=unzipStored(objects.get(source.storageKey)!);expect(archive.has("build.mjs")).toBe(true);expect(archive.has("render.yaml")).toBe(true);expect(archive.has("package-lock.json")).toBe(true);expect(archive.has("site/services/index.html")).toBe(true);expect(archive.has("site/assets/images/hero.png")).toBe(true);
+    const source=await getFactorySourceDownload(member,result.versions[0].id),archive=unzipStored(objects.get(source.storageKey)!);expect(archive.has("build.mjs")).toBe(true);expect(archive.has("render.yaml")).toBe(true);expect(archive.has("package-lock.json")).toBe(true);expect(archive.has("site/services/index.html")).toBe(true);expect(archive.has("site/assets/images/hero.png")).toBe(false);expect(archive.has("site/assets/images/hero-mobile.webp")).toBe(true);expect(archive.has("site/assets/images/hero-desktop.webp")).toBe(true);expect(result.versions[0].qaReport?.designReview?.reviewedPages).toEqual(["index.html","services/index.html"]);expect(result.versions[0].qaReport?.pageScreenshots).toHaveLength(4);
     const prefix=source.storageKey.slice(0,-"source.zip".length);for(const [name,bytes]of archive)if(name.startsWith("site/"))expect(bytes).toEqual(Buffer.from(objects.get(`${prefix}preview/${name.slice(5)}`)!));
-    expect(result.monthSpentMicros).toBe(230000);expect((await pool.query("SELECT count(*)::int n FROM factory_build_costs WHERE status='settled'")).rows[0].n).toBe(2);
+    expect(result.monthSpentMicros).toBe(330000);expect((await pool.query("SELECT count(*)::int n FROM factory_build_costs WHERE status='settled'")).rows[0].n).toBe(3);
   });
   it("keeps failed verification private and preserves artifacts for an explicit retry",async()=>{
     const project=await prepared();await enable();const {runtime,objects}=await fixtureRuntime();for(let step=0;step<4;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
     runtime.verify=async()=>{throw Error("Unreachable hosted preview");};expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");const row=(await pool.query("SELECT id,preview_token,source_key FROM factory_build_versions WHERE project_id=$1",[project.projectId])).rows[0];
     expect(objects.has(row.source_key)).toBe(true);expect(await getFactoryPreviewResolution(row.preview_token)).toBeNull();await expect(getFactorySourceDownload(member,row.id)).rejects.toThrow("not available");
+  });
+  it("repairs a visual defect once, reviews the changed version and retains the complete report",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute;
+    let reviews=0,repairs=0;
+    runtime.execute=build=>async request=>{
+      const response=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};
+      if(request.stage==="review"){
+        reviews++;
+        response.output[0].content[0].text=JSON.stringify(reviews===1?{verdict:"revise",summary:"The heading needs a clearer subject.",issues:[{page:"index.html",category:"content",severity:"error",message:"Make the homepage heading describe the proposed service."}]}:{verdict:"pass",summary:"The revised direction is clear.",issues:[]});
+      }
+      if(request.stage==="repair"){repairs++;const changed=structuredClone(blueprint);changed.pages[0].hero.headline="Explore a practical service concept";response.output[0].content[0].text=JSON.stringify(changed);}
+      return response;
+    };
+    for(let step=0;step<5;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];
+    expect(version.status).toBe("ready");expect(reviews).toBe(2);expect(repairs).toBe(1);
+    expect(version.qaReport?.designReview?.summary).toBe("The revised direction is clear.");
+    expect(version.qaReport?.delivery?.pages.every(p=>p.mobileBytes<800000)).toBe(true);
+  });
+  it("keeps a failed visual review private without starting a third review or second repair",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute;
+    let reviews=0,repairs=0;
+    runtime.execute=build=>async request=>{
+      const response=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};
+      if(request.stage==="review"){reviews++;response.output[0].content[0].text=JSON.stringify({verdict:"revise",summary:"A material copy issue remains.",issues:[{page:"index.html",category:"content",severity:"error",message:"Replace unsupported business claims with proposed service explanations."}]});}
+      if(request.stage==="repair"){repairs++;const changed=structuredClone(blueprint);changed.pages[0].hero.headline="Explore the proposed direction";response.output[0].content[0].text=JSON.stringify(changed);}
+      return response;
+    };
+    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
+    const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];
+    expect(version.error).toContain("another revision");expect(reviews).toBe(2);expect(repairs).toBe(1);
+    const row=(await pool.query("SELECT preview_token FROM factory_build_versions WHERE id=$1",[version.id])).rows[0];
+    expect(await getFactoryPreviewResolution(row.preview_token)).toBeNull();
+    await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");expect(reviews).toBe(2);expect(repairs).toBe(1);
+  });
+  it("reuses a completed visual review after a storage interruption instead of charging again",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute,put=runtime.storage.put;
+    let reviews=0,interrupt=true;
+    runtime.execute=build=>async request=>{if(request.stage==="review")reviews++;return execute(build)(request);};
+    runtime.storage.put=async(key,...args)=>{if(interrupt&&key.endsWith("screenshots/desktop.png")){interrupt=false;throw Error("Synthetic storage interruption");}return put(key,...args);};
+    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");expect(reviews).toBe(1);
+    const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];
+    await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});
+    for(let step=0;step<3;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect(reviews).toBe(1);expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].status).toBe("ready");
+  });
+  it("reserves visual review within the original per-site cap before any review provider call",async()=>{
+    await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute;
+    let reviewResponses=0;
+    runtime.execute=build=>async request=>{const response=await execute(build)(request);if(request.stage==="review")reviewResponses++;return response;};
+    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    await enable(50,1);
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");expect(reviewResponses).toBe(0);
+    expect((await pool.query("SELECT count(*)::int n FROM factory_build_costs WHERE status='settled'")).rows[0].n).toBe(2);
+  });
+  it("does not consume visual review slots after two denied budgets and resumes when the allowance is restored",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute;
+    let reviews=0;
+    runtime.execute=build=>async request=>{const response=await execute(build)(request);if(request.stage==="review")reviews++;return response;};
+    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];
+    await enable(50,1);
+    for(let denial=0;denial<2;denial++){
+      if(denial)await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});
+      expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
+      const state=(await pool.query("SELECT working_data FROM factory_build_versions WHERE id=$1",[version.id])).rows[0].working_data;
+      expect(state.reviewAttempts).toBeUndefined();expect(state.repaired).toBeUndefined();expect(reviews).toBe(0);
+      expect((await pool.query("SELECT count(*)::int n FROM factory_build_costs WHERE status='settled'")).rows[0].n).toBe(2);
+    }
+    await enable();await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});
+    for(let step=0;step<3;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect(reviews).toBe(1);expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].status).toBe("ready");
+  });
+  it("preserves the repair slot after a known preflight denial and reuses the completed first review",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute;
+    let reviews=0,repairs=0,denyRepair=true;
+    runtime.execute=build=>async request=>{
+      if(request.stage==="repair"&&denyRepair){denyRepair=false;throw new FactoryBuildRequestNotAttemptedError("Synthetic pre-request allowance denial.");}
+      const response=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};
+      if(request.stage==="review"){
+        reviews++;response.output[0].content[0].text=JSON.stringify(reviews===1?{verdict:"revise",summary:"The heading needs a clear subject.",issues:[{page:"index.html",category:"content",severity:"error",message:"Describe the proposed service in the main heading."}]}:{verdict:"pass",summary:"The revised service direction is clear.",issues:[]});
+      }
+      if(request.stage==="repair"){repairs++;const changed=structuredClone(blueprint);changed.pages[0].hero.headline="Explore this proposed service direction";response.output[0].content[0].text=JSON.stringify(changed);}
+      return response;
+    };
+    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
+    const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];
+    const state=(await pool.query("SELECT working_data FROM factory_build_versions WHERE id=$1",[version.id])).rows[0].working_data;
+    expect(state.reviewAttempts).toBe(1);expect(state.review.result.issues).toHaveLength(1);expect(state.repaired).toBeUndefined();expect(reviews).toBe(1);expect(repairs).toBe(0);
+    await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});
+    for(let step=0;step<3;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect(reviews).toBe(2);expect(repairs).toBe(1);expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].status).toBe("ready");
+    expect((await pool.query("SELECT count(*)::int n FROM factory_build_costs WHERE stage='qa' AND status='settled'")).rows[0].n).toBe(3);
+  });
+  it("does not consume a review slot when screenshot preprocessing fails before invoking the executor",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute,inspect=runtime.qa;
+    let reviews=0;
+    runtime.execute=build=>async request=>{if(request.stage==="review")reviews++;return execute(build)(request);};
+    runtime.qa=async files=>{const result=await inspect(files);return {...result,screenshots:result.screenshots.filter(shot=>shot.page!=="services/index.html"||shot.viewport!=="mobile")};};
+    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
+    const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];
+    const state=(await pool.query("SELECT working_data FROM factory_build_versions WHERE id=$1",[version.id])).rows[0].working_data;
+    expect(state.reviewAttempts).toBeUndefined();expect(reviews).toBe(0);
+    runtime.qa=inspect;await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});
+    for(let step=0;step<3;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect(reviews).toBe(1);expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].status).toBe("ready");
+  });
+  it("restores a denied repair while building is paused, then completes after an explicit re-enable and retry",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute;
+    let reviews=0,repairs=0,pauseRepair=true;
+    runtime.execute=build=>async request=>{
+      if(request.stage==="repair"&&pauseRepair){pauseRepair=false;await saveFactoryBuildSettings(owner,{enabled:false,monthlyBudgetDollars:50,perBuildBudgetDollars:5});}
+      const response=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};
+      if(request.stage==="review"){
+        reviews++;response.output[0].content[0].text=JSON.stringify(reviews===1?{verdict:"revise",summary:"Make the main heading clearer.",issues:[{page:"index.html",category:"content",severity:"error",message:"Explain the proposed service in the homepage heading."}]}:{verdict:"pass",summary:"The revised heading is clear.",issues:[]});
+      }
+      if(request.stage==="repair"){repairs++;const changed=structuredClone(blueprint);changed.pages[0].hero.headline="A proposed service with a clear direction";response.output[0].content[0].text=JSON.stringify(changed);}
+      return response;
+    };
+    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
+    const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];
+    const row=(await pool.query("SELECT stage,status,working_data FROM factory_build_versions WHERE id=$1",[version.id])).rows[0];
+    expect(row).toMatchObject({stage:"qa",status:"failed"});expect(row.working_data.repaired).toBeUndefined();expect(row.working_data.reviewAttempts).toBe(1);
+    expect((await pool.query("SELECT enabled FROM factory_build_settings WHERE workspace_id=$1",[ws])).rows[0].enabled).toBe(false);
+    expect(reviews).toBe(1);expect(repairs).toBe(0);expect(await claimFactoryBuild()).toBeNull();
+    await enable();await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});
+    for(let step=0;step<3;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect(reviews).toBe(2);expect(repairs).toBe(1);expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].status).toBe("ready");
+  });
+  it("allows only an exact leased counter rollback while paused and preserves every unrelated field",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime();
+    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    const job=(await claimFactoryBuild())!;
+    await pool.query("UPDATE factory_build_versions SET working_data=working_data||$2::jsonb WHERE id=$1",[job.id,JSON.stringify({reviewAttempts:2,repaired:true,unrelated:{keep:"unchanged"}})]);
+    const before=(await pool.query("SELECT working_data FROM factory_build_versions WHERE id=$1",[job.id])).rows[0].working_data;
+    await saveFactoryBuildSettings(owner,{enabled:false,monthlyBudgetDollars:50,perBuildBudgetDollars:5});
+    const restore={versionId:job.id,leaseToken:job.leaseToken,stage:"qa" as const,kind:"review" as const,expectedValue:2,previousValue:1};
+    expect(await rollbackFactoryBuildAttempt({...restore,leaseToken:randomUUID()})).toBe(false);
+    expect(await rollbackFactoryBuildAttempt({...restore,expectedValue:1,previousValue:0})).toBe(false);
+    await expect(rollbackFactoryBuildAttempt({...restore,previousValue:0})).rejects.toThrow("Invalid review");
+    await expect(rollbackFactoryBuildAttempt({...restore,stage:"publish"})).rejects.toThrow("Only a website QA");
+    expect(await rollbackFactoryBuildAttempt(restore)).toBe(true);
+    const after=(await pool.query("SELECT status,stage,working_data FROM factory_build_versions WHERE id=$1",[job.id])).rows[0];
+    expect(after).toMatchObject({status:"running",stage:"qa"});expect(after.working_data).toEqual({...before,reviewAttempts:1});
+    expect(await rollbackFactoryBuildAttempt(restore)).toBe(false);
+    expect(await rollbackFactoryBuildAttempt({versionId:job.id,leaseToken:job.leaseToken,stage:"qa",kind:"repair",expectedValue:true,previousValue:false})).toBe(true);
+    expect((await pool.query("SELECT working_data FROM factory_build_versions WHERE id=$1",[job.id])).rows[0].working_data).toEqual({...before,reviewAttempts:1,repaired:false});
+    expect((await pool.query("SELECT enabled FROM factory_build_settings WHERE workspace_id=$1",[ws])).rows[0].enabled).toBe(false);
+    expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].previewUrl).toBeNull();
+  });
+  it("refuses intent rollback after lease expiration or relationship removal",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime();
+    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    const job=(await claimFactoryBuild())!;
+    await pool.query("UPDATE factory_build_versions SET working_data=working_data||'{\"reviewAttempts\":1}'::jsonb,lease_until=now()-interval '1 second' WHERE id=$1",[job.id]);
+    const input={versionId:job.id,leaseToken:job.leaseToken,stage:"qa" as const,kind:"review" as const,expectedValue:1};
+    expect(await rollbackFactoryBuildAttempt(input)).toBe(false);
+    await pool.query("UPDATE factory_build_versions SET lease_until=now()+interval '15 minutes' WHERE id=$1",[job.id]);
+    await pool.query("UPDATE workspaces SET status='archived' WHERE id=$1",[ws]);
+    try{expect(await rollbackFactoryBuildAttempt(input)).toBe(false);}
+    finally{await pool.query("UPDATE workspaces SET status='active' WHERE id=$1",[ws]);}
+    await pool.query("UPDATE leads SET anonymized_at=now() WHERE id=$1",[project.leadId]);
+    // The retention trigger removes its Factory project immediately.
+    await expect(rollbackFactoryBuildAttempt(input)).rejects.toThrow("no longer available");
+    await pool.query("DELETE FROM leads WHERE id=$1",[project.leadId]);
+    await expect(rollbackFactoryBuildAttempt(input)).rejects.toThrow("no longer available");
+  });
+  it("publishes the frozen checked bytes without re-rendering from a subsequently changed image",async()=>{
+    const project=await prepared();await enable();const {runtime,objects}=await fixtureRuntime();
+    for(let step=0;step<3;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    const row=(await pool.query("SELECT storage_prefix,working_data FROM factory_build_versions WHERE project_id=$1",[project.projectId])).rows[0];
+    // A source can disappear after review; publication must use the frozen outputs.
+    objects.delete(`${row.storage_prefix}assets/hero.png`);
+    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].status).toBe("ready");
+    for(const file of row.working_data.checkedManifest.files)expect(objects.get(`${row.storage_prefix}preview/${file.path}`)).toEqual(objects.get(`${row.storage_prefix}checked/${file.path}`));
+  });
+  it("rejects changed checked bytes and pre-upgrade publication jobs instead of sharing unreviewed output",async()=>{
+    const project=await prepared();await enable();const {runtime,objects}=await fixtureRuntime();
+    for(let step=0;step<3;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    const row=(await pool.query("SELECT id,storage_prefix FROM factory_build_versions WHERE project_id=$1",[project.projectId])).rows[0];
+    const key=`${row.storage_prefix}checked/index.html`,original=objects.get(key)!;
+    const modified=Uint8Array.from(original);modified[0]^=1;objects.set(key,modified);
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
+    expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].error).toContain("artifact changed");
+    expect([...objects.keys()].some(key=>key.includes("/preview/"))).toBe(false);
+    objects.set(key,original);
+    await pool.query("UPDATE factory_build_versions SET working_data=working_data-'checkedManifest' WHERE id=$1",[row.id]);
+    await retryFactoryBuild(member,{versionId:row.id,requestId:randomUUID()});
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
+    expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].error).toContain("frozen, reviewed website");
   });
   it("does not advance a model result after building was paused during its request",async()=>{
     const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute;

@@ -5,20 +5,26 @@ import {chromium} from "playwright";
 import {factoryBuildConfiguration,factoryStorageConfiguration} from "./build-config";
 import {factoryPreviewUrl} from "./build-data";
 import {factoryStorage,type FactoryStorage} from "./storage";
-import {claimFactoryBuild,saveFactoryBuildStage,saveFactoryBuildProgress,finishFactoryBuild,failFactoryBuild,recoverFactoryBuilds,claimFactoryStorageCleanup,finishFactoryStorageCleanup} from "./build-service";
+import {claimFactoryBuild,saveFactoryBuildStage,saveFactoryBuildProgress,rollbackFactoryBuildAttempt,finishFactoryBuild,failFactoryBuild,recoverFactoryBuilds,claimFactoryStorageCleanup,finishFactoryStorageCleanup} from "./build-service";
 import {FactoryBuildBudgetError} from "./build-budget";
-import {factorySiteExecutor,generateFactoryHero} from "./build-provider";
+import {factorySiteExecutor,generateFactoryHero,FactoryBuildRequestNotAttemptedError} from "./build-provider";
 import {generatePortableSite} from "./site/provider";
 import {portableBundle,validateSiteBlueprint} from "./site/validate";
 import {renderPortableSite} from "./site/render";
 import {reviewSiteDepth} from "./site/quality";
 import {checkPortableSite} from "./site/qa";
+import {screenshotPath} from "./site/qa";
+import {preparePortableImages} from "./site/images";
+import {reviewPortableSite,type SiteReview} from "./site/review";
+import {checkSiteDelivery} from "./site/performance";
 import {createPortableExport} from "./site/package";
 import type {SiteFiles,SiteQaResult} from "./site/artifacts";
 import type {SiteModelExecutor,SiteBlueprint} from "./site/types";
 import type {FactoryClaimedBuild,FactoryBuildManifest,FactoryBuildQa} from "./build-types";
 
-type Working={blueprint?:SiteBlueprint;heroKey?:string;provenance?:unknown;qaReport?:FactoryBuildQa;manifest?:FactoryBuildManifest;sourceKey?:string;repaired?:boolean};
+type Working={blueprint?:SiteBlueprint;heroKey?:string;provenance?:unknown;qaReport?:FactoryBuildQa;manifest?:FactoryBuildManifest;sourceKey?:string;repaired?:boolean;
+  reviewAttempts?:number;review?:{fingerprint:string;result:SiteReview};checkedManifest?:FactoryBuildManifest};
+class FactoryBuildQualityError extends Error{}
 export type FactoryBuildRuntime={storage:FactoryStorage;execute(build:FactoryClaimedBuild):SiteModelExecutor;hero(build:FactoryClaimedBuild,prompt:string):Promise<{bytes:Uint8Array;provenance:unknown}>;qa(files:SiteFiles):Promise<SiteQaResult>;verify(build:FactoryClaimedBuild,manifest:FactoryBuildManifest):Promise<{url:string;status:200;checkedAt:string}>};
 function working(build:FactoryClaimedBuild):Working{return build.workingData as Working;}
 function checkDeadline(build:FactoryClaimedBuild){if(!Number.isFinite(Date.parse(build.leaseUntil))||Date.parse(build.leaseUntil)<=Date.now())throw new Error("The website worker lease expired.");}
@@ -26,7 +32,7 @@ async function withSite(build:FactoryClaimedBuild,state:Working,runtime:FactoryB
   if(!state.blueprint||state.heroKey!==`${build.storagePrefix}assets/hero.png`)throw new Error("The saved website assets are incomplete.");
   const blueprint=validateSiteBlueprint(state.blueprint,build.plan),bundle=portableBundle(blueprint);
   const image=await runtime.storage.get(state.heroKey,8_000_000);
-  return {bundle,...renderPortableSite(bundle,{"assets/images/hero.png":image})};
+  return {bundle,...renderPortableSite(bundle,await preparePortableImages(image))};
 }
 export async function verifyHostedFactoryBuild(build:FactoryClaimedBuild,manifest:FactoryBuildManifest){
   const url=factoryPreviewUrl(build.previewToken);if(!url)throw new Error("The preview domain is not configured.");
@@ -84,27 +90,74 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
     await advance("qa");return;
   }
   if(build.stage==="qa"){
-    const inspect = async (files:SiteFiles) => {
-      const browserQa=await runtime.qa(files),depth=reviewSiteDepth(state.blueprint!,build.plan);
-      return {...browserQa,passed:browserQa.passed&&!depth.length,issues:[...browserQa.issues,...depth]};
+    const persist=async()=>{if(!await saveFactoryBuildProgress({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,workingData:state as Record<string,unknown>}))throw new Error("This website build was paused or removed.");};
+    const boundedExecute=(kind:"review"|"repair"):SiteModelExecutor=>async request=>{
+      const previousReviews=state.reviewAttempts,previousRepair=state.repaired;
+      // Preprocessing has completed. Save intent before entering the provider so
+      // an ambiguous request cannot become an unbounded paid retry.
+      if(kind==="review")state.reviewAttempts=(previousReviews||0)+1;
+      else state.repaired=true;
+      await persist();
+      try{return await runtime.execute(build)(request);}
+      catch(error){
+        // Only the provider's explicit pre-request marker restores this slot.
+        // Transport errors, malformed responses and settlement failures count.
+        if(error instanceof FactoryBuildRequestNotAttemptedError){
+          const expectedValue=kind==="review"?state.reviewAttempts!:state.repaired!;
+          const previousValue=kind==="review"?previousReviews:previousRepair;
+          if(!await rollbackFactoryBuildAttempt({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,kind,expectedValue,previousValue}))throw new Error("This website build was removed or its attempt changed before recovery.");
+          state.reviewAttempts=previousReviews;state.repaired=previousRepair;
+        }
+        throw error;
+      }
     };
-    let site=await withSite(build,state,runtime),qa=await inspect(site.files);
+    const inspect = async (files:SiteFiles) => {
+      const browserQa=await runtime.qa(files),depth=reviewSiteDepth(state.blueprint!,build.plan),delivery=checkSiteDelivery(files);
+      const issues=[...browserQa.issues,...depth,...delivery.issues];
+      return {...browserQa,passed:browserQa.passed&&!issues.some(i=>i.severity==="error"),issues,delivery};
+    };
+    const review = async(site:Awaited<ReturnType<typeof withSite>>,qa:Awaited<ReturnType<typeof inspect>>)=>{
+      if(!qa.passed)return qa;
+      const fingerprint=createHash("sha256").update(JSON.stringify(site.manifest)).digest("hex");
+      if(state.review?.fingerprint!==fingerprint){
+        if((state.reviewAttempts||0)>=2)throw new FactoryBuildQualityError("The visual review used its two allowed attempts. Update the plan and approve a new version to continue; your previous preview is preserved.");
+        const result=await reviewPortableSite({plan:build.plan,blueprint:state.blueprint!,screenshots:qa.screenshots},boundedExecute("review"));
+        state.review={fingerprint,result};
+        await persist();
+      }
+      const issues=[...qa.issues,...state.review.result.issues];
+      return {...qa,issues,passed:!issues.some(i=>i.severity==="error")};
+    };
+    let site=await withSite(build,state,runtime),qa=await review(site,await inspect(site.files));
     if(!qa.passed&&!state.repaired){
-      state.repaired=true;
-      if(!await saveFactoryBuildProgress({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,workingData:state as Record<string,unknown>}))throw new Error("This website build was paused or removed.");
-      const revised=await generatePortableSite({plan:build.plan,previousBlueprint:state.blueprint,repairIssues:qa.issues},runtime.execute(build));
+      const revised=await generatePortableSite({plan:build.plan,previousBlueprint:state.blueprint,repairIssues:qa.issues},boundedExecute("repair"));
       state.blueprint=revised.blueprint;
-      if(!await saveFactoryBuildProgress({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,workingData:state as Record<string,unknown>}))throw new Error("This website build was paused or removed.");
-      site=await withSite(build,state,runtime);qa=await inspect(site.files);
+      await persist();
+      site=await withSite(build,state,runtime);qa=await review(site,await inspect(site.files));
     }
-    if(!qa.passed)throw new Error("This website needs a design review because its browser checks did not pass.");
+    if(!qa.passed)throw new FactoryBuildQualityError(`This website needs another revision after its included repair: ${qa.issues.filter(i=>i.severity==="error").slice(0,2).map(i=>i.message).join(" ").slice(0,1000)}`);
     const screenshots={desktop:`${build.storagePrefix}screenshots/desktop.png`,mobile:`${build.storagePrefix}screenshots/mobile.png`};
     for(const view of ["desktop","mobile"] as const){const shot=qa.screenshots.find(s=>s.page==="index.html"&&s.viewport===view);if(!shot)throw new Error("Desktop and mobile screenshots are required.");await runtime.storage.put(screenshots[view],shot.bytes,"image/png");}
-    state.qaReport={passed:true,checks:["Approved page coverage and content depth","Distinct page content and varied sections","Desktop and mobile layouts","Local links and images","Demo navigation and forms","Serious and critical accessibility checks","No external requests"],warnings:qa.issues.filter(i=>i.severity==="warning").map(i=>i.message),screenshots};
+    const pageScreenshots:NonNullable<FactoryBuildQa["pageScreenshots"]>=[];
+    for(const shot of qa.screenshots){const key=`${build.storagePrefix}pages/${screenshotPath(shot.page,shot.viewport)}`;await runtime.storage.put(key,shot.bytes,"image/png");pageScreenshots.push({page:shot.page,viewport:shot.viewport,storageKey:key});}
+    const visual=state.review!.result;
+    state.qaReport={passed:true,checks:["Approved page identities and content depth","Distinct content and concrete business claims","Desktop and mobile visual/content review","Mobile image and page-size budgets","Desktop and mobile layouts","Local links and images","Demo navigation and forms","Serious and critical accessibility checks","No external requests"],warnings:qa.issues.filter(i=>i.severity==="warning").map(i=>i.message),screenshots,
+      designReview:{summary:visual.summary,reviewedPages:visual.reviewedPages,imageCount:visual.imageCount},delivery:{pages:qa.delivery.pages},pageScreenshots};
+    // Freeze the checked bytes before publication. A deployment between stages
+    // must not re-render this version with a different template or encoder.
+    for(const file of site.manifest.files)await runtime.storage.put(`${build.storagePrefix}checked/${file.path}`,site.files[file.path],file.contentType);
+    state.checkedManifest=site.manifest;
     await advance("publish");return;
   }
   if(build.stage==="publish"){
-    const site=await withSite(build,state,runtime);
+    if(!state.checkedManifest||!state.blueprint||!state.qaReport?.passed)throw new FactoryBuildQualityError("This build does not have a frozen, reviewed website. Update its plan and approve a new version; completed previews are preserved.");
+    const files:SiteFiles={};
+    for(const file of state.checkedManifest.files){
+      const bytes=await runtime.storage.get(`${build.storagePrefix}checked/${file.path}`,8_000_000);
+      if(bytes.byteLength!==file.size||createHash("sha256").update(bytes).digest("hex")!==file.sha256)throw new FactoryBuildQualityError("A checked website artifact changed before publication. This version has not been shared.");
+      files[file.path]=bytes;
+    }
+    const site={bundle:portableBundle(state.blueprint),files,manifest:state.checkedManifest};
     const archive=createPortableExport({files:site.files,plan:build.plan,projectTitle:site.bundle.title,productionTasks:site.bundle.productionTasks,assetProvenance:state.provenance,blueprint:state.blueprint});
     for(const file of site.manifest.files)await runtime.storage.put(`${build.storagePrefix}preview/${file.path}`,site.files[file.path],file.contentType);
     state.manifest=site.manifest;state.sourceKey=`${build.storagePrefix}source.zip`;
@@ -126,7 +179,7 @@ export async function runFactoryBuildWorkerStep(injected?:FactoryBuildRuntime){
   const build=await claimFactoryBuild();if(!build)return cleanup?{status:"cleaned" as const,more:true}:{status:"idle" as const,more:false};
   try{await performFactoryBuildStage(build,runtime);return {status:"processed" as const,stage:build.stage,more:true};}
   catch(error){
-    const message=error instanceof FactoryBuildBudgetError?error.message:"This website build could not complete. Check the builder connection and saved progress before retrying. Attempted AI usage remains counted.";
+    const message=error instanceof FactoryBuildBudgetError||error instanceof FactoryBuildQualityError?error.message:"This website build could not complete. Check the builder connection and saved progress before retrying. Attempted AI usage remains counted.";
     await failFactoryBuild({versionId:build.id,leaseToken:build.leaseToken,error:message});
     return {status:"failed" as const,stage:build.stage,more:true};
   }

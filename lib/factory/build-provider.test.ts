@@ -2,9 +2,10 @@ import {afterEach,describe,expect,it,vi} from "vitest";
 import type {FactoryClaimedBuild} from "./build-types";
 const mocks=vi.hoisted(()=>({reserve:vi.fn(async()=>"cost-1"),attempt:vi.fn(async()=>{}),settle:vi.fn(async()=>{}),uncertain:vi.fn(async()=>{}),normalize:vi.fn(async()=>Buffer.from("normalized-png"))}));
 vi.mock("server-only",()=>({}));
-vi.mock("./build-budget",()=>({reserveFactoryBuildCost:mocks.reserve,attemptFactoryBuildCost:mocks.attempt,settleFactoryBuildCost:mocks.settle,uncertainFactoryBuildCost:mocks.uncertain}));
+vi.mock("./build-budget",()=>({FactoryBuildBudgetError:class extends Error{},reserveFactoryBuildCost:mocks.reserve,attemptFactoryBuildCost:mocks.attempt,settleFactoryBuildCost:mocks.settle,uncertainFactoryBuildCost:mocks.uncertain}));
 vi.mock("./build-images",()=>({normalizeFactoryImage:mocks.normalize}));
-import {factorySiteExecutor,generateFactoryHero,factoryImageUsageMicros,buildImagePolicy} from "./build-provider";
+import {factorySiteExecutor,generateFactoryHero,factoryImageUsageMicros,buildImagePolicy,FactoryBuildRequestNotAttemptedError} from "./build-provider";
+import {FactoryBuildBudgetError} from "./build-budget";
 const build={id:"build",leaseToken:"lease",stage:"generate"} as FactoryClaimedBuild;
 describe("Website provider cost and request bounds",()=>{
   afterEach(()=>{vi.unstubAllGlobals();vi.unstubAllEnvs();vi.clearAllMocks();});
@@ -22,6 +23,35 @@ describe("Website provider cost and request bounds",()=>{
     vi.stubEnv("OPENAI_API_KEY","synthetic-test-key");const fetcher=vi.fn(async()=>new Response("unavailable",{status:503}));vi.stubGlobal("fetch",fetcher);
     await expect(factorySiteExecutor(build)({stage:"generate",model:"gpt-6.1-sol",body:{},inputBytes:100,maxOutputTokens:9000,reservedMicros:200000})).rejects.toThrow("did not confirm");
     expect(fetcher).toHaveBeenCalledTimes(1);expect(mocks.uncertain).toHaveBeenCalledWith("cost-1");expect(mocks.settle).not.toHaveBeenCalled();
+  });
+  it("marks missing provider configuration as unattempted without reserving or calling the provider",async()=>{
+    vi.stubEnv("FACTORY_OPENAI_API_KEY","");vi.stubEnv("OPENAI_API_KEY","");const fetcher=vi.fn();vi.stubGlobal("fetch",fetcher);
+    await expect(factorySiteExecutor(build)({stage:"review",model:"gpt-6.1-sol",body:{},inputBytes:100,maxOutputTokens:3000,reservedMicros:200000})).rejects.toBeInstanceOf(FactoryBuildRequestNotAttemptedError);
+    expect(mocks.reserve).not.toHaveBeenCalled();expect(mocks.attempt).not.toHaveBeenCalled();expect(fetcher).not.toHaveBeenCalled();expect(mocks.uncertain).not.toHaveBeenCalled();
+  });
+  it("marks a denied reservation as unattempted without making a provider call",async()=>{
+    vi.stubEnv("FACTORY_OPENAI_API_KEY","synthetic-test-key");const fetcher=vi.fn();vi.stubGlobal("fetch",fetcher);
+    mocks.reserve.mockRejectedValueOnce(new FactoryBuildBudgetError("This build step exceeds the remaining allowance."));
+    await expect(factorySiteExecutor(build)({stage:"review",model:"gpt-6.1-sol",body:{},inputBytes:100,maxOutputTokens:3000,reservedMicros:200000})).rejects.toBeInstanceOf(FactoryBuildRequestNotAttemptedError);
+    expect(mocks.attempt).not.toHaveBeenCalled();expect(fetcher).not.toHaveBeenCalled();expect(mocks.uncertain).not.toHaveBeenCalled();
+  });
+  it("releases the unused reservation when the attempt gate rejects a paused or stale build",async()=>{
+    vi.stubEnv("FACTORY_OPENAI_API_KEY","synthetic-test-key");const fetcher=vi.fn();vi.stubGlobal("fetch",fetcher);
+    mocks.attempt.mockRejectedValueOnce(new FactoryBuildBudgetError("This request was paused before attempting it."));
+    await expect(factorySiteExecutor(build)({stage:"repair",model:"gpt-6.1-sol",body:{},inputBytes:100,maxOutputTokens:9000,reservedMicros:200000})).rejects.toBeInstanceOf(FactoryBuildRequestNotAttemptedError);
+    expect(fetcher).not.toHaveBeenCalled();expect(mocks.uncertain).toHaveBeenCalledWith("cost-1");expect(mocks.settle).not.toHaveBeenCalled();
+  });
+  it("does not label a post-request overage or settlement error as unattempted",async()=>{
+    vi.stubEnv("FACTORY_OPENAI_API_KEY","synthetic-test-key");const fetcher=vi.fn(async()=>Response.json({id:"r1",status:"completed",usage:{input_tokens:1000,output_tokens:2000},output:[]}));vi.stubGlobal("fetch",fetcher);
+    const failure=new FactoryBuildBudgetError("Provider usage exceeded its reservation.");mocks.settle.mockRejectedValueOnce(failure);
+    const result=factorySiteExecutor(build)({stage:"review",model:"gpt-6.1-sol",body:{},inputBytes:100,maxOutputTokens:3000,reservedMicros:200000});
+    await expect(result).rejects.toBe(failure);expect(failure).not.toBeInstanceOf(FactoryBuildRequestNotAttemptedError);
+    expect(fetcher).toHaveBeenCalledOnce();expect(mocks.uncertain).toHaveBeenCalledWith("cost-1");
+  });
+  it("does not relabel ambiguous transport failures even when they use a budget error type",async()=>{
+    vi.stubEnv("FACTORY_OPENAI_API_KEY","synthetic-test-key");const failure=new FactoryBuildBudgetError("Synthetic transport interruption");const fetcher=vi.fn(async()=>{throw failure;});vi.stubGlobal("fetch",fetcher);
+    await expect(factorySiteExecutor(build)({stage:"review",model:"gpt-6.1-sol",body:{},inputBytes:100,maxOutputTokens:3000,reservedMicros:200000})).rejects.toBe(failure);
+    expect(failure).not.toBeInstanceOf(FactoryBuildRequestNotAttemptedError);expect(fetcher).toHaveBeenCalledOnce();expect(mocks.uncertain).toHaveBeenCalledWith("cost-1");
   });
   it("requests only one bounded hero and charges actual token usage",async()=>{
     vi.stubEnv("OPENAI_API_KEY","synthetic-test-key");const fetcher=vi.fn(async(_url:unknown,init?:RequestInit)=>{
