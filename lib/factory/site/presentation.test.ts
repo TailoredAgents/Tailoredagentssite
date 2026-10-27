@@ -35,6 +35,43 @@ function presentationFixture(family:DesignFamilyId="trades",multiple=false):Site
 }
 
 describe("Premium portable presentation",()=>{
+  it("only renders an inner-page introduction image when explicitly bound, preserving legacy heroes",()=>{
+    const b=presentationFixture("trades",true);
+    const files=renderPortableSite(portableBundle(b),assets).files;
+    expect(Buffer.from(files["index.html"]).toString()).toContain('class="hero-image"');
+    for(const page of b.pages.slice(1)){
+      const html=Buffer.from(files[page.path]).toString();
+      expect(html).not.toContain('class="hero-image"');expect(html).toContain('class="hero-inner hero-text-only"');
+    }
+    b.presentation!.pageImages=[{pagePath:b.pages[1].path,assetId:"detail"}];
+    const explicit=Buffer.from(renderPortableSite(portableBundle(b),assets).files[b.pages[1].path]).toString();
+    expect(explicit).toContain('class="hero-image"');expect(explicit).toContain('src="../assets/images/detail-desktop.webp"');
+    const legacy=renderPortableSite(portableBundle(fixtureBlueprint("trades","split",true)),assets).files;
+    expect(Buffer.from(legacy["approach/index.html"]).toString()).toContain('class="hero-image"');
+  });
+  it.each(["split","immersive","framed"] as const)("keeps mobile contact controls in their own space on every %s route",async composition=>{
+    const b=presentationFixture("trades",true);b.composition=composition;b.contact.phone="+16785550101";
+    b.pages.push({...structuredClone(b.pages[1]),path:"coverage/index.html",title:"Coverage"},{...structuredClone(b.pages[1]),path:"contact/index.html",title:"Contact"});
+    const {files}=renderPortableSite(portableBundle(b),assets);
+    const context=await browser.newContext({viewport:{width:390,height:844}});
+    try{
+      await context.route("**/*",route=>{const key=new URL(route.request().url()).pathname.slice(1)||"index.html";return files[key]?route.fulfill({body:Buffer.from(files[key]),contentType:siteContentType(key)}):route.abort();});
+      const page=await context.newPage();
+      for(const route of b.pages){
+        await page.goto(`https://presentation.test/${route.path}`);await page.evaluate(()=>document.fonts.ready);
+        const layout=await page.evaluate(()=>{
+          const strip=document.querySelector<HTMLElement>(".mobile-contact")!,hero=document.querySelector(".site-hero")!.getBoundingClientRect(),next=document.querySelector("main > .site-section")!.getBoundingClientRect(),rect=strip.getBoundingClientRect();
+          const heroInner=document.querySelector(".hero-inner")!.getBoundingClientRect(),copy=document.querySelector(".hero-copy")!.getBoundingClientRect();
+          return {position:getComputedStyle(strip).position,inMain:strip.parentElement?.tagName==="MAIN",afterHero:rect.top>=hero.bottom,beforeContent:rect.bottom<=next.top,overflow:document.documentElement.scrollWidth>innerWidth+2,imageCount:document.querySelectorAll(".site-hero .hero-image").length,copyUsesWidth:copy.width>=heroInner.width-2};
+        });
+        expect(layout,route.path).toMatchObject({position:"static",inMain:true,afterHero:true,beforeContent:true,overflow:false,imageCount:route.path==="index.html"?1:0});
+        if(route.path!=="index.html")expect(layout.copyUsesWidth,route.path).toBe(true);
+        await page.locator(".mobile-contact").scrollIntoViewIfNeeded();
+        await page.getByRole("navigation",{name:"Quick contact",exact:true}).getByRole("link",{name:"Get in touch",exact:true}).click();
+        expect(new URL(page.url()).hash).toBe("#contact");
+      }
+    }finally{await context.close();}
+  },45000);
   it("routes primary, secondary and item CTA language to the real action, including inner-page calls",()=>{
     const b=presentationFixture("trades",true);b.contact.phone="+16785550101";b.contact.email="team@example.test";
     b.pages[1].sections.push({id:"inquiry",kind:"contact",layout:"split",eyebrow:"Start here",title:"Tell us what you need.",body:"Get in touch with our team.",items:[]});

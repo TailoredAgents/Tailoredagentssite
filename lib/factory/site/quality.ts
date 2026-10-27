@@ -35,7 +35,7 @@ function pageMatch(plannedTitle:string,page:SiteBlueprint["pages"][number]):numb
 }
 
 /** Distinct approved pages must have distinct matches, even when both use a common alias. */
-function missingPages(blueprint:SiteBlueprint,plan:FactoryPlanContent):string[] {
+function plannedPageCoverage(blueprint:SiteBlueprint,plan:FactoryPlanContent):{missing:string[];unexpected:string[]} {
   const matches=new Map<number,number>();
   const candidates=plan.pages.slice(0,10).map(planned=>blueprint.pages.map((page,index)=>({index,score:pageMatch(planned.title,page)})).filter(candidate=>candidate.score>0).sort((a,b)=>b.score-a.score));
   const assign=(plannedIndex:number,seen:Set<number>):boolean=>{
@@ -47,7 +47,8 @@ function missingPages(blueprint:SiteBlueprint,plan:FactoryPlanContent):string[] 
     }
     return false;
   };
-  return plan.pages.slice(0,10).filter((_,index)=>!assign(index,new Set())).map(page=>page.title);
+  const missing=plan.pages.slice(0,10).filter((_,index)=>!assign(index,new Set())).map(page=>page.title);
+  return {missing,unexpected:blueprint.pages.filter((_,index)=>!matches.has(index)).map(page=>page.title)};
 }
 
 /** Every rendered copy field is included; generated factualClaims are not the source of truth. */
@@ -123,8 +124,9 @@ function unsupportedClaims(text:string,plan:FactoryPlanContent):string[]{
 export function reviewSiteDepth(blueprint:SiteBlueprint,plan:FactoryPlanContent):SiteIssue[] {
   const issues:SiteIssue[]=[];
   const add=(page:string,code:string,message:string)=>issues.push({page,code,message,severity:"error"});
-  const missing=missingPages(blueprint,plan);
+  const {missing,unexpected}=plannedPageCoverage(blueprint,plan);
   if(missing.length)add("index.html","missing_planned_pages",`Include distinct pages for these approved page identities: ${missing.join(", ")}. A different page with the same total count does not satisfy the plan.`);
+  if(unexpected.length)add("index.html","unexpected_planned_pages",`Remove pages outside the approved plan: ${unexpected.join(", ")}. Keep the distinct approved page identities; adding another page requires a revised human-approved plan.`);
   const previous:Array<{path:string;blocks:string[]}>=[];
   for(const page of blueprint.pages){
     const sections=page.sections.filter(s=>s.kind!=="contact");

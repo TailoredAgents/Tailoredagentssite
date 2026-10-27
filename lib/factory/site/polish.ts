@@ -185,5 +185,12 @@ export const portablePresentationCss=`
  .presentation-v1.composition-editorial.page-home .hero-image{margin:0;min-height:330px}.presentation-v1.composition-editorial.page-home .hero-copy{padding:14px 0 20px}.presentation-v1.composition-centered.page-home .hero-image{min-height:260px;aspect-ratio:1.5}
  .presentation-v1.page-inner .hero-inner{display:flex;gap:22px}.presentation-v1.page-inner .hero-copy h1{font-size:clamp(2.4rem,10vw,3.6rem)}.presentation-v1.page-inner .hero-image{min-height:230px;max-height:280px;margin:0;aspect-ratio:1.5}
 }
+.presentation-v1.page-inner .hero-inner.hero-text-only{display:block;min-height:0;padding:0;background:none}
+.presentation-v1.page-inner .hero-text-only .hero-copy{max-width:960px;padding:24px 0 32px}
+@media(max-width:760px){
+ .presentation-v1{padding-bottom:0}
+ .presentation-v1 .mobile-contact{position:static;inset:auto;z-index:auto;width:calc(100% - 40px);margin:16px auto 0;padding:14px 0;border-top:1px solid color-mix(in srgb,var(--ink) 18%,transparent);border-bottom:1px solid color-mix(in srgb,var(--ink) 18%,transparent);background:none;box-shadow:none}
+ .presentation-v1.page-inner .hero-text-only .hero-copy{padding:15px 0 20px}
+}
 @media(prefers-reduced-motion:reduce){.presentation-v1 .button{transition:none}.presentation-v1 .button:hover{transform:none}}
 `;

@@ -1,4 +1,4 @@
-import {randomUUID} from "node:crypto";
+import {createHash,randomUUID} from "node:crypto";
 import sharp from "sharp";
 import {readFile,readdir} from "node:fs/promises";
 import type {Pool} from "pg";
@@ -369,10 +369,49 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
     const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];
     expect(version.error).toContain("another revision");expect(reviews).toBe(2);expect(repairs).toBe(1);
+    expect(version.failedQa?.issues.some(issue=>issue.message.includes("Replace unsupported"))).toBe(true);
+    expect(version.failedQa?.screenshots.desktop).toContain("failed/screenshots/desktop.png");
+    expect((await getFactoryScreenshotDownload(member,version.id,"desktop")).storageKey).toBe(version.failedQa?.screenshots.desktop);
+    await expect(getFactoryScreenshotDownload(other,version.id,"desktop")).rejects.toThrow();
+    await expect(getFactorySourceDownload(member,version.id)).rejects.toThrow();
+    expect(JSON.stringify(version)).not.toContain("repairResponse");expect(JSON.stringify(version)).not.toContain("generationResponse");
     const row=(await pool.query("SELECT preview_token FROM factory_build_versions WHERE id=$1",[version.id])).rows[0];
     expect(await getFactoryPreviewResolution(row.preview_token)).toBeNull();
     await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});
     expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");expect(reviews).toBe(2);expect(repairs).toBe(1);
+  });
+  it("checkpoints an invalid paid correction before validation and never buys a replacement on retry",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute;let repairs=0;
+    runtime.execute=build=>async request=>{
+      const raw=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};
+      if(request.stage==="review")raw.output[0].content[0].text=JSON.stringify(scoredReview({verdict:"revise",summary:"Improve the heading",issues:[{page:"index.html",category:"design",severity:"error",message:"Use a clearer heading."}]}));
+      if(request.stage==="repair"){repairs++;raw.output[0].content[0].text="invalid paid correction fixture";}
+      return raw;
+    };
+    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
+    const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];
+    const state=(await pool.query("SELECT working_data FROM factory_build_versions WHERE id=$1",[version.id])).rows[0].working_data;
+    expect(state.repaired).toBe(true);expect(state.repairResponse.raw.output[0].content[0].text).toBe("invalid paid correction fixture");expect(state.lastFailedQa.issues).toHaveLength(1);
+    const before=(await pool.query("SELECT count(*)::int n,sum(actual_micros)::text total FROM factory_build_costs WHERE version_id=$1",[version.id])).rows[0];
+    await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
+    expect(repairs).toBe(1);expect((await pool.query("SELECT count(*)::int n,sum(actual_micros)::text total FROM factory_build_costs WHERE version_id=$1",[version.id])).rows[0]).toEqual(before);
+  });
+  it("recovers a saved correction with the same blueprint and only pays for the remaining assessment",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime();
+    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    const job=(await claimFactoryBuild())!,original=job.workingData.blueprint as SiteBlueprint,revised=structuredClone(original);revised.pages[0].hero.headline="A carefully considered starting point";
+    const raw={id:"saved-repair",status:"completed",usage:{input_tokens:1000,output_tokens:2000},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(revised)}]}]};
+    const cost=await reserveFactoryBuildCost({versionId:job.id,leaseToken:job.leaseToken,stage:"qa",requestKey:"saved-repair",reservedMicros:200000});await attemptFactoryBuildCost(cost,job.leaseToken);await settleFactoryBuildCost(cost,{actualMicros:100000,providerId:raw.id});
+    const saved={...job.workingData,repaired:true,repairResponse:{blueprintHash:createHash("sha256").update(JSON.stringify(original)).digest("hex"),issues:[{code:"review_design",page:"index.html",severity:"error",message:"Use a clearer heading."}],raw},lastFailedQa:{checkedAt:new Date().toISOString(),issues:[],screenshots:{}}};
+    await saveFactoryBuildProgress({versionId:job.id,leaseToken:job.leaseToken,stage:"qa",workingData:saved});await failFactoryBuild({versionId:job.id,leaseToken:job.leaseToken,error:"Synthetic interruption after saving paid correction"});
+    const execute=runtime.execute,stages:string[]=[];runtime.execute=build=>async request=>{stages.push(request.stage);expect(request.stage).toBe("review");return execute(build)(request);};
+    await retryFactoryBuild(member,{versionId:job.id,requestId:randomUUID()});expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    const accepted=(await pool.query("SELECT working_data,stage FROM factory_build_versions WHERE id=$1",[job.id])).rows[0];
+    expect(accepted.stage).toBe("publish");expect(accepted.working_data.blueprint.pages[0].hero.headline).toBe(revised.pages[0].hero.headline);expect(accepted.working_data.repairResponse).toBeUndefined();expect(accepted.working_data.lastFailedQa).toBeUndefined();expect(stages).toEqual(["review"]);
+    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0]).toMatchObject({id:job.id,planId:project.planId,status:"ready",failedQa:null});
+    expect((await pool.query("SELECT status,actual_micros,provider_id FROM factory_build_costs WHERE id=$1",[cost])).rows[0]).toMatchObject({status:"settled",actual_micros:"100000",provider_id:"saved-repair"});
   });
   it("reuses a completed visual review after a storage interruption instead of charging again",async()=>{
     const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute,put=runtime.storage.put;
@@ -605,5 +644,34 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     await retryFactoryBuild(member,{versionId:job.id,requestId:randomUUID()});job=(await claimFactoryBuild())!;expect(job.uploads.map(u=>u.id)).toEqual([original.id]);
     await saveFactoryBuildStage({versionId:job.id,leaseToken:job.leaseToken,stage:"images",nextStage:"qa",workingData:{}});
     await deleteFactoryUpload(member,{uploadId:original.id});expect((await pool.query("SELECT 1 FROM factory_storage_cleanup WHERE storage_prefix=$1",[original.storageKey])).rowCount).toBe(1);
+  });
+  it("allows a replacement logo after an image build exhausts retries without changing its approval or charges",async()=>{
+    const project=await prepared(false),input={projectId:project.projectId,filename:"old-logo.png",role:"logo",contentType:"image/png",byteSize:512,sha256:"d".repeat(64)};
+    const original=await registerFactoryUpload(member,input);await completeFactoryUpload(member,original.id);
+    await approveFactoryPlan(member,{projectId:project.projectId,planId:project.planId});await enable();
+    let job=(await claimFactoryBuild())!;
+    const costId=await reserveFactoryBuildCost({versionId:job.id,leaseToken:job.leaseToken,stage:job.stage,requestKey:"saved-design",reservedMicros:200000});
+    await attemptFactoryBuildCost(costId,job.leaseToken);await settleFactoryBuildCost(costId,{actualMicros:100000,providerId:"synthetic-model"});
+    await saveFactoryBuildStage({versionId:job.id,leaseToken:job.leaseToken,stage:"generate",nextStage:"images",workingData:{}});
+    job=(await claimFactoryBuild())!;
+    for(let retry=0;retry<=3;retry++){
+      await expect(deleteFactoryUpload(member,{uploadId:original.id})).rejects.toThrow("part of an approved build");
+      await failFactoryBuild({versionId:job.id,leaseToken:job.leaseToken,error:"Synthetic image failure"});
+      if(retry===3)break;
+      await expect(deleteFactoryUpload(member,{uploadId:original.id})).rejects.toThrow("part of an approved build");
+      await retryFactoryBuild(member,{versionId:job.id,requestId:randomUUID()});
+      // Even the final allowed retry must keep its inputs while queued/running.
+      await expect(deleteFactoryUpload(member,{uploadId:original.id})).rejects.toThrow("part of an approved build");
+      job=(await claimFactoryBuild())!;
+    }
+    const before=(await pool.query("SELECT status,retry_count,working_data,build_request_id FROM factory_build_versions WHERE id=$1",[job.id])).rows[0];
+    expect(before).toMatchObject({status:"failed",retry_count:3});
+    await expect(retryFactoryBuild(member,{versionId:job.id,requestId:randomUUID()})).rejects.toThrow("three retry limit");
+    await deleteFactoryUpload(member,{uploadId:original.id});
+    const replacement=await registerFactoryUpload(member,{...input,filename:"replacement-logo.png"});await completeFactoryUpload(member,replacement.id);
+    expect((await getFactoryProjectBuilds(member,project.projectId))!.uploads.map(upload=>upload.id)).toEqual([replacement.id]);
+    expect((await pool.query("SELECT status,retry_count,working_data,build_request_id FROM factory_build_versions WHERE id=$1",[job.id])).rows[0]).toEqual(before);
+    expect((await pool.query("SELECT status,actual_micros FROM factory_build_costs WHERE id=$1",[costId])).rows[0]).toMatchObject({status:"settled",actual_micros:"100000"});
+    expect((await pool.query("SELECT storage_prefix FROM factory_storage_cleanup")).rows.map(row=>row.storage_prefix)).toEqual([original.storageKey]);
   });
 });

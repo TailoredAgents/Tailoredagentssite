@@ -6,9 +6,30 @@ vi.mock("./build-budget",()=>({FactoryBuildBudgetError:class extends Error{},res
 vi.mock("./build-images",()=>({normalizeFactoryImage:mocks.normalize}));
 import {factorySiteExecutor,generateFactoryHero,factoryImageUsageMicros,buildImagePolicy,FactoryBuildRequestNotAttemptedError} from "./build-provider";
 import {FactoryBuildBudgetError} from "./build-budget";
-const build={id:"build",leaseToken:"lease",stage:"generate"} as FactoryClaimedBuild;
+const build={id:"build",leaseToken:"lease",leaseUntil:new Date(Date.now()+15*60*1000).toISOString(),stage:"generate"} as FactoryClaimedBuild;
 describe("Website provider cost and request bounds",()=>{
-  afterEach(()=>{vi.unstubAllGlobals();vi.unstubAllEnvs();vi.clearAllMocks();});
+  afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();vi.unstubAllEnvs();vi.clearAllMocks();});
+  it("does not start a paid response or image when its timeout would cross the worker lease",async()=>{
+    vi.stubEnv("FACTORY_OPENAI_API_KEY","synthetic-test-key");const fetcher=vi.fn();vi.stubGlobal("fetch",fetcher);
+    for(const leaseUntil of [new Date(Date.now()+269000).toISOString(),new Date(Date.now()-1000).toISOString(),"invalid"]){
+      const nearingExpiry={...build,leaseUntil};
+      await expect(factorySiteExecutor(nearingExpiry)({stage:"review",model:"gpt-6.1-sol",body:{},inputBytes:100,maxOutputTokens:3000,reservedMicros:200000})).rejects.toBeInstanceOf(FactoryBuildRequestNotAttemptedError);
+      await expect(generateFactoryHero({...nearingExpiry,stage:"images"},"A sufficiently detailed illustrative scene.")).rejects.toBeInstanceOf(FactoryBuildRequestNotAttemptedError);
+    }
+    expect(mocks.reserve).not.toHaveBeenCalled();expect(mocks.attempt).not.toHaveBeenCalled();expect(fetcher).not.toHaveBeenCalled();expect(mocks.uncertain).not.toHaveBeenCalled();
+  });
+  it("rechecks the deadline after reservation and releases a request that has not crossed the HTTP boundary",async()=>{
+    vi.useFakeTimers();const started=Date.now();vi.setSystemTime(started);vi.stubEnv("FACTORY_OPENAI_API_KEY","synthetic-test-key");
+    const fetcher=vi.fn();vi.stubGlobal("fetch",fetcher);
+    for(const kind of ["response","image"]){
+      vi.setSystemTime(started);
+      mocks.reserve.mockImplementationOnce(async()=>{vi.setSystemTime(started+31000);return "cost-1";});
+      const shortLease={...build,leaseUntil:new Date(started+300000).toISOString()};
+      const request=kind==="response"?factorySiteExecutor(shortLease)({stage:"repair",model:"gpt-6.1-sol",body:{},inputBytes:100,maxOutputTokens:9000,reservedMicros:200000}):generateFactoryHero({...shortLease,stage:"images"},"A sufficiently detailed illustrative scene.");
+      await expect(request).rejects.toBeInstanceOf(FactoryBuildRequestNotAttemptedError);
+    }
+    expect(mocks.reserve).toHaveBeenCalledTimes(2);expect(mocks.uncertain).toHaveBeenCalledTimes(2);expect(mocks.attempt).not.toHaveBeenCalled();expect(fetcher).not.toHaveBeenCalled();expect(mocks.settle).not.toHaveBeenCalled();
+  });
   it("reserves before the request and settles usage before blueprint validation",async()=>{
     vi.stubEnv("FACTORY_OPENAI_API_KEY","synthetic-test-key");
     const fetcher=vi.fn(async(_url:unknown,_init?:RequestInit)=>{

@@ -20,13 +20,14 @@ import {factoryBuildAssetDescriptors,resolveFactoryBuildImages,type FactorySaved
 import {reviewPortableSite,parseSiteReview,SiteReviewResponseError,type SiteReview} from "./site/review";
 import {checkSiteDelivery} from "./site/performance";
 import {createPortableExport} from "./site/package";
-import type {SiteFiles,SiteQaResult} from "./site/artifacts";
+import type {SiteFiles,SiteQaResult,SiteIssue} from "./site/artifacts";
 import type {SiteModelExecutor,SiteBlueprint} from "./site/types";
-import type {FactoryClaimedBuild,FactoryBuildManifest,FactoryBuildQa} from "./build-types";
+import type {FactoryClaimedBuild,FactoryBuildManifest,FactoryBuildQa,FactoryBuildFailureQa} from "./build-types";
 import {maximumReviewAttempts} from "./build-types";
 import type {FactoryBuildActivity,FactoryBuildActivityStep} from "./build-progress";
 
 type Working={generationResponse?:unknown;activity?:FactoryBuildActivity;blueprint?:SiteBlueprint;heroKey?:string;provenance?:unknown;imageAssets?:Record<string,FactorySavedImage>;qaReport?:FactoryBuildQa;manifest?:FactoryBuildManifest;sourceKey?:string;repaired?:boolean;
+  repairResponse?:{blueprintHash:string;issues:SiteIssue[];raw:unknown};lastFailedQa?:FactoryBuildFailureQa;
   reviewAttempts?:number;review?:{fingerprint:string;result:SiteReview};reviewResponse?:{fingerprint:string;raw:unknown;requireScorecard?:boolean;imageCount?:number};checkedManifest?:FactoryBuildManifest};
 class FactoryBuildQualityError extends Error{}
 export type FactoryBuildRuntime={storage:FactoryStorage;execute(build:FactoryClaimedBuild):SiteModelExecutor;hero(build:FactoryClaimedBuild,prompt:string,slotId?:string):Promise<{bytes:Uint8Array;provenance:unknown}>;qa(files:SiteFiles):Promise<SiteQaResult>;verify(build:FactoryClaimedBuild,manifest:FactoryBuildManifest):Promise<{url:string;status:200;checkedAt:string}>};
@@ -158,6 +159,15 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
         throw error;
       }
     };
+    // A paid correction can fail local validation just like initial generation.
+    // Recover its saved response against the exact original blueprint/issues;
+    // do not spend another repair slot or call the model again on explicit retry.
+    if(state.repairResponse){
+      const saved=state.repairResponse;
+      if(!state.repaired||!state.blueprint||createHash("sha256").update(JSON.stringify(state.blueprint)).digest("hex")!==saved.blueprintHash)throw new FactoryBuildQualityError("The saved website correction no longer matches its original blueprint. This version has not been shared.");
+      const revised=await generatePortableSite({plan:build.plan,previousBlueprint:state.blueprint,repairIssues:saved.issues,assets:factoryBuildAssetDescriptors(build)},async()=>saved.raw);
+      state.blueprint=revised.blueprint;delete state.repairResponse;await persist();
+    }
     const inspect = async (files:SiteFiles) => {
       await report(state.repaired?"rechecking":"browser_checks");
       const browserQa=await runtime.qa(files),depth=reviewSiteDepth(state.blueprint!,build.plan),delivery=checkSiteDelivery(files);
@@ -190,13 +200,37 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
       const issues=[...qa.issues,...state.review.result.issues];
       return {...qa,issues,passed:!issues.some(i=>i.severity==="error")};
     };
+    const rememberFailure=async(site:Awaited<ReturnType<typeof withSite>>,qa:Awaited<ReturnType<typeof inspect>>)=>{
+      if(qa.passed){if(state.lastFailedQa){delete state.lastFailedQa;await persist();}return;}
+      const visual=state.review?.fingerprint===createHash("sha256").update(JSON.stringify(site.manifest)).digest("hex")?state.review.result:undefined;
+      const report:FactoryBuildFailureQa={checkedAt:qa.checkedAt,issues:qa.issues.slice(0,30).map(issue=>({...issue,code:issue.code.slice(0,100),message:issue.message.slice(0,1000),page:issue.page.slice(0,180)})),screenshots:{},
+        ...(visual?{designReview:{summary:visual.summary,reviewedPages:visual.reviewedPages,imageCount:visual.imageCount,...(visual.reviewVersion?{reviewVersion:visual.reviewVersion,overallScore:visual.overallScore,scorecard:visual.scorecard}:{})}}:{})};
+      state.lastFailedQa=report;await persist();
+      // Keep diagnostic images private. Store the useful errors first so a
+      // screenshot-storage interruption cannot erase the original QA finding.
+      for(const view of ["desktop","mobile"] as const){
+        const shot=qa.screenshots.find(shot=>shot.page==="index.html"&&shot.viewport===view);
+        if(!shot)continue;
+        const key=`${build.storagePrefix}failed/screenshots/${view}.png`;
+        try{await runtime.storage.put(key,shot.bytes,"image/png");report.screenshots[view]=key;}catch{continue;}
+      }
+      await persist();
+    };
     await report("preparing");
     let site=await withSite(build,state,runtime),qa=await review(site,await inspect(site.files));
+    await rememberFailure(site,qa);
     if(!qa.passed&&!state.repaired){
-      const revised=await generatePortableSite({plan:build.plan,previousBlueprint:state.blueprint,repairIssues:qa.issues,assets:factoryBuildAssetDescriptors(build)},boundedExecute("repair"));
-      state.blueprint=revised.blueprint;
+      // Scorecard failures can follow up to 20 optional review warnings. Keep
+      // actual blockers inside the bounded correction request before refinements.
+      const issues=[...qa.issues.filter(issue=>issue.severity==="error"),...qa.issues.filter(issue=>issue.severity==="warning")].slice(0,20),blueprintHash=createHash("sha256").update(JSON.stringify(state.blueprint)).digest("hex");
+      const revised=await generatePortableSite({plan:build.plan,previousBlueprint:state.blueprint,repairIssues:issues,assets:factoryBuildAssetDescriptors(build)},async request=>{
+        const raw=await boundedExecute("repair")(request);
+        if(Buffer.byteLength(JSON.stringify(raw))>1_000_000)throw new SiteGenerationResponseError("The website correction exceeded its saved-data limit.");
+        state.repairResponse={blueprintHash,issues,raw};await persist();return raw;
+      });
+      state.blueprint=revised.blueprint;delete state.repairResponse;
       await persist();
-      site=await withSite(build,state,runtime);qa=await review(site,await inspect(site.files));
+      site=await withSite(build,state,runtime);qa=await review(site,await inspect(site.files));await rememberFailure(site,qa);
     }
     if(!qa.passed)throw new FactoryBuildQualityError(`This website needs another revision after its included repair: ${qa.issues.filter(i=>i.severity==="error").slice(0,2).map(i=>i.message).join(" ").slice(0,1000)}`);
     await report("saving");

@@ -23,7 +23,7 @@ describe("salesperson website workflow", () => {
     expect(factoryProjectView({ ...project, latestBuild: null })).toBe("building");
   });
   it("directs exhausted revisions and invalid output away from blind retries", () => {
-    expect(factoryBuildRecovery("This website needs another revision after its included repair.").kind).toBe("plan");
+    expect(factoryBuildRecovery("This website needs another revision after its included repair.").kind).toBe("help");
     expect(factoryBuildRecovery("The builder used its three allowed requests; approve a new version.").kind).toBe("plan");
     expect(factoryBuildRecovery("Website did not pass validation.").kind).toBe("help");
     expect(factoryBuildRecovery("Image provider temporarily unavailable").kind).toBe("retry");

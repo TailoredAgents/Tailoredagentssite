@@ -227,6 +227,29 @@ test("shows build limits, paused and failed stages, and preserves upload errors"
   expect((await buildDb.query("SELECT enabled FROM factory_build_settings")).rows[0].enabled).toBe(false);
 });
 
+test("shows private failed review evidence and bounded administrator recovery",async({page,request},info)=>{
+  const version=await approvedBuild(page,request);
+  const failedQa={checkedAt:new Date().toISOString(),issues:[{code:"mobile_contact_overlap",page:"index.html",viewport:"mobile",severity:"error",message:"The contact controls overlap the image."},{code:"review_design",page:"services/index.html",severity:"error",message:"Use the planned compact introduction."}],screenshots:{desktop:`${version.storage_prefix}failed/screenshots/desktop.png`,mobile:`${version.storage_prefix}failed/screenshots/mobile.png`}};
+  await buildDb.query("UPDATE factory_build_versions SET status='failed',stage='qa',error=$2,working_data=working_data||$3::jsonb WHERE id=$1",[version.id,"This website needs another revision after its included repair: Fix the renderer.",JSON.stringify({lastFailedQa:failedQa,repairResponse:{raw:"Private fixture response must never reach the page"}})]);
+  await page.route("**/api/dashboard/factory/builds/*/screenshot?*",route=>route.fulfill({status:200,contentType:"image/svg+xml",body:'<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="600" height="400" fill="#dce7f4"/></svg>'}));
+  await page.reload();
+  await page.getByText("Failed quality checks & screenshots",{exact:true}).click();
+  await expect(page.getByText("The contact controls overlap the image.",{exact:false})).toBeVisible();
+  await expect(page.getByText("Use the planned compact introduction.",{exact:false})).toBeVisible();
+  await expect(page.locator('.factory-build-shot img')).toHaveCount(2);
+  await expect(page.getByRole("link",{name:"Open website",exact:true})).toHaveCount(0);
+  await expect(page.getByRole("link",{name:"Download source ZIP",exact:true})).toHaveCount(0);
+  await expect(page.getByText("Private fixture response must never reach the page",{exact:false})).toHaveCount(0);
+  await page.getByText("Administrator recovery",{exact:true}).click();
+  await expect(page.getByRole("button",{name:"Retry after technical fix",exact:true})).toBeDisabled();
+  expect((await new AxeBuilder({page}).include('[aria-label="Website build"]').withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze()).violations).toEqual([]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await page.getByRole("region",{name:"Website build",exact:true}).screenshot({path:dashboardPreviewPath(`factory-failed-review-${info.project.name}.png`)});
+  await buildDb.query("UPDATE factory_build_versions SET retry_count=3 WHERE id=$1",[version.id]);await page.reload();await page.getByText("Administrator recovery",{exact:true}).click();
+  await expect(page.getByText("This version has used its three recovery attempts. Review and approve a revised plan to continue.",{exact:true})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Retry after technical fix",exact:true})).toHaveCount(0);
+});
+
 test("reviews a completed preview, revokes and renews sharing, exports and uploads assets", async ({ page, request }, info) => {
   const version = await approvedBuild(page, request);
   const qa = { designReview: {summary:"Synthetic quality assessment for interface checks.",reviewedPages:["index.html"],imageCount:2,reviewVersion:2,overallScore:90,scorecard:Object.fromEntries(["firstImpression","composition","imagery","copy","usefulness","mobile"].map(key=>[key,{score:90,evidence:[{page:"index.html",observation:"Synthetic fixture evidence for the assessment interface."}],improvement:"Refine the main heading spacing before sharing."}]))}, passed: true, checks: ["Desktop and phone pages checked", "Navigation and image checks passed"], warnings: ["Connect the real inquiry form before launch"], screenshots: { desktop: `${version.storage_prefix}desktop.png`, mobile: `${version.storage_prefix}mobile.png` } };

@@ -57,6 +57,20 @@ describe("Website design direction and content depth",()=>{
     blueprint.pages[2].title="Careers";blueprint.pages[2].path="careers/index.html";
     expect(reviewSiteDepth(blueprint,fixtureSitePlan)).toEqual(expect.arrayContaining([expect.objectContaining({code:"missing_planned_pages",message:expect.stringContaining("Services")})]));
   });
+  it("rejects additional unapproved pages even when every requested page is present",()=>{
+    const blueprint=fixtureBlueprint("trades","split",true);
+    blueprint.pages.push({...structuredClone(blueprint.pages[1]),title:"Pricing",path:"pricing/index.html"});
+    const issues=reviewSiteDepth(blueprint,fixtureSitePlan);
+    expect(issues.some(issue=>issue.code==="missing_planned_pages")).toBe(false);
+    expect(issues).toEqual(expect.arrayContaining([expect.objectContaining({code:"unexpected_planned_pages",message:expect.stringContaining("Pricing")})]));
+  });
+  it("does not allow a second alias page to expand the approved scope",()=>{
+    const blueprint=fixtureBlueprint("trades","split",true);
+    blueprint.pages.push({...structuredClone(blueprint.pages[1]),title:"About",path:"about/index.html"});
+    expect(reviewSiteDepth(blueprint,fixtureSitePlan).some(issue=>issue.code==="unexpected_planned_pages")).toBe(true);
+    const plan=structuredClone(fixtureSitePlan);plan.pages.push({title:"About",purpose:"Separate company story",sections:["Story"]});
+    expect(reviewSiteDepth(blueprint,plan).some(issue=>issue.code==="unexpected_planned_pages"||issue.code==="missing_planned_pages")).toBe(false);
+  });
   it("accepts familiar title aliases and planned identities retained in paths",()=>{
     const blueprint=fixtureBlueprint("trades","split",true);
     blueprint.pages[0].title="Welcome";

@@ -199,7 +199,10 @@ export async function deleteFactoryUpload(context:DashboardContext,input:unknown
   const data=z.object({uploadId:uuid}).parse(input);return factoryTransaction(context.workspace.id,async db=>{
     await authorizeFactory(db,context,"edit");
     const project=(await db.query("SELECT p.id FROM factory_projects p JOIN factory_uploads u ON u.project_id=p.id AND u.workspace_id=p.workspace_id WHERE u.id=$1 AND u.workspace_id=$2 FOR UPDATE OF p",[data.uploadId,context.workspace.id])).rows[0];
-    if(project&&(await db.query("SELECT 1 FROM factory_build_versions WHERE project_id=$1 AND workspace_id=$2 AND status IN ('queued','running','failed') AND stage IN ('generate','images') AND working_data->'inputUploads' @> $3::jsonb LIMIT 1",[project.id,context.workspace.id,JSON.stringify([{id:data.uploadId}])])).rowCount)throw new FactoryInputError("This image is part of an approved build. Remove it after the build has prepared its images.");
+    // Failed builds that have exhausted their retry allowance can no longer
+    // resume. Their old input snapshot must not prevent replacing assets for a
+    // newly approved version; queued/running and retryable builds still need it.
+    if(project&&(await db.query("SELECT 1 FROM factory_build_versions WHERE project_id=$1 AND workspace_id=$2 AND (status IN ('queued','running') OR (status='failed' AND retry_count<3)) AND stage IN ('generate','images') AND working_data->'inputUploads' @> $3::jsonb LIMIT 1",[project.id,context.workspace.id,JSON.stringify([{id:data.uploadId}])])).rowCount)throw new FactoryInputError("This image is part of an approved build. Remove it after the build has prepared its images.");
     const row=(await db.query("DELETE FROM factory_uploads WHERE id=$1 AND workspace_id=$2 RETURNING project_id",[data.uploadId,context.workspace.id])).rows[0];return {projectId:row?.project_id};
   });
 }

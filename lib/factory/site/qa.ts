@@ -51,7 +51,16 @@ export async function checkPortableSite(input:{files:SiteFiles;browser:Browser})
           });
           const inspection=await page.evaluate(()=>{
             const ids=[...document.querySelectorAll("[id]")].map(e=>e.id);
+            const strip=document.querySelector<HTMLElement>("body.presentation-v1 .mobile-contact"),stripRect=strip?.getBoundingClientRect();
+            // A fixed footer can cover any content as a visitor scrolls, even
+            // when the first screenshot happens to place it over whitespace.
+            const contactOverlay=!!strip&&!!stripRect&&stripRect.height>0&&(["fixed","sticky"].includes(getComputedStyle(strip).position)||[...document.querySelectorAll("main img,main h1,main h2,main h3,main p,main form")].some(element=>{
+              if(strip.contains(element))return false;
+              const rect=element.getBoundingClientRect();
+              return Math.min(rect.right,stripRect.right)-Math.max(rect.left,stripRect.left)>2&&Math.min(rect.bottom,stripRect.bottom)-Math.max(rect.top,stripRect.top)>2;
+            }));
             return {overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)>innerWidth+2,
+              contactOverlay,
               missingImages:[...document.images].filter(i=>!i.complete||!i.naturalWidth).map(i=>i.getAttribute("src")||""),
               links:[...document.querySelectorAll<HTMLAnchorElement>("a[href]")].map(a=>({href:a.getAttribute("href")||"",resolved:a.href,label:(a.textContent||"").trim()})),
               ids,duplicateIds:ids.filter((v,i)=>ids.indexOf(v)!==i),title:document.title,
@@ -60,6 +69,7 @@ export async function checkPortableSite(input:{files:SiteFiles;browser:Browser})
           });
           const add=(code:string,message:string)=>issues.push({code,message,page:file,viewport:viewport.name,severity:"error"});
           if(inspection.overflow)add("horizontal_overflow","Content extends beyond the viewport.");
+          if(inspection.contactOverlay)add("mobile_contact_overlap","Quick contact controls must occupy their own normal-flow space without covering page content, images or captions.");
           if(inspection.missingImages.length)add("missing_image",`Missing local images: ${inspection.missingImages.slice(0,5).join(", ")}`);
           if(!inspection.title.trim()||inspection.h1!==1||inspection.main!==1)add("page_structure","Each page needs a title, one primary heading and one main landmark.");
           if(inspection.duplicateIds.length)add("duplicate_ids","Page sections contain duplicate identifiers.");
@@ -88,6 +98,18 @@ export async function checkPortableSite(input:{files:SiteFiles;browser:Browser})
               await tabs.nth(index).click();
               if(await tabs.nth(index).getAttribute("aria-selected")!=="true"||!await panels.nth(index).isVisible()||await tabs.nth(index).getAttribute("aria-controls")!==await panels.nth(index).getAttribute("id"))add("service_tabs","A service choice did not reveal its associated content.");
               if(await page.evaluate(()=>Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)>innerWidth+2))add("horizontal_overflow","A revealed service panel extends beyond the viewport.");
+              // The final whole-page axe run sees only the initially selected
+              // panel. Check each other revealed panel in isolation so hidden
+              // service content cannot escape contrast/label checks. The
+              // blueprint bounds each collection to at most eight panels.
+              if(index>0){
+                const panelId=await panels.nth(index).getAttribute("id");
+                if(panelId){
+                  await panels.nth(index).scrollIntoViewIfNeeded();
+                  const revealed=await new AxeBuilder({page}).include(`#${panelId}`).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze();
+                  for(const violation of revealed.violations.filter(v=>["serious","critical"].includes(v.impact||"")))add(`accessibility_${violation.id}`,`${violation.help}: service panel ${index+1} (${panelId}), ${violation.nodes.length} affected elements.`);
+                }
+              }
             }
             await tabs.nth(0).click();
             if(count>1){await tabs.nth(0).press("ArrowRight");if(await tabs.nth(1).getAttribute("aria-selected")!=="true")add("service_tabs_keyboard","Service choices did not respond to keyboard navigation.");await tabs.nth(0).click();}

@@ -10,6 +10,23 @@ let browser:Browser,hero:Buffer;
 beforeAll(async()=>{browser=await chromium.launch({headless:true});hero=await sharp(Buffer.from(fixtureHeroSvg)).png().toBuffer();});
 afterAll(async()=>{await browser?.close();});
 describe("Meaningful browser observations",()=>{
+  it("checks accessibility of service content initially hidden behind another tab",async()=>{
+    const b=fixtureBlueprint("professional");b.media=[];b.presentation={version:1,fontTheme:"technical",heroEmphasis:null,logoAssetId:null,pageImages:[],sectionImages:[]};
+    b.pages[0].sections.find(section=>section.id==="services")!.layout="service-tabs";
+    const {files}=renderPortableSite(portableBundle(b),{"assets/images/hero.png":hero});
+    files["index.html"]=Buffer.from(Buffer.from(files["index.html"]).toString().replace("<h3>Shape the direction</h3>",'<h3>Shape the direction</h3><a href="#contact"><span aria-hidden="true">&#8599;</span></a>'));
+    const result=await checkPortableSite({files,browser});
+    expect(result.issues.filter(issue=>issue.code==="accessibility_link-name"&&issue.message.includes("services-panel-1")),JSON.stringify(result.issues)).toHaveLength(2);
+    expect(result.passed).toBe(false);
+  },60000);
+  it("rejects fixed contact controls that can cover content while scrolling",async()=>{
+    const b=fixtureBlueprint();b.media=[];b.presentation={version:1,fontTheme:"studio",heroEmphasis:null,logoAssetId:null,pageImages:[],sectionImages:[]};
+    const {files}=renderPortableSite(portableBundle(b),{"assets/images/hero.png":hero});
+    files["assets/site.css"]=Buffer.concat([Buffer.from(files["assets/site.css"]),Buffer.from("@media(max-width:760px){.presentation-v1 .mobile-contact{position:fixed;bottom:0;left:0;width:100%;z-index:30;background:var(--surface)}}")]);
+    const result=await checkPortableSite({files,browser});
+    expect(result.issues.filter(issue=>issue.code==="mobile_contact_overlap")).toEqual([expect.objectContaining({page:"index.html",viewport:"mobile",severity:"error"})]);
+    expect(result.passed).toBe(false);
+  },60000);
   it("catches a valid internal link whose Call label falsely promises to dial",async()=>{
     const b=fixtureBlueprint();b.contact.phone="+16785550101";b.pages[0].hero.primaryCta="Call the team";
     const {files}=renderPortableSite(portableBundle(b),{"assets/images/hero.png":hero});

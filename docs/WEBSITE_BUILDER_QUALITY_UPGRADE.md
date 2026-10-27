@@ -73,6 +73,8 @@ These fixtures prove supported rendering and checks, not that live generated sit
 
 ## Cosmo approved-plan palette recovery
 
+Follow-up: [October 27 full builder audit](WEBSITE_BUILDER_AUDIT_2026-10-27.md) records the later renderer/recovery fixes, private failure diagnostics, preview-host burst handling and remaining engineering priorities.
+
 - Austin approved plan v5, creating website v4. It stopped during generation with `Website palette text must have at least 4.5:1 contrast on its backgrounds`.
 - Root cause is our approved-palette parser: `Muted: slate #52616B, contrast-tested on its surface` was mistaken for a surface, and `AccentSecondary: warm amber #F3AD46 for restrained highlights with dark text` was mistaken for body text. This was an application parsing defect; the contrast gate correctly rejected the resulting colors.
 - Fix: explicit leading palette role labels take precedence over descriptive prose and legacy color-name heuristics. Inaccessible explicit colors still fail the same 4.5:1 validation. Added exact-plan parsing and saved-response recovery regressions.
