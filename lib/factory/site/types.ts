@@ -14,11 +14,18 @@ export type SiteDesign={
   heroFocalPoint:{x:number;y:number};
   sectionStyles:Array<{pagePath:string;sectionId:string;tone:"base"|"surface"|"contrast"|"accent"}>;
 };
+export const siteFormFields=["name","email","phone","location","message","preferredContact","contactDetail"] as const;
+export type SiteInteractions={version:1;
+  forms:Array<{pagePath:string;sectionId:string;fields:Array<typeof siteFormFields[number]>;submitLabel:string}>;
+  actions:Array<{pagePath:string;sectionId:string;itemIndex:number;label:string;targetPage:string;targetSection:string|null}>;
+};
 export type SiteBlueprint={
   version:1;brandName:string;tagline:string;family:DesignFamilyId;composition:HeroComposition;
   accent:string;fontPair:"modern"|"editorial"|"humanist";
   /** Absent for saved v1 blueprints; those retain their original family defaults. */
   design?:SiteDesign;
+  /** Explicit forms/actions for new builds; absent preserves legacy rendering. */
+  interactions?:SiteInteractions;
   pages:Array<{path:string;title:string;description:string;hero:{eyebrow:string;headline:string;body:string;primaryCta:string;secondaryCta:string};
     sections:Array<{id:string;kind:"services"|"about"|"process"|"features"|"faq"|"contact"|"statement";layout:typeof sectionLayouts[number];eyebrow:string;title:string;body:string;items:Array<{title:string;body:string}>}>}>;
   heroImage:{prompt:string;alt:string;caption:string};

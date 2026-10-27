@@ -44,6 +44,8 @@ export function publicSiteCopy(blueprint:SiteBlueprint):Array<{page:string;text:
     blueprint.brandName,blueprint.tagline,blueprint.heroImage.alt,blueprint.heroImage.caption,
     page.title,page.description,...Object.values(page.hero),
     ...page.sections.flatMap(section=>[section.eyebrow,section.title,section.body,...section.items.flatMap(item=>[item.title,item.body])]),
+    ...(blueprint.interactions?.forms.filter(f=>f.pagePath===page.path).map(f=>f.submitLabel)||[]),
+    ...(blueprint.interactions?.actions.filter(a=>a.pagePath===page.path).map(a=>a.label)||[]),
     ...Object.values(blueprint.contact).filter((value):value is string=>value!==null),
   ].filter(Boolean).join("\n")}));
 }

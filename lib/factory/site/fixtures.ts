@@ -35,6 +35,7 @@ export function fixtureBlueprint(family:DesignFamilyId="trades",composition:Hero
     ];
   }
   blueprint.design=defaultSiteDesign(blueprint);
+  blueprint.interactions={version:1,forms:[],actions:[]};
   return blueprint;
 }
 

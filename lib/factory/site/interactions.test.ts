@@ -1,0 +1,80 @@
+import {afterAll,beforeAll,describe,expect,it} from "vitest";
+import {chromium,type Browser} from "playwright";
+import sharp from "sharp";
+import {fixtureBlueprint,fixtureHeroSvg} from "./fixtures";
+import {validateBlueprintStructure,siteGenerationSchema,portableBundle} from "./validate";
+import {renderPortableSite} from "./render";
+import {assertPortableSiteSafety} from "./safety";
+import {checkPortableSite} from "./qa";
+import {siteContentType} from "./artifacts";
+import {publicSiteCopy} from "./quality";
+
+const fixture=()=>{
+  const b=fixtureBlueprint("trades","split",true);
+  const contact={id:"inquiry",kind:"contact" as const,layout:"split" as const,eyebrow:"Contact",title:"Start an inquiry",body:"Try the demonstration below.",items:[]};
+  b.pages.push({...structuredClone(b.pages[1]),path:"contact/index.html",title:"Contact",sections:[contact]});
+  b.pages[1].sections.push({...contact,id:"coverage"});
+  b.pages[0].sections.push({...contact,id:"contact",body:"Use the contact page to make an inquiry."});
+  b.interactions={version:1,forms:[
+    {pagePath:"contact/index.html",sectionId:"inquiry",fields:["name","preferredContact","contactDetail","location","message"],submitLabel:"Preview inquiry"},
+    {pagePath:"approach/index.html",sectionId:"coverage",fields:["location","message","preferredContact","contactDetail"],submitLabel:"Preview coverage inquiry"},
+  ],actions:[{pagePath:"index.html",sectionId:"services",itemIndex:0,label:"Explore the service options",targetPage:"services/index.html",targetSection:"options"}]};
+  return b;
+};
+let hero:Buffer,browser:Browser;
+beforeAll(async()=>{hero=await sharp(Buffer.from(fixtureHeroSvg)).png().toBuffer();browser=await chromium.launch({headless:true});});
+afterAll(async()=>{await browser?.close();});
+
+describe("Explicit portable forms and service navigation",()=>{
+  it("requires controls in new provider responses while retaining legacy blueprints",()=>{
+    const b=fixture();expect(siteGenerationSchema.parse(b).interactions.forms).toHaveLength(2);
+    delete b.interactions;expect(()=>validateBlueprintStructure(b)).not.toThrow();expect(()=>siteGenerationSchema.parse(b)).toThrow();
+    const {files}=renderPortableSite(portableBundle(b),{"assets/images/hero.png":hero});
+    expect(Buffer.from(files["index.html"]).toString()).toContain('name="email"');
+  });
+  it("rejects missing/duplicate controls and unsafe or nonexistent action targets",()=>{
+    const changes=[
+      (b:ReturnType<typeof fixture>)=>{b.interactions!.forms[0].sectionId="missing";},
+      (b:ReturnType<typeof fixture>)=>{b.interactions!.forms.push(b.interactions!.forms[0]);},
+      (b:ReturnType<typeof fixture>)=>{b.interactions!.forms[0].fields=["name","name"];},
+      (b:ReturnType<typeof fixture>)=>{b.interactions!.forms[0].fields=["preferredContact"];},
+      (b:ReturnType<typeof fixture>)=>{b.interactions!.actions[0].targetPage="https://outside.test/";},
+      (b:ReturnType<typeof fixture>)=>{b.interactions!.actions[0].targetSection="missing";},
+      (b:ReturnType<typeof fixture>)=>{b.interactions!.actions[0].itemIndex=7;},
+      (b:ReturnType<typeof fixture>)=>{b.interactions!.actions.push(b.interactions!.actions[0]);},
+    ];
+    for(const change of changes){const b=fixture();change(b);expect(()=>validateBlueprintStructure(b)).toThrow();}
+  });
+  it("renders only configured forms, escaped labels and specific internal service links",()=>{
+    const b=fixture();b.interactions!.actions[0].label='Explore <script>bad()</script>';b.interactions!.forms.reverse();
+    const {files}=renderPortableSite(portableBundle(b),{"assets/images/hero.png":hero}),home=Buffer.from(files["index.html"]).toString(),contact=Buffer.from(files["contact/index.html"]).toString();
+    expect(home).not.toContain('<form ');expect(Buffer.from(files["services/index.html"]).toString()).not.toContain('<form ');
+    expect(home).toContain('href="contact/index.html#inquiry">Start an inquiry');
+    expect(home).toContain('href="services/index.html#options"');expect(home).toContain('Explore &lt;script&gt;bad()&lt;/script&gt;');
+    expect(contact.match(/<form /g)).toHaveLength(1);expect(contact).toContain('name="location"');expect(contact).not.toContain('name="email"');
+    expect(contact.indexOf('Demo only')).toBeLessThan(contact.indexOf('type="submit"'));
+    expect(publicSiteCopy(b)[0].text).toContain('Explore <script>bad()</script>');
+    expect(()=>assertPortableSiteSafety(files)).not.toThrow();
+  });
+  it("checks every configured form and cross-page anchor on desktop/mobile",async()=>{
+    const {files}=renderPortableSite(portableBundle(fixture()),{"assets/images/hero.png":hero});
+    const qa=await checkPortableSite({files,browser});expect(qa.issues).toEqual([]);expect(qa.passed).toBe(true);
+    const broken={...files,"index.html":Buffer.from(Buffer.from(files["index.html"]).toString().replace('services/index.html#options','services/index.html#missing'))};
+    const invalid=await checkPortableSite({files:broken,browser});expect(invalid.issues.some(i=>i.code==="broken_anchor")).toBe(true);
+  },120000);
+  it("switches contact validation and previews submission without network delivery or storage",async()=>{
+    const {files}=renderPortableSite(portableBundle(fixture()),{"assets/images/hero.png":hero});
+    const context=await browser.newContext(),unexpected:string[]=[];
+    await context.route("**/*",async route=>{const u=new URL(route.request().url()),key=u.pathname.slice(1);if(u.origin!=="https://form-test.invalid"||route.request().method()!=="GET"||!files[key]){unexpected.push(route.request().url());await route.abort();return;}await route.fulfill({body:Buffer.from(files[key]),contentType:siteContentType(key)});});
+    try{
+      const page=await context.newPage();await page.goto("https://form-test.invalid/contact/index.html");
+      const form=page.locator('[data-demo-form]'),detail=form.locator('[name="contactDetail"]');
+      await form.locator('[name="name"]').fill("Synthetic visitor");await form.locator('[name="location"]').fill("Synthetic city");await form.locator('[name="message"]').fill("Synthetic service concern");
+      await detail.fill("not-an-email");expect(await detail.evaluate((e:HTMLInputElement)=>e.checkValidity())).toBe(false);
+      await form.locator('[name="preferredContact"]').selectOption("phone");await detail.fill("not-a-phone");expect(await detail.evaluate((e:HTMLInputElement)=>e.checkValidity())).toBe(false);
+      await detail.fill("(555) 555-0123");expect(await detail.evaluate((e:HTMLInputElement)=>e.checkValidity())).toBe(true);
+      await form.locator('button[type="submit"]').click();expect(await form.locator('[data-demo-feedback]').textContent()).toContain("was not sent or stored");
+      expect(await page.evaluate(()=>({local:localStorage.length,session:sessionStorage.length}))).toEqual({local:0,session:0});expect(unexpected).toEqual([]);
+    }finally{await context.close();}
+  },30000);
+});

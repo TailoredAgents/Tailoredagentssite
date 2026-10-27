@@ -54,7 +54,7 @@ export function assertPortableSiteSafety(files:SiteFiles) {
         else if(node.tagName==="meta"&&attrs["http-equiv"]){
           if(attrs["http-equiv"].toLowerCase()!=="content-security-policy"||attrs.content!==siteCsp)throw new Error("Unexpected preview browser policy.");csp++;
         }
-        if(attrs.href&&node.tagName!=="link"&&!/^(?:mailto:[^\s<>]+|tel:[+0-9]+|#[a-z][a-z0-9-]*|(?:\.\.\/)?(?:index\.html|[a-z][a-z0-9-]*\/index\.html))$/.test(attrs.href))throw new Error("A preview link uses an unsupported destination.");
+        if(attrs.href&&node.tagName!=="link"&&!/^(?:mailto:[^\s<>]+|tel:[+0-9]+|#[a-z][a-z0-9-]*|(?:\.\.\/)?(?:index\.html|[a-z][a-z0-9-]*\/index\.html)(?:#[a-z][a-z0-9-]*)?)$/.test(attrs.href))throw new Error("A preview link uses an unsupported destination.");
         if(attrs.src&&!["script","img"].includes(node.tagName))throw new Error("Unexpected resource source.");
       }
       if("childNodes" in node)for(const child of node.childNodes)visit(child);

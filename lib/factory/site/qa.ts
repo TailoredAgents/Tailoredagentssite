@@ -63,19 +63,24 @@ export async function checkPortableSite(input:{files:SiteFiles;browser:Browser})
             if(url.origin!==origin){add("unexpected_link","A link leaves the portable website without an approved integration.");continue;}
             const target=url.pathname.endsWith("/")?`${url.pathname.slice(1)}index.html`:url.pathname.slice(1);
             if(!input.files[target])add("broken_link",`Missing internal link target: ${target}`);
-            else if(target===file&&url.hash&&!inspection.ids.includes(decodeURIComponent(url.hash.slice(1))))add("broken_anchor",`Missing page section: ${url.hash}`);
+            else if(url.hash){
+              const ids=target===file?inspection.ids:[...Buffer.from(input.files[target]).toString("utf8").matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
+              if(!ids.includes(decodeURIComponent(url.hash.slice(1))))add("broken_anchor",`Missing page section: ${target}${url.hash}`);
+            }
           }
           if(viewport.name==="mobile"){
             const menu=page.locator("[data-menu-toggle]");await menu.click();
             if(await menu.getAttribute("aria-expanded")!=="true"||!await page.locator("#site-menu").isVisible())add("mobile_menu","The mobile navigation did not open.");
             await menu.click();
           }
-          const form=page.locator("[data-demo-form]").first();
-          if(await form.count()){
-            await form.locator('[name="name"]').fill("Preview check");await form.locator('[name="email"]').fill("preview@example.test");await form.locator('[name="message"]').fill("Synthetic demo form check");await form.locator('button[type="submit"]').click();
+          const forms=page.locator("[data-demo-form]");
+          for(const form of await forms.all()){
+            const values={name:"Preview check",email:"preview@example.test",phone:"(555) 555-0123",location:"Synthetic city",message:"Synthetic demo form check",contactDetail:"preview@example.test"};
+            for(const [name,value] of Object.entries(values)){const field=form.locator(`[name="${name}"]`);if(await field.count())await field.fill(value);}
+            await form.locator('button[type="submit"]').click();
             if(!(await form.locator("[data-demo-feedback]").textContent())?.includes("was not sent"))add("demo_form","Demo form did not explain that no message was sent.");
-            await page.reload({waitUntil:"load"});
           }
+          if(await forms.count())await page.reload({waitUntil:"load"});
           const accessibility=await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze();
           for(const violation of accessibility.violations.filter(v=>["serious","critical"].includes(v.impact||"")))add(`accessibility_${violation.id}`,`${violation.help}: ${violation.nodes.length} affected elements (${violation.nodes.slice(0,3).map(n=>n.target.join(" ")).join(", ").slice(0,250)})`);
           for(const err of pageErrors)add("browser_error",err);
