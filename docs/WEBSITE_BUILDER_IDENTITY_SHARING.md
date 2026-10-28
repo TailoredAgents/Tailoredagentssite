@@ -1,6 +1,6 @@
 # Website Builder identity and sharing
 
-Implemented October 27, 2026 (evaluation records use October 28 UTC). This is the P0/P1 and automated P2 slice of the [quality plan](WEBSITE_BUILDER_QUALITY_PLAN.md). Deployment evidence will be appended after release.
+Implemented October 27, 2026 (evaluation records use October 28 UTC). This is the P0/P1 and automated P2 slice of the [quality plan](WEBSITE_BUILDER_QUALITY_PLAN.md).
 
 ## Behavior
 
@@ -34,3 +34,13 @@ Without that setting, the site runs with its local assets and omits the absolute
 - Human visual appeal ratings remain empty. [Sample synthetic cards](previews/builder-identity/trades-sharing.jpg) demonstrate asset formatting, not a real customer's final image. A newly approved live build and actual phone messaging composer/social-inspector observation are still required. No messages were sent, paid generations run, or customer plans approved on behalf of a salesperson for this release.
 
 Next: P3 design decisions, P4 reliability/performance and P5/P6 independent salesperson/real-build acceptance remain open in the quality plan. Successful fixture tests and an AI score do not establish consistently excellent sales websites.
+
+## Deployment verification
+
+Release `fdad1c0bee458c23399a84125eb446e04ebb96bd` was pushed to `main` and verified **Deploy succeeded | Live** on both services:
+
+- [CRM deployment](https://dashboard.render.com/web/srv-db6hod8473hc739q2uo0/deploys/dep-dbgmj6h5efls73aq958g), started October 27 at 11:18:50 PM EDT, duration 2m15s.
+- [Builder deployment](https://dashboard.render.com/cron/crn-dbfth6uk1f9s73amh7ig/deploys/dep-dbgmj6p5efls73aq9640), same release commit.
+- Post-deployment public `/api/health` returned 200. The existing Cosmo v9 branded short link still redirected successfully to its preview (200, HTML, `noindex, nofollow, noarchive`). No existing artifact was rewritten.
+
+The baseline/evidence commit is `4ddd0d7`. No environment change, database migration, paid generation or manually triggered production job was required. These deployment checks confirm the release is serving; they are not a live newly generated identity-card acceptance result.
