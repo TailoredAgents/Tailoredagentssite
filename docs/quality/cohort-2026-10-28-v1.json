@@ -1,0 +1,247 @@
+{
+  "version": "2026-10-28-v1",
+  "baselineRevision": "194da47fa5e906caed55634ccf9bd8bbde6c7a35",
+  "kind": "synthetic-renderer-cohort",
+  "providerRequests": 0,
+  "rubric": {
+    "version": 2,
+    "target": 85,
+    "dimensionFloor": 75,
+    "anchors": [
+      {
+        "score": 50,
+        "description": "A rough, inconsistent or difficult-to-use draft."
+      },
+      {
+        "score": 65,
+        "description": "A clean generic template: legible but repetitive, weakly branded and not persuasive enough for a premium sales presentation."
+      },
+      {
+        "score": 80,
+        "description": "Coherent and useful, with clear business relevance; one or two material presentation weaknesses remain."
+      },
+      {
+        "score": 90,
+        "description": "Distinctive, business-specific and convincing: memorable opening, intentional typography, purposeful imagery, crisp copy and equally strong mobile treatment."
+      },
+      {
+        "score": 100,
+        "description": "Exceptional across every visible dimension. Do not award for merely having no detected errors."
+      }
+    ],
+    "dimensions": {
+      "firstImpression": {
+        "weight": 25,
+        "label": "First impression and identity",
+        "description": "A memorable, industry-appropriate opening and clear customer benefit; not a generic business-name substitution."
+      },
+      "composition": {
+        "weight": 20,
+        "label": "Composition and typography",
+        "description": "Deliberate type scale, spacing, contrast, density and changing rhythm without arbitrary decorative sections."
+      },
+      "imagery": {
+        "weight": 15,
+        "label": "Imagery and brand treatment",
+        "description": "Intentional crops and relevant visual storytelling, with clear logo treatment when an authorized asset exists. Sparse input can succeed with an intentional typographic/illustrative direction."
+      },
+      "copy": {
+        "weight": 15,
+        "label": "Persuasive and honest writing",
+        "description": "Specific visitor value and useful explanations; no repeated filler, inquiry instructions or visible research bureaucracy. No unsupported business facts."
+      },
+      "usefulness": {
+        "weight": 10,
+        "label": "Page purpose and actions",
+        "description": "Each page answers its own visitor questions. Actions describe what they do; navigation and next steps are understandable."
+      },
+      "mobile": {
+        "weight": 15,
+        "label": "Mobile presentation",
+        "description": "Readable hierarchy, strong crops, comfortable controls and well-composed stacking at phone width—not just absence of horizontal overflow."
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "trades-established",
+      "split": "tuning",
+      "industry": "trades",
+      "conditions": [
+        "established-service-scope",
+        "missing-logo",
+        "multiple-pages"
+      ],
+      "planSha256": "200436df0bc6554918fd015ceb8fc7cd8973f29c2163efed29e3808e1ea0eaf6",
+      "blueprintSha256": "6f3b025ac0a1cd58ba84e7504461e2f33ae52da59859cff0b7ff79d56f0cce8a",
+      "expected": [
+        "Distinctive visual direction",
+        "Purposeful section variation",
+        "Honest business-specific copy",
+        "Correct direct action behavior"
+      ]
+    },
+    {
+      "id": "wellness-small-practice",
+      "split": "tuning",
+      "industry": "wellness",
+      "conditions": [
+        "missing-logo",
+        "no-credentials",
+        "no-health-promises"
+      ],
+      "planSha256": "0bc41867c58bf1aee1f61de9980be342f6f4956e84783e0e562a11ba2f39940a",
+      "blueprintSha256": "3e3650de741d7ed0072ac50f45faf42c99aa0b19c8513a6ed876715bcb86f79f",
+      "expected": [
+        "Distinctive visual direction",
+        "Purposeful section variation",
+        "Honest business-specific copy",
+        "Correct direct action behavior"
+      ]
+    },
+    {
+      "id": "hospitality-concept",
+      "split": "tuning",
+      "industry": "hospitality",
+      "conditions": [
+        "no-hours-location-menu",
+        "missing-logo",
+        "dark-palette"
+      ],
+      "planSha256": "3f476326b275a7b7c110b822e957d7870cdd51edb0d179af85078c284a5d7bf3",
+      "blueprintSha256": "5d1de17386357126197d72c2924475cacc84af2fca59a73a27baed5bb41a3f5e",
+      "expected": [
+        "Distinctive visual direction",
+        "Purposeful section variation",
+        "Honest business-specific copy",
+        "Correct direct action behavior"
+      ]
+    },
+    {
+      "id": "professional-services",
+      "split": "tuning",
+      "industry": "professional",
+      "conditions": [
+        "no-case-studies",
+        "missing-logo",
+        "minimal-composition"
+      ],
+      "planSha256": "becc4bfcc294ed5fd05359525ea7ed8fb00219d34b969a894184b65e96f77797",
+      "blueprintSha256": "1ac98c716831cc01545af1c733d40a1086e0a5f4832ede679ed44e36b7629e42",
+      "expected": [
+        "Distinctive visual direction",
+        "Purposeful section variation",
+        "Honest business-specific copy",
+        "Correct direct action behavior"
+      ]
+    },
+    {
+      "id": "sparse-new-business",
+      "split": "tuning",
+      "industry": "unknown",
+      "conditions": [
+        "no-website",
+        "no-company",
+        "no-phone",
+        "no-location",
+        "little-copy"
+      ],
+      "planSha256": "f8aa522d9f5711076205577be04c6dc0077e50ccd5374e28a1875944e0306455",
+      "blueprintSha256": "d0fa4387f5d4c6753e18f9f3a8ebdbfe14c4ddba74a516f57002799abf4570de",
+      "expected": [
+        "No company, industry or contact requirement",
+        "Intentional restrained typography",
+        "No invented identity or credibility"
+      ]
+    },
+    {
+      "id": "trades-compact-first-site",
+      "split": "held-out",
+      "industry": "trades",
+      "conditions": [
+        "contrasting-same-industry-brief",
+        "no-website",
+        "short-copy",
+        "no-photo"
+      ],
+      "planSha256": "aab13b94fbba82f11c3c483f243416a1a68a74be950af82e12dffb6971273769",
+      "blueprintSha256": "4c998873eafb6c78b679615235301d91aaa3df60d12cd3973d879905def1fda9",
+      "expected": [
+        "Meaningfully different from the established immersive HVAC brief",
+        "Compact direct service-first presentation",
+        "No requirement for an existing website or photography"
+      ]
+    },
+    {
+      "id": "professional-long-name",
+      "split": "held-out",
+      "industry": "professional",
+      "conditions": [
+        "long-public-name",
+        "missing-logo",
+        "nested-pages"
+      ],
+      "planSha256": "57eec212f7c3b11039aeec878f121d9a05c47015e8a9195f08729b63ced56824",
+      "blueprintSha256": "06edd78fb630cc7a863b4774675d4106748e9e52e13f15780c8258d2f2d4efbb",
+      "expected": [
+        "Long identity remains legible without horizontal overflow",
+        "Readable navigation and card title",
+        "Nested pages preserve identity"
+      ]
+    },
+    {
+      "id": "hospitality-ambiguous-match",
+      "split": "held-out",
+      "industry": "hospitality",
+      "conditions": [
+        "ambiguous-company-match",
+        "candidate-facts-excluded",
+        "no-logo"
+      ],
+      "planSha256": "8c4b2d2575182f3e88b516b0cb8478c4cbec3e8ce3e44b4b1ae790320e7dc0f5",
+      "blueprintSha256": "a8e7be92ee99eb981f7ced8ed8a83ec398b43e23dbb9584ca74a54ee60b4c2eb",
+      "expected": [
+        "Candidate directory identities are not presented as business facts",
+        "No invented address, opening hours, menu or logo",
+        "Coherent provisional identity"
+      ]
+    },
+    {
+      "id": "unknown-company-none",
+      "split": "held-out",
+      "industry": "unknown",
+      "conditions": [
+        "company-None",
+        "no-website",
+        "no-logo",
+        "no-contact",
+        "very-little-copy"
+      ],
+      "planSha256": "f5938ffae51dc3cff25153a708c3d26e8fb59bbad0b3a08adc29c288e4476705",
+      "blueprintSha256": "6bfdd031ab3af8f1f154ca7a9e2f55dc3fcb8550eedbbd52abbd7eecce213cc8",
+      "expected": [
+        "None is not published as the company identity",
+        "No personal lead data is invented or exposed",
+        "Useful restrained presentation despite minimal content"
+      ]
+    },
+    {
+      "id": "wellness-rich-content",
+      "split": "held-out",
+      "industry": "wellness",
+      "conditions": [
+        "substantial-existing-content",
+        "supplied-logo",
+        "multiple-page-purposes"
+      ],
+      "planSha256": "d3b5bee1817e05a2783ea949ba52a416e3a705656323fbc5bbe4d44a6c178cca",
+      "blueprintSha256": "5333b91e6761b4dc0b3bfb69f4a62ede3d306293e52f3c445297feb39dcd9da5",
+      "expected": [
+        "Substantial copy remains readable without empty oversized sections",
+        "Approved logo retains its aspect ratio",
+        "Service and process content serve different purposes"
+      ]
+    }
+  ],
+  "freezePolicy": "Keep case inputs, split and rubric fixed after this baseline; revisions require a new cohort version."
+}

@@ -1,0 +1,199 @@
+{
+  "schemaVersion": 1,
+  "cohortVersion": "2026-10-28-v1",
+  "runId": "baseline-194da47-cohort-v1-r2",
+  "kind": "local-synthetic-renderer-benchmarks",
+  "sourceRevision": "194da47fa5e906caed55634ccf9bd8bbde6c7a35",
+  "evaluatorOverlay": [
+    "scripts/evaluate-factory-benchmarks.ts",
+    "lib/factory/site/quality-cohort.ts"
+  ],
+  "artifactLocation": "%TEMP%/ta-factory-baseline-194da47-20261028/cohort-v1-r2",
+  "reportSha256": "17d29980c5a3925414aed97e8fe1a77ec6808f0b372c8f54917f90d1d34d6200",
+  "startedAt": "2026-10-28T03:06:44.062Z",
+  "finishedAt": "2026-10-28T03:07:20.573Z",
+  "sourceTreeSha256": "b7056c2199bcd2c1019751da8d9cff4703f62bcbf32b69b107bd44f19df00be0",
+  "sourceChangedDuringRun": false,
+  "runnerSha256": "7f4a1ed7346df7e16dd895043765f18609a27417b0c7e770d1eda86b42cd7587",
+  "manifestSha256": "8b40b04fec9ddc6aefd612faed1014baad5e6abdb699a441c388abde42157627",
+  "packageLockSha256": "c1e47d96e8f16b41eba0b0356aecd4c766cd4986c8e744f32fc003fac773156b",
+  "sourceHashes": {
+    "lib/factory/build-provider.ts": "21e2056af264b3ce162edc0e438f8f9357b8baeded62d95aab5307b6c929b74a",
+    "lib/factory/config.ts": "18ee03450cbd06ce797844a1201f378e1a36e07b0c22c1597bdaca250ad3d06b",
+    "lib/factory/provider.ts": "f0592eeb6283a694174d5c5afd688ff2b9030aba3a82e2de04b6e2629f9ef6bd",
+    "lib/factory/site/provider.ts": "5188870a4831043eb2cbbda36a08fa26abc0594fd8f3fdc1e20c0bfaf9c95ae7",
+    "lib/factory/site/render.ts": "478450b60d3ad29cda09c632066cef0ea5391c6c79317a0614bebaedac69225c",
+    "lib/factory/site/review.ts": "0a2350eeba7347d7e3f0d925f60fe6e795ebe08de01cf744fc1bcfafd8d27b60",
+    "lib/factory/website-standards.ts": "9e48bc6134d7b255cad814ae1aa4a06fa7eee29049af8dd626e6519299cd444e"
+  },
+  "tools": {
+    "node": "v22.19.0",
+    "browser": "156.0.8078.4",
+    "platform": "win32",
+    "architecture": "x64",
+    "sharp": "0.35.5"
+  },
+  "configuredTextModel": {
+    "model": "gpt-6.1-sol",
+    "pricing": "2026-10-26-standard-30m",
+    "maxToolCalls": 2,
+    "researchOutputTokens": 4000,
+    "planOutputTokens": 7000,
+    "searchContextTokens": 128000,
+    "providerTimeoutMs": 65000,
+    "maxInputBytes": 110000,
+    "maxResponseBytes": 1000000,
+    "maximumStageMicros": 5000000
+  },
+  "modelsInvoked": [],
+  "providerRequests": 0,
+  "providerCostMicros": 0,
+  "ledgerReferences": [],
+  "fieldPerformanceMeasured": false,
+  "humanRatings": null,
+  "sendWorthyJudgments": null,
+  "results": [
+    {
+      "id": "trades-established",
+      "split": "tuning",
+      "passed": true,
+      "issues": [],
+      "planSha256": "200436df0bc6554918fd015ceb8fc7cd8973f29c2163efed29e3808e1ea0eaf6",
+      "blueprintSha256": "6f3b025ac0a1cd58ba84e7504461e2f33ae52da59859cff0b7ff79d56f0cce8a",
+      "artifactCount": 12,
+      "screenshotCount": 6,
+      "humanRating": null
+    },
+    {
+      "id": "wellness-small-practice",
+      "split": "tuning",
+      "passed": true,
+      "issues": [],
+      "planSha256": "0bc41867c58bf1aee1f61de9980be342f6f4956e84783e0e562a11ba2f39940a",
+      "blueprintSha256": "3e3650de741d7ed0072ac50f45faf42c99aa0b19c8513a6ed876715bcb86f79f",
+      "artifactCount": 14,
+      "screenshotCount": 6,
+      "humanRating": null
+    },
+    {
+      "id": "hospitality-concept",
+      "split": "tuning",
+      "passed": true,
+      "issues": [],
+      "planSha256": "3f476326b275a7b7c110b822e957d7870cdd51edb0d179af85078c284a5d7bf3",
+      "blueprintSha256": "5d1de17386357126197d72c2924475cacc84af2fca59a73a27baed5bb41a3f5e",
+      "artifactCount": 14,
+      "screenshotCount": 6,
+      "humanRating": null
+    },
+    {
+      "id": "professional-services",
+      "split": "tuning",
+      "passed": true,
+      "issues": [],
+      "planSha256": "becc4bfcc294ed5fd05359525ea7ed8fb00219d34b969a894184b65e96f77797",
+      "blueprintSha256": "1ac98c716831cc01545af1c733d40a1086e0a5f4832ede679ed44e36b7629e42",
+      "artifactCount": 13,
+      "screenshotCount": 6,
+      "humanRating": null
+    },
+    {
+      "id": "sparse-new-business",
+      "split": "tuning",
+      "passed": true,
+      "issues": [],
+      "planSha256": "f8aa522d9f5711076205577be04c6dc0077e50ccd5374e28a1875944e0306455",
+      "blueprintSha256": "d0fa4387f5d4c6753e18f9f3a8ebdbfe14c4ddba74a516f57002799abf4570de",
+      "artifactCount": 8,
+      "screenshotCount": 2,
+      "humanRating": null
+    },
+    {
+      "id": "trades-compact-first-site",
+      "split": "held-out",
+      "passed": false,
+      "issues": [
+        {
+          "code": "thin_page",
+          "page": "index.html",
+          "severity": "error"
+        }
+      ],
+      "planSha256": "aab13b94fbba82f11c3c483f243416a1a68a74be950af82e12dffb6971273769",
+      "blueprintSha256": "4c998873eafb6c78b679615235301d91aaa3df60d12cd3973d879905def1fda9",
+      "artifactCount": 9,
+      "screenshotCount": 2,
+      "humanRating": null
+    },
+    {
+      "id": "professional-long-name",
+      "split": "held-out",
+      "passed": true,
+      "issues": [],
+      "planSha256": "57eec212f7c3b11039aeec878f121d9a05c47015e8a9195f08729b63ced56824",
+      "blueprintSha256": "06edd78fb630cc7a863b4774675d4106748e9e52e13f15780c8258d2f2d4efbb",
+      "artifactCount": 13,
+      "screenshotCount": 6,
+      "humanRating": null
+    },
+    {
+      "id": "hospitality-ambiguous-match",
+      "split": "held-out",
+      "passed": true,
+      "issues": [],
+      "planSha256": "8c4b2d2575182f3e88b516b0cb8478c4cbec3e8ce3e44b4b1ae790320e7dc0f5",
+      "blueprintSha256": "a8e7be92ee99eb981f7ced8ed8a83ec398b43e23dbb9584ca74a54ee60b4c2eb",
+      "artifactCount": 14,
+      "screenshotCount": 6,
+      "humanRating": null
+    },
+    {
+      "id": "unknown-company-none",
+      "split": "held-out",
+      "passed": false,
+      "issues": [
+        {
+          "code": "thin_page",
+          "page": "index.html",
+          "severity": "error"
+        }
+      ],
+      "planSha256": "f5938ffae51dc3cff25153a708c3d26e8fb59bbad0b3a08adc29c288e4476705",
+      "blueprintSha256": "6bfdd031ab3af8f1f154ca7a9e2f55dc3fcb8550eedbbd52abbd7eecce213cc8",
+      "artifactCount": 8,
+      "screenshotCount": 2,
+      "humanRating": null
+    },
+    {
+      "id": "wellness-rich-content",
+      "split": "held-out",
+      "passed": true,
+      "issues": [],
+      "planSha256": "d3b5bee1817e05a2783ea949ba52a416e3a705656323fbc5bbe4d44a6c178cca",
+      "blueprintSha256": "5333b91e6761b4dc0b3bfb69f4a62ede3d306293e52f3c445297feb39dcd9da5",
+      "artifactCount": 15,
+      "screenshotCount": 6,
+      "humanRating": null
+    }
+  ],
+  "earlierRuns": [
+    {
+      "id": "original-five",
+      "completedCases": 5,
+      "passedCases": 5,
+      "note": "Unmodified original evaluator against archived original source; retained locally."
+    },
+    {
+      "id": "cohort-v1",
+      "completedCases": 9,
+      "passedCases": 7,
+      "note": "Evaluator setup error on case10: supplied logo incorrectly used photo-derivative API. Fixture unchanged; fixed evaluator to use existing preparePortableLogo. Aborted output retained; not a production renderer failure."
+    }
+  ],
+  "limitations": [
+    "Synthetic renderer inputs do not measure research, generation, unattended completion, real-channel sharing or prospect appeal.",
+    "Two very-short-content negatives remain recorded; thresholds were not weakened and held-out copy was not padded.",
+    "No human ratings were invented.",
+    "Complete artifacts are in local temporary storage and need private backup before cleanup."
+  ]
+}

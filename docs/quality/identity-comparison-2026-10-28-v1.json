@@ -1,0 +1,253 @@
+{
+  "schemaVersion": 1,
+  "runId": "identity-20261028-cohort-v1-final",
+  "kind": "local-synthetic-renderer-benchmarks",
+  "cohortVersion": "2026-10-28-v1",
+  "artifactLocation": "%TEMP%/ta-factory-identity-20261028-cohort-v1-final",
+  "baselineRun": "baseline-194da47-cohort-v1-r2",
+  "reportSha256": "743045ab47352d2e579d4b1fea48385ebf754a29da052bd5b49db0c357fb29fc",
+  "startedAt": "2026-10-28T03:14:34.444Z",
+  "finishedAt": "2026-10-28T03:15:12.094Z",
+  "sourceRevision": "194da47fa5e906caed55634ccf9bd8bbde6c7a35",
+  "sourceState": "working tree before release commit; exact source hashes saved in private-free local report",
+  "sourceTreeSha256": "a27615cfce31990d6da8f238f14d52d5af2939f7deee0817aae3833f149d0e16",
+  "sourceChangedDuringRun": false,
+  "runnerSha256": "398ade9c4e3bfe12f61e948ad606605c55ea793f223618a809616ada4743efe1",
+  "manifestSha256": "73f61d35161ed98c5ef728a75ca4fce227f6df801acdef0bcaa59af5c2a53c93",
+  "packageLockSha256": "0d0e04e1c26d5cbad8ba907e8789b06d52714a7dacda2a1df0198e807d1802e8",
+  "identitySourceSha256": "4fd953e3fdd051e1b83db177c69133e94b6d094650ecd27e1c61af0a31a0a770",
+  "rendererSourceSha256": "7ac04e0c461d69f52eb94a1c809b87908f75134f3c97ad454bef941221e22a99",
+  "tools": {
+    "node": "v22.19.0",
+    "browser": "156.0.8078.4",
+    "platform": "win32",
+    "architecture": "x64",
+    "sharp": "0.35.5"
+  },
+  "modelsInvoked": [],
+  "providerRequests": 0,
+  "providerCostMicros": 0,
+  "humanRatings": null,
+  "sendWorthyJudgments": null,
+  "results": [
+    {
+      "id": "trades-established",
+      "split": "tuning",
+      "passed": true,
+      "unchangedPlan": true,
+      "unchangedBlueprint": true,
+      "issues": [],
+      "newIssueCodes": [],
+      "identityFiles": [
+        "assets/identity/apple-touch-icon.png",
+        "assets/identity/favicon-32.png",
+        "assets/identity/favicon-64.png",
+        "assets/identity/social-card.jpg"
+      ],
+      "unchangedArtifactsFromPreviousIdentityRun": true,
+      "artifactCount": 16,
+      "screenshotCount": 6,
+      "humanRating": null
+    },
+    {
+      "id": "wellness-small-practice",
+      "split": "tuning",
+      "passed": true,
+      "unchangedPlan": true,
+      "unchangedBlueprint": true,
+      "issues": [],
+      "newIssueCodes": [],
+      "identityFiles": [
+        "assets/identity/apple-touch-icon.png",
+        "assets/identity/favicon-32.png",
+        "assets/identity/favicon-64.png",
+        "assets/identity/social-card.jpg"
+      ],
+      "unchangedArtifactsFromPreviousIdentityRun": true,
+      "artifactCount": 18,
+      "screenshotCount": 6,
+      "humanRating": null
+    },
+    {
+      "id": "hospitality-concept",
+      "split": "tuning",
+      "passed": true,
+      "unchangedPlan": true,
+      "unchangedBlueprint": true,
+      "issues": [],
+      "newIssueCodes": [],
+      "identityFiles": [
+        "assets/identity/apple-touch-icon.png",
+        "assets/identity/favicon-32.png",
+        "assets/identity/favicon-64.png",
+        "assets/identity/social-card.jpg"
+      ],
+      "unchangedArtifactsFromPreviousIdentityRun": true,
+      "artifactCount": 18,
+      "screenshotCount": 6,
+      "humanRating": null
+    },
+    {
+      "id": "professional-services",
+      "split": "tuning",
+      "passed": true,
+      "unchangedPlan": true,
+      "unchangedBlueprint": true,
+      "issues": [],
+      "newIssueCodes": [],
+      "identityFiles": [
+        "assets/identity/apple-touch-icon.png",
+        "assets/identity/favicon-32.png",
+        "assets/identity/favicon-64.png",
+        "assets/identity/social-card.jpg"
+      ],
+      "unchangedArtifactsFromPreviousIdentityRun": true,
+      "artifactCount": 17,
+      "screenshotCount": 6,
+      "humanRating": null
+    },
+    {
+      "id": "sparse-new-business",
+      "split": "tuning",
+      "passed": true,
+      "unchangedPlan": true,
+      "unchangedBlueprint": true,
+      "issues": [],
+      "newIssueCodes": [],
+      "identityFiles": [
+        "assets/identity/apple-touch-icon.png",
+        "assets/identity/favicon-32.png",
+        "assets/identity/favicon-64.png",
+        "assets/identity/social-card.jpg"
+      ],
+      "unchangedArtifactsFromPreviousIdentityRun": true,
+      "artifactCount": 12,
+      "screenshotCount": 2,
+      "humanRating": null
+    },
+    {
+      "id": "trades-compact-first-site",
+      "split": "held-out",
+      "passed": false,
+      "unchangedPlan": true,
+      "unchangedBlueprint": true,
+      "issues": [
+        {
+          "code": "thin_page",
+          "page": "index.html",
+          "severity": "error"
+        }
+      ],
+      "newIssueCodes": [],
+      "identityFiles": [
+        "assets/identity/apple-touch-icon.png",
+        "assets/identity/favicon-32.png",
+        "assets/identity/favicon-64.png",
+        "assets/identity/social-card.jpg"
+      ],
+      "unchangedArtifactsFromPreviousIdentityRun": true,
+      "artifactCount": 13,
+      "screenshotCount": 2,
+      "humanRating": null
+    },
+    {
+      "id": "professional-long-name",
+      "split": "held-out",
+      "passed": true,
+      "unchangedPlan": true,
+      "unchangedBlueprint": true,
+      "issues": [],
+      "newIssueCodes": [],
+      "identityFiles": [
+        "assets/identity/apple-touch-icon.png",
+        "assets/identity/favicon-32.png",
+        "assets/identity/favicon-64.png",
+        "assets/identity/social-card.jpg"
+      ],
+      "unchangedArtifactsFromPreviousIdentityRun": true,
+      "artifactCount": 17,
+      "screenshotCount": 6,
+      "humanRating": null
+    },
+    {
+      "id": "hospitality-ambiguous-match",
+      "split": "held-out",
+      "passed": true,
+      "unchangedPlan": true,
+      "unchangedBlueprint": true,
+      "issues": [],
+      "newIssueCodes": [],
+      "identityFiles": [
+        "assets/identity/apple-touch-icon.png",
+        "assets/identity/favicon-32.png",
+        "assets/identity/favicon-64.png",
+        "assets/identity/social-card.jpg"
+      ],
+      "unchangedArtifactsFromPreviousIdentityRun": true,
+      "artifactCount": 18,
+      "screenshotCount": 6,
+      "humanRating": null
+    },
+    {
+      "id": "unknown-company-none",
+      "split": "held-out",
+      "passed": false,
+      "unchangedPlan": true,
+      "unchangedBlueprint": true,
+      "issues": [
+        {
+          "code": "thin_page",
+          "page": "index.html",
+          "severity": "error"
+        }
+      ],
+      "newIssueCodes": [],
+      "identityFiles": [
+        "assets/identity/apple-touch-icon.png",
+        "assets/identity/favicon-32.png",
+        "assets/identity/favicon-64.png",
+        "assets/identity/social-card.jpg"
+      ],
+      "unchangedArtifactsFromPreviousIdentityRun": true,
+      "artifactCount": 12,
+      "screenshotCount": 2,
+      "humanRating": null
+    },
+    {
+      "id": "wellness-rich-content",
+      "split": "held-out",
+      "passed": true,
+      "unchangedPlan": true,
+      "unchangedBlueprint": true,
+      "issues": [],
+      "newIssueCodes": [],
+      "identityFiles": [
+        "assets/identity/apple-touch-icon.png",
+        "assets/identity/favicon-32.png",
+        "assets/identity/favicon-64.png",
+        "assets/identity/social-card.jpg"
+      ],
+      "unchangedArtifactsFromPreviousIdentityRun": true,
+      "artifactCount": 19,
+      "screenshotCount": 6,
+      "humanRating": null
+    }
+  ],
+  "limitations": [
+    "Synthetic renderer comparison, not autonomous AI generation or human prospect appeal.",
+    "Favicon/cards and metadata were checked locally; live social-platform display was not observed.",
+    "Two preexisting thin_page negatives remain; no claim of ten quality successes."
+  ],
+  "previousRuns": [
+    {
+      "runId": "identity-20261028-cohort-v1",
+      "artifactLocation": "%TEMP%/ta-factory-identity-20261028-cohort-v1",
+      "reportSha256": "5be923d3e47221d7cc1a20e2e2383edac4647de9c97dbf68470bd5ee1ced9a5f",
+      "sourceTreeSha256": "e0d49af0e0bc8174ccfa2616e2cd3fd649318f6ea65dfda6a19bece7d82a4989",
+      "identitySourceSha256": "7a10dfa36d8baf797fb6abe83d05bfca58f3c7ba7a55dbd79ea6e6e2a3a7e8ee",
+      "sourceChangedDuringRun": false,
+      "passedCases": 8,
+      "reasonForRerun": "Head-boundary metadata validation tightened; retain earlier run, then rerun frozen inputs against final helper."
+    }
+  ]
+}
