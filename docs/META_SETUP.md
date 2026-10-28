@@ -2,7 +2,7 @@
 
 Connection owner: Jeffrey, assigned by Austin October 23, 2026. See [new jeffrey.md](../new%20jeffrey.md#meta-leads--connection-and-remaining-checks) for remaining acceptance checks. Austin retains business-account ownership and can supply needed asset access. Jeffrey's SEO and shared-email handoffs continue alongside this work.
 
-**Current acceptance:** the app is published, the Facebook Page and both webhook subscriptions are connected, and imports are enabled. Jeffrey confirmed a Meta test-form submission appeared in CRM Leads on October 24. On October 27, a real Facebook lead reported by Austin was recovered from its saved receipt after correcting unanswered-field handling; see the incident record below. Production permission/App Review requirements remain unresolved; this successful retrieval does not settle those requirements or establish Instagram-placement delivery. Austin previously confirmed website PageView and Lead events after a saved website-review inquiry. Pixel/Dataset ID is **1785858192683666**. Preserve this working installation; the setup sections below are reference, not a request to create duplicate assets. Conversions API is not implemented.
+**Current acceptance:** the app is published, the Facebook Page and both webhook subscriptions are connected, and imports are enabled. Jeffrey confirmed a Meta test-form submission appeared in CRM Leads on October 24. On October 27, a real Facebook lead reported by Austin was recovered from its saved receipt after correcting unanswered-field handling; see the incident record below. Production permission/App Review requirements remain unresolved; this successful retrieval does not settle those requirements or establish Instagram-placement delivery. Austin previously confirmed website PageView and Lead events after a saved website-review inquiry. Pixel/Dataset ID is **1785858192683666**. Preserve this working installation; the setup sections below are reference, not a request to create duplicate assets. CRM-stage Conversions API feedback is implemented and paused by default; see [CRM conversion setup](META_CONVERSIONS_SETUP.md) for test, activation and sales-funnel verification. Server-side website conversions remain deferred.
 
 ## Missing-answer recovery — October 27, 2026
 
@@ -179,7 +179,7 @@ The existing Resend notifications for saved **website** inquiries are independen
 ### Deferred capabilities
 
 - Conversions API for server-confirmed website events, sharing the same event ID/name with the Pixel to deduplicate browser/server delivery. This release only sends the browser event.
-- Feedback of qualified/won outcomes to Meta after agreeing on the exact sales-stage meaning and permitted event fields. A CRM `won` status is not a paid purchase.
+- CRM stage feedback is now implemented separately; see [CRM conversion setup](META_CONVERSIONS_SETUP.md). Live delivery and Meta campaign eligibility still require verification. A CRM `won` status is not a paid purchase.
 - Owner routing rules, historical form backfill/reconciliation, and optional multi-Page/client isolation. Team SMS alerts are implemented below. The current connector receives new submissions for one internal business Page; it does not import old leads automatically.
 - Ad-spend/ROI reporting is separate from capturing leads and UTM source details.
 

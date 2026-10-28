@@ -18,13 +18,14 @@ import { SettingsSection } from "@/components/dashboard/settings-section";
 import { DashboardAppearance } from "@/components/dashboard/theme-provider";
 import { getMetaStatus } from "@/lib/meta/service";
 import { MetaSettingsPanel } from "@/components/meta-settings-panel";
+import { getMetaConversionStatus } from "@/lib/meta/conversions";
 
 export const metadata: Metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
   const context = await requireDashboardContext();
   const mailLogin = resolveDashboardConfiguration().authMode === "mail";
-  const [google, inbox, sms, voice, meta, leadAlerts, textAlerts] = await Promise.all([
+  const [google, inbox, sms, voice, meta, leadAlerts, textAlerts, metaConversions] = await Promise.all([
     getSearchConsoleConnection(context).catch(() => null),
     listMailboxes(context).then(mailboxes => ({ connected: mailboxes.length > 0, detail: mailboxes.length ? `${mailboxes.length} approved address${mailboxes.length === 1 ? "" : "es"}. Mail → Manage team controls who can read and send. Dashboard roles also apply.` : "Ask the Mail owner to approve your account for the shared sales address." })).catch(error => ({ connected: false, detail: error instanceof MailProviderError ? error.message : "The email connection could not be checked. Open Inbox to try again." })),
     listSmsSettings(context),
@@ -32,6 +33,7 @@ export default async function SettingsPage() {
     getMetaStatus(context).catch(() => null),
     getLeadAlertSettings(context),
     getSmsAlertSettings(context),
+    getMetaConversionStatus(context).catch(() => null),
   ]);
   const googleStatus = !google ? "Unable to check" : !google.configured ? "Setup needed" : google.connection?.status === "active" ? "Connected" : google.connection?.status === "error" ? "Needs attention" : "Not connected";
   const notifications = getInquiryNotificationConfiguration();
@@ -59,7 +61,7 @@ export default async function SettingsPage() {
       <SettingsSection id="voice-settings" target="calling" title="Calling & voicemail" description="Manage voice permissions, business hours, routing and voicemail."><VoiceSettingsPanel workspace={voice} /></SettingsSection>
       <SmsAlertSettings settings={textAlerts} />
       <LeadAlertSettings settings={leadAlerts} />
-      <MetaSettingsPanel state={meta} admin={context.role === "owner" || context.role === "admin"} />
+      <MetaSettingsPanel state={meta} conversions={metaConversions} admin={context.role === "owner" || context.role === "admin"} />
       <section className="dashboard-panel dashboard-boundary-card"><ShieldCheck size={22} /><div><h2>This workspace is private to your team</h2><p>Clients cannot sign in to this dashboard. If you need a password reset or someone has left the team, contact the mail owner.</p></div></section>
     </div>
   </>;

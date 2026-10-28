@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { OperationForm } from "@/components/dashboard/operation-form";
-import { retryMetaImportsAction } from "@/lib/meta/actions";
+import { retryMetaImportsAction, retryMetaConversionsAction } from "@/lib/meta/actions";
 import { getMetaStatus } from "@/lib/meta/service";
+import type { getMetaConversionStatus } from "@/lib/meta/conversions";
 
 export function MetaSettingsPanel({
   state,
+  conversions,
   admin,
 }: {
   state: Awaited<ReturnType<typeof getMetaStatus>>;
+  conversions: Awaited<ReturnType<typeof getMetaConversionStatus>>;
   admin: boolean;
 }) {
   const pixel =
@@ -21,6 +24,7 @@ export function MetaSettingsPanel({
     state?.counts
       .filter((row) => row.status === "pending" || row.status === "working")
       .reduce((sum, row) => sum + row.count, 0) || 0;
+  const count = (status: string) => conversions?.counts.find(row => row.state === status)?.count || 0;
   return (
     <section
       className="dashboard-panel dashboard-detail-card"
@@ -69,8 +73,21 @@ export function MetaSettingsPanel({
             {imported} / {pending} / {failed}
           </dd>
         </div>
+        <div>
+          <dt>Lead quality reporting</dt>
+          <dd>{!conversions ? "Status unavailable" : conversions.mode === "paused" ? "Paused — setup needed" : !conversions.ready ? "Setup incomplete" : conversions.mode === "test" ? "Testing — verify in Meta Test Events" : "Live — verify sales funnel in Meta"}</dd>
+        </div>
+        {conversions?.datasetId && <div><dt>Conversions dataset ID</dt><dd>{conversions.datasetId}</dd></div>}
+        <div>
+          <dt>Conversions accepted / tested / queued / needs attention / expired</dt>
+          <dd>{count("accepted")} / {count("tested")} / {count("pending") + count("working")} / {count("failed")} / {count("expired")}</dd>
+        </div>
       </dl>
       <div className="dashboard-long-copy">
+        <p>For Facebook and Instagram Instant Form leads, changing status reports the new stage to Meta once reporting is enabled. Qualified, Proposal and Won are your positive stages. Mark a lead Qualified after speaking with them and confirming a fit; you can also move straight to Proposal or Won.</p>
+        <p>Meta must verify the connection and sales funnel before you switch the campaign to maximize qualified leads. Accepted deliveries do not guarantee campaign eligibility. Events older than seven days expire.</p>
+        {!!conversions?.problems.length && <p>Conversion delivery needs attention: {conversions.problems.map(problem => `${problem.code} (${problem.count})`).join(", ")}. An administrator can check the connection in Meta Events Manager. Delivery retries keep the original event to prevent duplicates.</p>}
+        {admin && conversions?.ready && count("failed") > 0 && <OperationForm action={retryMetaConversionsAction} submitLabel="Retry failed conversions"><p>Retry corrected connection errors within 24 hours of the first attempt. Older failures remain visible for review.</p></OperationForm>}
         <p>
           New Instant Form submissions appear in Leads with the submitted
           answers and available ad details. Assign an owner and follow up from
