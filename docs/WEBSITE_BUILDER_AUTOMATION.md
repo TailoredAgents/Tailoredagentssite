@@ -1,5 +1,7 @@
 # Website Builder: salesperson-operated workflow
 
+**Next implementation plan:** [consistent quality, identity and sharing](WEBSITE_BUILDER_QUALITY_PLAN.md) adds the detailed favicon/link-card/export work and staged real-build acceptance required to earn confidence. Its proposed targets are not achievements of the deployed slice recorded below.
+
 ## Product goal
 
 Austin clarified on October 27, 2026 that a manually polished Cosmo preview is not the goal. A salesperson must be able to take a new lead to a useful hosted mockup without Austin or Codex operating the builder or editing the website for them. Manual draft editing is optional refinement, not the normal completion path.
