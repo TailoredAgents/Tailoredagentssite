@@ -1,0 +1,342 @@
+{
+  "schemaVersion": 1,
+  "runId": "p3-20261028-cohort-v1-r1",
+  "status": "completed pre-final run; retained before a subsequent narrow claim-qualification fix",
+  "kind": "local-synthetic-renderer-benchmarks",
+  "cohortVersion": "2026-10-28-v1",
+  "artifactLocation": "%TEMP%/ta-factory-p3-final-20261028-94e27f0b3dae40feac2551023834ddb1",
+  "baselineRun": "baseline-194da47-cohort-v1-r2",
+  "previousIdentityRun": "identity-20261028-cohort-v1-final",
+  "reportSha256": "0e4a41ee6d4b122eae58e5fe2e3ce51d7c211c7e16642d836e347957bbc67973",
+  "previousIdentityReportSha256": "743045ab47352d2e579d4b1fea48385ebf754a29da052bd5b49db0c357fb29fc",
+  "startedAt": "2026-10-28T15:25:09.891Z",
+  "finishedAt": "2026-10-28T15:25:54.892Z",
+  "sourceRevision": "6e69da285e81db8272fea8cacf58f633206a15f8",
+  "sourceState": "Uncommitted P3 implementation atop the recorded revision; exact source hashes define this run, not the revision alone.",
+  "sourceTreeSha256": "e1bc74e1f475d3cf821630bb7b1554241c235710d6110c34be9fe7b5d8c7cccd",
+  "sourceChangedDuringRun": false,
+  "runnerSha256": "398ade9c4e3bfe12f61e948ad606605c55ea793f223618a809616ada4743efe1",
+  "manifestSha256": "73f61d35161ed98c5ef728a75ca4fce227f6df801acdef0bcaa59af5c2a53c93",
+  "packageLockSha256": "0d0e04e1c26d5cbad8ba907e8789b06d52714a7dacda2a1df0198e807d1802e8",
+  "sourceHashes": {
+    "lib/factory/provider.ts": "088b1e804c6064cdd622670a62774c32895d3db78c223c25b614b9395b766f53",
+    "lib/factory/site/provider.ts": "d6ba4f0ac30f75ff9b06012e833f78ced83de791006440d059b02cbedfa27d2b",
+    "lib/factory/site/creative.ts": "a0ce296ea01a1a5d70ba16683c23148a67ce606b465b10e2585bcee2368e1510",
+    "lib/factory/site/families.ts": "2f520947a2d65a289efc9a131f123bea9890bc64e3539c1dd283e3d1f62c9653",
+    "lib/factory/site/design.ts": "dbf77c621b718ae629c3c306ea519177ad7ef109d97d3c2cf28bb405cc9e9cee",
+    "lib/factory/site/validate.ts": "805027aed03eee0f010274f44184e15527c4972316e9e9e69dde6df8abc078a1",
+    "lib/factory/site/quality.ts": "a9a2f750d845a7abf0fec56bb4434873e5a9549b6ea6104054a3e38edaabfee3",
+    "lib/factory/site/render.ts": "a0ad40d47b518dbfa1a2d20d8f1cf9114c4337206121630c4df76891200dda7d",
+    "lib/factory/site/polish.ts": "3b9e59acc3353b3a26c12e8130dba6dc626dc67d962270aab452fcfe870c6791",
+    "lib/factory/site/review.ts": "bb502629f967303a80921e577816cfb46c99247e8707374af217edc4cdc8c0a7",
+    "lib/factory/site/identity.ts": "0c55331d6b926b0da5080a378522a2ef59aba80989c66dab4d2f1fb74cb6603b",
+    "lib/factory/website-standards.ts": "15ef4f12ac359d138203a4ba0c221448b937ca25431cc3869733f9d2360eaf78"
+  },
+  "tools": {
+    "node": "v22.19.0",
+    "browser": "156.0.8078.4",
+    "platform": "win32",
+    "architecture": "x64",
+    "sharp": "0.35.5"
+  },
+  "modelsInvoked": [],
+  "providerRequests": 0,
+  "providerCostMicros": 0,
+  "humanRatings": null,
+  "sendWorthyJudgments": null,
+  "summary": {
+    "cases": 10,
+    "passed": 8,
+    "retainedNegatives": [
+      "trades-compact-first-site",
+      "unknown-company-none"
+    ],
+    "newIssueCodes": [],
+    "frozenPlansAndBlueprintsUnchanged": true
+  },
+  "results": [
+    {
+      "id": "trades-established",
+      "split": "tuning",
+      "passed": true,
+      "baselinePassed": true,
+      "previousIdentityPassed": true,
+      "unchangedPlan": true,
+      "unchangedBlueprint": true,
+      "planSha256": "200436df0bc6554918fd015ceb8fc7cd8973f29c2163efed29e3808e1ea0eaf6",
+      "blueprintSha256": "6f3b025ac0a1cd58ba84e7504461e2f33ae52da59859cff0b7ff79d56f0cce8a",
+      "issues": [],
+      "newIssueCodes": [],
+      "identityArtifactBytesUnchanged": true,
+      "changedArtifactsFromIdentity": [
+        "assets/site.css",
+        "contact/index.html",
+        "index.html",
+        "services/index.html"
+      ],
+      "artifactCount": 16,
+      "screenshotCount": 6,
+      "maximumPageBytes": {
+        "mobile": 121468,
+        "desktop": 127852
+      },
+      "humanRating": null
+    },
+    {
+      "id": "wellness-small-practice",
+      "split": "tuning",
+      "passed": true,
+      "baselinePassed": true,
+      "previousIdentityPassed": true,
+      "unchangedPlan": true,
+      "unchangedBlueprint": true,
+      "planSha256": "0bc41867c58bf1aee1f61de9980be342f6f4956e84783e0e562a11ba2f39940a",
+      "blueprintSha256": "3e3650de741d7ed0072ac50f45faf42c99aa0b19c8513a6ed876715bcb86f79f",
+      "issues": [],
+      "newIssueCodes": [],
+      "identityArtifactBytesUnchanged": true,
+      "changedArtifactsFromIdentity": [
+        "assets/site.css",
+        "contact/index.html",
+        "index.html",
+        "services/index.html"
+      ],
+      "artifactCount": 18,
+      "screenshotCount": 6,
+      "maximumPageBytes": {
+        "mobile": 161235,
+        "desktop": 169169
+      },
+      "humanRating": null
+    },
+    {
+      "id": "hospitality-concept",
+      "split": "tuning",
+      "passed": true,
+      "baselinePassed": true,
+      "previousIdentityPassed": true,
+      "unchangedPlan": true,
+      "unchangedBlueprint": true,
+      "planSha256": "3f476326b275a7b7c110b822e957d7870cdd51edb0d179af85078c284a5d7bf3",
+      "blueprintSha256": "5d1de17386357126197d72c2924475cacc84af2fca59a73a27baed5bb41a3f5e",
+      "issues": [],
+      "newIssueCodes": [],
+      "identityArtifactBytesUnchanged": true,
+      "changedArtifactsFromIdentity": [
+        "assets/site.css",
+        "contact/index.html",
+        "index.html",
+        "services/index.html"
+      ],
+      "artifactCount": 18,
+      "screenshotCount": 6,
+      "maximumPageBytes": {
+        "mobile": 174912,
+        "desktop": 188234
+      },
+      "humanRating": null
+    },
+    {
+      "id": "professional-services",
+      "split": "tuning",
+      "passed": true,
+      "baselinePassed": true,
+      "previousIdentityPassed": true,
+      "unchangedPlan": true,
+      "unchangedBlueprint": true,
+      "planSha256": "becc4bfcc294ed5fd05359525ea7ed8fb00219d34b969a894184b65e96f77797",
+      "blueprintSha256": "1ac98c716831cc01545af1c733d40a1086e0a5f4832ede679ed44e36b7629e42",
+      "issues": [],
+      "newIssueCodes": [],
+      "identityArtifactBytesUnchanged": true,
+      "changedArtifactsFromIdentity": [
+        "assets/site.css",
+        "contact/index.html",
+        "index.html",
+        "services/index.html"
+      ],
+      "artifactCount": 17,
+      "screenshotCount": 6,
+      "maximumPageBytes": {
+        "mobile": 148329,
+        "desktop": 154761
+      },
+      "humanRating": null
+    },
+    {
+      "id": "sparse-new-business",
+      "split": "tuning",
+      "passed": true,
+      "baselinePassed": true,
+      "previousIdentityPassed": true,
+      "unchangedPlan": true,
+      "unchangedBlueprint": true,
+      "planSha256": "f8aa522d9f5711076205577be04c6dc0077e50ccd5374e28a1875944e0306455",
+      "blueprintSha256": "d0fa4387f5d4c6753e18f9f3a8ebdbfe14c4ddba74a516f57002799abf4570de",
+      "issues": [],
+      "newIssueCodes": [],
+      "identityArtifactBytesUnchanged": true,
+      "changedArtifactsFromIdentity": [
+        "assets/site.css",
+        "index.html"
+      ],
+      "artifactCount": 12,
+      "screenshotCount": 2,
+      "maximumPageBytes": {
+        "mobile": 116966,
+        "desktop": 120216
+      },
+      "humanRating": null
+    },
+    {
+      "id": "trades-compact-first-site",
+      "split": "held-out",
+      "passed": false,
+      "baselinePassed": false,
+      "previousIdentityPassed": false,
+      "unchangedPlan": true,
+      "unchangedBlueprint": true,
+      "planSha256": "aab13b94fbba82f11c3c483f243416a1a68a74be950af82e12dffb6971273769",
+      "blueprintSha256": "4c998873eafb6c78b679615235301d91aaa3df60d12cd3973d879905def1fda9",
+      "issues": [
+        {
+          "code": "thin_page",
+          "page": "index.html",
+          "severity": "error"
+        }
+      ],
+      "newIssueCodes": [],
+      "identityArtifactBytesUnchanged": true,
+      "changedArtifactsFromIdentity": [
+        "assets/site.css",
+        "index.html"
+      ],
+      "artifactCount": 13,
+      "screenshotCount": 2,
+      "maximumPageBytes": {
+        "mobile": 140542,
+        "desktop": 143780
+      },
+      "humanRating": null
+    },
+    {
+      "id": "professional-long-name",
+      "split": "held-out",
+      "passed": true,
+      "baselinePassed": true,
+      "previousIdentityPassed": true,
+      "unchangedPlan": true,
+      "unchangedBlueprint": true,
+      "planSha256": "57eec212f7c3b11039aeec878f121d9a05c47015e8a9195f08729b63ced56824",
+      "blueprintSha256": "06edd78fb630cc7a863b4774675d4106748e9e52e13f15780c8258d2f2d4efbb",
+      "issues": [],
+      "newIssueCodes": [],
+      "identityArtifactBytesUnchanged": true,
+      "changedArtifactsFromIdentity": [
+        "assets/site.css",
+        "contact/index.html",
+        "index.html",
+        "services/index.html"
+      ],
+      "artifactCount": 17,
+      "screenshotCount": 6,
+      "maximumPageBytes": {
+        "mobile": 144473,
+        "desktop": 150905
+      },
+      "humanRating": null
+    },
+    {
+      "id": "hospitality-ambiguous-match",
+      "split": "held-out",
+      "passed": true,
+      "baselinePassed": true,
+      "previousIdentityPassed": true,
+      "unchangedPlan": true,
+      "unchangedBlueprint": true,
+      "planSha256": "8c4b2d2575182f3e88b516b0cb8478c4cbec3e8ce3e44b4b1ae790320e7dc0f5",
+      "blueprintSha256": "a8e7be92ee99eb981f7ced8ed8a83ec398b43e23dbb9584ca74a54ee60b4c2eb",
+      "issues": [],
+      "newIssueCodes": [],
+      "identityArtifactBytesUnchanged": true,
+      "changedArtifactsFromIdentity": [
+        "assets/site.css",
+        "contact/index.html",
+        "index.html",
+        "services/index.html"
+      ],
+      "artifactCount": 18,
+      "screenshotCount": 6,
+      "maximumPageBytes": {
+        "mobile": 178606,
+        "desktop": 191928
+      },
+      "humanRating": null
+    },
+    {
+      "id": "unknown-company-none",
+      "split": "held-out",
+      "passed": false,
+      "baselinePassed": false,
+      "previousIdentityPassed": false,
+      "unchangedPlan": true,
+      "unchangedBlueprint": true,
+      "planSha256": "f5938ffae51dc3cff25153a708c3d26e8fb59bbad0b3a08adc29c288e4476705",
+      "blueprintSha256": "6bfdd031ab3af8f1f154ca7a9e2f55dc3fcb8550eedbbd52abbd7eecce213cc8",
+      "issues": [
+        {
+          "code": "thin_page",
+          "page": "index.html",
+          "severity": "error"
+        }
+      ],
+      "newIssueCodes": [],
+      "identityArtifactBytesUnchanged": true,
+      "changedArtifactsFromIdentity": [
+        "assets/site.css",
+        "index.html"
+      ],
+      "artifactCount": 12,
+      "screenshotCount": 2,
+      "maximumPageBytes": {
+        "mobile": 114400,
+        "desktop": 117650
+      },
+      "humanRating": null
+    },
+    {
+      "id": "wellness-rich-content",
+      "split": "held-out",
+      "passed": true,
+      "baselinePassed": true,
+      "previousIdentityPassed": true,
+      "unchangedPlan": true,
+      "unchangedBlueprint": true,
+      "planSha256": "d3b5bee1817e05a2783ea949ba52a416e3a705656323fbc5bbe4d44a6c178cca",
+      "blueprintSha256": "5333b91e6761b4dc0b3bfb69f4a62ede3d306293e52f3c445297feb39dcd9da5",
+      "issues": [],
+      "newIssueCodes": [],
+      "identityArtifactBytesUnchanged": true,
+      "changedArtifactsFromIdentity": [
+        "assets/site.css",
+        "contact/index.html",
+        "index.html",
+        "services/index.html"
+      ],
+      "artifactCount": 19,
+      "screenshotCount": 6,
+      "maximumPageBytes": {
+        "mobile": 167404,
+        "desktop": 175338
+      },
+      "humanRating": null
+    }
+  ],
+  "limitations": [
+    "Hand-authored renderer fixtures do not test new planning/generation prompts, provider selection, or unattended completion.",
+    "No human ratings or prospect send-worthy judgments were collected.",
+    "The two retained thin_page findings are failures in this cohort, not quality passes; inputs were not padded.",
+    "Local desktop/phone checks and byte budgets are not field Core Web Vitals or real social-platform display.",
+    "Full exact source, artifact and screenshot hashes are saved in the local report; temporary artifacts need backup before cleanup."
+  ]
+}

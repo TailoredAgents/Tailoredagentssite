@@ -3,7 +3,7 @@ import type { FactoryPlanContent } from "../types";
 import { safeSitePath } from "./artifacts";
 import { designFamilyIds,heroCompositions,sectionLayouts,siteFormFields,fontThemes,type SiteBlueprint,type PortableSiteBundle,type SiteAssetDescriptor } from "./types";
 import { designFamilies } from "./families";
-import { contrastRatio } from "./design";
+import { sitePaletteContrastIssues } from "./design";
 import { SiteBlueprintError } from "./errors";
 const text=z.string().trim().max(1400),short=z.string().trim().max(180);
 const color=z.string().regex(/^#[0-9a-fA-F]{6}$/);
@@ -94,7 +94,7 @@ export function validateBlueprintStructure(value:unknown):SiteBlueprint {
   }
   if(data.design){
     const palette=data.design.palette;
-    for(const foreground of [palette.ink,palette.muted])for(const background of [palette.background,palette.surface])if(contrastRatio(foreground,background)<4.5)throw new SiteBlueprintError("Website palette text must have at least 4.5:1 contrast on its backgrounds.");
+    if(sitePaletteContrastIssues(palette).length)throw new SiteBlueprintError("Website palette text must have at least 4.5:1 contrast on its backgrounds.");
     const styled=new Set<string>();for(const style of data.design.sectionStyles){
       const key=`${style.pagePath}#${style.sectionId}`;
       if(styled.has(key)||!data.pages.some(p=>p.path===style.pagePath&&p.sections.some(s=>s.id===style.sectionId)))throw new SiteBlueprintError("A design tone references a missing or duplicate website section.");styled.add(key);

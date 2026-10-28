@@ -99,25 +99,65 @@ const concreteClaimPatterns=[
   /\b(?:founded|established|serving since|since)\s+(?:in\s+)?(?:19|20)\d{2}\b/gi,
   /\b24\s*[/x]\s*7\b/gi,
 ];
-const uncertain=/\?|\b(?:not|no|unconfirmed|unverified|unknown|pending|awaiting|illustrative|example|sample|placeholder|confirm|confirmation|whether|ask about|ask if)\b/i;
 function sentences(text:string):string[]{return text.split(/(?<=[.!?])(?:\s+|$)|\n+/).filter(Boolean);}
 const normalizeClaim=(text:string)=>normalize(text.replace(/\$/g," dollars ").replace(/%/g," percent "))
   .replace(/\b(founded|established)( in)? (?=(?:19|20)\d{2}\b)/g,"since ")
   .replace(/\bserving since\b/g,"since")
   .replace(/\byears? (?:(?:of|in) )?(?:experience|business|service)\b/g,"years experience")
   .replace(/\b(?:out of (?:5|five)|star rated|stars?)\b/g,"star");
+function concreteClaims(text:string):RegExpMatchArray[]{return concreteClaimPatterns.flatMap(pattern=>[...text.matchAll(pattern)]);}
+
+/** Qualification belongs to the claim, not any occurrence of "no" or a question
+ * mark elsewhere in its sentence. This deliberately narrow check supplements
+ * semantic review; it is not a general-purpose factual or grammar parser. */
+function qualifiedClaim(sentence:string,claim:RegExpMatchArray):boolean {
+  const start=claim.index!,end=start+claim[0].length;
+  const boundaries=[...sentence.matchAll(/[,;]|\b(?:but|while|although|however)\b/gi)];
+  const left=boundaries.filter(match=>match.index!<start).at(-1),right=boundaries.find(match=>match.index!>=end);
+  const before=sentence.slice(left?left.index!+left[0].length:0,start),after=sentence.slice(end,right?.index??sentence.length);
+  // A negation can qualify a coordinated list ("not licensed or insured"), but
+  // it cannot reach through unrelated prose ("no fuss with licensed staff").
+  const withoutClaims=(value:string)=>concreteClaimPatterns.reduce((result,pattern)=>result.replace(pattern," "),value);
+  const prefix=normalize(withoutClaims(before)),suffix=normalize(withoutClaims(after));
+  if(/\b(?:not|no|no longer|never|isnt|arent|wasnt|werent)(?:\s+(?:currently|yet|fully|and|or))*(?:\s+an?)?$/.test(prefix))return true;
+  if(/\b(?:unconfirmed|unverified|unknown|pending|illustrative|hypothetical)(?:\s+(?:claim|figure|price|pricing|rate|fee|discount|rating|credentials?|availability|and|or))*$/.test(prefix))return true;
+  if(/^(?:example|sample|placeholder)(?:\s+(?:claim|figure|price|pricing|rate|fee|discount|rating|credentials?|availability|and|or))*$/.test(prefix))return true;
+  if(/^(?:and |or )*(?:(?:status|credentials?|coverage|availability|service|pricing|price|cost|rate|claim|figure|amount) )?(?:(?:is|are|remains?|still) )*(?:unconfirmed|unverified|unknown|pending|awaiting confirmation|not confirmed|not verified|(?:has|have) not (?:yet )?been (?:confirmed|verified)|needs confirmation|requires confirmation|must be confirmed)\b/.test(suffix))return true;
+  if(/\b(?:ask|check|confirm) (?:about|whether|if)\b/.test(prefix)&&! /\b(?:our|your|their|its)\b/.test(prefix))return true;
+  // A direct availability/credential question is not an assertion. Possessive
+  // claims inside a question ("Are our 500 customers happy?") still are.
+  const clause=sentence.slice(left?left.index!+left[0].length:0,right?.index??sentence.length).trim();
+  if(clause.endsWith("?")&&((/^(?:is|are|am|was|were|does|do|did|can|could|would|will|has|have)\b/.test(prefix)&&! /\b(?:our|your|their|its)\b/.test(prefix)&&! /\b(?:the|this|those)\s*$/.test(prefix))||normalize(clause)===normalize(claim[0])))return true;
+  return false;
+}
 function unsupportedClaims(text:string,plan:FactoryPlanContent):string[]{
-  const evidence=plan.knownDetails.filter(detail=>detail.basis==="submitted"||detail.basis==="sourced")
-    .flatMap(detail=>sentences(detail.value)).filter(sentence=>!uncertain.test(sentence)).map(normalizeClaim);
+  const evidence=new Set(plan.knownDetails.filter(detail=>detail.basis==="submitted"||detail.basis==="sourced")
+    .flatMap(detail=>sentences(detail.value)).flatMap(sentence=>concreteClaims(sentence).filter(claim=>!qualifiedClaim(sentence,claim)).map(claim=>normalizeClaim(claim[0]))));
   const unsupported=new Set<string>();
   for(const sentence of sentences(text)){
-    if(uncertain.test(sentence))continue;
-    for(const pattern of concreteClaimPatterns)for(const match of sentence.matchAll(pattern)){
+    for(const match of concreteClaims(sentence)){
+      if(qualifiedClaim(sentence,match))continue;
       const value=normalizeClaim(match[0]);
-      if(!evidence.some(fact=>` ${fact} `.includes(` ${value} `)))unsupported.add(match[0]);
+      if(!evidence.has(value))unsupported.add(match[0]);
     }
   }
   return [...unsupported];
+}
+
+const usefulSection=(section:SiteBlueprint["pages"][number]["sections"][number])=>section.kind!=="contact"&&!!section.title.trim()&&(normalize(section.body).split(" ").length>=12||section.items.some(item=>normalize(item.body).split(" ").length>=12));
+
+/** An intentional overview may lead to an approved detail page instead of a
+ * contact channel. Count only a real configured link to distinct useful copy;
+ * a self-link, missing target or unsupported Call label is not a next step. */
+function hasUsefulDetailAction(blueprint:SiteBlueprint,page:SiteBlueprint["pages"][number],plan:FactoryPlanContent):boolean {
+  return (blueprint.interactions?.actions||[]).some(action=>{
+    if(action.pagePath!==page.path||action.targetPage===page.path)return false;
+    const source=page.sections.find(section=>section.id===action.sectionId),target=blueprint.pages.find(candidate=>candidate.path===action.targetPage);
+    if(!source||!["services","features","contact"].includes(source.kind)||!source.items[action.itemIndex]||!target||!plan.pages.some(planned=>pageMatch(planned.title,target)>0)||actionDestinationIssue(action.label,action.targetPage))return false;
+    const destinations=action.targetSection?target.sections.filter(section=>section.id===action.targetSection):target.sections;
+    const sourceCopy=new Set([source.body,...source.items.map(item=>item.body)].map(normalize));
+    return destinations.some(section=>usefulSection(section)&&[section.body,...section.items.map(item=>item.body)].map(normalize).some(copy=>copy.split(" ").length>=12&&!sourceCopy.has(copy)));
+  });
 }
 
 /** Structural/content checks supplement visual and semantic review; they cannot judge aesthetics. */
@@ -127,19 +167,26 @@ export function reviewSiteDepth(blueprint:SiteBlueprint,plan:FactoryPlanContent)
   const {missing,unexpected}=plannedPageCoverage(blueprint,plan);
   if(missing.length)add("index.html","missing_planned_pages",`Include distinct pages for these approved page identities: ${missing.join(", ")}. A different page with the same total count does not satisfy the plan.`);
   if(unexpected.length)add("index.html","unexpected_planned_pages",`Remove pages outside the approved plan: ${unexpected.join(", ")}. Keep the distinct approved page identities; adding another page requires a revised human-approved plan.`);
+  const directChannel=[blueprint.contact.email,blueprint.contact.phone].some(value=>value&&plan.knownDetails.some(detail=>["submitted","sourced"].includes(detail.basis)&&detail.value.toLowerCase().includes(value.toLowerCase())));
+  const forms=(blueprint.interactions?.forms||[]).filter(form=>blueprint.pages.some(page=>page.path===form.pagePath&&page.sections.some(section=>section.id===form.sectionId&&section.kind==="contact")));
   const previous:Array<{path:string;blocks:string[]}>=[];
   for(const page of blueprint.pages){
     const sections=page.sections.filter(s=>s.kind!=="contact");
     // An approved contact/coverage page can be a focused inquiry utility, not a second sales page.
     // Count substantive form/direct-contact guidance only there; a form cannot exempt a thin service page.
     const inquiryPage=page.path!=="index.html"&&plan.pages.some(p=>[3,4].includes(alias(normalize(p.title)))&&pageMatch(p.title,page)>0)
-      &&blueprint.interactions?.forms.some(f=>f.pagePath===page.path&&page.sections.some(s=>s.id===f.sectionId&&s.kind==="contact"));
+      &&(directChannel||forms.some(form=>form.pagePath===page.path));
     const usefulContacts=inquiryPage?page.sections.filter(s=>s.kind==="contact"&&s.title.trim()&&normalize(s.body).split(" ").length>=12).length:0;
-    const usefulSections=sections.filter(section=>section.title.trim()&&(normalize(section.body).split(" ").length>=12||section.items.some(item=>normalize(item.body).split(" ").length>=12)));
+    const usefulSections=sections.filter(usefulSection);
     // Purpose takes precedence over a prescribed section count. A focused form
     // page or one substantial service presentation can be complete. Home needs
     // enough distinct material to introduce the offer and help a visitor decide.
-    const complete=page.path==="index.html"?usefulSections.length>=2:usefulSections.length>0||usefulContacts>0;
+    // A concise Home can explain the offer in its introduction, develop it in
+    // one useful section and provide a real next step. Do not require an extra
+    // decorative section, or let a generic heading and dead contact CTA pass.
+    const introduction=normalize(page.hero.body),distinctIntroduction=introduction.split(" ").length>=12&&!sections.some(section=>[section.body,...section.items.map(item=>item.body)].some(body=>normalize(body)===introduction));
+    const focusedHome=usefulSections.length===1&&distinctIntroduction&&(directChannel||forms.length>0||hasUsefulDetailAction(blueprint,page,plan));
+    const complete=page.path==="index.html"?usefulSections.length>=2||focusedHome:usefulSections.length>0||usefulContacts>0;
     if(!complete)add(page.path,"thin_page",page.path==="index.html"?"The homepage needs useful material explaining the offer and helping a visitor decide on a next step. Add missing reader value, not extra sections or words for a quota.":"This page does not yet fulfil its approved purpose. Add a useful explanation, service detail or focused inquiry utility; a section count alone is not a quality target.");
     for(const section of sections){
       if(["services","features","process","faq"].includes(section.kind)&&section.items.length===0)

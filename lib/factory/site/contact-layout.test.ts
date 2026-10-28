@@ -237,7 +237,7 @@ describe("Compact dedicated contact pages",()=>{
     expect(qa.issues).toEqual([]);expect(qa.passed).toBe(true);expect(qa.screenshots).toHaveLength(b.pages.length*2);
   },60000);
 
-  it("uses one content column for fallback contact copy and sparse closing bands without inventing forms",async()=>{
+  it("balances automatic direct channels and keeps explicit sparse closing copy without inventing forms",async()=>{
     for(const fallback of [true,false]){
       const b=fixtureBlueprint("trades","split");b.presentation={version:1,fontTheme:"studio",heroEmphasis:null,logoAssetId:null,pageImages:[],sectionImages:[]};
       if(fallback)b.contact={phone:"+16785550101",email:"team@example.test",address:null};
@@ -245,9 +245,9 @@ describe("Compact dedicated contact pages",()=>{
       const {files}=renderPortableSite(portableBundle(b),assets),context=await browser.newContext({viewport:{width:1440,height:900}});
       try{
         await serve(context,files);const page=await context.newPage();await page.goto("https://contact-layout.test/index.html");
-        const closing=page.locator(".contact-closing.contact-copy-only");expect(await closing.count()).toBe(1);
+        const closing=page.locator(".contact-closing");expect(await closing.count()).toBe(1);
         expect(await page.locator("main .section-contact").count()).toBe(1);expect(await page.locator("main form").count()).toBe(0);
-        expect(await closing.locator(".section-inner").evaluate(element=>getComputedStyle(element).display)).toBe("block");
+        expect(await closing.locator(".section-inner").evaluate(element=>getComputedStyle(element).display)).toBe(fallback?"grid":"block");
         expect(await closing.locator('a[href^="tel:"]').count()).toBe(fallback?1:0);expect(await closing.locator('a[href^="mailto:"]').count()).toBe(fallback?1:0);
         expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2)).toBe(false);
       }finally{await context.close();}

@@ -34,12 +34,25 @@ describe("Portable site provider (synthetic responses only)",()=>{
     const result=await generatePortableSite({plan,family:"trades"},async request=>{
       const context=JSON.parse((request.body.input as Array<{content:string}>)[0].content);
       expect(context.family).toBe("professional");expect(context.approvedDesignConstraints.recipe).toEqual(recipe);
+      expect(context.familySelection).toEqual({source:"approved-recipe",binding:true});
       expect(context.rendererCapabilities.families.professional.compositions).toContain("minimal");
       return response(fixtureBlueprint());
     });
     expect(result.blueprint).toMatchObject({family:"professional",composition:"minimal",presentation:{fontTheme:"technical"},design:{density:"compact",radius:"square"}});
     expect(result.blueprint.pages).toEqual(fixtureBlueprint().pages);
     expect(result.blueprint.contact).toEqual(fixtureBlueprint().contact);
+  });
+  it("keeps candidate industry hints nonbinding and sends only relevant family defaults",async()=>{
+    const plan={...structuredClone(fixtureSitePlan),goal:"A first website",audience:"Future visitors",knownDetails:[{label:"Possible match",value:"A spa with a similar name",basis:"possible_match" as const,sourceIds:["source-1"]}]};
+    await generatePortableSite({plan},async request=>{
+      const context=JSON.parse((request.body.input as Array<{content:string}>)[0].content);
+      expect(context.family).toBe("general");expect(context.familySelection).toEqual({source:"inferred-hint",binding:false});
+      expect(context.designFamilies).toBeUndefined();expect(context.familyDefaults.name).toBe("Room to grow");
+      expect(context.rendererCapabilities.families.trades.compositions).toContain("immersive");
+      expect(context.qualityBenchmark.weakExample).toBeUndefined();expect(context.qualityBenchmark.strongerExample).toBeUndefined();
+      // A different supported artistic family is valid; a hint is not approval.
+      return response(fixtureBlueprint("professional","minimal"));
+    });
   });
   it("rejects invalid paths, duplicate ids, unsupported compositions and claims",()=>{
     for(const path of ["../secret.html","https://evil.test/","/index.html","a/b/index.html"]){const b=fixtureBlueprint();b.pages[0].path=path;expect(()=>validateSiteBlueprint(b,fixtureSitePlan)).toThrow();}

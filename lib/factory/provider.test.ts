@@ -103,6 +103,43 @@ describe("Factory provider boundaries (synthetic responses only)",()=>{
     const result=parseFactoryPlan({changed:false,reply:"The prior direction remains",changeSummary:"Answered question",plan:{...plan(),design:{...plan().design,recipe:{version:1,family:"professional",composition:"minimal",fontTheme:"technical",density:"compact",radius:"square"}}}},{text:"",sources:[]},previous);
     expect(result.plan).toBe(previous);expect(result.plan.design.recipe).toBeUndefined();
   });
+  it.each([
+    ["Ink","Background"],["Ink","Surface"],["Muted","Background"],["Muted","Surface"],
+  ])("rejects an unreadable explicit %s / %s pair before a proposal can be approved",(foreground,background)=>{
+    const content={...plan(),design:{...plan().design,palette:[`${foreground}: pale gray #eeeeee`,`${background}: white #ffffff`]}};
+    for(const previous of [null,{...plan(),sources:[]}]){
+      const parse=()=>parseFactoryPlan({changed:true,reply:"Review",changeSummary:"Propose new colors",plan:content},{text:"",sources:[]},previous);
+      expect(parse).toThrow(`${foreground} on ${background}`);
+      expect(parse).toThrow("at least 4.5:1 contrast before saving this proposal for human approval");
+    }
+  });
+  it("accepts readable explicit light and dark palettes and preserves their exact saved labels",()=>{
+    for(const palette of [
+      ["Background: white #ffffff","Surface: pale gray #f4f4f4","Ink: near black #111111","Muted: slate #444444","Accent: pale yellow #ffff00"],
+      ["Background: midnight #101010","Surface: charcoal #202020","Ink: white #ffffff","Muted: silver #cccccc","AccentSecondary: blue #1111ff"],
+    ]){
+      const content={...plan(),design:{...plan().design,palette}};
+      expect(parseFactoryPlan({changed:true,reply:"Review",changeSummary:"Readable colors",plan:content},{text:"",sources:[]},null).plan.design.palette).toEqual(palette);
+    }
+  });
+  it("checks known partial-role pairs without inventing missing roles or rejecting historical color-name swatches",()=>{
+    for(const palette of [["Ink: white #ffffff"],["Background: white #ffffff"],["Muted: light gray #eeeeee","Accent: white #ffffff"],["Background: white #ffffff","Muted: slate #444444"],["Off-white #ffffff","Charcoal #eeeeee"],["Navy","Brand color #ffffff"]]){
+      const content={...plan(),design:{...plan().design,palette}};
+      expect(parseFactoryPlan({changed:true,reply:"Review",changeSummary:"Partial palette",plan:content},{text:"",sources:[]},null).plan.design.palette).toEqual(palette);
+    }
+    const content={...plan(),design:{...plan().design,palette:["Navy background #ffffff","Off-white body text #eeeeee"]}};
+    expect(()=>parseFactoryPlan({changed:true,reply:"Review",changeSummary:"Explicit roles without colons",plan:content},{text:"",sources:[]},null)).toThrow("Ink on Background");
+  });
+  it("keeps authoritative role labels over descriptive color hints during the pre-approval contrast check",()=>{
+    const palette=["Background: white #ffffff","Ink: charcoal #222222","Muted: slate #444444 on its surface","AccentSecondary: light yellow #ffffee with dark text","Off-white text #eeeeee","Muted text #dddddd"];
+    const content={...plan(),design:{...plan().design,palette}};
+    expect(()=>parseFactoryPlan({changed:true,reply:"Review",changeSummary:"Explicit labels",plan:content},{text:"",sources:[]},null)).not.toThrow();
+  });
+  it("preserves an unchanged historical plan even when its palette would fail a new-proposal check",()=>{
+    const content={...plan(),design:{...plan().design,palette:["Ink: white #ffffff","Background: white #ffffff"]}},previous={...content,sources:[]};
+    const result=parseFactoryPlan({changed:false,reply:"Answer only",changeSummary:"No change",plan:content},{text:"",sources:[]},previous);
+    expect(result.plan).toBe(previous);expect(result.changed).toBe(false);
+  });
   it("never retries an ambiguous transport error and retains its uncertain receipt",async()=>{
     request.mockRejectedValue(new Error("Socket lost"));await expect(researchFactoryLead(ctx,snapshot)).rejects.toThrow();
     expect(request).toHaveBeenCalledOnce();expect(costs.uncertain).toHaveBeenCalledWith("reservation");

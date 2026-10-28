@@ -44,6 +44,57 @@ describe("Website design direction and content depth",()=>{
     for(const section of b.pages[0].sections)section.layout="rows";
     expect(reviewSiteDepth(b,fixtureSitePlan).filter(i=>i.code==="thin_page"||i.code==="repeated_layout")).toEqual([]);
   });
+  it.each(["Contact","Service Areas"])("accepts an approved direct-channel %s utility without requiring a form",title=>{
+    const b=fixtureBlueprint("trades","split",true),plan=structuredClone(fixtureSitePlan),path=title==="Contact"?"contact/index.html":"service-areas/index.html";
+    plan.pages.push({title,purpose:"Reach the team directly to discuss a question; no form requested.",sections:["Direct contact"]});
+    plan.knownDetails.push({label:"Email",value:"hello@example.test",basis:"submitted",sourceIds:[]});b.contact.email="hello@example.test";
+    b.pages.push({...structuredClone(b.pages[1]),path,title,sections:[{id:"direct",kind:"contact",layout:"band",eyebrow:"Get in touch",title:"Talk to the team",body:"Reach out to discuss your project, get answers to your questions and decide on the next step together.",items:[]}]});
+    expect(reviewSiteDepth(b,plan).filter(issue=>issue.page===path)).toEqual([]);
+    // Merely inserting an unconfirmed channel or an address is not a useful
+    // inquiry action; validation and the semantic review remain independent.
+    plan.knownDetails[0].basis="possible_match";
+    expect(reviewSiteDepth(b,plan).some(issue=>issue.page===path&&issue.code==="thin_page")).toBe(true);
+    plan.knownDetails[0].basis="submitted";b.contact.email=null;b.contact.address="Example street";
+    expect(reviewSiteDepth(b,plan).some(issue=>issue.page===path&&issue.code==="thin_page")).toBe(true);
+    b.contact.email="hello@example.test";b.pages.at(-1)!.sections[0].body="Contact us.";
+    expect(reviewSiteDepth(b,plan).some(issue=>issue.page===path&&issue.code==="thin_page")).toBe(true);
+    b.pages.at(-1)!.sections[0].body="Reach out to discuss your project, get answers to your questions and decide on the next step together.";
+    plan.pages.at(-1)!.title="Services";b.pages.at(-1)!.title="Services";b.pages.at(-1)!.path="services-extra/index.html";
+    expect(reviewSiteDepth(b,plan).some(issue=>issue.page==="services-extra/index.html"&&issue.code==="thin_page")).toBe(true);
+  });
+  it("accepts a focused Home introduction and one useful section with a supported next step",()=>{
+    const b=fixtureBlueprint(),plan=structuredClone(fixtureSitePlan);plan.pages=plan.pages.slice(0,1);b.pages[0].sections=b.pages[0].sections.slice(0,1);
+    plan.knownDetails=[{label:"Phone",value:"+17025550199",basis:"submitted",sourceIds:[]}];b.contact.phone="+17025550199";b.pages[0].hero.primaryCta="Call the team";
+    expect(reviewSiteDepth(b,plan)).toEqual([]);
+    b.contact.phone=null;
+    expect(reviewSiteDepth(b,plan).some(issue=>issue.code==="thin_page")).toBe(true);
+    b.pages[0].sections.push({id:"inquiry",kind:"contact",layout:"band",eyebrow:"Next step",title:"Discuss your project",body:"",items:[]});
+    b.interactions!.forms.push({pagePath:"index.html",sectionId:"inquiry",fields:["message"],submitLabel:"Preview inquiry"});b.pages[0].hero.primaryCta="Discuss your project";
+    expect(reviewSiteDepth(b,plan).filter(issue=>issue.code==="thin_page")).toEqual([]);
+    b.pages[0].hero.body=b.pages[0].sections[0].body;
+    expect(reviewSiteDepth(b,plan).some(issue=>issue.code==="thin_page")).toBe(true);
+    b.pages[0].hero.body="Welcome to our website.";
+    expect(reviewSiteDepth(b,plan).some(issue=>issue.code==="thin_page")).toBe(true);
+    b.pages[0].hero.body=fixtureBlueprint().pages[0].hero.body;b.pages[0].sections.shift();
+    expect(reviewSiteDepth(b,plan).some(issue=>issue.code==="thin_page")).toBe(true);
+  });
+  it("accepts a focused overview linking to useful approved detail without requiring contact data or a form",()=>{
+    const b=fixtureBlueprint("trades","split",true);b.pages[0].sections=b.pages[0].sections.slice(0,1);
+    const action={pagePath:"index.html",sectionId:"benefits",itemIndex:0,label:"Explore the service detail",targetPage:"services/index.html",targetSection:"options"};
+    b.interactions!.actions=[action];
+    expect(b.contact).toEqual({phone:null,email:null,address:null});expect(b.interactions!.forms).toEqual([]);
+    expect(reviewSiteDepth(b,fixtureSitePlan)).toEqual([]);
+    action.targetSection="missing";
+    expect(reviewSiteDepth(b,fixtureSitePlan).some(issue=>issue.page==="index.html"&&issue.code==="thin_page")).toBe(true);
+    action.targetPage="index.html";action.targetSection="benefits";
+    expect(reviewSiteDepth(b,fixtureSitePlan).some(issue=>issue.page==="index.html"&&issue.code==="thin_page")).toBe(true);
+    action.targetPage="services/index.html";action.targetSection="options";action.itemIndex=7;
+    expect(reviewSiteDepth(b,fixtureSitePlan).some(issue=>issue.page==="index.html"&&issue.code==="thin_page")).toBe(true);
+    action.itemIndex=0;action.label="Call our team";
+    expect(reviewSiteDepth(b,fixtureSitePlan).some(issue=>issue.page==="index.html"&&issue.code==="thin_page")).toBe(true);
+    action.label="Explore the service detail";b.pages[2].sections[0]={...structuredClone(b.pages[0].sections[0]),id:"options"};
+    expect(reviewSiteDepth(b,fixtureSitePlan).some(issue=>issue.page==="index.html"&&issue.code==="thin_page")).toBe(true);
+  });
   it("checks direct action promises without confusing a scheduling invitation for a dialer",()=>{
     expect(actionDestinationIssue("Call Cosmo’s","services/index.html#cooling")).toContain("must dial");
     expect(actionDestinationIssue("Call our team","tel:+17025550199")).toBeNull();
@@ -121,6 +172,68 @@ describe("Website design direction and content depth",()=>{
     plan.knownDetails=[{label:"Possible company",value:"Serving since 2005.",basis:"possible_match",sourceIds:[]},{label:"Credentials",value:"Licensed status unconfirmed.",basis:"submitted",sourceIds:[]}];
     const issue=reviewSiteDepth(blueprint,plan).find(issue=>issue.code==="unsupported_concrete_claim");
     expect(issue?.message).toContain("Licensed");expect(issue?.message).toContain("since 2005");
+  });
+  it.each([
+    "Licensed and insured specialists, with no fuss.",
+    "Our 20 years of experience ensure there is no guesswork.",
+    "No need to wait: available 24/7.",
+    "Curious about our 500 satisfied customers?",
+    "Are our 500 satisfied customers ready for the next step?",
+    "Can our team of 500 happy customers be wrong?",
+    "Do our certified technicians help?",
+    "Can our team backed by 20 years of experience help?",
+    "Have you considered our promise of 24/7 support?",
+    "Not only licensed, but certified too.",
+    "No fuss with licensed staff.",
+    "Ask about installation with our licensed staff.",
+    "Licensed specialists; prices remain unconfirmed.",
+    "Not only a licensed contractor, but a certified specialist too.",
+    "Not a care in the world with licensed specialists.",
+    "Licensed status has been confirmed.",
+    "Licensed status has not been revoked.",
+  ])("does not let unrelated negation or a question hide an asserted claim: %s",claim=>{
+    const b=fixtureBlueprint();b.pages[0].hero.body=claim;
+    expect(reviewSiteDepth(b,fixtureSitePlan).some(issue=>issue.code==="unsupported_concrete_claim")).toBe(true);
+  });
+  it.each([
+    "We are not licensed or insured.","We are not yet licensed.","We are no longer licensed.",
+    "We are not a licensed contractor.","We are not currently a licensed contractor.","We are no longer an insured provider.",
+    "Licensed status has not been confirmed.","Certified credentials have not yet been verified.",
+    "Licensed and insured status remains unconfirmed.","Our 24/7 availability is not confirmed.",
+    "Ask whether the team is licensed.","Ask about 24/7 availability.","Are you licensed?",
+    "Are estimates available for $99?","Example pricing: $99.","Unconfirmed: licensed and insured.",
+  ])("respects a qualification attached to the actual claim: %s",claim=>{
+    const b=fixtureBlueprint();b.pages[0].hero.body=claim;
+    expect(reviewSiteDepth(b,fixtureSitePlan).filter(issue=>issue.code==="unsupported_concrete_claim")).toEqual([]);
+  });
+  it("scopes evidence qualifications to the individual claim instead of dropping or approving the entire sentence",()=>{
+    const b=fixtureBlueprint(),plan=structuredClone(fixtureSitePlan);b.pages[0].hero.body="Licensed and insured specialists.";
+    plan.knownDetails=[{label:"Credentials",value:"Licensed but not insured.",basis:"submitted",sourceIds:[]}];
+    let issues=reviewSiteDepth(b,plan).filter(issue=>issue.code==="unsupported_concrete_claim");
+    expect(issues).toHaveLength(1);expect(issues[0].message).toContain("insured");expect(issues[0].message).not.toContain("Licensed;");
+    plan.knownDetails[0].value="Licensed and insured specialists, with no fuss.";
+    expect(reviewSiteDepth(b,plan).filter(issue=>issue.code==="unsupported_concrete_claim")).toEqual([]);
+    plan.knownDetails[0].value="Licensed and insured status remains unconfirmed.";
+    issues=reviewSiteDepth(b,plan).filter(issue=>issue.code==="unsupported_concrete_claim");
+    expect(issues[0].message).toContain("Licensed; insured");
+  });
+  it("does not let a qualified claim excuse a separate affirmative claim in the same sentence",()=>{
+    const b=fixtureBlueprint();b.pages[0].hero.body="Not licensed, but certified specialists with 20 years of experience.";
+    const issue=reviewSiteDepth(b,fixtureSitePlan).find(issue=>issue.code==="unsupported_concrete_claim");
+    expect(issue?.message).toContain("certified");expect(issue?.message).toContain("20 years of experience");expect(issue?.message).not.toContain("licensed");
+  });
+  it("keeps article-qualified and unconfirmed claims separate from affirmative neighbors and evidence",()=>{
+    const b=fixtureBlueprint(),plan=structuredClone(fixtureSitePlan);
+    for(const text of ["Not a licensed contractor, but insured specialists.","Licensed status has not been confirmed; insured specialists can help."]){
+      b.pages[0].hero.body=text;
+      const issue=reviewSiteDepth(b,plan).find(issue=>issue.code==="unsupported_concrete_claim");
+      expect(issue?.message).toContain("insured");expect(issue?.message.toLowerCase()).not.toContain("licensed");
+      plan.knownDetails=[{label:"Credentials",value:text,basis:"submitted",sourceIds:[]}];
+      b.pages[0].hero.body="Licensed and insured specialists.";
+      const evidenceIssue=reviewSiteDepth(b,plan).find(issue=>issue.code==="unsupported_concrete_claim");
+      expect(evidenceIssue?.message).toContain("Licensed");expect(evidenceIssue?.message).not.toContain("insured");
+      plan.knownDetails=[];
+    }
   });
   it("does not treat a matching customer count as evidence for a price",()=>{
     const blueprint=fixtureBlueprint(),plan=structuredClone(fixtureSitePlan);

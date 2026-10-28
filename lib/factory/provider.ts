@@ -5,7 +5,7 @@ import { factoryModelPolicy, factoryReservation, factoryUsageCost } from "./conf
 import { attemptFactoryCost, reserveFactoryCost, settleFactoryCost, uncertainFactoryCost, type FactoryCostRequest } from "./budget";
 import { websitePlanningContract, websiteQualityStandards } from "./website-standards";
 import { assertFactoryDesignRecipe, factoryDesignCapabilities } from "./design-recipe";
-import { approvedDesignConstraints } from "./site/design";
+import { approvedDesignConstraints, approvedPaletteContrastIssues } from "./site/design";
 import { factoryPlanSchema, factoryPlanResponseSchema, factoryPlanGenerationSchema } from "./plan-schema";
 export { factoryPlanSchema, factoryPlanResponseSchema, factoryPlanGenerationSchema } from "./plan-schema";
 
@@ -148,6 +148,12 @@ export function parseFactoryPlan(raw:unknown,research:FactoryResearch,previous:F
   if(previous && !result.changed)return {...result,plan:previous};
   assertDeclaredPageCount(result.plan);
   const plan={...result.plan,sources:research.sources};
+  const paletteIssues=approvedPaletteContrastIssues(plan);
+  if(paletteIssues.length){
+    const roles={ink:"Ink",muted:"Muted",background:"Background",surface:"Surface"};
+    const pairs=paletteIssues.map(issue=>`${roles[issue.foreground]} on ${roles[issue.background]} (${issue.ratio.toFixed(2)}:1)`).join(", ");
+    throw new Error(`The proposed palette needs readable text before approval: ${pairs}. Revise these explicit colors to at least 4.5:1 contrast before saving this proposal for human approval.`);
+  }
   if(plan.design.recipe){
     assertFactoryDesignRecipe(plan.design.recipe);
     const heading=approvedDesignConstraints({...plan,design:{...plan.design,recipe:null}}).typography.heading;

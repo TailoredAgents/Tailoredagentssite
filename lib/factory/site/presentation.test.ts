@@ -61,8 +61,9 @@ describe("Premium portable presentation",()=>{
         await page.goto(`https://presentation.test/${route.path}`);await page.evaluate(()=>document.fonts.ready);
         const layout=await page.evaluate(()=>{
           const strip=document.querySelector<HTMLElement>(".mobile-contact")!,hero=document.querySelector(".site-hero")!.getBoundingClientRect(),next=document.querySelector("main > .site-section")!.getBoundingClientRect(),rect=strip.getBoundingClientRect();
-          const heroInner=document.querySelector(".hero-inner")!.getBoundingClientRect(),copy=document.querySelector(".hero-copy")!.getBoundingClientRect();
-          return {position:getComputedStyle(strip).position,inMain:strip.parentElement?.tagName==="MAIN",afterHero:rect.top>=hero.bottom,beforeContent:rect.bottom<=next.top,overflow:document.documentElement.scrollWidth>innerWidth+2,imageCount:document.querySelectorAll(".site-hero .hero-image").length,copyUsesWidth:copy.width>=heroInner.width-2};
+          const innerElement=document.querySelector(".hero-inner")!,heroInner=innerElement.getBoundingClientRect(),copy=document.querySelector(".hero-copy")!.getBoundingClientRect(),style=getComputedStyle(innerElement);
+          const innerWidth=heroInner.width-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)-parseFloat(style.borderLeftWidth)-parseFloat(style.borderRightWidth);
+          return {position:getComputedStyle(strip).position,inMain:strip.parentElement?.tagName==="MAIN",afterHero:rect.top>=hero.bottom,beforeContent:rect.bottom<=next.top,overflow:document.documentElement.scrollWidth>window.innerWidth+2,imageCount:document.querySelectorAll(".site-hero .hero-image").length,copyUsesWidth:copy.width>=innerWidth-2};
         });
         expect(layout,route.path).toMatchObject({position:"static",inMain:true,afterHero:true,beforeContent:true,overflow:false,imageCount:route.path==="index.html"?1:0});
         if(route.path!=="index.html")expect(layout.copyUsesWidth,route.path).toBe(true);
@@ -165,7 +166,7 @@ describe("Premium portable presentation",()=>{
       });
       expect(result.background).toBe(accent);expect(contrastRatio(result.ink,result.background)).toBeGreaterThanOrEqual(4.5);
       expect(result.padding).toBe(0);if(width<=760){expect(result.gap).toBeGreaterThanOrEqual(0);expect(result.gap).toBeLessThanOrEqual(18);}
-      expect(result.overflow).toBe(false);expect(await page.getByRole("tabpanel").locator(".service-link").getAttribute("href")).toBe("#contact");
+      expect(result.overflow).toBe(false);expect(await page.getByRole("tabpanel").locator(".service-link").count()).toBe(0);
       await page.keyboard.press("Home");expect(await tabs.first().getAttribute("aria-selected")).toBe("true");
     }finally{await context.close();}
   },30000);

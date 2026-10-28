@@ -1,6 +1,6 @@
 # Website Builder: consistent quality and salesperson independence
 
-Created October 27, 2026. **Status: P0 baseline and P1 identity/export implemented; P2 automated verification implemented. Real-channel acceptance and P3-P6 remain open.** Austin requested this plan after confirming that favicons and link-preview images should be standard and that the system must consistently produce impressive websites without Austin or Codex finishing them manually.
+Created October 27, 2026. Updated October 28. **Status: P0 baseline, P1 identity/export and P2 automated verification implemented; first P3 engineering slice implemented. Real-channel acceptance, measured design-quality gains and remaining P3-P6 work stay open.** Austin requested this plan after confirming that favicons and link-preview images should be standard and that the system must consistently produce impressive websites without Austin or Codex finishing them manually.
 
 ## Outcome we are building toward
 
@@ -90,6 +90,8 @@ P0/P1 checkboxes record implemented code, local artifacts and tests. P2 automate
 
 **Owner: Codex. Changes follow observed failures and the frozen baseline.**
 
+October 28 checkpoint: [the first P3 slice](WEBSITE_BUILDER_DESIGN_QUALITY.md) addresses advisory industry hints, competing template instructions, impossible approved contrast, purposeful sparse-page checks and observed renderer defects. The checkboxes below cover the full work package, including real generated output and human comparison; local fixes alone do not complete them. Approved-photo selection remains a known gap: the first supplied photo is currently assigned to the hero without a role-aware suitability assessment.
+
 - [ ] Audit whether research, planning and generation agree on audience, requested work, likely industry, approved facts and assets. Preserve uncertainty and support a confident provisional design when facts are sparse.
 - [ ] Make the existing plan carry a concise creative direction: visitor benefit, public identity, supported visual recipe, page purposes, image roles and meaningful next actions. Prefer extending the existing planning/generation request over adding another paid agent stage.
 - [ ] Evaluate the actual supported components as a curated design system. Fix repeated renderer weaknesses globally: hero balance, navigation, typography, image crops, section rhythm, inner-page depth, compact contact pages and phone stacking. Add new layouts only when a demonstrated gap warrants them.
@@ -170,9 +172,9 @@ The visitor chatbot, unrestricted code-editing copilot, live inquiry delivery an
 
 ## Resume here
 
-**Next engineering step:** P0's free baseline/result template, followed by P1 and P2 as one coherent favicon/social-sharing/export release. Then use observed P3/P4 gaps to prepare the three-site pilot. Do not return to manual Cosmo polishing or launch a paid evaluation batch as the first step.
+**Next engineering step:** continue P3 with role-aware use of approved imagery and P4 with broader viewport and reproducible hosted performance evidence. Keep the same frozen cases and preserve negatives. Then collect the three-site, separately human-approved pilot and P2's actual phone/card observation within the remaining allowance. Do not return to manual Cosmo polishing or count synthetic fixtures as autonomous generated sites.
 
-Current completion: read-only gap audit and this plan are complete. P0–P6 implementation/acceptance checkboxes remain open. Update this document with each focused commit, validation result, live deployment and remaining failure; keep the primary [factory resume guide](AI_WEBSITE_FACTORY_BUILD_PLAN.md) pointed here.
+Current completion: P0's original baseline is recorded, P1 and P2 automated checks are deployed, and P3 has its first focused engineering improvements. Real-channel P2 acceptance, the full P3 design outcome, P4 reliability/performance, P5 independent salesperson sessions and P6 real-build confidence remain open. See the linked release records for exact verification; keep the primary [factory resume guide](AI_WEBSITE_FACTORY_BUILD_PLAN.md) pointed here.
 
 ## Primary references consulted
 
@@ -181,4 +183,4 @@ Current completion: read-only gap audit and this plan are complete. P0–P6 impl
 - [Web Vitals thresholds](https://web.dev/articles/defining-core-web-vitals-thresholds): field p75 thresholds and the distinction from lab observations. P4's Lighthouse/latency goals are our engineering targets, not claimed Google ranking guarantees.
 - [OpenAI evaluation best practices](https://developers.openai.com/api/docs/guides/evaluation-best-practices): representative cases, repeated evaluation and human calibration. Use the existing repo-owned test/reporting tooling; this plan does not depend on purchasing or adopting a hosted evaluation product.
 
-Documentation-only planning update. No new build, paid provider request, site regeneration, budget change or production setting change was performed to create this plan.
+The original plan was documentation-only. Subsequent linked releases contain implementation and deployment evidence. No client plan approval, paid generation batch, existing-preview replacement or spending increase is implied by these milestones.

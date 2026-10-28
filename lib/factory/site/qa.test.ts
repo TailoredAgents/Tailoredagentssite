@@ -21,6 +21,7 @@ describe("Meaningful browser observations",()=>{
   },60000);
   it("rejects fixed contact controls that can cover content while scrolling",async()=>{
     const b=fixtureBlueprint();b.media=[];b.presentation={version:1,fontTheme:"studio",heroEmphasis:null,logoAssetId:null,pageImages:[],sectionImages:[]};
+    b.contact.phone="+16785550101";
     const {files}=renderPortableSite(portableBundle(b),{"assets/images/hero.png":hero});
     files["assets/site.css"]=Buffer.concat([Buffer.from(files["assets/site.css"]),Buffer.from("@media(max-width:760px){.presentation-v1 .mobile-contact{position:fixed;bottom:0;left:0;width:100%;z-index:30;background:var(--surface)}}")]);
     const result=await checkPortableSite({files,browser});

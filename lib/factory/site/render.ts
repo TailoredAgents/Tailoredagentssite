@@ -18,7 +18,31 @@ export const siteCsp="default-src 'none'; script-src 'self'; style-src 'self'; i
 function inquiryTarget(b:SiteBlueprint,page:SiteBlueprint["pages"][number]){
   const form=b.interactions?.forms.find(f=>f.pagePath===page.path)||b.interactions?.forms.find(f=>b.pages.some(p=>p.path===f.pagePath&&/^contact(?: us)?$/i.test(p.title)))||b.interactions?.forms[0];
   if(form)return form.pagePath===page.path?`#${form.sectionId}`:`${relativeSiteLink(page.path,form.pagePath)}#${form.sectionId}`;
-  return `#${page.sections.find(s=>s.kind==="contact")?.id||"contact"}`;
+  const section=page.sections.find(s=>s.kind==="contact");
+  if(section)return `#${section.id}`;
+  if(b.presentation&&b.interactions&&!Object.values(b.contact).some(Boolean)){
+    const destination=b.pages.find(p=>p.sections.some(s=>s.kind==="contact"));
+    if(destination)return `${relativeSiteLink(page.path,destination.path)}#${destination.sections.find(s=>s.kind==="contact")!.id}`;
+    return `#${page.sections[0]?.id||"page-content"}`;
+  }
+  return "#contact";
+}
+/** Automatic contact controls need an existing destination. An intentionally
+ * sparse concept does not acquire an empty contact band or an unplanned form. */
+function hasContactDestination(b:SiteBlueprint){
+  return !b.presentation||!b.interactions||Object.values(b.contact).some(Boolean)||Boolean(b.interactions.forms.length)||b.pages.some(p=>p.sections.some(s=>s.kind==="contact"));
+}
+/** Booking verbs and booking requests imply an inquiry. A book as content or
+ * bookkeeping as a service does not. Keep visibility and routing in agreement. */
+function isInquiryAction(label:string){
+  return /\b(?:contact|inquir|request|schedule|estimate|quote|appointment|conversation)|get in touch|let.s (?:talk|begin)|talk (?:to|with)/i.test(label)
+    ||/^\s*book\b|\bbookings?\b|\b(?:ready to|click to|tap to|please)\s+book\b/i.test(label);
+}
+function usableHeroAction(label:string,b:SiteBlueprint){
+  if(!b.presentation||!b.interactions)return true;
+  if(/^\s*(?:call|dial|phone|ring)\b/i.test(label)&&!/^\s*call ?back\b/i.test(label)&&!b.contact.phone)return false;
+  if(/^\s*(?:email|e-mail)\b/i.test(label)&&!b.contact.email)return false;
+  return hasContactDestination(b)||!isInquiryAction(label);
 }
 /** CTA wording must agree with its destination on every page, including the
  * secondary action. Browsing services is different from requesting service. */
@@ -28,7 +52,7 @@ export function siteActionTarget(label:string,b:SiteBlueprint,page:SiteBlueprint
   // A configured item already names its intended page/section. Preserve that
   // choice; only literal dial/email promises require a protocol destination.
   if(explicitTarget)return fallback;
-  if(/\b(?:contact|inquir|request|book|schedule|estimate|quote|appointment)|get in touch|let.s (?:talk|begin)|talk (?:to|with)/i.test(label))return inquiryTarget(b,page);
+  if(isInquiryAction(label))return inquiryTarget(b,page);
   const kind=/\b(?:explore|view|our|see|discover|browse)\b.*\bservices\b|^services$/i.test(label)?"services":/\b(?:our story|our company|about us|meet the team)\b/i.test(label)?"about":null;
   if(kind){
     const destination=b.pages.find(p=>p.path!=="index.html"&&(kind==="services"?/^services$/i.test(p.title):/^about(?: us)?|our (?:company|story)$/i.test(p.title)));
@@ -52,6 +76,12 @@ function hasContactComposition(b:SiteBlueprint,page:SiteBlueprint["pages"][numbe
   const [channels,inquiry]=page.sections,forms=b.interactions?.forms.filter(form=>form.pagePath===page.path)||[];
   return channels?.kind==="contact"&&inquiry?.kind==="contact"&&forms.length===1&&forms[0].sectionId===inquiry.id
     &&!b.presentation.sectionImages.some(image=>image.pagePath===page.path&&[channels.id,inquiry.id].includes(image.sectionId));
+}
+function hasSingleContactForm(b:SiteBlueprint,page:SiteBlueprint["pages"][number]){
+  if(!b.presentation||!isContactPage(page)||page.sections.length!==1)return false;
+  const section=page.sections[0],forms=b.interactions?.forms.filter(form=>form.pagePath===page.path)||[];
+  return section.kind==="contact"&&forms.length===1&&forms[0].sectionId===section.id
+    &&!b.presentation.sectionImages.some(image=>image.pagePath===page.path);
 }
 /** A short form-led inner page needs a practical introduction, not a second
  * landing-page hero. Content-rich pages and explicit image stories opt out. */
@@ -126,7 +156,7 @@ function sectionMarkup(section:SiteBlueprint["pages"][number]["sections"][number
     // Once a new presentation configures a section's actions, do not add
     // fallback links to its remaining explanatory items. Unconfigured sections
     // and legacy presentations retain their useful automatic service links.
-    const action=specified||section.kind==="services"&&(!blueprint.presentation||!sectionActions.length)?`<a class="service-link" href="${escape(destination)}">${escape(specified?.label||(detail?"Explore this service":"Discuss your needs"))}<span aria-hidden="true">↗</span></a>`:"";
+    const action=specified||section.kind==="services"&&(!blueprint.presentation||!sectionActions.length)&&(detail||hasContactDestination(blueprint))?`<a class="service-link" href="${escape(destination)}">${escape(specified?.label||(detail?"Explore this service":"Discuss your needs"))}<span aria-hidden="true">↗</span></a>`:"";
     const imageBinding=bindings.find(binding=>binding.itemIndex===i);
     const panelAttrs=section.layout==="service-tabs"?` id="${escape(section.id)}-panel-${i}" aria-labelledby="${escape(section.id)}-tab-${i}" data-service-panel tabindex="0"`:"";
     const numbering=section.layout==="service-tabs"?"":`<span class="item-number" aria-hidden="true">${section.layout==="checklist"?"✓":String(i+1).padStart(2,"0")}</span>`;
@@ -199,21 +229,23 @@ export function renderPortableSite(bundle:PortableSiteBundle,assets:Record<strin
     const compactIntro=!!b.presentation&&page.path!=="index.html"&&!heroAssetId;
     const briefInquiry=hasBriefInquiryComposition(b,page);
     const contactComposition=hasContactComposition(b,page);
-    const focusedContact=compactIntro&&contactComposition;
+    const focusedContact=compactIntro&&(contactComposition||hasSingleContactForm(b,page));
+    const contactAvailable=hasContactDestination(b);
     const callTarget=b.contact.phone?`tel:${b.contact.phone.replace(/[^+0-9]/g,"")}`:null;
     const primaryTarget=siteActionTarget(page.hero.primaryCta,b,page,contactTarget);
     const secondaryTarget=siteActionTarget(page.hero.secondaryCta,b,page,page.sections[0]?`#${page.sections[0].id}`:contactTarget);
     const breadcrumb=page.path==="index.html"?"":`<div class="page-breadcrumb"><a href="${escape(local("index.html"))}">Home</a><span aria-hidden="true">/</span><span>${escape(page.title)}</span></div>`;
-    const mobileContact=focusedContact?"":`<nav class="mobile-contact" aria-label="Quick contact">${callTarget?`<a class="button mobile-call" href="${escape(callTarget)}">Call now</a>`:""}<a class="button button-primary" href="${contactTarget}">Get in touch</a></nav>`;
+    const mobileContact=focusedContact||!contactAvailable?"":`<nav class="mobile-contact" aria-label="Quick contact">${callTarget?`<a class="button mobile-call" href="${escape(callTarget)}">Call now</a>`:""}<a class="button button-primary" href="${contactTarget}">Get in touch</a></nav>`;
     const repeatedContactAction=(target:string)=>focusedContact&&(target===contactTarget||target===callTarget||!!b.contact.email&&target===`mailto:${b.contact.email}`);
-    const heroActions=[!repeatedContactAction(primaryTarget)?`<a class="button button-primary" href="${escape(primaryTarget)}">${escape(page.hero.primaryCta)}<span aria-hidden="true">↗</span></a>`:"",page.hero.secondaryCta&&!repeatedContactAction(secondaryTarget)?`<a class="text-link" href="${escape(secondaryTarget)}">${escape(page.hero.secondaryCta)} <span aria-hidden="true">↗</span></a>`:""].join("");
+    const heroActions=[usableHeroAction(page.hero.primaryCta,b)&&!repeatedContactAction(primaryTarget)?`<a class="button button-primary" href="${escape(primaryTarget)}">${escape(page.hero.primaryCta)}<span aria-hidden="true">↗</span></a>`:"",page.hero.secondaryCta&&usableHeroAction(page.hero.secondaryCta,b)&&!repeatedContactAction(secondaryTarget)?`<a class="text-link" href="${escape(secondaryTarget)}">${escape(page.hero.secondaryCta)} <span aria-hidden="true">↗</span></a>`:""].join("");
     const heroCopy=`<div class="hero-copy">${breadcrumb}<p class="eyebrow"><span aria-hidden="true"></span>${escape(page.hero.eyebrow||b.tagline)}</p><h1>${heroHeadline(page.hero.headline,b.presentation?.heroEmphasis)}</h1><p class="hero-description">${escape(page.hero.body)}</p>${heroActions?`<div class="hero-actions">${heroActions}</div>`:""}</div>`;
     const renderedSections=page.sections.map((section,index)=>sectionMarkup(section,index,b,imageMarkup,page.path,contactTarget));
     const sections=contactComposition?`<div class="contact-composition">${renderedSections.slice(0,2).join("")}</div>${renderedSections.slice(2).join("")}`:renderedSections.join("");
     const heroIndex=compactIntro?"":`<div class="hero-index" aria-hidden="true"><span>${escape(b.tagline||family.name)}</span><span>01 — ${String(b.pages.length).padStart(2,"0")}</span></div>`;
     const brandContents=b.presentation?.logoAssetId?`<span class="brand-logo">${imageMarkup(b.presentation.logoAssetId)}</span>`:b.presentation?`<span class="brand-wordmark">${escape(b.brandName)}</span>`:`<span class="brand-symbol" aria-hidden="true">${escape(b.brandName.charAt(0))}</span><span>${escape(b.brandName)}</span>`;
-    const closing=contactSection?"":`<section id="contact" class="site-section section-contact layout-split${b.presentation&&b.interactions?" contact-closing contact-copy-only":""}"><div class="section-inner"><div class="section-heading"><p class="eyebrow">Let's talk</p><h2>A good place to start.</h2><p class="section-copy">Tell us what you have in mind, and take the next step.</p><div class="contact-details">${contactMarkup(b)}</div></div>${b.interactions?"":demoForm()}</div></section>`;
-    files[page.path]=encoder.encode(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta http-equiv="Content-Security-Policy" content="${escape(siteCsp)}"><meta name="description" content="${escape(page.description)}"><meta name="color-scheme" content="${(b.design?colorLuminance(b.design.palette.background)<.179:b.family==="hospitality")?"dark":"light"}"><title>${escape(page.title)} | ${escape(b.brandName)}</title>${identity.variants.length?siteIdentityHead(b,page,options.publicBaseUrl):""}<link rel="stylesheet" href="${escape(local("assets/site.css"))}"><script src="${escape(local("assets/runtime.js"))}" defer></script></head><body data-page="${page.path}" class="${b.design?"design-v1 ":""}${b.presentation?`presentation-v1 font-${b.presentation.fontTheme} `:""}family-${b.family} composition-${b.composition} ${page.path==="index.html"?"page-home":"page-inner"}${compactIntro?" compact-intro":""}${focusedContact?" focused-contact":""}${briefInquiry?" brief-inquiry-page":""}"><a class="skip-link" href="#page-content">Skip to content</a><div class="preview-notice" role="note">Website concept <span>·</span> Forms are demonstrations</div><header class="site-header"><a class="brand" href="${escape(local("index.html"))}" aria-label="${escape(b.brandName)} home">${brandContents}</a><button type="button" class="menu-toggle" data-menu-toggle aria-controls="site-menu" aria-expanded="false">Menu <span aria-hidden="true">☰</span></button><nav id="site-menu" aria-label="Primary navigation">${nav}<a class="nav-contact" href="${escape(contactTarget)}">Get in touch <span aria-hidden="true">↗</span></a></nav></header><main id="page-content"><section class="site-hero"><div class="hero-inner${heroAssetId?"":" hero-text-only"}">${heroCopy}${heroImage}</div>${heroNote}${heroIndex}</section>${b.presentation?mobileContact:""}${sections}${closing}</main><footer class="site-footer"><div><a class="footer-brand${b.presentation?.logoAssetId?" has-logo":""}" href="${escape(local("index.html"))}" aria-label="${escape(b.brandName)} home">${b.presentation?.logoAssetId?brandContents:escape(b.brandName)}</a><p>${escape(b.tagline)}</p></div><nav class="footer-navigation" aria-label="Footer navigation">${nav}</nav><p>Website concept by Tailored Agents.<br>Business details and integrations are reviewed before launch.</p></footer>${b.presentation?"":mobileContact}</body></html>`);
+    const automaticContact=b.presentation&&b.interactions?`${contactMarkup(b)}${contactTarget!=="#contact"?`<a class="text-link" href="${escape(contactTarget)}">${b.interactions.forms.length?"Preview inquiry":"Get in touch"} <span aria-hidden="true">↗</span></a>`:""}`:null;
+    const closing=contactSection||!contactAvailable?"":automaticContact!==null?`<section id="contact" class="site-section section-contact layout-split contact-closing"><div class="section-inner"><div class="section-heading"><p class="eyebrow">Let's talk</p><h2>A good place to start.</h2><p class="section-copy">Tell us what you have in mind, and take the next step.</p></div><div class="contact-details">${automaticContact}</div></div></section>`:`<section id="contact" class="site-section section-contact layout-split"><div class="section-inner"><div class="section-heading"><p class="eyebrow">Let's talk</p><h2>A good place to start.</h2><p class="section-copy">Tell us what you have in mind, and take the next step.</p><div class="contact-details">${contactMarkup(b)}</div></div>${b.interactions?"":demoForm()}</div></section>`;
+    files[page.path]=encoder.encode(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta http-equiv="Content-Security-Policy" content="${escape(siteCsp)}"><meta name="description" content="${escape(page.description)}"><meta name="color-scheme" content="${(b.design?colorLuminance(b.design.palette.background)<.179:b.family==="hospitality")?"dark":"light"}"><title>${escape(page.title)} | ${escape(b.brandName)}</title>${identity.variants.length?siteIdentityHead(b,page,options.publicBaseUrl):""}<link rel="stylesheet" href="${escape(local("assets/site.css"))}"><script src="${escape(local("assets/runtime.js"))}" defer></script></head><body data-page="${page.path}" class="${b.design?"design-v1 ":""}${b.presentation?`presentation-v1 font-${b.presentation.fontTheme} `:""}family-${b.family} composition-${b.composition} ${page.path==="index.html"?"page-home":"page-inner"}${compactIntro?" compact-intro":""}${focusedContact?" focused-contact":""}${briefInquiry?" brief-inquiry-page":""}"><a class="skip-link" href="#page-content">Skip to content</a><div class="preview-notice" role="note">Website concept <span>·</span> Forms are demonstrations</div><header class="site-header"><a class="brand" href="${escape(local("index.html"))}" aria-label="${escape(b.brandName)} home">${brandContents}</a><button type="button" class="menu-toggle" data-menu-toggle aria-controls="site-menu" aria-expanded="false">Menu <span aria-hidden="true">☰</span></button><nav id="site-menu" aria-label="Primary navigation">${nav}${contactAvailable?`<a class="nav-contact" href="${escape(contactTarget)}">Get in touch <span aria-hidden="true">↗</span></a>`:""}</nav></header><main id="page-content"><section class="site-hero"><div class="hero-inner${heroAssetId?"":" hero-text-only"}">${heroCopy}${heroImage}</div>${heroNote}${heroIndex}</section>${b.presentation?mobileContact:""}${sections}${closing}</main><footer class="site-footer"><div><a class="footer-brand${b.presentation?.logoAssetId?" has-logo":""}" href="${escape(local("index.html"))}" aria-label="${escape(b.brandName)} home">${b.presentation?.logoAssetId?brandContents:escape(b.brandName)}</a><p>${escape(b.tagline)}</p></div><nav class="footer-navigation" aria-label="Footer navigation">${nav}</nav><p>Website concept by Tailored Agents.<br>Business details and integrations are reviewed before launch.</p></footer>${b.presentation?"":mobileContact}</body></html>`);
   }
   files["robots.txt"]=encoder.encode("User-agent: *\nDisallow: /\n");
   return {files,manifest:siteManifest(files),runtimeSha256:createHash("sha256").update(trustedSiteRuntime).digest("hex")};
