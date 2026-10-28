@@ -39,7 +39,7 @@ export function FactoryDraftEditor({ versionId, onQueued, onDirtyChange }: { ver
   return <details className="factory-disclosure factory-draft-editor" open={open} onToggle={event => setOpen(event.currentTarget.open)}>
     <summary><PencilLine size={15} />Edit this draft</summary>
     {open || data ? <div>
-      <p className="factory-build-caption">Refine this website, then check all your changes together. Your approved plan and saved images carry forward.</p>
+      <p className="factory-build-caption">Refine this website, then check all your changes together. Checks may make further wording or layout corrections within your approved plan. Your saved images carry forward.</p>
       {error ? <div role="alert"><p className="factory-form-message is-error">{error}</p><button type="button" className="factory-button" onClick={() => setReload(value => value + 1)}><RefreshCw size={14} />Load draft again</button></div> : !data ? <p className="factory-draft-loading" role="status"><LoaderCircle className="factory-spin" size={15} />Loading saved draft…</p> : <DraftForm key={`${data.versionId}-${data.fingerprint}`} data={data} onQueued={onQueued} onDirtyChange={onDirtyChange} />}
     </div> : null}
   </details>;

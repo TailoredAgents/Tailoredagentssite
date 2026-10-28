@@ -5,8 +5,10 @@ import type { SiteScorecard } from "./site/review";
 import type { SiteIssue } from "./site/artifacts";
 export type FactoryBuildStage = "generate" | "images" | "qa" | "publish" | "verify";
 export type FactoryBuildStatus = "queued" | "running" | "ready" | "failed" | "cancelled";
-// Two assessments, with one extra request only after an explicit failed-build retry.
+// Initial assessment plus at most two scoped corrections and their assessments.
+// Invalid/uncertain paid requests consume the same allowance, including retries.
 export const maximumReviewAttempts=3;
+export const maximumCorrectionAttempts=2;
 export type FactoryBuildManifest = { entrypoint: "index.html"; files: Array<{path:string;contentType:string;size:number;sha256:string}> };
 export type FactoryBuildQa = { passed:boolean; checks:string[]; warnings:string[]; screenshots:{desktop:string;mobile:string};
   designReview?:{summary:string;reviewedPages:string[];imageCount:number;reviewVersion?:2;overallScore?:number;scorecard?:SiteScorecard};

@@ -4,7 +4,8 @@ import type {SiteLabPerformance} from "./performance";
 
 export type SiteFiles = Record<string, Uint8Array>;
 export type SiteManifest = {entrypoint:"index.html";files:Array<{path:string;contentType:string;size:number;sha256:string}>};
-export type SiteIssue = {code:string;message:string;page:string;viewport?:"desktop"|"mobile";severity:"error"|"warning"};
+export type SiteIssue = {code:string;message:string;page:string;viewport?:"desktop"|"mobile";severity:"error"|"warning";
+  sectionId?:string|null;repairability?:"content"|"layout"|"technical"|"scope"};
 export type SiteQaResult = {passed:boolean;issues:SiteIssue[];checkedAt:string;labPerformance?:SiteLabPerformance[];screenshots:Array<{page:string;viewport:"desktop"|"mobile";bytes:Uint8Array;regions?:Array<{id:string;top:number;height:number}>}>};
 export const siteLimits={maximumFiles:80,maximumFileBytes:8_000_000,maximumTotalBytes:40_000_000,maximumPages:10};
 

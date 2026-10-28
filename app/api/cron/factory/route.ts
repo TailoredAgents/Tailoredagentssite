@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { runFactoryWorkerStep } from "@/lib/factory/worker";
+import { syncFactoryWorkNotices } from "@/lib/factory/work-notices";
 import { privateJson } from "@/lib/reporting/http";
 
 export const runtime = "nodejs";
@@ -13,7 +14,11 @@ export async function POST(request: Request) {
     return privateJson({ ok: false }, 401);
   }
   try {
-    return privateJson({ ok: true, ...(await runFactoryWorkerStep()) });
+    const result = await runFactoryWorkerStep();
+    // Notification catch-up must not turn a completed paid job into a failed
+    // cron response. Dashboard reads and the next worker reconcile it again.
+    try { await syncFactoryWorkNotices(); } catch { console.warn("Website planning updates will be reconciled on the next check."); }
+    return privateJson({ ok: true, ...result });
   } catch {
     return privateJson({ ok: false, error: "factory_worker_unavailable" }, 503);
   }

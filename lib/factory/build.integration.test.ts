@@ -6,7 +6,7 @@ import {afterAll,beforeAll,beforeEach,describe,expect,it,vi} from "vitest";
 import type {DashboardContext} from "@/lib/dashboard/data";
 import {getDatabasePool} from "@/lib/dashboard/db";
 import {approveFactoryPlan,startFactory} from "./service";
-import {claimFactoryBuild,saveFactoryBuildStage,saveFactoryBuildProgress,finishFactoryBuild,saveFactoryBuildSettings,failFactoryBuild,retryFactoryBuild,revokeFactoryPreview,restoreFactoryPreview,recoverFactoryBuilds,registerFactoryUpload,completeFactoryUpload,deleteFactoryUpload,claimFactoryStorageCleanup,finishFactoryStorageCleanup,queueApprovedFactoryBuild,rollbackFactoryBuildAttempt} from "./build-service";
+import {claimFactoryBuild,saveFactoryBuildStage,saveFactoryBuildProgress,finishFactoryBuild,saveFactoryBuildSettings,failFactoryBuild,retryFactoryBuild,revokeFactoryPreview,restoreFactoryPreview,recoverFactoryBuilds,registerFactoryUpload,completeFactoryUpload,deleteFactoryUpload,claimFactoryStorageCleanup,finishFactoryStorageCleanup,queueApprovedFactoryBuild,rollbackFactoryBuildAttempt,requeueFactoryBuildQuality} from "./build-service";
 import {getFactoryProjectBuilds,getFactoryPreviewResolution,getFactorySourceDownload,getFactoryScreenshotDownload,getFactoryUploadDownload} from "./build-data";
 import {FactoryBuildBudgetError,reserveFactoryBuildCost,attemptFactoryBuildCost,settleFactoryBuildCost,uncertainFactoryBuildCost} from "./build-budget";
 import {FactoryBuildRequestNotAttemptedError} from "./build-provider";
@@ -50,6 +50,7 @@ async function toVerification(){
 }
 function finish(job:FactoryClaimedBuild){return finishFactoryBuild({versionId:job.id,leaseToken:job.leaseToken,manifest,qaReport:qa(job),sourceKey:`${job.storagePrefix}source.zip`,verification:{url:`https://previews.example.test/p/${job.previewToken}/`,status:200,checkedAt:new Date().toISOString()}});}
 function scoredReview<T extends object>(value:T){return {...value,scorecard:Object.fromEntries(["firstImpression","composition","imagery","copy","usefulness","mobile"].map(key=>[key,{score:90,evidence:[{page:"index.html",observation:"Synthetic evidence: the fixture is intentionally evaluated by injected providers."}],improvement:"Preserve the approved synthetic test composition."}]))};}
+function correction(headline:string,pagePath="index.html",issueIds=["issue-1"]){return {patches:[{target:{pagePath,sectionId:"__intro__"},content:{headline,body:blueprint.pages.find(page=>page.path===pagePath)!.hero.body,layout:null,items:null},issueIds}],unresolved:[]};}
 function mediaBlueprint(){const result=structuredClone(blueprint),items=result.pages[0].sections.find(section=>section.id==="services")!.items;["Describe your central objective and explore the information needed to define a useful starting point. Bring the questions that matter most to you.","Compare different approaches to your project and consider the practical constraints behind each option. Identify the decisions that need further discussion before choosing a direction.","Outline a manageable next step with clear priorities and responsibilities. Use your initial discussion to determine which information is needed before a scope can be agreed."].forEach((body,index)=>{items[index].body=body;});return result;}
 
 async function fixtureRuntime(){
@@ -348,10 +349,10 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
         reviews++;
         response.output[0].content[0].text=JSON.stringify(scoredReview(reviews===1?{verdict:"revise",summary:"The heading needs a clearer subject.",issues:[{page:"index.html",category:"content",severity:"error",message:"Make the homepage heading describe the proposed service."}]}:{verdict:"pass",summary:"The revised direction is clear.",issues:[]}));
       }
-      if(request.stage==="repair"){repairs++;const changed=structuredClone(blueprint);changed.pages[0].hero.headline="Explore a practical service concept";response.output[0].content[0].text=JSON.stringify(changed);}
+      if(request.stage==="repair"){repairs++;response.output[0].content[0].text=JSON.stringify(correction("Explore a practical service concept"));}
       return response;
     };
-    for(let step=0;step<5;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    for(let step=0;step<6;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
     const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];
     expect(version.status).toBe("ready");expect(reviews).toBe(2);expect(repairs).toBe(1);
     expect(version.qaReport?.designReview?.summary).toBe("The revised direction is clear.");
@@ -363,10 +364,10 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     runtime.execute=build=>async request=>{
       const response=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};
       if(request.stage==="review"){reviews++;response.output[0].content[0].text=JSON.stringify(scoredReview({verdict:"revise",summary:"A material copy issue remains.",issues:[{page:"index.html",category:"content",severity:"error",message:"Replace unsupported business claims with proposed service explanations."}]}));}
-      if(request.stage==="repair"){repairs++;const changed=structuredClone(blueprint);changed.pages[0].hero.headline="Explore the proposed direction";response.output[0].content[0].text=JSON.stringify(changed);}
+      if(request.stage==="repair"){repairs++;response.output[0].content[0].text=JSON.stringify(correction("Explore the proposed direction"));}
       return response;
     };
-    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    for(let step=0;step<3;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
     expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
     const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];
     expect(version.error).toContain("another revision");expect(reviews).toBe(2);expect(repairs).toBe(1);
@@ -394,10 +395,181 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
     const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];
     const state=(await pool.query("SELECT working_data FROM factory_build_versions WHERE id=$1",[version.id])).rows[0].working_data;
-    expect(state.repaired).toBe(true);expect(state.repairResponse.raw.output[0].content[0].text).toBe("invalid paid correction fixture");expect(state.lastFailedQa.issues).toHaveLength(1);
+    expect(state.correctionAttempts).toBe(1);expect(state.correctionPending.attempt).toBe(1);expect(state.correctionResponse.raw.output[0].content[0].text).toBe("invalid paid correction fixture");expect(state.lastFailedQa.issues).toHaveLength(1);
     const before=(await pool.query("SELECT count(*)::int n,sum(actual_micros)::text total FROM factory_build_costs WHERE version_id=$1",[version.id])).rows[0];
     await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
     expect(repairs).toBe(1);expect((await pool.query("SELECT count(*)::int n,sum(actual_micros)::text total FROM factory_build_costs WHERE version_id=$1",[version.id])).rows[0]).toEqual(before);
+  });
+  it("finishes two scoped correction rounds on one approval with fresh QA leases and unchanged integrations/assets",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute;
+    const leases:string[]=[],stages:string[]=[];let reviews=0,repairs=0;
+    runtime.execute=build=>async request=>{
+      const raw=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};stages.push(request.stage);
+      if(request.stage==="review"){
+        reviews++;leases.push(build.leaseToken);
+        const issues=reviews===1?[{page:"index.html",sectionId:"__intro__",repairability:"content",category:"content",severity:"error",message:"Make the initial service direction clear."},{page:"services/index.html",sectionId:"__intro__",repairability:"content",category:"content",severity:"error",message:"Distinguish this services introduction."}]:reviews===2?[{page:"services/index.html",sectionId:"__intro__",repairability:"content",category:"content",severity:"error",message:"Use a more specific service comparison heading."}]:[];
+        raw.output[0].content[0].text=JSON.stringify(scoredReview({verdict:issues.length?"revise":"pass",summary:"Synthetic scoped correction assessment.",issues}));
+      }
+      if(request.stage==="repair"){
+        repairs++;
+        const result=repairs===1?{patches:[...correction("Explore a useful project direction").patches,...correction("Compare the proposed approaches","services/index.html",["issue-2"]).patches],unresolved:[]}:correction("Compare scope, priorities and possible next steps","services/index.html");
+        raw.output[0].content[0].text=JSON.stringify(result);
+      }
+      return raw;
+    };
+    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    const before=(await pool.query("SELECT id,build_request_id,working_data FROM factory_build_versions WHERE project_id=$1",[project.projectId])).rows[0];
+    for(let round=0;round<2;round++){
+      expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+      const row=(await pool.query("SELECT * FROM factory_build_versions WHERE id=$1",[before.id])).rows[0];
+      expect(row).toMatchObject({status:"queued",stage:"qa",lease_token:null,lease_until:null,build_request_id:before.build_request_id,retry_count:0});
+      expect(row.working_data.correctionAttempts).toBe(round+1);expect(row.working_data.correctionHistory).toHaveLength(round+1);expect(row.working_data.correctionPending).toBeUndefined();
+      expect(row.working_data.imageAssets).toEqual(before.working_data.imageAssets);expect(row.working_data.blueprint.interactions).toEqual(before.working_data.blueprint.interactions);expect(row.working_data.blueprint.presentation).toEqual(before.working_data.blueprint.presentation);
+      expect(row.working_data.blueprint.pages.map((page:SiteBlueprint["pages"][number])=>[page.path,page.sections])).toEqual(before.working_data.blueprint.pages.map((page:SiteBlueprint["pages"][number])=>[page.path,page.sections]));
+    }
+    for(let step=0;step<3;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect(reviews).toBe(3);expect(repairs).toBe(2);expect(new Set(leases).size).toBe(3);expect(stages).toEqual(["generate","review","repair","review","repair","review"]);
+    const versions=(await getFactoryProjectBuilds(member,project.projectId))!.versions;expect(versions).toHaveLength(1);expect(versions[0]).toMatchObject({id:before.id,planId:project.planId,status:"ready"});
+    expect((await pool.query("SELECT count(*)::int n FROM factory_build_requests WHERE project_id=$1",[project.projectId])).rows[0].n).toBe(1);
+    expect((await pool.query("SELECT sum(actual_micros)::int used FROM factory_build_costs WHERE version_id=$1",[before.id])).rows[0].used).toBe(730000);
+  });
+  it("stops after two corrections and three assessments even when each remaining finding is different",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute;let reviews=0,repairs=0;
+    runtime.execute=build=>async request=>{
+      const raw=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};
+      if(request.stage==="review"){reviews++;raw.output[0].content[0].text=JSON.stringify(scoredReview({verdict:"revise",summary:"A distinct issue remains.",issues:[{page:"index.html",category:"content",severity:"error",message:`A distinct substantive copy concern number ${reviews} needs correction.`}]}));}
+      if(request.stage==="repair"){repairs++;raw.output[0].content[0].text=JSON.stringify(correction(`Explore the proposed project direction ${repairs}`));}return raw;
+    };
+    for(let step=0;step<4;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
+    const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];expect(version.error).toContain("bounded automatic");expect(version.previewUrl).toBeNull();expect(repairs).toBe(2);expect(reviews).toBe(3);
+    await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");expect(repairs).toBe(2);expect(reviews).toBe(3);
+  });
+  it("rejects an automatic correction cycle after a jsonb round trip",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute;let reviews=0,repairs=0;
+    runtime.execute=build=>async request=>{
+      const raw=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};
+      if(request.stage==="review"){reviews++;raw.output[0].content[0].text=JSON.stringify(scoredReview({verdict:"revise",summary:"A different concern remains.",issues:[{page:"index.html",category:"content",severity:"error",message:`Distinct concern ${reviews} about the introduction.`}]}));}
+      if(request.stage==="repair"){repairs++;raw.output[0].content[0].text=JSON.stringify(correction(repairs===1?"A new proposed service direction":blueprint.pages[0].hero.headline));}return raw;
+    };
+    for(let step=0;step<3;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
+    const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];expect(version.error).toContain("earlier draft without progress");expect(repairs).toBe(2);expect(reviews).toBe(2);expect(version.previewUrl).toBeNull();
+    await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");expect(repairs).toBe(2);expect(reviews).toBe(2);
+  });
+  it("atomically releases only a current QA lease while preserving the approved inputs",async()=>{
+    const project=await prepared();await enable();const first=(await claimFactoryBuild())!;
+    expect(await requeueFactoryBuildQuality({versionId:first.id,leaseToken:first.leaseToken,workingData:first.workingData})).toBe(false);
+    await saveFactoryBuildStage({versionId:first.id,leaseToken:first.leaseToken,stage:"generate",nextStage:"images",workingData:first.workingData});
+    const images=(await claimFactoryBuild())!;await saveFactoryBuildStage({versionId:images.id,leaseToken:images.leaseToken,stage:"images",nextStage:"qa",workingData:images.workingData});
+    const current=(await claimFactoryBuild())!;
+    const state={...current.workingData,correctionAttempts:1,reviewAttempts:1,blueprint,correctionHistory:[{inputBlueprintHash:"a".repeat(64),outputBlueprintHash:"b".repeat(64),issueFingerprint:"c".repeat(64)}]};
+    expect(await requeueFactoryBuildQuality({versionId:current.id,leaseToken:randomUUID(),workingData:state})).toBe(false);
+    expect(await requeueFactoryBuildQuality({versionId:current.id,leaseToken:current.leaseToken,workingData:state})).toBe(true);
+    expect(await requeueFactoryBuildQuality({versionId:current.id,leaseToken:current.leaseToken,workingData:state})).toBe(false);
+    const next=(await claimFactoryBuild())!;expect(next.id).toBe(current.id);expect(next.planId).toBe(project.planId);expect(next.buildRequestId).toBe(current.buildRequestId);expect(next.leaseToken).not.toBe(current.leaseToken);expect(next.workingData).toEqual(state);
+    expect(await requeueFactoryBuildQuality({versionId:current.id,leaseToken:current.leaseToken,workingData:{}})).toBe(false);
+  });
+  it("automatically corrects a new manual draft revision within the same approval and saved images",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime();
+    for(let step=0;step<5;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    const source=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0],draft=await getFactoryDraft(member,source.id);
+    const child=await reviseFactoryDraft(member,{versionId:source.id,fingerprint:draft.fingerprint,requestId:randomUUID(),mode:"manual",pagePath:"index.html",sectionId:"__intro__",headline:"A revised project introduction",body:draft.pages[0].hero.body,layout:null,items:null});
+    const execute=runtime.execute,hero=runtime.hero;let reviews=0,repairs=0,images=0;
+    runtime.hero=async(...args)=>{images++;return hero(...args);};
+    runtime.execute=build=>async request=>{
+      const raw=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};
+      if(request.stage==="review"){reviews++;raw.output[0].content[0].text=JSON.stringify(scoredReview({verdict:reviews===1?"revise":"pass",summary:"Synthetic revision assessment.",issues:reviews===1?[{page:"index.html",category:"content",severity:"error",message:"Keep the revised introduction focused on the proposed service."}]:[]}));}
+      if(request.stage==="repair"){repairs++;raw.output[0].content[0].text=JSON.stringify(correction("Explore the revised service proposal"));}return raw;
+    };
+    for(let step=0;step<5;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    const versions=(await getFactoryProjectBuilds(member,project.projectId))!.versions;expect(versions).toHaveLength(2);expect(versions[0]).toMatchObject({id:child.versionId,planId:project.planId,status:"ready",parentVersionId:source.id});expect(versions[1].status).toBe("ready");expect(reviews).toBe(2);expect(repairs).toBe(1);expect(images).toBe(0);
+    expect((await pool.query("SELECT count(DISTINCT build_request_id)::int n FROM factory_build_versions WHERE project_id=$1",[project.projectId])).rows[0].n).toBe(1);
+  });
+  it("counts a historical repair as one used correction instead of resetting it on deployment",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute;let reviews=0,repairs=0;
+    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    await pool.query("UPDATE factory_build_versions SET working_data=working_data||'{\"repaired\":true}'::jsonb WHERE project_id=$1",[project.projectId]);
+    runtime.execute=build=>async request=>{
+      const raw=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};
+      if(request.stage==="review"){reviews++;raw.output[0].content[0].text=JSON.stringify(scoredReview({verdict:"revise",summary:"A copy issue remains.",issues:[{page:"index.html",category:"content",severity:"error",message:`Remaining copy issue number ${reviews}.`}]}));}
+      if(request.stage==="repair"){repairs++;raw.output[0].content[0].text=JSON.stringify(correction("A clearer proposed service direction"));}return raw;
+    };
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
+    const state=(await pool.query("SELECT working_data FROM factory_build_versions WHERE project_id=$1",[project.projectId])).rows[0].working_data;
+    expect(state.correctionAttempts).toBe(2);expect(state.correctionHistory).toHaveLength(1);expect(repairs).toBe(1);expect(reviews).toBe(2);
+  });
+  it("leaves an ambiguous correction charged and never repeats its request after an explicit retry",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute;let repairs=0;
+    runtime.execute=build=>async request=>{
+      if(request.stage==="repair"){
+        repairs++;const cost=await reserveFactoryBuildCost({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,requestKey:"interrupted-correction",reservedMicros:request.reservedMicros});
+        await attemptFactoryBuildCost(cost,build.leaseToken);await uncertainFactoryBuildCost(cost);throw new Error("Synthetic response transport interrupted");
+      }
+      const raw=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};
+      if(request.stage==="review")raw.output[0].content[0].text=JSON.stringify(scoredReview({verdict:"revise",summary:"Clarify the service.",issues:[{page:"index.html",category:"content",severity:"error",message:"Give the proposed service a clearer heading."}]}));return raw;
+    };
+    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
+    const row=(await pool.query("SELECT id,working_data FROM factory_build_versions WHERE project_id=$1",[project.projectId])).rows[0];
+    expect(row.working_data.correctionPending.attempt).toBe(1);expect(row.working_data.correctionAttempts).toBe(1);expect(row.working_data.correctionResponse).toBeUndefined();
+    const costs=(await pool.query("SELECT request_key,status,reserved_micros FROM factory_build_costs WHERE version_id=$1 ORDER BY request_key",[row.id])).rows;
+    expect(costs.find(cost=>cost.request_key.endsWith(":interrupted-correction"))?.status).toBe("uncertain");
+    await retryFactoryBuild(member,{versionId:row.id,requestId:randomUUID()});expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");expect(repairs).toBe(1);
+    expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].error).toContain("possible charge");
+    expect((await pool.query("SELECT request_key,status,reserved_micros FROM factory_build_costs WHERE version_id=$1 ORDER BY request_key",[row.id])).rows).toEqual(costs);
+  });
+  it("does not pay for correction of only technical/scope blockers, and technical warnings alone can pass",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute;let reviews=0,repairs=0;
+    runtime.execute=build=>async request=>{
+      if(request.stage==="repair")repairs++;
+      const raw=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};
+      if(request.stage==="review"){reviews++;raw.output[0].content[0].text=JSON.stringify(scoredReview({verdict:"revise",summary:"The renderer needs attention.",issues:[{page:"index.html",sectionId:null,repairability:"technical",category:"design",severity:"error",message:"A trusted renderer spacing control needs a technical fix."}]}));}return raw;
+    };
+    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");expect(reviews).toBe(1);expect(repairs).toBe(0);
+    const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];expect(version.error).toContain("technical fix or a changed plan");
+    // A separate approved build with a nonblocking technical suggestion can publish.
+    const otherProject=await prepared();runtime.execute=build=>async request=>{
+      if(request.stage==="repair")repairs++;
+      const raw=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};
+      if(request.stage==="review")raw.output[0].content[0].text=JSON.stringify(scoredReview({verdict:"pass",summary:"Ready with an optional refinement.",issues:[{page:"index.html",sectionId:null,repairability:"technical",category:"design",severity:"warning",message:"An optional renderer spacing refinement could be considered."}]}));return raw;
+    };
+    for(let step=0;step<5;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect((await getFactoryProjectBuilds(member,otherProject.projectId))!.versions[0].status).toBe("ready");expect(repairs).toBe(0);
+  });
+  it("records unsupported correction findings without buying another response or publishing",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute;let repairs=0;
+    runtime.execute=build=>async request=>{
+      const raw=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};
+      if(request.stage==="review")raw.output[0].content[0].text=JSON.stringify(scoredReview({verdict:"revise",summary:"Review the visual treatment.",issues:[{page:"index.html",category:"design",severity:"error",message:"Adjust a visual detail that is outside section controls."}]}));
+      if(request.stage==="repair"){repairs++;raw.output[0].content[0].text=JSON.stringify({patches:[],unresolved:[{issueId:"issue-1",reason:"The requested adjustment needs a renderer spacing control that is unavailable."}]});}return raw;
+    };
+    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    const original=(await pool.query("SELECT working_data FROM factory_build_versions WHERE project_id=$1",[project.projectId])).rows[0].working_data.blueprint;
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
+    const row=(await pool.query("SELECT id,working_data FROM factory_build_versions WHERE project_id=$1",[project.projectId])).rows[0];expect(row.working_data.correctionUnresolved).toHaveLength(1);expect(row.working_data.blueprint).toEqual(original);expect(row.working_data.correctionResponse).toBeTruthy();
+    await retryFactoryBuild(member,{versionId:row.id,requestId:randomUUID()});expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");expect(repairs).toBe(1);expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].previewUrl).toBeNull();
+  });
+  it.each(["valid","changed blueprint","changed issues"])("replays a scoped saved response only with matching immutable inputs: %s",async scenario=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime();
+    for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    const job=(await claimFactoryBuild())!,original=job.workingData.blueprint as SiteBlueprint;
+    const canonical=(value:unknown):unknown=>Array.isArray(value)?value.map(canonical):value&&typeof value==="object"?Object.fromEntries(Object.entries(value).sort(([left],[right])=>left.localeCompare(right)).map(([key,entry])=>[key,canonical(entry)])):value;
+    const hash=(value:unknown)=>createHash("sha256").update(JSON.stringify(canonical(value))).digest("hex");
+    const issues=[{code:"review_content",page:"index.html",severity:"error",message:"Give the service a clearer introduction."}];
+    const raw={id:"saved-scoped-correction",status:"completed",usage:{input_tokens:1000,output_tokens:2000},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(correction("A carefully considered service direction"))}]}]};
+    const cost=await reserveFactoryBuildCost({versionId:job.id,leaseToken:job.leaseToken,stage:"qa",requestKey:"saved-scoped",reservedMicros:200000});await attemptFactoryBuildCost(cost,job.leaseToken);await settleFactoryBuildCost(cost,{actualMicros:100000,providerId:raw.id});
+    const state={...job.workingData,blueprint:original,correctionAttempts:1,correctionPending:{blueprintHash:hash(original),issuesHash:hash(issues),issueFingerprint:hash(issues.map(issue=>JSON.stringify([issue.page,null,issue.code,issue.message])).sort()),attempt:1},correctionResponse:{blueprintHash:hash(original),issues:structuredClone(issues),raw}};
+    if(scenario==="changed blueprint")(state.blueprint as SiteBlueprint).pages[0].hero.headline="A different unreviewed heading";
+    if(scenario==="changed issues")state.correctionResponse.issues[0].message="A different correction request.";
+    await saveFactoryBuildProgress({versionId:job.id,leaseToken:job.leaseToken,stage:"qa",workingData:state});await failFactoryBuild({versionId:job.id,leaseToken:job.leaseToken,error:"Synthetic interruption after response checkpoint"});
+    const execute=runtime.execute,stages:string[]=[];runtime.execute=build=>async request=>{stages.push(request.stage);expect(request.stage).toBe("review");return execute(build)(request);};
+    await retryFactoryBuild(member,{versionId:job.id,requestId:randomUUID()});expect((await runFactoryBuildWorkerStep(runtime)).status).toBe(scenario==="valid"?"processed":"failed");expect(stages).toEqual([]);
+    if(scenario==="valid"){
+      const row=(await pool.query("SELECT status,stage,working_data FROM factory_build_versions WHERE id=$1",[job.id])).rows[0];expect(row).toMatchObject({status:"queued",stage:"qa"});expect(row.working_data.correctionAttempts).toBe(1);expect(row.working_data.correctionResponse).toBeUndefined();
+      for(let step=0;step<3;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");expect(stages).toEqual(["review"]);expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].status).toBe("ready");
+    }else expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].error).toContain("no longer matches");
   });
   it("recovers a saved correction with the same blueprint and only pays for the remaining assessment",async()=>{
     const project=await prepared();await enable();const {runtime}=await fixtureRuntime();
@@ -439,7 +611,7 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
         reviews++;
         response.output[0].content[0].text=JSON.stringify(scoredReview(reviews===1?{verdict:"pass",summary:"Invalid path.",issues:[{page:"all",category:"design",severity:"warning",message:"Tighten the heading."}]}:reviews===2?{summary:"Fix the heading.",issues:[{page:"index.html",category:"content",severity:"error",message:"Explain the service in the heading."}]}:{summary:"Ready to share.",issues:[]}));
       }
-      if(request.stage==="repair"){repairs++;const changed=structuredClone(blueprint);changed.pages[0].hero.headline="Explore the proposed service experience";response.output[0].content[0].text=JSON.stringify(changed);}
+      if(request.stage==="repair"){repairs++;response.output[0].content[0].text=JSON.stringify(correction("Explore the proposed service experience"));}
       return response;
     };
     for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
@@ -449,7 +621,7 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     const state=(await pool.query("SELECT working_data FROM factory_build_versions WHERE id=$1",[version.id])).rows[0].working_data;
     expect(state.reviewResponse.raw.output[0].content[0].text).toContain('"page":"all"');expect(state.reviewAttempts).toBe(1);expect(state.review).toBeUndefined();
     await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});
-    for(let step=0;step<3;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    for(let step=0;step<4;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
     expect(reviews).toBe(3);expect(repairs).toBe(1);expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].status).toBe("ready");
     expect((await pool.query("SELECT count(*)::int n FROM factory_build_costs WHERE status='settled'")).rows[0].n).toBe(6);
   });
@@ -500,16 +672,16 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
       if(request.stage==="review"){
         reviews++;response.output[0].content[0].text=JSON.stringify(scoredReview(reviews===1?{verdict:"revise",summary:"The heading needs a clear subject.",issues:[{page:"index.html",category:"content",severity:"error",message:"Describe the proposed service in the main heading."}]}:{verdict:"pass",summary:"The revised service direction is clear.",issues:[]}));
       }
-      if(request.stage==="repair"){repairs++;const changed=structuredClone(blueprint);changed.pages[0].hero.headline="Explore this proposed service direction";response.output[0].content[0].text=JSON.stringify(changed);}
+      if(request.stage==="repair"){repairs++;response.output[0].content[0].text=JSON.stringify(correction("Explore this proposed service direction"));}
       return response;
     };
     for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
     expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
     const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];
     const state=(await pool.query("SELECT working_data FROM factory_build_versions WHERE id=$1",[version.id])).rows[0].working_data;
-    expect(state.reviewAttempts).toBe(1);expect(state.review.result.issues).toHaveLength(1);expect(state.repaired).toBeUndefined();expect(reviews).toBe(1);expect(repairs).toBe(0);
+    expect(state.reviewAttempts).toBe(1);expect(state.review.result.issues).toHaveLength(1);expect(state.repaired).toBeUndefined();expect(state.correctionAttempts).toBeUndefined();expect(state.correctionPending).toBeUndefined();expect(reviews).toBe(1);expect(repairs).toBe(0);
     await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});
-    for(let step=0;step<3;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    for(let step=0;step<4;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
     expect(reviews).toBe(2);expect(repairs).toBe(1);expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].status).toBe("ready");
     expect((await pool.query("SELECT count(*)::int n FROM factory_build_costs WHERE stage='qa' AND status='settled'")).rows[0].n).toBe(3);
   });
@@ -536,25 +708,25 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
       if(request.stage==="review"){
         reviews++;response.output[0].content[0].text=JSON.stringify(scoredReview(reviews===1?{verdict:"revise",summary:"Make the main heading clearer.",issues:[{page:"index.html",category:"content",severity:"error",message:"Explain the proposed service in the homepage heading."}]}:{verdict:"pass",summary:"The revised heading is clear.",issues:[]}));
       }
-      if(request.stage==="repair"){repairs++;const changed=structuredClone(blueprint);changed.pages[0].hero.headline="A proposed service with a clear direction";response.output[0].content[0].text=JSON.stringify(changed);}
+      if(request.stage==="repair"){repairs++;response.output[0].content[0].text=JSON.stringify(correction("A proposed service with a clear direction"));}
       return response;
     };
     for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
     expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
     const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];
     const row=(await pool.query("SELECT stage,status,working_data FROM factory_build_versions WHERE id=$1",[version.id])).rows[0];
-    expect(row).toMatchObject({stage:"qa",status:"failed"});expect(row.working_data.repaired).toBeUndefined();expect(row.working_data.reviewAttempts).toBe(1);
+    expect(row).toMatchObject({stage:"qa",status:"failed"});expect(row.working_data.repaired).toBeUndefined();expect(row.working_data.correctionAttempts).toBeUndefined();expect(row.working_data.correctionPending).toBeUndefined();expect(row.working_data.reviewAttempts).toBe(1);
     expect((await pool.query("SELECT enabled FROM factory_build_settings WHERE workspace_id=$1",[ws])).rows[0].enabled).toBe(false);
     expect(reviews).toBe(1);expect(repairs).toBe(0);expect(await claimFactoryBuild()).toBeNull();
     await enable();await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});
-    for(let step=0;step<3;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    for(let step=0;step<4;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
     expect(reviews).toBe(2);expect(repairs).toBe(1);expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].status).toBe("ready");
   });
   it("allows only an exact leased counter rollback while paused and preserves every unrelated field",async()=>{
     const project=await prepared();await enable();const {runtime}=await fixtureRuntime();
     for(let step=0;step<2;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
     const job=(await claimFactoryBuild())!;
-    await pool.query("UPDATE factory_build_versions SET working_data=working_data||$2::jsonb WHERE id=$1",[job.id,JSON.stringify({reviewAttempts:2,repaired:true,unrelated:{keep:"unchanged"}})]);
+    await pool.query("UPDATE factory_build_versions SET working_data=working_data||$2::jsonb WHERE id=$1",[job.id,JSON.stringify({reviewAttempts:2,repaired:true,correctionAttempts:2,correctionPending:{attempt:2},unrelated:{keep:"unchanged"}})]);
     const before=(await pool.query("SELECT working_data FROM factory_build_versions WHERE id=$1",[job.id])).rows[0].working_data;
     await saveFactoryBuildSettings(owner,{enabled:false,monthlyBudgetDollars:50,perBuildBudgetDollars:5});
     const restore={versionId:job.id,leaseToken:job.leaseToken,stage:"qa" as const,kind:"review" as const,expectedValue:2,previousValue:1};
@@ -568,6 +740,9 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     expect(await rollbackFactoryBuildAttempt(restore)).toBe(false);
     expect(await rollbackFactoryBuildAttempt({versionId:job.id,leaseToken:job.leaseToken,stage:"qa",kind:"repair",expectedValue:true,previousValue:false})).toBe(true);
     expect((await pool.query("SELECT working_data FROM factory_build_versions WHERE id=$1",[job.id])).rows[0].working_data).toEqual({...before,reviewAttempts:1,repaired:false});
+    expect(await rollbackFactoryBuildAttempt({versionId:job.id,leaseToken:job.leaseToken,stage:"qa",kind:"correction",expectedValue:2,previousValue:1})).toBe(true);
+    const restored={...before,reviewAttempts:1,repaired:false,correctionAttempts:1};delete restored.correctionPending;
+    expect((await pool.query("SELECT working_data FROM factory_build_versions WHERE id=$1",[job.id])).rows[0].working_data).toEqual(restored);
     expect((await pool.query("SELECT enabled FROM factory_build_settings WHERE workspace_id=$1",[ws])).rows[0].enabled).toBe(false);
     expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].previewUrl).toBeNull();
   });
@@ -710,7 +885,7 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
       const child=(await pool.query("SELECT * FROM factory_build_versions WHERE id=$1",[result.versionId])).rows[0];
       const expected=structuredClone(original.blueprint);expected.pages[0].hero.headline=input.headline;
       expect(child).toMatchObject({kind:"revision",parent_version_id:data.version.id,build_request_id:data.version.build_request_id,status:"queued",stage:"images",version:2});
-      expect(child.working_data.blueprint).toEqual(expected);expect(child.working_data.inputUploads).toEqual(original.inputUploads);expect(child.working_data.repaired).toBe(true);
+      expect(child.working_data.blueprint).toEqual(expected);expect(child.working_data.inputUploads).toEqual(original.inputUploads);expect(child.working_data.repaired).toBeUndefined();expect(child.working_data.correctionAttempts).toBe(0);
       expect((await pool.query("SELECT working_data FROM factory_build_versions WHERE id=$1",[data.version.id])).rows[0].working_data).toEqual(original);
       expect((await pool.query("SELECT count(*)::int n FROM factory_build_requests WHERE project_id=$1",[data.projectId])).rows[0].n).toBe(1);
       expect((await pool.query("SELECT count(*)::int n FROM factory_build_versions WHERE project_id=$1",[data.projectId])).rows[0].n).toBe(2);

@@ -1,6 +1,7 @@
 import {setTimeout as delay} from "node:timers/promises";
 import {runFactoryBuildWorkerStep} from "../lib/factory/build-worker";
 import {getDatabasePool} from "../lib/dashboard/db";
+import {syncFactoryWorkNotices} from "../lib/factory/work-notices";
 
 let stopping=false;
 process.on("SIGTERM",()=>{stopping=true;});process.on("SIGINT",()=>{stopping=true;});
@@ -9,6 +10,8 @@ const drain=process.argv.includes("--drain"),started=Date.now();let stages=0;
 async function main(){try{
   do{
     const result=await runFactoryBuildWorkerStep();console.log(JSON.stringify({worker:"website-builder",...result}));
+    // Notices are recoverable on the next pass or CRM read; never fail completed work.
+    try{await syncFactoryWorkNotices();}catch{console.error("Website updates will be refreshed on the next pass.");}
     stages++;
     // Scheduled runs drain approved work, then exit instead of billing idle time.
     // A busy queue is continued by the next run, never by restarting paid steps.

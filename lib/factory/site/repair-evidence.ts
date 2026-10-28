@@ -34,7 +34,8 @@ export async function buildRepairEvidence(input:{blueprint:SiteBlueprint;issues:
     const sections=input.blueprint.pages.find(candidate=>candidate.path===page)!.sections;
     const namedSections=sections.filter(section=>[section.id,section.title].some(value=>normalize(value).length>=4&&messages.includes(normalize(value))));
     const regions=(shot.regions||[]).filter(region=>Number.isSafeInteger(region.top)&&Number.isSafeInteger(region.height)&&region.top>=0&&region.top<meta.height!&&region.height>100);
-    const namedRegion=regions.find(region=>namedSections.some(section=>region.id===section.id)||normalize(region.id).length>=4&&messages.includes(normalize(region.id)));
+    const targetedIds=issues.filter(issue=>issue.page===page&&issue.sectionId).map(issue=>issue.sectionId);
+    const namedRegion=regions.find(region=>targetedIds.includes(region.id))||regions.find(region=>namedSections.some(section=>region.id===section.id)||normalize(region.id).length>=4&&messages.includes(normalize(region.id)));
     details.push({shot,width:meta.width,height:meta.height,region:namedRegion,matched:!!namedRegion});
   }
   // Prefer readable crops of specifically named sections. Overviews above still

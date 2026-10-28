@@ -39,6 +39,45 @@ async function generate(request: APIRequestContext) {
 }
 test.beforeEach(async({request})=>{await control(request,"reset");});
 
+test("shows durable website updates in a salesperson's day and builder",async({page,request},info)=>{
+  await control(request,"enabled");
+  await signIn(page,"member");
+  await openLeadPlan(page,(await control(request)).leadId);
+  const state=await generate(request),projectId=state.projects[0].id;
+  await page.goto("/dashboard/sales/today");
+  const updates=page.getByRole("region",{name:"Website updates"});
+  await expect(updates.getByText("Sam Rivers · Website plan ready",{exact:true})).toBeVisible();
+  await expect(updates.getByText(/Fixture member/)).toBeVisible();
+  await expect(updates.getByRole("link",{name:"Review plan",exact:true})).toHaveAttribute("href",`/dashboard/sales/factory/${projectId}`);
+  expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze()).violations).toEqual([]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await page.screenshot({path:dashboardPreviewPath(`factory-work-updates-${info.project.name}.png`),fullPage:true,style:"nextjs-portal{display:none!important}"});
+  await updates.getByRole("link",{name:"Review plan",exact:true}).click();
+  await expect(page).toHaveURL(new RegExp(`/factory/${projectId}$`),{timeout:15000});
+  await page.goto("/dashboard/sales/factory");
+  await expect(updates.getByText("Sam Rivers · Website plan ready",{exact:true})).toBeVisible();
+  await updates.getByRole("button",{name:"Mark Sam Rivers website update seen",exact:true}).click();
+  await expect(updates).toHaveCount(0);
+  await page.goto("/dashboard/sales/today");await expect(updates).toHaveCount(0);
+  await page.goto(`/dashboard/sales/factory/${projectId}`);
+  await page.getByRole("button",{name:"Approve plan & build website",exact:true}).click();
+  await expect(page.getByRole("heading",{name:"Approved and in the build queue",exact:true})).toBeVisible();
+  const pool=new Pool({connectionString:"postgresql://ta_test@127.0.0.1:55433/ta_factory_browser_test"});
+  try{
+    const version=(await pool.query("SELECT id FROM factory_build_versions WHERE project_id=$1 ORDER BY version DESC LIMIT 1",[projectId])).rows[0].id;
+    await pool.query("UPDATE factory_build_versions SET status='failed',error='Synthetic quality issue',updated_at=now() WHERE id=$1",[version]);
+    await page.goto("/dashboard/sales/today");
+    await expect(updates.getByText("Sam Rivers · Website needs attention",{exact:true})).toBeVisible();
+    await pool.query("UPDATE factory_build_versions SET status='ready',ready_at=now(),updated_at=now() WHERE id=$1",[version]);
+    await page.goto("/dashboard/sales/factory");
+    await expect(updates.getByText("Sam Rivers · Website ready to share",{exact:true})).toBeVisible();
+    await expect(updates.getByText("Sam Rivers · Website needs attention",{exact:true})).toHaveCount(0);
+    await expect(updates.getByRole("link",{name:"Open website project",exact:true})).toHaveAttribute("href",`/dashboard/sales/factory/${projectId}`);
+    expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  }finally{await pool.end();}
+});
+
 test("finds the builder from navigation, chooses a sparse lead and reopens the same project",async({page,request},info)=>{
   await signIn(page);
   await page.goto("/dashboard/sales/factory");

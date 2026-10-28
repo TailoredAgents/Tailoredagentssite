@@ -5,11 +5,12 @@ import {chromium} from "playwright";
 import {factoryBuildConfiguration,factoryStorageConfiguration} from "./build-config";
 import {factoryPreviewUrl} from "./build-data";
 import {factoryStorage,type FactoryStorage} from "./storage";
-import {claimFactoryBuild,saveFactoryBuildStage,saveFactoryBuildProgress,rollbackFactoryBuildAttempt,finishFactoryBuild,failFactoryBuild,recoverFactoryBuilds,claimFactoryStorageCleanup,finishFactoryStorageCleanup} from "./build-service";
+import {claimFactoryBuild,saveFactoryBuildStage,saveFactoryBuildProgress,requeueFactoryBuildQuality,rollbackFactoryBuildAttempt,finishFactoryBuild,failFactoryBuild,recoverFactoryBuilds,claimFactoryStorageCleanup,finishFactoryStorageCleanup} from "./build-service";
 import {FactoryBuildBudgetError} from "./build-budget";
 import {factorySiteExecutor,generateFactoryHero,FactoryBuildRequestNotAttemptedError} from "./build-provider";
 import {generatePortableSite} from "./site/provider";
 import {generateSiteDraftRevision} from "./site/draft-provider";
+import {generateSiteCorrections} from "./site/correction-provider";
 import {boundedFactoryFailureIssues,saveFactoryFailureScreenshots} from "./build-failure-evidence";
 import type {FactoryDraftRevision} from "./draft-types";
 import {SiteGenerationResponseError} from "./site/errors";
@@ -26,13 +27,26 @@ import {createPortableExport} from "./site/package";
 import type {SiteFiles,SiteQaResult,SiteIssue} from "./site/artifacts";
 import type {SiteModelExecutor,SiteBlueprint} from "./site/types";
 import type {FactoryClaimedBuild,FactoryBuildManifest,FactoryBuildQa,FactoryBuildFailureQa} from "./build-types";
-import {maximumReviewAttempts} from "./build-types";
+import {maximumReviewAttempts,maximumCorrectionAttempts} from "./build-types";
 import type {FactoryBuildActivity,FactoryBuildActivityStep} from "./build-progress";
 
 type Working={generationResponse?:unknown;activity?:FactoryBuildActivity;blueprint?:SiteBlueprint;heroKey?:string;provenance?:unknown;imageAssets?:Record<string,FactorySavedImage>;qaReport?:FactoryBuildQa;manifest?:FactoryBuildManifest;sourceKey?:string;repaired?:boolean;draftRevision?:FactoryDraftRevision;
   repairResponse?:{blueprintHash:string;issues:SiteIssue[];raw:unknown};lastFailedQa?:FactoryBuildFailureQa;
+  correctionAttempts?:number;correctionPending?:{blueprintHash:string;issueFingerprint:string;issuesHash:string;attempt:number};
+  correctionResponse?:{blueprintHash:string;issues:SiteIssue[];raw:unknown};
+  correctionHistory?:Array<{inputBlueprintHash:string;outputBlueprintHash:string;issueFingerprint:string}>;
+  correctionUnresolved?:Array<{issueId:string;reason:string}>;
   reviewAttempts?:number;review?:{fingerprint:string;result:SiteReview};reviewResponse?:{fingerprint:string;raw:unknown;requireScorecard?:boolean;imageCount?:number};checkedManifest?:FactoryBuildManifest};
 class FactoryBuildQualityError extends Error{}
+function canonicalData(value:unknown):unknown{
+  if(Array.isArray(value))return value.map(canonicalData);
+  if(value&&typeof value==="object")return Object.fromEntries(Object.entries(value).filter(([,entry])=>entry!==undefined).sort(([left],[right])=>left.localeCompare(right)).map(([key,entry])=>[key,canonicalData(entry)]));
+  return value;
+}
+// PostgreSQL jsonb reorders object keys. Preserve ordered arrays (including
+// issue-N mapping) while hashing objects independently of serialization order.
+const contentHash=(value:unknown)=>createHash("sha256").update(JSON.stringify(canonicalData(value))).digest("hex");
+const blockingIssueFingerprint=(issues:SiteIssue[])=>contentHash(issues.filter(issue=>issue.severity==="error").map(issue=>JSON.stringify([issue.page,issue.sectionId??null,issue.code,issue.message])).sort());
 export type FactoryBuildRuntime={storage:FactoryStorage;execute(build:FactoryClaimedBuild):SiteModelExecutor;hero(build:FactoryClaimedBuild,prompt:string,slotId?:string):Promise<{bytes:Uint8Array;provenance:unknown}>;qa(files:SiteFiles):Promise<SiteQaResult>;verify(build:FactoryClaimedBuild,manifest:FactoryBuildManifest):Promise<{url:string;status:200;checkedAt:string}>};
 function working(build:FactoryClaimedBuild):Working{return build.workingData as Working;}
 function checkDeadline(build:FactoryClaimedBuild){if(!Number.isFinite(Date.parse(build.leaseUntil))||Date.parse(build.leaseUntil)<=Date.now())throw new Error("The website worker lease expired.");}
@@ -178,22 +192,26 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
     await advance("qa");return;
   }
   if(build.stage==="qa"){
-    const boundedExecute=(kind:"review"|"repair"):SiteModelExecutor=>async request=>{
-      const previousReviews=state.reviewAttempts,previousRepair=state.repaired;
+    // Historical whole-site repairs (including old draft revisions) already used
+    // one slot. Never turn a deployment or explicit retry into a fresh allowance.
+    if(state.repaired&&(!state.correctionAttempts||state.correctionAttempts<1)){state.correctionAttempts=1;await persist();}
+    const boundedExecute=(kind:"review"|"correction"):SiteModelExecutor=>async request=>{
+      const previousReviews=state.reviewAttempts,previousCorrections=state.correctionAttempts;
       // Preprocessing has completed. Save intent before entering the provider so
       // an ambiguous request cannot become an unbounded paid retry.
       if(kind==="review")state.reviewAttempts=(previousReviews||0)+1;
-      else state.repaired=true;
+      else state.correctionAttempts=(previousCorrections||0)+1;
       await report(kind==="review"?"design_review":"repairing");
       try{return await runtime.execute(build)(request);}
       catch(error){
         // Only the provider's explicit pre-request marker restores this slot.
         // Transport errors, malformed responses and settlement failures count.
         if(error instanceof FactoryBuildRequestNotAttemptedError){
-          const expectedValue=kind==="review"?state.reviewAttempts!:state.repaired!;
-          const previousValue=kind==="review"?previousReviews:previousRepair;
+          const expectedValue=kind==="review"?state.reviewAttempts!:state.correctionAttempts!;
+          const previousValue=kind==="review"?previousReviews:previousCorrections;
           if(!await rollbackFactoryBuildAttempt({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,kind,expectedValue,previousValue}))throw new Error("This website build was removed or its attempt changed before recovery.");
-          state.reviewAttempts=previousReviews;state.repaired=previousRepair;
+          state.reviewAttempts=previousReviews;state.correctionAttempts=previousCorrections;
+          if(kind==="correction")delete state.correctionPending;
         }
         throw error;
       }
@@ -207,6 +225,32 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
       const revised=await generatePortableSite({plan:build.plan,previousBlueprint:state.blueprint,repairIssues:saved.issues,assets:factoryBuildAssetDescriptors(build)},async()=>saved.raw);
       state.blueprint=revised.blueprint;delete state.repairResponse;await persist();
     }
+    const finishCorrection=async(revised:Awaited<ReturnType<typeof generateSiteCorrections>>,originalHash:string,issues:SiteIssue[])=>{
+      const nextHash=contentHash(revised.blueprint),history=state.correctionHistory||[];
+      state.correctionUnresolved=revised.unresolved;
+      if(!revised.changed||nextHash===originalHash){
+        // Keep the paid raw response for diagnosis/replay. Nothing is silently
+        // dropped or retried when the requested fix exceeds supported controls.
+        await persist();
+        throw new FactoryBuildQualityError(`Automatic correction could not safely resolve these findings: ${revised.unresolved.map(issue=>issue.reason).join(" ").slice(0,750)||"No supported change was returned."} The previous preview is preserved.`);
+      }
+      if(history.some(item=>item.inputBlueprintHash===nextHash||item.outputBlueprintHash===nextHash))throw new FactoryBuildQualityError("Automatic correction returned an earlier draft without progress. Review the remaining findings; the previous preview is preserved.");
+      state.blueprint=revised.blueprint;state.repaired=true;
+      state.correctionHistory=[...history,{inputBlueprintHash:originalHash,outputBlueprintHash:nextHash,issueFingerprint:blockingIssueFingerprint(issues)}];
+      delete state.correctionResponse;delete state.correctionPending;
+      // The next browser/visual assessment gets a full lease. This is still the
+      // same version, exact approval and cumulative spending allowance. Apply
+      // its checkpoint and release the lease atomically, leaving saved raw data
+      // replayable if this transition is interrupted or an owner pauses it.
+      if(!await requeueFactoryBuildQuality({versionId:build.id,leaseToken:build.leaseToken,workingData:state as Record<string,unknown>}))throw new Error("This website build was paused or removed.");
+    };
+    if(state.correctionResponse){
+      const saved=state.correctionResponse;
+      if(!state.blueprint||!state.correctionAttempts||contentHash(state.blueprint)!==saved.blueprintHash||state.correctionPending?.blueprintHash!==saved.blueprintHash||state.correctionPending.attempt!==state.correctionAttempts||state.correctionPending.issueFingerprint!==blockingIssueFingerprint(saved.issues)||state.correctionPending.issuesHash!==contentHash(saved.issues))throw new FactoryBuildQualityError("The saved correction no longer matches this draft and attempt. This version has not been shared.");
+      const revised=await generateSiteCorrections({plan:build.plan,previousBlueprint:state.blueprint,issues:saved.issues,assets:factoryBuildAssetDescriptors(build)},async()=>saved.raw);
+      await finishCorrection(revised,saved.blueprintHash,saved.issues);return;
+    }
+    if(state.correctionPending)throw new FactoryBuildQualityError("The previous correction request was interrupted before its response could be saved. Its possible charge remains included. An administrator must review this attempt before more correction requests; the previous preview is preserved.");
     const inspect = async (files:SiteFiles) => {
       await report(state.repaired?"rechecking":"browser_checks");
       const browserQa=await runtime.qa(files),depth=reviewSiteDepth(state.blueprint!,build.plan),delivery=checkSiteDelivery(files);
@@ -219,7 +263,7 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
       if(state.review?.fingerprint!==fingerprint){
         let result:SiteReview|undefined;
         if(state.reviewResponse?.fingerprint===fingerprint){
-          try{result=parseSiteReview(state.reviewResponse.raw,state.blueprint!.pages.map(p=>p.path),{requireScorecard:state.reviewResponse.requireScorecard===true,imageCount:state.reviewResponse.imageCount});}
+          try{result=parseSiteReview(state.reviewResponse.raw,state.blueprint!.pages.map(p=>p.path),{requireScorecard:state.reviewResponse.requireScorecard===true,imageCount:state.reviewResponse.imageCount,sectionIdsByPage:Object.fromEntries(state.blueprint!.pages.map(page=>[page.path,page.sections.map(section=>section.id)]))});}
           catch(error){if(!(error instanceof SiteReviewResponseError))throw error;}
         }
         if(!result){
@@ -251,22 +295,25 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
       await persist();
     };
     await report("preparing");
-    let site=await withSite(build,state,runtime),qa=await review(site,await inspect(site.files));
+    const site=await withSite(build,state,runtime),qa=await review(site,await inspect(site.files));
     await rememberFailure(site,qa);
-    if(!qa.passed&&!state.repaired){
+    if(!qa.passed){
+      const blockers=qa.issues.filter(issue=>issue.severity==="error"),summary=blockers.slice(0,2).map(issue=>issue.message).join(" ").slice(0,650);
+      if(blockers.every(issue=>issue.repairability==="technical"||issue.repairability==="scope"))throw new FactoryBuildQualityError(`These findings need a technical fix or a changed plan: ${summary} The previous preview is preserved.`);
+      if((state.correctionAttempts||0)>=maximumCorrectionAttempts||(state.reviewAttempts||0)>=maximumReviewAttempts)throw new FactoryBuildQualityError(`The website still needs attention after its bounded automatic checks and corrections: ${summary} Review the saved findings; the previous preview is preserved.`);
       // Scorecard failures can follow up to 20 optional review warnings. Keep
       // actual blockers inside the bounded correction request before refinements.
-      const issues=[...qa.issues.filter(issue=>issue.severity==="error"),...qa.issues.filter(issue=>issue.severity==="warning")].slice(0,20),blueprintHash=createHash("sha256").update(JSON.stringify(state.blueprint)).digest("hex");
-      const revised=await generatePortableSite({plan:build.plan,previousBlueprint:state.blueprint,repairIssues:issues,repairScreenshots:qa.screenshots,assets:factoryBuildAssetDescriptors(build)},async request=>{
-        const raw=await boundedExecute("repair")(request);
-        if(Buffer.byteLength(JSON.stringify(raw))>1_000_000)throw new SiteGenerationResponseError("The website correction exceeded its saved-data limit.");
-        state.repairResponse={blueprintHash,issues,raw};await persist();return raw;
+      const issues=[...blockers,...qa.issues.filter(issue=>issue.severity==="warning")].slice(0,20),blueprintHash=contentHash(state.blueprint);
+      const issueFingerprint=blockingIssueFingerprint(issues);
+      if(state.correctionHistory?.some(item=>item.issueFingerprint===issueFingerprint))throw new FactoryBuildQualityError(`The correction did not resolve the same remaining findings: ${summary} Review the saved findings before another revision; the previous preview is preserved.`);
+      const revised=await generateSiteCorrections({plan:build.plan,previousBlueprint:state.blueprint!,issues,repairScreenshots:qa.screenshots,assets:factoryBuildAssetDescriptors(build)},async request=>{
+        state.correctionPending={blueprintHash,issueFingerprint,issuesHash:contentHash(issues),attempt:(state.correctionAttempts||0)+1};
+        const raw=await boundedExecute("correction")(request);
+        if(Buffer.byteLength(JSON.stringify(raw))>200_000)throw new SiteGenerationResponseError("The website correction exceeded its saved-data limit.");
+        state.correctionResponse={blueprintHash,issues,raw};await persist();return raw;
       });
-      state.blueprint=revised.blueprint;delete state.repairResponse;
-      await persist();
-      site=await withSite(build,state,runtime);qa=await review(site,await inspect(site.files));await rememberFailure(site,qa);
+      await finishCorrection(revised,blueprintHash,issues);return;
     }
-    if(!qa.passed)throw new FactoryBuildQualityError(`This website needs another revision after its included repair: ${qa.issues.filter(i=>i.severity==="error").slice(0,2).map(i=>i.message).join(" ").slice(0,1000)}`);
     await report("saving");
     const screenshots={desktop:`${build.storagePrefix}screenshots/desktop.png`,mobile:`${build.storagePrefix}screenshots/mobile.png`};
     for(const view of ["desktop","mobile"] as const){const shot=qa.screenshots.find(s=>s.page==="index.html"&&s.viewport===view);if(!shot)throw new Error("Desktop and mobile screenshots are required.");await runtime.storage.put(screenshots[view],shot.bytes,"image/png");}

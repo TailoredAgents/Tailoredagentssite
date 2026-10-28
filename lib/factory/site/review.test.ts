@@ -41,6 +41,24 @@ describe("Website visual/content review (local images and mocked provider only)"
     const review=parseSiteReview(response({summary:"Polished but unsupported claim.",issues:[{page:"index.html",category:"plan",severity:"error",message:"Remove the unconfirmed license claim."}]}),["index.html"]);
     expect(review.overallScore).toBe(88);expect(review.issues[0].severity).toBe("error");
   });
+  it("targets the actual inner-page correction instead of positive Home evidence",()=>{
+    const scorecard=passingScorecard();scorecard.copy.score=55;
+    scorecard.copy.improvement="Replace the repeated service introduction with a clear explanation of this section's useful purpose.";
+    scorecard.copy.improvementTarget={page:"services/index.html",sectionId:"services",repairability:"content"};
+    const result=parseSiteReview(response({summary:"Revise service copy.",issues:[],scorecard}),["index.html","services/index.html"],{sectionIdsByPage:{"index.html":["intro"],"services/index.html":["services"]}});
+    expect(result.issues[0]).toMatchObject({page:"services/index.html",sectionId:"services",repairability:"content",code:"review_quality_copy"});
+  });
+  it("rejects targets on unknown pages or another page's section and preserves technical classifications",()=>{
+    const pages=["index.html","services/index.html"],options={sectionIdsByPage:{"index.html":["home-only"],"services/index.html":["services"]}};
+    const scorecard=passingScorecard();scorecard.mobile.improvementTarget={page:"unknown.html",sectionId:null,repairability:"technical"};
+    expect(()=>parseSiteReview(response({summary:"Invalid target.",issues:[],scorecard}),pages,options)).toThrow("correction referenced an unknown page");
+    scorecard.mobile.improvementTarget={page:"services/index.html",sectionId:"home-only",repairability:"layout"};
+    expect(()=>parseSiteReview(response({summary:"Invalid target.",issues:[],scorecard}),pages,options)).toThrow("correction referenced an unknown section");
+    const issue={page:"index.html",sectionId:"__intro__",repairability:"technical",category:"mobile",severity:"error",message:"The navigation overlaps the page introduction at the narrow viewport."};
+    const result=parseSiteReview(response({summary:"Fix the navigation.",issues:[issue]}),pages,options);
+    expect(result.issues[0]).toMatchObject({sectionId:"__intro__",repairability:"technical"});
+    expect(()=>parseSiteReview(response({summary:"Fix the navigation.",issues:[{...issue,sectionId:"services"}]}),pages,options)).toThrow("unknown section");
+  });
   it("rejects fabricated evidence locations and unsupported score-only failure",()=>{
     const scorecard=passingScorecard();scorecard.mobile.evidence[0].page="unknown.html";
     expect(()=>parseSiteReview(response({summary:"Invalid evidence.",issues:[],scorecard}),["index.html"])).toThrow("scorecard referenced an unknown page");

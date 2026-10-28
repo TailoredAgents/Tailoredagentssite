@@ -32,4 +32,9 @@ describe("salesperson website workflow", () => {
     expect(factoryBuildRecovery("Image provider temporarily unavailable").kind).toBe("retry");
     expect(factoryBuildRecovery(null).kind).toBe("retry");
   });
+  it("does not invite paid retries for exhausted, uncertain or unsupported automatic corrections",()=>{
+    for(const error of ["The website still needs attention after its bounded automatic checks and corrections.","Automatic correction could not safely resolve these findings.","The correction did not resolve the same remaining findings.","These findings need a technical fix or a changed plan.","The previous correction request was interrupted before its response could be saved.","The saved correction no longer matches this draft and attempt.","The AI returned an invalid website correction.","The website correction reached its response limit."])
+      expect(factoryBuildRecovery(error).kind).toBe("help");
+    expect(factoryBuildRecovery("This build step exceeds the remaining allowance for this approved website.").summary).toContain("owner");
+  });
 });

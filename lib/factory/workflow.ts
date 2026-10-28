@@ -12,13 +12,19 @@ export function factoryProjectView(project: FactoryProjectSummary): keyof typeof
 }
 
 export function factoryBuildRecovery(error: string | null, reviewAttempts = 0) {
+  if (/previous correction request was interrupted|saved correction no longer matches/i.test(error || ""))
+    return {kind:"help",summary:"This correction needs an administrator to check its saved result before continuing. Retrying will not safely recover it. Your saved draft and previous preview remain available."} as const;
+  if (/remaining.*allowance|building is paused|budget.*approved/i.test(error || ""))
+    return {kind:"help",summary:"An owner needs to review the builder settings or remaining allowance. Your completed work is saved; retrying cannot change the spending limit."} as const;
+  if (/bounded automatic checks and corrections|correction did not resolve|automatic correction (?:could not|returned)|technical fix or a changed plan/i.test(error || ""))
+    return {kind:"help",summary:"Automatic corrections could not finish this version. Review the saved findings and draft. Wording or layout can be edited there; a different direction needs a revised plan, and a system fault needs administrator help."} as const;
   if (/three allowed requests|approve a new version/i.test(error || ""))
     return {kind:"plan",summary:"This version needs a revised plan. Open Plan & project history, discuss the changes, then review and approve the new plan."} as const;
   if (/needs another revision after its included repair/i.test(error || "") && reviewAttempts >= maximumReviewAttempts)
     return {kind:"plan",summary:"This version has used its included correction and all three visual reviews. Open Plan & project history to discuss the remaining changes, then review and approve a revised plan."} as const;
   if (/needs another revision after its included repair/i.test(error || ""))
     return {kind:"help",summary:"Quality checks still found issues after the included correction. An administrator can review the details and recheck after a technical fix. If the design needs a new direction, revise the plan instead."} as const;
-  if (/did not pass validation|invalid website structure|unreadable website data|adjust this request|exceeded its.*limit/i.test(error || ""))
+  if (/did not pass validation|invalid website (?:structure|correction)|unreadable website (?:data|correction)|correction (?:did not finish|reached its response limit)|adjust this request|exceeded its.*limit/i.test(error || ""))
     return {kind:"help",summary:"The builder needs a technical fix before continuing. Ask your administrator to review the error details below; retrying alone will not fix this."} as const;
   return {kind:"retry",summary:"The build stopped before finishing. Your plan and completed previews are saved. Review the error details before retrying; if it repeats, ask your administrator for help."} as const;
 }
