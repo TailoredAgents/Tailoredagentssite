@@ -52,3 +52,10 @@ Local verification completed October 27:
 - Lint, TypeScript and the production build passed. Independent code reviews found no remaining release blocker.
 
 All provider work above was synthetic and local. Production release and readback are recorded separately below; no live plan was approved, retried or regenerated during this work.
+
+### Production readback
+
+- Implementation commit `42222e7d13f497f69777d705abcaf9601c195ddd` is live on both services. Render reported successful [CRM deployment](https://dashboard.render.com/web/srv-db6hod8473hc739q2uo0/deploys/dep-dbgkgu29lscs73fjjajg) and [builder worker deployment](https://dashboard.render.com/cron/crn-dbfth6uk1f9s73amh7ig/deploys/dep-dbgkgua9lscs73fjjbi0); both displayed that commit as the last successfully deployed version.
+- The live Website Builder and My Day pages displayed the new website-ready work item and its direct project link. The existing Cosmo preview was unchanged; this item demonstrates reconciliation of saved state, not a new unattended build. No production work item was acknowledged during verification. [Live Builder proof](previews/website-builder-automation-live.png).
+- The public `/api/health` endpoint returned HTTP 200 and `status: ok` after deployment. The live work-item query also confirms migration `0035` is available to the CRM.
+- Fresh-lead real-provider acceptance remains outstanding as described above. Deployment, mocked journeys and a saved preview notice must not be presented as proof that a new generated website met the visual standard without intervention.
