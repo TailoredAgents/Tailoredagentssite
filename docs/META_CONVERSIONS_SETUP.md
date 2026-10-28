@@ -2,7 +2,18 @@
 
 Austin chose status-based qualification on October 28, 2026: Qualified means the team spoke with the prospect and confirmed a fit. Moving directly from New to Proposal or Won also indicates a positive outcome. Status changes from the Leads dropdown, lead detail, or linked sales conversion are captured in the same database transaction.
 
-Implementation is **paused by default**. Local tests establish queue and transport behavior, not live Meta acceptance or campaign eligibility. Finish the test and funnel steps below before switching the campaign objective.
+The implementation defaults to paused when unconfigured. **Production reporting is live as of October 28, 2026**, with five events accepted by Meta after five successful test-mode deliveries. This verifies transport, not campaign eligibility. Finish Meta's funnel/eligibility checks before switching the campaign objective.
+
+## Live connection acceptance — October 28, 2026
+
+- Austin explicitly approved generating the dataset token and storing it privately on the website's Render service. The existing dataset `1785858192683666` belongs to Tailored Agents and is connected to ad account `1058213907266812` (Tailored Agents Sites). No new dataset or ad account was created.
+- Generated the direct Conversions API token without the optional Dataset Quality API permission expansion. Installed it only in the website environment, with the dataset ID and test mode. No token is recorded in these notes or repository files.
+- Test deployment `dep-dbh4cj61egvs739e95bg` went live. The scheduled worker on October 28 at approximately **3:05 PM EDT** recorded five successful conversion deliveries; CRM Settings showed `0 accepted / 5 tested / 0 queued / 0 needs attention / 0 expired`.
+- Meta's dataset overview showed **Connect your CRM — Events firing properly**. The Test Events detail list did not populate during observation; acceptance was established by the application's checked Meta API responses, worker logs and the green CRM connection indicator, not by inspecting individual Test Events payloads.
+- Render loads existing secret values asynchronously on field focus. An initial attempt to change the mode was overwritten by the loaded value. The running website check caught that it remained in test mode. After waiting for loading to finish, the saved `META_CAPI_MODE=live` value was independently revealed and verified, and the test event code was cleared.
+- Corrected live deployment `dep-dbh4iu59fdbs73a87fpg` completed successfully. A single manual run of the existing worker started at **3:17:17 PM EDT**. CRM Settings then confirmed **Live** and `5 accepted / 0 tested / 0 queued / 0 needs attention / 0 expired`. These were the original queued events promoted from test mode, preserving their occurrence times.
+- Meta's CRM diagnostic report still showed unpopulated event/funnel coverage during setup; it states lead coverage must reach at least 60% for conversion lead optimization. The positive-stage funnel and campaign eligibility remain unverified. No campaign objective or budget was changed. Continue recording genuine Qualified, Proposal and Won transitions, then finish the funnel configuration once Meta exposes the applicable controls.
+- The separate existing Diagnostics notice asked to confirm `tailoredagents.com` for Pixel traffic. It was not a CRM API delivery error; traffic permissions were not changed during this activation.
 
 ## Stage mapping
 
