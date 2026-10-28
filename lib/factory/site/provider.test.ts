@@ -4,13 +4,82 @@ vi.mock("server-only",()=>({}));
 import {generatePortableSite,siteUsage} from "./provider";
 import {fixtureBlueprint,fixtureSitePlan} from "./fixtures";
 import {validateSiteBlueprint} from "./validate";
-import type {SiteModelRequest} from "./types";
+import type {SiteAssetDescriptor,SiteAssetEvidence,SiteBlueprint,SiteModelRequest} from "./types";
+import {assetEvidenceLimits} from "./asset-evidence";
 import {websiteQualityStandards} from "../website-standards";
 import {factoryUsageCost} from "../config";
 import type {FactoryDesignRecipe} from "../types";
 const response=(blueprint:unknown,status="completed")=>({id:"resp_synthetic_site",status,usage:{input_tokens:4000,output_tokens:2000},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(blueprint)}]}]});
+function visualBlueprint(uploadId:string|null):SiteBlueprint{const blueprint=fixtureBlueprint();blueprint.heroImage.uploadId=uploadId;blueprint.media=[];blueprint.presentation={version:1,fontTheme:"studio",heroEmphasis:null,logoAssetId:null,pageImages:[],sectionImages:[],imageFocalPoints:[{assetId:"hero",desktop:{x:35,y:45},mobile:{x:65,y:50}}]};return blueprint;}
+const approvedPhotos:SiteAssetDescriptor[]=["first","second"].map((id,index)=>({id,path:`approved-reference-${index}.png`,alt:"Approved photo",provenance:"provided",role:"photo"}));
 
 describe("Portable site provider (synthetic responses only)",()=>{
+  it("selects a suitable second photo using bounded visual context within the original paid request",async()=>{
+    const bytes=await sharp({create:{width:640,height:280,channels:3,background:"#345678"}}).jpeg().toBuffer();
+    const evidence:SiteAssetEvidence={references:approvedPhotos.map((item,index)=>({id:item.id,reference:`A${index+1}`,role:"photo",width:1200,height:800,sha256:String(index).repeat(64)})),images:[{bytes,label:"Approved image references A1–A2"}]};
+    const execute=vi.fn(async(_request:SiteModelRequest)=>response(visualBlueprint("second")));
+    const result=await generatePortableSite({plan:fixtureSitePlan,assets:approvedPhotos,imageSelection:"visual-v1",assetEvidence:evidence},execute);
+    expect(execute).toHaveBeenCalledOnce();expect(result.blueprint.heroImage.uploadId).toBe("second");expect(result.blueprint.presentation!.imageFocalPoints).toEqual(visualBlueprint("second").presentation!.imageFocalPoints);
+    const request=execute.mock.calls[0][0],content=(request.body.input as Array<{content:Array<{type:string;text?:string;image_url?:string;detail?:string}>}>)[0].content;
+    const context=JSON.parse(content[0].text!);expect(context.imageSelection).toBe("visual-v1");expect(context.assetReferences).toEqual(evidence.references);
+    const images=content.filter(item=>item.type==="input_image");expect(images).toHaveLength(1);expect(images[0]).toMatchObject({detail:"high",image_url:`data:image/jpeg;base64,${bytes.toString("base64")}`});
+    expect(request.stage).toBe("generate");expect(request.body.tools).toBeUndefined();
+    expect(request.reservedMicros).toBe(factoryUsageCost(request.inputBytes-bytes.length+8192+assetEvidenceLimits.imageTokens,12000,0));
+  });
+
+  it("requires explicit hero selection and crop data for fresh visual-policy builds but accepts old saved responses",async()=>{
+    for(const field of ["selection","crops"]){
+      const blueprint=visualBlueprint(null);if(field==="selection")delete blueprint.heroImage.uploadId;else delete blueprint.presentation!.imageFocalPoints;
+      await expect(generatePortableSite({plan:fixtureSitePlan,imageSelection:"visual-v1"},async()=>response(blueprint))).rejects.toThrow(field==="selection"?"heroImage.uploadId":"presentation.imageFocalPoints");
+    }
+    const legacy=fixtureBlueprint();expect((await generatePortableSite({plan:fixtureSitePlan},async()=>response(legacy))).blueprint.heroImage).toEqual(legacy.heroImage);
+    expect((await generatePortableSite({plan:fixtureSitePlan,imageSelection:"visual-v1"},async()=>response(visualBlueprint(null)))).blueprint.heroImage.uploadId).toBeNull();
+  });
+
+  it("keeps historical selection and crops unchanged when a new model returns new-policy fields",async()=>{
+    const result=await generatePortableSite({plan:fixtureSitePlan,assets:approvedPhotos,assetEvidence:{references:[],images:[{bytes:new Uint8Array(600000),label:"Must not be sent for historical input"}]}},async request=>{
+      const context=JSON.parse((request.body.input as Array<{content:string}>)[0].content);
+      expect(context.imageSelection).toBe("legacy-first-photo");expect(context.assetReferences).toEqual([]);
+      return response(visualBlueprint("second"));
+    });
+    expect(result.blueprint.heroImage).not.toHaveProperty("uploadId");expect(result.blueprint.presentation).not.toHaveProperty("imageFocalPoints");
+  });
+
+  it("rejects unapproved hero choices, mismatched logo roles and invalid crop references",()=>{
+    const logo:SiteAssetDescriptor={id:"approved-logo",path:"logo.png",alt:"Approved logo",provenance:"provided",role:"logo"};
+    for(const id of ["another-project","approved-logo"]){expect(()=>validateSiteBlueprint(visualBlueprint(id),fixtureSitePlan,[...approvedPhotos,logo])).toThrow("approved photo");}
+    for(const assetIds of [["missing"],["brand"],["hero","hero"]]){
+      const blueprint=visualBlueprint("second");blueprint.media=[{id:"brand",role:"logo",source:"provided",uploadId:logo.id,prompt:"",alt:"Business logo",caption:"Team-provided logo"}];blueprint.presentation!.logoAssetId="brand";
+      blueprint.presentation!.imageFocalPoints=assetIds.map(assetId=>({assetId,desktop:{x:50,y:50},mobile:{x:50,y:50}}));
+      expect(()=>validateSiteBlueprint(blueprint,fixtureSitePlan,[...approvedPhotos,logo])).toThrow("unique photo assets");
+    }
+    const invalid=visualBlueprint("second");invalid.presentation!.imageFocalPoints![0].mobile.x=101;
+    expect(()=>validateSiteBlueprint(invalid,fixtureSitePlan,approvedPhotos)).toThrow();
+  });
+
+  it("keeps the paid selected hero during repair while allowing its crop and descriptions to improve",async()=>{
+    const previous=visualBlueprint("second"),next=visualBlueprint("first");next.heroImage.prompt="A different image that must not cause replacement or another charge.";next.heroImage.alt="Clearer description of the approved workshop photo";next.presentation!.imageFocalPoints![0].mobile.x=80;
+    const execute=vi.fn(async(_request:SiteModelRequest)=>response(next));
+    const result=await generatePortableSite({plan:fixtureSitePlan,assets:approvedPhotos,imageSelection:"visual-v1",previousBlueprint:previous,repairIssues:[{code:"imagery",message:"Improve the mobile photo crop.",page:"index.html",severity:"error"}],assetEvidence:{references:[],images:[{bytes:new Uint8Array(600000),label:"Must not re-select approved images during repair"}]}},execute);
+    expect(execute).toHaveBeenCalledOnce();expect(result.blueprint.heroImage).toMatchObject({uploadId:"second",prompt:previous.heroImage.prompt,alt:next.heroImage.alt});expect(result.blueprint.presentation!.imageFocalPoints![0].mobile.x).toBe(80);
+    const context=JSON.parse((execute.mock.calls[0][0].body.input as Array<{content:string}>)[0].content);expect(context.imageSelection).toBe("preserve-saved");expect(context.assetReferences).toEqual([]);
+  });
+
+  it("does not silently give historical saved imagery a new selection or crop policy during repair",async()=>{
+    for(const oldPresentation of [false,true]){
+      const previous=fixtureBlueprint();if(oldPresentation){previous.presentation={version:1,fontTheme:"studio",heroEmphasis:null,logoAssetId:null,pageImages:[],sectionImages:[]};}
+      const next=visualBlueprint("second");next.presentation!.imageFocalPoints!.push({assetId:"imagined-photo",desktop:{x:25,y:50},mobile:{x:75,y:50}});
+      const result=await generatePortableSite({plan:fixtureSitePlan,assets:approvedPhotos,previousBlueprint:previous,repairIssues:[{code:"copy",message:"Improve the heading.",page:"index.html",severity:"error"}]},async()=>response(next));
+      expect(result.blueprint.heroImage).not.toHaveProperty("uploadId");expect(result.blueprint.presentation).not.toHaveProperty("imageFocalPoints");
+    }
+  });
+
+  it("rejects foreign or oversized visual evidence before incurring provider charges",async()=>{
+    const execute=vi.fn(),reference={id:"foreign",reference:"A1",role:"photo" as const,width:100,height:100,sha256:"a".repeat(64)};
+    await expect(generatePortableSite({plan:fixtureSitePlan,assets:approvedPhotos,imageSelection:"visual-v1",assetEvidence:{references:[reference],images:[]}},execute)).rejects.toThrow("unapproved");
+    await expect(generatePortableSite({plan:fixtureSitePlan,assets:approvedPhotos,imageSelection:"visual-v1",assetEvidence:{references:[],images:[{bytes:new Uint8Array(assetEvidenceLimits.sheetBytes+1),label:"Photos"}]}},execute)).rejects.toThrow("request limits");
+    expect(execute).not.toHaveBeenCalled();
+  });
   it("requests a bounded strict blueprint with no execution tools or HTML",async()=>{
     const execute=vi.fn(async(_request:SiteModelRequest)=>response(fixtureBlueprint()));
     const result=await generatePortableSite({plan:fixtureSitePlan},execute);

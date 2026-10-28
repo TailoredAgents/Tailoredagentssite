@@ -65,7 +65,7 @@ describe("Explicit portable forms and service navigation",()=>{
     expect(fallback.channels.match(/href="tel:/g)).toHaveLength(1);expect(fallback.channels.match(/href="mailto:/g)).toHaveLength(1);expect(fallback.inquiry).not.toMatch(/href="(?:tel:|mailto:)/);
   });
   it("requires controls in new provider responses while retaining legacy blueprints",()=>{
-    const b=fixture();expect(siteGenerationSchema.parse({...b,media:[],presentation:{version:1,fontTheme:"studio",heroEmphasis:null,logoAssetId:null,pageImages:[],sectionImages:[]}}).interactions.forms).toHaveLength(2);
+    const b=fixture();expect(siteGenerationSchema.parse({...b,heroImage:{...b.heroImage,uploadId:null},media:[],presentation:{version:1,fontTheme:"studio",heroEmphasis:null,logoAssetId:null,pageImages:[],sectionImages:[],imageFocalPoints:[]}}).interactions.forms).toHaveLength(2);
     delete b.interactions;expect(()=>validateBlueprintStructure(b)).not.toThrow();expect(()=>siteGenerationSchema.parse(b)).toThrow();
     const {files}=renderPortableSite(portableBundle(b),{"assets/images/hero.png":hero});
     expect(Buffer.from(files["index.html"]).toString()).toContain('name="email"');

@@ -1,0 +1,214 @@
+{
+  "schemaVersion": 1,
+  "kind": "local-synthetic-renderer-benchmarks",
+  "runId": "imagery-devices-20261028-v1",
+  "artifactLocation": "%TEMP%/ta-factory-p4-devices-identity-20261028-120500",
+  "reportSha256": "1209f7e2810c552c571546fbd73535c0b2fa75b1a6169e144a1cfb732ea65534",
+  "baseline": "identity-20261028-cohort-v1-final",
+  "startedAt": "2026-10-28T16:05:01.402Z",
+  "finishedAt": "2026-10-28T16:06:02.909Z",
+  "sourceRevision": "82aacb5ceef1d96bbc4d0dbeef450265a84a1a52",
+  "sourceState": "Uncommitted imagery/device implementation; exact source hashes identify the measured tree.",
+  "sourceChangedDuringRun": false,
+  "runtimeSourceHash": "9a9e8b11ae82ab5b734edf8f17434301d614d3c73441cf4bd17da75ffd2220e9",
+  "sourceHashes": {
+    "lib/factory/actions.ts": "4fdbad6717ec4219d5dce7ec014b814b50d850b145d702cef8cafaa986fad3d5",
+    "lib/factory/budget.ts": "df02f08538547a4b839f3e5114ff926fae577732d4215fabd324fa9452665313",
+    "lib/factory/build-actions.ts": "1bbe816595465fd7751e4ec649c8ad0e0baa1139fa349bef85159ea1a19d8edc",
+    "lib/factory/build-assets.ts": "27845fc5bccf5b259be5177363e7a3888fd3c47df5263f49ccb0ba9a80700c40",
+    "lib/factory/build-budget.ts": "73cf05940778f10bbd707fc92ef9fefbf630af615ec82b75ecd1ba035eee9fe2",
+    "lib/factory/build-config.ts": "9ee22821e3ae72483a4726d79aeebbddd442ea532ebd9d3bd8e34c66847ad36a",
+    "lib/factory/build-data.ts": "e6319f87d2deb02deca530b6c2a918991a37204565443e037c2cfaa7472afcc8",
+    "lib/factory/build-failure-evidence.ts": "fb41b1e37e2e88722ec92853024073f36ed8fb646dbd9f4e43abbcc03788c500",
+    "lib/factory/build-http.ts": "f8d61914f7057edcaa9f069f92066bb09ecc82cd368a54d1470481e4e935df91",
+    "lib/factory/build-images.ts": "f0574d10ed9fa5cd7d5d10521df2cd03fe3aa7140d64fb8d3a04539d2c44ffc2",
+    "lib/factory/build-progress.ts": "6bf8e61f9afacbbe409c42420cbcb0dcc114b3bcebfba9fd0c6d20e0481015d4",
+    "lib/factory/build-provider.ts": "e09551b3b95c08dd99dcc61335172941cf0a277cf20fe1c154c63c82f77068c1",
+    "lib/factory/build-service.ts": "ca5feb787af05d5007e56dfd8fe09b2bc67e1ad0ead5bef136cecd0d278b5316",
+    "lib/factory/build-types.ts": "15b120df2e067ca47eeb3e2e7161bc5fd07bed4151d1b42d4a78c86f1f235861",
+    "lib/factory/build-worker.ts": "41572fe087cc3f2eccd177c512bb35e7f30c8f857cc7a7b49188d5066edbdf65",
+    "lib/factory/config.ts": "4ecc14d4a92896bb3b544cbf225bb84a307e16f4ba4182b88780f28353a68698",
+    "lib/factory/data.ts": "ce8b8d31e52f883906a22a98017b2bb60de792805727a6ac18424e8b5cd12946",
+    "lib/factory/design-recipe.ts": "6b3cc63b518f9675f07d8d51bf8448733ed16ba0b3b47c38072f934ad22a8d7f",
+    "lib/factory/draft-actions.ts": "d62d9e3f6005cbbfa72e7c0dd3948a0d277b255634e1bdfe5a4c1fc8bf09b1b6",
+    "lib/factory/draft-diagnostic.ts": "975283d9643c5eafcbbe1c1d26101a589dce68d6a5708100f927ca53fd616729",
+    "lib/factory/draft-service.ts": "83577e163c30234ffbc71687024df7b40389e19fb871b5c007784fc75830a29c",
+    "lib/factory/draft-snapshot.ts": "17cff9d8909eb9811daa4db5d2cb8336795e8d13d1ee0acc7eef96b955d33837",
+    "lib/factory/draft-types.ts": "54f97365d014329dc46c655d83cbbb4be1b26acb504ebbe776ce621b8a3587df",
+    "lib/factory/plan-schema.ts": "971ab04e98b5076c5361aaf2cf15fbd26ea7b1e74d54660b0493220c3d424df1",
+    "lib/factory/provider.ts": "088b1e804c6064cdd622670a62774c32895d3db78c223c25b614b9395b766f53",
+    "lib/factory/public-verification.ts": "344aab19290de2c9861745913be8ec1f9ae4f3d5a007b58d05909d6672cd350d",
+    "lib/factory/service.ts": "0b7f17af1f8b415ec69f9ea288564fe18c3f46ae9efbc1f7bea0b04f1eefa4cd",
+    "lib/factory/site/artifacts.ts": "94a5b979b1901aa50a393f5a48a6b4a1cf265196eb4ece23a6d432c059c16ab0",
+    "lib/factory/site/asset-evidence.ts": "5b38e8d26df244bca84630d41bbb54f527caa161fa8235627cd39767acef4762",
+    "lib/factory/site/benchmark-fixtures.ts": "230c0be62091e4d0fbeb8328218b00e094d602a267adf6b9530cdc6df38a4a72",
+    "lib/factory/site/benchmarks.ts": "5907d653c6dd47b92840421b47ff6f44bfcdd854c0b79a076f05ccfbe71291a6",
+    "lib/factory/site/correction-provider.ts": "717077685dbbacf7b32bd6b0b35203fe1be5b046b060f14c07552a994f61da72",
+    "lib/factory/site/creative.ts": "a0ce296ea01a1a5d70ba16683c23148a67ce606b465b10e2585bcee2368e1510",
+    "lib/factory/site/design.ts": "dbf77c621b718ae629c3c306ea519177ad7ef109d97d3c2cf28bb405cc9e9cee",
+    "lib/factory/site/diagnostic.ts": "18997737e157be938319fa8fdeeaf12d634d229a0cfb4452b3a5034972d9644b",
+    "lib/factory/site/draft-provider.ts": "a90f66e98280f3199040476f73aa476b31cbaeccb100065f31ae8cd3ebbd49cc",
+    "lib/factory/site/draft.ts": "cd7cccdece6cf7dfcc3031aed885ee0ffca76fed88fa3eb152e79bc86f0f0793",
+    "lib/factory/site/errors.ts": "ca5b661fe5582da113ceac567f1f6a64428753911af697d9bd47786517c32bbe",
+    "lib/factory/site/families.ts": "1544864658d73cfa148685adcef940b7782a6b06ecf765b536ae1d16ac79c4bd",
+    "lib/factory/site/fixtures.ts": "705de6cfdf7b48b5e7aa204b69459ad32effc5d4e0e0b59896c14fcdcba11904",
+    "lib/factory/site/font-assets/data.json": "b09ea3e2b44617f3fddfae2ea6799f44e869f7619b74d4458d86b66f35bc7278",
+    "lib/factory/site/font-assets/dmsans-OFL.txt": "be5f632588774077cbb19a8d3fd788fbc7861af041f4e7165eae5822b11392b3",
+    "lib/factory/site/font-assets/dmserifdisplay-OFL.txt": "a3e5cdd67d4571dd0a24fcc968de0efde7ae97ef752daf0906e4767619dd7231",
+    "lib/factory/site/font-assets/identity-fonts.json": "f164b13c6efa3a50f352adcd22f1c59784f60b7729a4a4f4fde52254463859fc",
+    "lib/factory/site/font-assets/manrope-OFL.txt": "590acb70617a4b079b74ddcabd11bcb7aaae2b830f58162bd33200d65076c82b",
+    "lib/factory/site/font-assets/README.md": "cfad96108e840051289b1d22717b43837604525f6486e107473a3e399f1be190",
+    "lib/factory/site/fonts.ts": "9d7de5b6585729b6116ea6a34b4ec7a3c1b5c6c99cc90de80167aa4e7f43fa90",
+    "lib/factory/site/hosted-performance.ts": "ae019d6722e9978ded38c111b50c6a443fc65a79ed3dd40b18bb809a62c66909",
+    "lib/factory/site/identity.ts": "b576c5ab56f9e54da99d5b072d6dda4d465e36517482bedc38f177789f6ad1ad",
+    "lib/factory/site/image-composition.ts": "7f719793e48f1c65022a5898aca8c09dcf552a1a1bc5edaa6db145747d803026",
+    "lib/factory/site/images.ts": "5dec3f3a6503acd97b0b7d9e95d56124f59f45f5b43090ec136160425ccc6711",
+    "lib/factory/site/interactions.ts": "63f467f4d0831323f4f7ecbec4c68dfb736b48b4f9d70d04ed3118b13a307176",
+    "lib/factory/site/package.ts": "45df2528a49e5685b10566be076fec4c18d53ff06111a4b430f4967b15ea3501",
+    "lib/factory/site/performance.ts": "98acb6c09a88af474eaf03a2a7022827e46ba265471508d628f75bf4309d2bf2",
+    "lib/factory/site/polish.ts": "3b9e59acc3353b3a26c12e8130dba6dc626dc67d962270aab452fcfe870c6791",
+    "lib/factory/site/provider.ts": "36c3a8e9c9baf4aa8e9705f93c3e3ecda7d7f43e0142ac6950e9086cffa6e4b0",
+    "lib/factory/site/qa.ts": "71eb6f93d15df3557ac943c91512d8f48b400d3070c8165f1733da018b0995e1",
+    "lib/factory/site/quality-cohort.ts": "886025265e12df242dfe02f7379153a47a6c2ee1b54ab2f40e4454b27345a575",
+    "lib/factory/site/quality.ts": "557c4cf02209cb33979cab196741e3200d39108bf31d6a372cd2dfd74f4d8d73",
+    "lib/factory/site/render.ts": "9e79554df7a5a80ef944536e354bf245378dd1a72ba264ab961d95abec886e6b",
+    "lib/factory/site/repair-evidence.ts": "57c4b8cea3f41e31b4a591daff39c19c9963a791b8e278f558e9a29bf370cfa5",
+    "lib/factory/site/review.ts": "bb502629f967303a80921e577816cfb46c99247e8707374af217edc4cdc8c0a7",
+    "lib/factory/site/safety.ts": "f90f198ceaf5c7275e1b3f33bffaa6b7415590275f0f8056470e622aa8a22a8b",
+    "lib/factory/site/types.ts": "675987ed80a539a13bfcf463b538f6c691dfdd8054077b8e2da2463ece5b0fa9",
+    "lib/factory/site/validate.ts": "c346bd4cd59d2fd36769e5134d8b7a803c17775df686e055524226cc768cc05c",
+    "lib/factory/storage.ts": "fe317c20a9e7e915a26f5ee8d95bbeb6355a29fd709b36a1f53ce55023615539",
+    "lib/factory/types.ts": "585cc33aa282d49468717fe5217e872c56f81a11d89849c7c4ef18d6808a2650",
+    "lib/factory/validation.ts": "60bd29713785111afc83bf5c96105779698fc5e937224089140ed4af523ab7e9",
+    "lib/factory/website-standards.ts": "f33db601ee5223936f90d8d6e6c79a16ab82e66aefb220149a92e2b222cafd30",
+    "lib/factory/work-notice-actions.ts": "4fcf6a1027186a1ede36e74c3bd693605a84da017a5cfab3ae860fa49de89d88",
+    "lib/factory/work-notices.ts": "5b0018d5349d623612ef9a9f68aeae0a2ba03fbd787b917fe13fcb1002fa7306",
+    "lib/factory/worker.ts": "108714b372aa28d61783a5989becbaa1cd741009d8668be085ed9c44b0601b23",
+    "lib/factory/workflow.ts": "aa453833b6afeaac61abcabc1659540125ba4aebf64cecb6a0fe9753d38b478b"
+  },
+  "manifestHashUnchanged": true,
+  "providerRequests": 0,
+  "providerCostMicros": 0,
+  "humanRatings": null,
+  "results": [
+    {
+      "id": "trades-established",
+      "planHashUnchanged": true,
+      "blueprintHashUnchanged": true,
+      "previousPassed": true,
+      "passed": true,
+      "previousIssues": [],
+      "issues": []
+    },
+    {
+      "id": "wellness-small-practice",
+      "planHashUnchanged": true,
+      "blueprintHashUnchanged": true,
+      "previousPassed": true,
+      "passed": true,
+      "previousIssues": [],
+      "issues": []
+    },
+    {
+      "id": "hospitality-concept",
+      "planHashUnchanged": true,
+      "blueprintHashUnchanged": true,
+      "previousPassed": true,
+      "passed": true,
+      "previousIssues": [],
+      "issues": []
+    },
+    {
+      "id": "professional-services",
+      "planHashUnchanged": true,
+      "blueprintHashUnchanged": true,
+      "previousPassed": true,
+      "passed": true,
+      "previousIssues": [],
+      "issues": []
+    },
+    {
+      "id": "sparse-new-business",
+      "planHashUnchanged": true,
+      "blueprintHashUnchanged": true,
+      "previousPassed": true,
+      "passed": true,
+      "previousIssues": [],
+      "issues": []
+    },
+    {
+      "id": "trades-compact-first-site",
+      "planHashUnchanged": true,
+      "blueprintHashUnchanged": true,
+      "previousPassed": false,
+      "passed": false,
+      "previousIssues": [
+        {
+          "code": "thin_page",
+          "page": "index.html",
+          "message": "The homepage needs useful material explaining the offer and helping a visitor decide on a next step. Add missing reader value, not extra sections or words for a quota."
+        }
+      ],
+      "issues": [
+        {
+          "code": "thin_page",
+          "page": "index.html",
+          "message": "The homepage needs useful material explaining the offer and helping a visitor decide on a next step. Add missing reader value, not extra sections or words for a quota."
+        }
+      ]
+    },
+    {
+      "id": "professional-long-name",
+      "planHashUnchanged": true,
+      "blueprintHashUnchanged": true,
+      "previousPassed": true,
+      "passed": true,
+      "previousIssues": [],
+      "issues": []
+    },
+    {
+      "id": "hospitality-ambiguous-match",
+      "planHashUnchanged": true,
+      "blueprintHashUnchanged": true,
+      "previousPassed": true,
+      "passed": true,
+      "previousIssues": [],
+      "issues": []
+    },
+    {
+      "id": "unknown-company-none",
+      "planHashUnchanged": true,
+      "blueprintHashUnchanged": true,
+      "previousPassed": false,
+      "passed": false,
+      "previousIssues": [
+        {
+          "code": "thin_page",
+          "page": "index.html",
+          "message": "The homepage needs useful material explaining the offer and helping a visitor decide on a next step. Add missing reader value, not extra sections or words for a quota."
+        }
+      ],
+      "issues": [
+        {
+          "code": "thin_page",
+          "page": "index.html",
+          "message": "The homepage needs useful material explaining the offer and helping a visitor decide on a next step. Add missing reader value, not extra sections or words for a quota."
+        }
+      ]
+    },
+    {
+      "id": "wellness-rich-content",
+      "planHashUnchanged": true,
+      "blueprintHashUnchanged": true,
+      "previousPassed": true,
+      "passed": true,
+      "previousIssues": [],
+      "issues": []
+    }
+  ],
+  "limitations": [
+    "Frozen synthetic inputs test renderer compatibility, not live AI photo selection or prospect appeal.",
+    "Eight passes and two unchanged thin_page negatives; no extra-width findings.",
+    "Separate provider/worker tests cover new photo-selection policy; this cohort intentionally retains historical input bytes."
+  ]
+}

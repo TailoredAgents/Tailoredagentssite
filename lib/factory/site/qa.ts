@@ -9,6 +9,16 @@ import {installSiteLabObserver,measureSiteLabPerformance,type SiteLabPerformance
 import sharp from "sharp";
 import {portableSiteIdentityAssets,assertSiteIdentityMetadata} from "./identity";
 
+// Keep the persisted screenshot/review contract at two views per page. Extra
+// widths exercise responsive boundaries without adding paid review images or
+// retaining another full-page bitmap. Contexts and pages run sequentially.
+const qaViewports=[
+  {name:"desktop",width:1440,height:1000,capture:true,reducedMotion:false,label:""},
+  {name:"mobile",width:390,height:844,capture:true,reducedMotion:false,label:""},
+  {name:"mobile",width:320,height:844,capture:false,reducedMotion:true,label:"320px narrow phone: "},
+  {name:"desktop",width:768,height:1024,capture:false,reducedMotion:true,label:"768px tablet: "},
+] as const;
+
 /** Browser must come from the dedicated, unprivileged isolated QA runtime. This
  * helper never launches Chromium or inherits the application's secrets. Network
  * requests are fulfilled from this version's memory bundle; all others abort.
@@ -23,8 +33,8 @@ export async function checkPortableSite(input:{files:SiteFiles;browser:Browser})
   }
   const pages=Object.keys(input.files).filter(p=>p.endsWith(".html")).sort();if(pages.length>siteLimits.maximumPages)throw new Error("Too many pages for a bounded QA run.");
   const origin="https://portable-site.factory.test",issues:SiteIssue[]=[],screenshots:SiteQaResult["screenshots"]=[],labPerformance:SiteLabPerformance[]=[];
-  for(const viewport of [{name:"desktop" as const,width:1440,height:1000},{name:"mobile" as const,width:390,height:844}]) {
-    const context=await input.browser.newContext({viewport:{width:viewport.width,height:viewport.height},serviceWorkers:"block",acceptDownloads:false,permissions:[],javaScriptEnabled:true});
+  for(const viewport of qaViewports) {
+    const context=await input.browser.newContext({viewport:{width:viewport.width,height:viewport.height},reducedMotion:viewport.reducedMotion?"reduce":"no-preference",serviceWorkers:"block",acceptDownloads:false,permissions:[],javaScriptEnabled:true});
     const blocked=new Set<string>();
     try {
       await context.route("**/*",async route=>{
@@ -39,14 +49,16 @@ export async function checkPortableSite(input:{files:SiteFiles;browser:Browser})
       await context.routeWebSocket("**/*",socket=>{blocked.add("Unexpected WebSocket request");socket.close();});
       for(const file of pages) {
         const page=await context.newPage(),pageErrors:string[]=[];
+        page.setDefaultTimeout(5000);
         page.on("pageerror",()=>pageErrors.push("The preview runtime reported a browser error."));
+        const add=(code:string,message:string)=>issues.push({code,message:`${viewport.label}${message}`,page:file,viewport:viewport.name,severity:"error"});
         try {
-          await installSiteLabObserver(page);
+          if(viewport.capture)await installSiteLabObserver(page);
           await page.goto(`${origin}/${file}`,{waitUntil:"load",timeout:15000});
           // Record the real initial render before forcing lazy assets into view
           // or clicking anything. These are isolated lab observations only.
           await page.evaluate(()=>document.fonts.ready.then(()=>undefined));
-          labPerformance.push(await measureSiteLabPerformance(page,file,viewport.name));
+          if(viewport.capture)labPerformance.push(await measureSiteLabPerformance(page,file,viewport.name));
           // Inspect the full page, including images below the initial viewport.
           // Lazy images otherwise leave decode() pending until somebody scrolls.
           await page.evaluate(async()=>{
@@ -75,7 +87,6 @@ export async function checkPortableSite(input:{files:SiteFiles;browser:Browser})
               h1:document.querySelectorAll("h1").length,main:document.querySelectorAll("main").length,
               notices:document.querySelector(".preview-notice")?.textContent||""};
           });
-          const add=(code:string,message:string)=>issues.push({code,message,page:file,viewport:viewport.name,severity:"error"});
           if(inspection.overflow)add("horizontal_overflow","Content extends beyond the viewport.");
           if(inspection.contactOverlay)add("mobile_contact_overlap","Quick contact controls must occupy their own normal-flow space without covering page content, images or captions.");
           if(inspection.missingImages.length)add("missing_image",`Missing local images: ${inspection.missingImages.slice(0,5).join(", ")}`);
@@ -94,10 +105,24 @@ export async function checkPortableSite(input:{files:SiteFiles;browser:Browser})
               if(!ids.includes(decodeURIComponent(url.hash.slice(1))))add("broken_anchor",`Missing page section: ${target}${url.hash}`);
             }
           }
-          if(viewport.name==="mobile"){
-            const menu=page.locator("[data-menu-toggle]");await menu.click();
-            if(await menu.getAttribute("aria-expanded")!=="true"||!await page.locator("#site-menu").isVisible())add("mobile_menu","The mobile navigation did not open.");
+          const menu=page.locator("[data-menu-toggle]"),navigation=page.locator("#site-menu");
+          if(await menu.isVisible()){
+            await menu.press("Enter");
+            const opened=await menu.getAttribute("aria-expanded")==="true"&&await navigation.isVisible();
+            if(!opened)add("mobile_menu_keyboard","The navigation did not open with the keyboard.");
+            else {
+              await page.keyboard.press("Tab");
+              const firstLink=navigation.locator("a[href]:visible").first();
+              if(!await firstLink.count()||!await firstLink.evaluate(element=>element===document.activeElement))add("mobile_menu_keyboard","Keyboard focus did not reach the first visible navigation link.");
+              await page.keyboard.press("Escape");
+              if(await menu.getAttribute("aria-expanded")!=="false"||await navigation.isVisible()||!await menu.evaluate(element=>element===document.activeElement))add("mobile_menu_keyboard","Escape did not close navigation and return focus to its button.");
+            }
             await menu.click();
+            if(await menu.getAttribute("aria-expanded")!=="true"||!await navigation.isVisible())add("mobile_menu","The navigation did not open.");
+            await menu.click();
+            if(await menu.getAttribute("aria-expanded")!=="false"||await navigation.isVisible())add("mobile_menu","The navigation did not close.");
+          }else if(viewport.width<=390){
+            add("mobile_menu","The phone navigation button is not visible.");
           }
           for(const group of await page.locator("[data-service-tabs]").all()){
             const tabs=group.locator("[data-service-tab]"),panels=group.locator("[data-service-panel]"),count=await tabs.count();
@@ -120,7 +145,13 @@ export async function checkPortableSite(input:{files:SiteFiles;browser:Browser})
               }
             }
             await tabs.nth(0).click();
-            if(count>1){await tabs.nth(0).press("ArrowRight");if(await tabs.nth(1).getAttribute("aria-selected")!=="true")add("service_tabs_keyboard","Service choices did not respond to keyboard navigation.");await tabs.nth(0).click();}
+            if(count>1){
+              for(const [key,index] of [["ArrowRight",1],["End",count-1],["Home",0]] as const){
+                await page.keyboard.press(key);
+                if(await tabs.nth(index).getAttribute("aria-selected")!=="true"||!await tabs.nth(index).evaluate(element=>element===document.activeElement)||!await panels.nth(index).isVisible())add("service_tabs_keyboard","Service choices did not move keyboard focus and reveal the selected content.");
+              }
+              await tabs.nth(0).click();
+            }
           }
           const forms=page.locator("[data-demo-form]");
           for(const form of await forms.all()){
@@ -130,18 +161,24 @@ export async function checkPortableSite(input:{files:SiteFiles;browser:Browser})
             if(!(await form.locator("[data-demo-feedback]").textContent())?.includes("was not sent"))add("demo_form","Demo form did not explain that no message was sent.");
           }
           if(await forms.count())await page.reload({waitUntil:"load"});
+          if(viewport.reducedMotion&&await page.evaluate(()=>getComputedStyle(document.documentElement).scrollBehavior==="smooth"||document.getAnimations().some(animation=>{
+            const duration=animation.effect?.getComputedTiming().duration;
+            return animation.playState==="running"&&typeof duration==="number"&&duration>0.01;
+          })))add("reduced_motion","Smooth scrolling or animation remains active with reduced motion requested.");
           const accessibility=await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze();
           for(const violation of accessibility.violations.filter(v=>["serious","critical"].includes(v.impact||"")))add(`accessibility_${violation.id}`,`${violation.help}: ${violation.nodes.length} affected elements (${violation.nodes.slice(0,3).map(n=>n.target.join(" ")).join(", ").slice(0,250)})`);
           for(const err of pageErrors)add("browser_error",err);
           // Accessibility probes focus the skip link and can scroll the page.
           // Capture the actual resting design after those interaction checks.
-          await page.evaluate(async()=>{if(document.activeElement instanceof HTMLElement)document.activeElement.blur();window.scrollTo({top:0,behavior:"instant"});await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));});
-          const regions=await page.evaluate(()=>[...document.querySelectorAll("main > section,main > header,main > .hero,main > .contact-composition,main > .contact-composition > section")].slice(0,20).map((el,index)=>{const rect=el.getBoundingClientRect();return {id:el.id||(el.classList.contains("contact-composition")?"contact-composition":el.classList.contains("hero")?"__intro__":`section-${index}`),top:Math.max(0,Math.round(rect.top+scrollY)),height:Math.round(rect.height)};}).filter(region=>region.height>0));
-          screenshots.push({page:file,viewport:viewport.name,regions,bytes:await page.screenshot({fullPage:true,animations:"disabled",timeout:10000})});
-        } catch {issues.push({code:"qa_interrupted",message:"Browser checks did not complete for this page.",page:file,viewport:viewport.name,severity:"error"});}
+          if(viewport.capture){
+            await page.evaluate(async()=>{if(document.activeElement instanceof HTMLElement)document.activeElement.blur();window.scrollTo({top:0,behavior:"instant"});await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));});
+            const regions=await page.evaluate(()=>[...document.querySelectorAll("main > section,main > header,main > .hero,main > .contact-composition,main > .contact-composition > section")].slice(0,20).map((el,index)=>{const rect=el.getBoundingClientRect();return {id:el.id||(el.classList.contains("contact-composition")?"contact-composition":el.classList.contains("hero")?"__intro__":`section-${index}`),top:Math.max(0,Math.round(rect.top+scrollY)),height:Math.round(rect.height)};}).filter(region=>region.height>0));
+            screenshots.push({page:file,viewport:viewport.name,regions,bytes:await page.screenshot({fullPage:true,animations:"disabled",timeout:10000})});
+          }
+        } catch {add("qa_interrupted","Browser checks did not complete for this page.");}
         finally{await page.close();}
       }
-      if(blocked.size)issues.push({code:"blocked_network",message:"The preview attempted a request outside its local artifact bundle.",page:"index.html",viewport:viewport.name,severity:"error"});
+      if(blocked.size)issues.push({code:"blocked_network",message:`${viewport.label}The preview attempted a request outside its local artifact bundle.`,page:"index.html",viewport:viewport.name,severity:"error"});
     } finally {await context.close();}
   }
   const distinct=issues.filter((issue,i)=>issues.findIndex(x=>x.code===issue.code&&x.page===issue.page&&x.viewport===issue.viewport&&x.message===issue.message)===i);

@@ -13,6 +13,20 @@ let assets:SiteFiles,identity:SiteFiles;
 beforeAll(async()=>{assets=await preparePortableImages(await sharp(Buffer.from(fixtureHeroSvg)).png().toBuffer());identity=await prepareSiteIdentity(fixtureBlueprint("trades","split",true),assets);});
 function site(publicBaseUrl?:string){return renderPortableSite(portableBundle(fixtureBlueprint("trades","split",true)),{...assets,...identity},{publicBaseUrl}).files;}
 describe("Complete portable website identity",()=>{
+  it("uses the selected hero mobile crop for the sharing card without changing icons",async()=>{
+    const b=fixtureBlueprint();b.design!.heroFocalPoint={x:0,y:50};
+    const red=await sharp({create:{width:800,height:900,channels:3,background:"#ff0000"}}).png().toBuffer();
+    const source=await sharp({create:{width:1600,height:900,channels:3,background:"#0000ff"}}).composite([{input:red,left:0,top:0}]).png().toBuffer();
+    const images=await preparePortableImages(source);
+    const legacy=await prepareSiteIdentity(b,images);
+    b.presentation={version:1,fontTheme:"studio",heroEmphasis:null,logoAssetId:null,pageImages:[],sectionImages:[],imageFocalPoints:[{assetId:"hero",desktop:{x:0,y:50},mobile:{x:100,y:50}}]};
+    const selected=await prepareSiteIdentity(b,images);
+    const pixel=async(bytes:Uint8Array)=>[...await sharp(bytes).extract({left:960,top:315,width:1,height:1}).raw().toBuffer()];
+    const left=await pixel(legacy[siteIdentityPaths.social]),right=await pixel(selected[siteIdentityPaths.social]);
+    expect(left[0]).toBeGreaterThan(240);expect(left[2]).toBeLessThan(20);
+    expect(right[2]).toBeGreaterThan(240);expect(right[0]).toBeLessThan(20);
+    expect(selected[siteIdentityPaths.icon32]).toEqual(legacy[siteIdentityPaths.icon32]);
+  });
   it("creates deterministic, decodable metadata-free icons and a bounded 1200x630 JPEG using bundled fonts",async()=>{
     expect(await prepareSiteIdentity(fixtureBlueprint("trades","split",true),assets)).toEqual(identity);
     expect(Object.keys(identity).sort()).toEqual(Object.values(siteIdentityPaths).sort());

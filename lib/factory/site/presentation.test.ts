@@ -35,6 +35,28 @@ function presentationFixture(family:DesignFamilyId="trades",multiple=false):Site
 }
 
 describe("Premium portable presentation",()=>{
+  it("keeps each photo's desktop/mobile crop independent and logos uncropped",async()=>{
+    const b=presentationFixture();b.design!.heroFocalPoint={x:90,y:10};
+    b.presentation!.imageFocalPoints=[{assetId:"hero",desktop:{x:20,y:30},mobile:{x:85,y:45}},{assetId:"detail",desktop:{x:70,y:60},mobile:{x:15,y:75}}];
+    const {files}=renderPortableSite(portableBundle(b),assets);assertPortableSiteSafety(files);
+    const context=await browser.newContext();
+    try{
+      await context.route("**/*",route=>{const key=new URL(route.request().url()).pathname.slice(1)||"index.html";return files[key]?route.fulfill({body:Buffer.from(files[key]),contentType:siteContentType(key)}):route.abort();});
+      const page=await context.newPage();
+      for(const width of [320,390,768,1440]){
+        await page.setViewportSize({width,height:900});await page.goto("https://presentation.test/index.html");await page.evaluate(()=>document.fonts.ready);
+        const state=await page.evaluate(()=>{const read=(selector:string)=>getComputedStyle(document.querySelector(selector)!);return {hero:read('.hero-image img').objectPosition,detail:read('img[data-asset-id="detail"]').objectPosition,logoFit:read('.brand-logo img').objectFit,logoBinding:document.querySelector('.brand-logo img')!.hasAttribute('data-asset-id'),overflow:document.documentElement.scrollWidth>innerWidth+2};});
+        expect(state).toEqual({hero:width<=760?"85% 45%":"20% 30%",detail:width<=760?"15% 75%":"70% 60%",logoFit:"contain",logoBinding:false,overflow:false});
+        if(width===390||width===1440)await page.screenshot({path:path.join(output,`image-crops-${width}.png`),fullPage:true});
+      }
+      b.presentation!.imageFocalPoints=[];
+      const defaults=renderPortableSite(portableBundle(b),assets).files;
+      expect(Buffer.from(defaults["assets/site.css"]).toString()).toContain('img[data-asset-id="detail"]{object-position:50% 50%}');
+      delete b.presentation!.imageFocalPoints;
+      const legacy=renderPortableSite(portableBundle(b),assets).files;
+      expect(Buffer.from(legacy["index.html"]).toString()).not.toContain("data-asset-id");
+    }finally{await context.close();}
+  },30000);
   it("only renders an inner-page introduction image when explicitly bound, preserving legacy heroes",()=>{
     const b=presentationFixture("trades",true);
     const files=renderPortableSite(portableBundle(b),assets).files;

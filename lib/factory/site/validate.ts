@@ -9,8 +9,11 @@ const text=z.string().trim().max(1400),short=z.string().trim().max(180);
 const color=z.string().regex(/^#[0-9a-fA-F]{6}$/);
 const sectionId=z.string().regex(/^[a-z][a-z0-9-]{0,40}$/);
 const assetId=z.string().regex(/^[a-z][a-z0-9-]{0,31}$/);
+const focalPoint=z.object({x:z.number().min(0).max(100),y:z.number().min(0).max(100)}).strict();
+const focalPoints=z.array(z.object({assetId,desktop:focalPoint,mobile:focalPoint}).strict()).max(5);
 export const siteMediaSchema=z.array(z.object({id:assetId,role:z.enum(["logo","photo"]),source:z.enum(["provided","generated"]),uploadId:z.string().min(1).max(100).nullable(),prompt:z.string().trim().max(2200),alt:z.string().trim().min(3).max(250),caption:z.string().trim().max(250)}).strict()).max(4);
 export const sitePresentationSchema=z.object({version:z.literal(1),fontTheme:z.enum(fontThemes),heroEmphasis:z.string().trim().min(1).max(120).nullable(),logoAssetId:assetId.nullable(),
+  imageFocalPoints:focalPoints.optional(),
   pageImages:z.array(z.object({pagePath:z.string().max(100),assetId}).strict()).max(10),
   sectionImages:z.array(z.object({pagePath:z.string().max(100),sectionId,assetId,itemIndex:z.number().int().min(0).max(7).nullable()}).strict()).max(40),
 }).strict();
@@ -33,13 +36,13 @@ export const siteBlueprintSchema=z.object({
   media:siteMediaSchema.optional(),presentation:sitePresentationSchema.optional(),
   pages:z.array(z.object({path:z.string().max(100),title:short.min(1),description:z.string().trim().min(1).max(320),hero:z.object({eyebrow:short,headline:z.string().trim().min(1).max(240),body:text,primaryCta:short.min(1),secondaryCta:short}).strict(),
     sections:z.array(z.object({id:z.string().regex(/^[a-z][a-z0-9-]{0,40}$/),kind:z.enum(["services","about","process","features","faq","contact","statement"]),layout:z.enum(sectionLayouts),eyebrow:short,title:z.string().trim().min(1).max(240),body:text,items:z.array(z.object({title:short.min(1),body:text}).strict()).max(8)}).strict()).max(8),}).strict()).min(1).max(10),
-  heroImage:z.object({prompt:z.string().trim().min(20).max(2200),alt:z.string().trim().min(5).max(250),caption:z.string().trim().min(1).max(250)}).strict(),
+  heroImage:z.object({prompt:z.string().trim().min(20).max(2200),alt:z.string().trim().min(5).max(250),caption:z.string().trim().min(1).max(250),uploadId:z.string().min(1).max(100).nullable().optional()}).strict(),
   contact:z.object({email:z.string().email().max(200).nullable(),phone:z.string().regex(/^[+()0-9 .-]{7,30}$/).nullable(),address:z.string().trim().max(300).nullable()}).strict(),
   factualClaims:z.array(z.object({text:z.string().trim().min(1).max(700),detailIndex:z.number().int().min(0).max(23)}).strict()).max(24),
   productionTasks:z.array(text.min(1)).max(20),assumptions:z.array(text.min(1)).max(16),
 }).strict();
 /** New generations always provide design tokens; immutable legacy bundles may omit them. */
-export const siteGenerationSchema=siteBlueprintSchema.extend({design:siteDesignSchema,interactions:siteInteractionsSchema,media:siteMediaSchema,presentation:sitePresentationSchema});
+export const siteGenerationSchema=siteBlueprintSchema.extend({design:siteDesignSchema,interactions:siteInteractionsSchema,media:siteMediaSchema,presentation:sitePresentationSchema.extend({imageFocalPoints:focalPoints}),heroImage:siteBlueprintSchema.shape.heroImage.extend({uploadId:z.string().min(1).max(100).nullable()})});
 
 export function validateBlueprintStructure(value:unknown):SiteBlueprint {
   const data=siteBlueprintSchema.parse(value),paths=new Set<string>();
@@ -60,6 +63,11 @@ export function validateBlueprintStructure(value:unknown):SiteBlueprint {
   }
   if(data.presentation){
     const presentation=data.presentation,used=new Set<string>(),bindings=new Set<string>();
+    const focalIds=new Set<string>();
+    for(const focal of presentation.imageFocalPoints||[]){
+      if(focalIds.has(focal.assetId)||(focal.assetId!=="hero"&&media.get(focal.assetId)?.role!=="photo"))throw new SiteBlueprintError("Image crop positions must reference unique photo assets, never logos.");
+      focalIds.add(focal.assetId);
+    }
     if(presentation.heroEmphasis&&!data.pages.find(p=>p.path==="index.html")!.hero.headline.includes(presentation.heroEmphasis))throw new SiteBlueprintError("Hero emphasis must be an exact phrase in the homepage headline.");
     if(presentation.logoAssetId){const logo=media.get(presentation.logoAssetId);if(!logo||logo.role!=="logo"||logo.source!=="provided")throw new SiteBlueprintError("The logo must reference a supplied logo asset.");used.add(logo.id);}
     const photo=(id:string)=>{if(id!=="hero"&&(!media.has(id)||media.get(id)!.role!=="photo"))throw new SiteBlueprintError("A photo placement references a missing or non-photo asset.");used.add(id);};
@@ -104,6 +112,7 @@ export function validateBlueprintStructure(value:unknown):SiteBlueprint {
 }
 export function validateSiteBlueprint(value:unknown,plan:FactoryPlanContent,assets?:SiteAssetDescriptor[]):SiteBlueprint {
   const data=validateBlueprintStructure(value);
+  if(assets&&data.heroImage.uploadId){const asset=assets.find(a=>a.id===data.heroImage.uploadId&&a.provenance==="provided");if(!asset||(asset.role||"photo")!=="photo")throw new SiteBlueprintError("The hero image must reference an approved photo, never a logo or another project's upload.");}
   if(assets)for(const media of data.media||[]){if(media.source!=="provided")continue;const asset=assets.find(a=>a.id===media.uploadId&&a.provenance==="provided");if(!asset||(asset.role||"photo")!==media.role)throw new SiteBlueprintError("Website imagery must reference an approved upload with the matching logo or photo role.");}
   for(const claim of data.factualClaims){const detail=plan.knownDetails[claim.detailIndex];if(!detail||!["submitted","sourced"].includes(detail.basis)||!detail.value.toLowerCase().includes(claim.text.toLowerCase()))throw new SiteBlueprintError("A website fact is not supported by the approved plan.");}
   const eligibleFacts=plan.knownDetails.filter(d=>["submitted","sourced"].includes(d.basis)).map(d=>d.value.toLowerCase());

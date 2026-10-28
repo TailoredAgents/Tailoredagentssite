@@ -22,7 +22,8 @@ import {reviewSiteDepth} from "./site/quality";
 import {checkPortableSite} from "./site/qa";
 import {screenshotPath} from "./site/qa";
 import {preparePortableImages,preparePortableLogo,portableMobileImageBudget} from "./site/images";
-import {factoryBuildAssetDescriptors,resolveFactoryBuildImages,type FactorySavedImage} from "./build-assets";
+import {factoryBuildAssetDescriptors,resolveFactoryBuildImages,verifyFactoryUpload,type FactorySavedImage} from "./build-assets";
+import {buildAssetEvidence} from "./site/asset-evidence";
 import {reviewPortableSite,parseSiteReview,SiteReviewResponseError,type SiteReview} from "./site/review";
 import {checkSiteDelivery} from "./site/performance";
 import {createPortableExport} from "./site/package";
@@ -147,7 +148,8 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
       state.blueprint=result.blueprint;delete state.generationResponse;await advance("images");return;
     }
     await report("generating");
-    const result=await generatePortableSite({plan:build.plan,assets:factoryBuildAssetDescriptors(build)},async request=>{
+    const assetEvidence=build.imageSelection==="visual-v1"&&state.generationResponse===undefined?await buildAssetEvidence(build,(key,maximum)=>runtime.storage.get(key,maximum)):undefined;
+    const result=await generatePortableSite({plan:build.plan,assets:factoryBuildAssetDescriptors(build),imageSelection:build.imageSelection,assetEvidence},async request=>{
       // Human-approved input is immutable. Revalidate a saved paid response on
       // explicit retry instead of charging again for the same generation.
       if(state.generationResponse!==undefined)return state.generationResponse;
@@ -181,9 +183,10 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
       }else if(slot.source==="provided"){
         const supplied=build.uploads.find(upload=>upload.id===slot.uploadId)!;
         bytes=await runtime.storage.get(supplied.storageKey,8_000_000);
+        verifyFactoryUpload(supplied,bytes);
         provenance={kind:"provided",role:slot.role,filename:supplied.filename,uploadId:supplied.id,notice:"Image supplied by the team; confirm publishing rights before launch."};
         if(slot.id==="hero"){
-          state.blueprint.heroImage.alt=supplied.alt?.trim()||"Business photo supplied by the team";
+          state.blueprint.heroImage.alt=supplied.alt?.trim()||(state.blueprint.heroImage.uploadId!==undefined?state.blueprint.heroImage.alt:"Business photo supplied by the team");
           state.blueprint.heroImage.caption="Team-provided image for this website concept.";
         }
       }else{

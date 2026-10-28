@@ -1,25 +1,28 @@
 import type {FactoryClaimedBuild} from "./build-types";
 import type {SiteAssetDescriptor,SiteBlueprint} from "./site/types";
 import {portableImageSlotPaths,portableLogoPath} from "./site/images";
+import {createHash} from "node:crypto";
 
 export type FactoryImageSlot={id:string;role:"photo"|"logo";source:"provided"|"generated";uploadId:string|null;prompt:string;alt:string;caption:string};
 export type FactorySavedImage={key:string;sha256:string;inputHash:string;provenance:unknown};
 
 /** The generation model only sees approved descriptors, never storage keys. */
-export function factoryBuildAssetDescriptors(build:Pick<FactoryClaimedBuild,"uploads">):SiteAssetDescriptor[]{
+export function factoryBuildAssetDescriptors(build:Pick<FactoryClaimedBuild,"uploads"|"imageSelection">):SiteAssetDescriptor[]{
   let firstPhoto=true;
   return build.uploads.map((upload,index)=>{
     const role=upload.role||"photo",hero=role==="photo"&&firstPhoto;
     if(hero)firstPhoto=false;
-    return {id:upload.id,path:hero?"assets/images/hero.png":`approved-reference-${index}.png`,alt:upload.alt?.trim()||(role==="logo"?"Business logo supplied by the team":"Business photo supplied by the team"),provenance:"provided",role,caption:upload.filename};
+    return {id:upload.id,path:hero&&build.imageSelection!=="visual-v1"?"assets/images/hero.png":`approved-reference-${index}.png`,alt:upload.alt?.trim()||(role==="logo"?"Business logo supplied by the team":"Business photo supplied by the team"),provenance:"provided",role,caption:upload.filename};
   });
 }
 
 /** Bind only uploads frozen by human approval. The model cannot fetch URLs,
  * choose another project's upload, turn a logo into a photo, or invent a logo. */
 export function resolveFactoryBuildImages(build:Pick<FactoryClaimedBuild,"uploads">,blueprint:SiteBlueprint):FactoryImageSlot[]{
-  const heroUpload=build.uploads.find(upload=>(upload.role||"photo")==="photo");
-  const slots:FactoryImageSlot[]=[{id:"hero",role:"photo",source:heroUpload?"provided":"generated",uploadId:heroUpload?.id||null,...blueprint.heroImage}];
+  const selection=blueprint.heroImage.uploadId;
+  const heroUpload=selection===undefined?build.uploads.find(upload=>(upload.role||"photo")==="photo"):selection===null?undefined:build.uploads.find(upload=>upload.id===selection&&(upload.role||"photo")==="photo");
+  if(selection&&!heroUpload)throw new Error("The selected hero must be an approved photo.");
+  const slots:FactoryImageSlot[]=[{...blueprint.heroImage,id:"hero",role:"photo",source:heroUpload?"provided":"generated",uploadId:heroUpload?.id||null}];
   const media=blueprint.media||[];
   if(media.length>4)throw new Error("A website may contain at most four additional image assets.");
   const ids=new Set(["hero"]);let logos=0,generated=heroUpload?0:1;
@@ -40,4 +43,9 @@ export function resolveFactoryBuildImages(build:Pick<FactoryClaimedBuild,"upload
     slots.push({...asset});
   }
   return slots;
+}
+
+/** New approvals freeze hashes; old snapshots without one remain resumable. */
+export function verifyFactoryUpload(upload:{sha256?:string},bytes:Uint8Array){
+  if(upload.sha256&&(!/^[0-9a-f]{64}$/.test(upload.sha256)||createHash("sha256").update(bytes).digest("hex")!==upload.sha256))throw new Error("An approved image no longer matches its saved contents.");
 }

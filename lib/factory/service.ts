@@ -75,7 +75,9 @@ export async function approveFactoryPlan(context:DashboardContext,input:unknown)
     if(unresolved.rowCount)throw new FactoryInputError("The latest planning request failed. Retry it before approving so your new directions are included.");
     const inserted=await db.query<{id:string}>(`INSERT INTO factory_build_requests(id,workspace_id,project_id,plan_id,approved_by) VALUES($1,$2,$3,$4,$5) ON CONFLICT(project_id,plan_id) DO NOTHING RETURNING id`,[randomUUID(),context.workspace.id,project.id,data.planId,context.user.id]);
     const requestId=inserted.rows[0]?.id??(await db.query<{id:string}>("SELECT id FROM factory_build_requests WHERE project_id=$1 AND plan_id=$2 AND workspace_id=$3",[project.id,data.planId,context.workspace.id])).rows[0]?.id;
-    if(requestId)await queueApprovedFactoryBuild(db,requestId);
+    // Only a fresh approval opts into visual photo selection. Catch-up of a
+    // historical request keeps the original first-photo behavior.
+    if(requestId)await queueApprovedFactoryBuild(db,requestId,inserted.rowCount?"visual-v1":undefined);
     await db.query("UPDATE factory_projects SET status='approved',updated_at=now() WHERE id=$1 AND workspace_id=$2",[project.id,context.workspace.id]);
     if(inserted.rowCount)await insertAuditLog(db,{workspaceId:context.workspace.id,actorUserId:context.user.id,action:"factory.plan_approved",targetType:"factory_project",targetId:project.id,metadata:{planId:data.planId,buildRequestId:inserted.rows[0].id}});
     return {projectId:project.id};

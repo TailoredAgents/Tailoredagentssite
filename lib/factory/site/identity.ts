@@ -8,6 +8,7 @@ import {designFamilies} from "./families";
 import {colorLuminance} from "./design";
 import {portableHeroImages,portableLogoImage,portableImagePaths} from "./images";
 import {validateBlueprintStructure} from "./validate";
+import {imageFocalPoint} from "./image-composition";
 import type {SiteBlueprint} from "./types";
 
 export const siteIdentityPaths={icon32:"assets/identity/favicon-32.png",icon64:"assets/identity/favicon-64.png",touch:"assets/identity/apple-touch-icon.png",social:"assets/identity/social-card.jpg"} as const;
@@ -73,7 +74,7 @@ export async function prepareSiteIdentity(blueprint:SiteBlueprint,assets:SiteFil
   // still enforce it. Partial or malformed supplied imagery must still fail.
   const hero=Object.values(portableImagePaths).some(path=>Object.hasOwn(assets,path))?portableHeroImages(assets):null;
   let image:Buffer|undefined;
-  if(hero){const cropWidth=Math.min(hero.fallback.width,Math.round(hero.fallback.height*460/630)),cropHeight=Math.min(hero.fallback.height,Math.round(hero.fallback.width*630/460)),focal=b.design?.heroFocalPoint||{x:50,y:50};
+  if(hero){const cropWidth=Math.min(hero.fallback.width,Math.round(hero.fallback.height*460/630)),cropHeight=Math.min(hero.fallback.height,Math.round(hero.fallback.width*630/460)),focal=imageFocalPoint(b,"hero","mobile");
     image=await sharp(hero.files[hero.fallback.path],{limitInputPixels:24_000_000,animated:false,failOn:"error"}).extract({left:Math.round((hero.fallback.width-cropWidth)*focal.x/100),top:Math.round((hero.fallback.height-cropHeight)*focal.y/100),width:cropWidth,height:cropHeight}).resize(460,630).flatten({background:palette.background}).png().toBuffer();
   }
   const title=fitText(name,font,image?620:1056,3,image?66:84),tagline=fitText(supportedText(b.tagline,sans),sans,image?610:1000,2,24,20),titleTop=270-(title.lines.length-1)*title.size*.5;

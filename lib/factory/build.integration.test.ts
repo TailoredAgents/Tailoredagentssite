@@ -28,8 +28,18 @@ let pool:Pool;
 const manifest:FactoryBuildManifest={entrypoint:"index.html",files:[{path:"index.html",contentType:"text/html; charset=utf-8",size:40,sha256:"a".repeat(64)}]};
 const approvedPlan:FactoryPlanContent={summary:"Approved sparse concept",goal:"Introduce a new business concept",audience:"Local customers",knownDetails:[],uncertainties:["Business identity is unconfirmed"],assumptions:["Use a provisional concept name"],pages:[{title:"Home",purpose:"Introduction",sections:["Services","Contact"]},{title:"Services",purpose:"Explain proposed services",sections:["Overview"]}],callsToAction:["Get in touch"],design:{direction:"Warm and modern",palette:["Blue","Cream"],typography:"Humanist",imagery:"Illustrative abstract architecture"},previewFeatures:["Demonstration contact form"],productionIntegrations:["Connect the real contact form"],sources:[]};
 const blueprint:SiteBlueprint=fixtureBlueprint("general","centered",true);
+blueprint.heroImage.uploadId=null;
+blueprint.media=[];
+blueprint.presentation={version:1,fontTheme:"studio",heroEmphasis:null,logoAssetId:null,pageImages:[],sectionImages:[],imageFocalPoints:[]};
 blueprint.pages=blueprint.pages.filter(p=>p.path!=="approach/index.html");
 blueprint.brandName="New Business Concept";
+// Fresh visual-policy responses include presentation and therefore exercise the
+// current duplicate-copy checks; the fixture's three services need distinct copy.
+blueprint.pages[0].sections.find(section=>section.id==="services")!.items.forEach((item,index)=>{item.body=[
+  "Describe your central objective and explore the information needed to define a useful starting point. Bring the questions that matter most to you.",
+  "Compare different approaches to your project and consider the practical constraints behind each option. Identify the decisions that need further discussion before choosing a direction.",
+  "Outline a manageable next step with clear priorities and responsibilities. Use your initial discussion to determine which information is needed before a scope can be agreed.",
+][index];});
 
 function qa(job:FactoryClaimedBuild):FactoryBuildQa{return {passed:true,checks:["Desktop layout","Mobile layout"],warnings:[],screenshots:{desktop:`${job.storagePrefix}screenshots/desktop.png`,mobile:`${job.storagePrefix}screenshots/mobile.png`}};}
 async function prepared(approve=true,company="",content:FactoryPlanContent=approvedPlan){
@@ -247,19 +257,62 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];
     expect(version.status).toBe("failed");expect(version.previewUrl).toBeNull();
   });
+  it("freezes upload digests and visual selection at approval through worker progress and stage transitions",async()=>{
+    const project=await prepared(false),approvedHash="a".repeat(64);
+    const upload=await registerFactoryUpload(member,{projectId:project.projectId,role:"photo",alt:"Approved photo",filename:"approved.png",contentType:"image/png",byteSize:100,sha256:approvedHash});
+    await completeFactoryUpload(member,upload.id);
+    await approveFactoryPlan(member,{projectId:project.projectId,planId:project.planId});
+    await pool.query("UPDATE factory_uploads SET sha256=$2 WHERE id=$1",[upload.id,"b".repeat(64)]);
+    await enable();const job=(await claimFactoryBuild())!;
+    expect(job.uploads).toEqual([expect.objectContaining({id:upload.id,sha256:approvedHash,storageKey:upload.storageKey})]);
+    expect(job.imageSelection).toBe("visual-v1");
+    const forged={inputUploads:[{...job.uploads[0],sha256:"c".repeat(64)}],inputImageSelection:"legacy"};
+    expect(await saveFactoryBuildProgress({versionId:job.id,leaseToken:job.leaseToken,stage:"generate",workingData:forged})).toBe(true);
+    const progress=(await pool.query("SELECT working_data FROM factory_build_versions WHERE id=$1",[job.id])).rows[0].working_data;
+    expect(progress.inputUploads[0].sha256).toBe(approvedHash);expect(progress.inputImageSelection).toBe("visual-v1");
+    expect(await saveFactoryBuildStage({versionId:job.id,leaseToken:job.leaseToken,stage:"generate",nextStage:"images",workingData:forged})).toBe(true);
+    const next=(await claimFactoryBuild())!;
+    expect(next.uploads[0].sha256).toBe(approvedHash);expect(next.imageSelection).toBe("visual-v1");
+  });
+  it("claims legacy approved upload snapshots without inventing a digest from today's upload row",async()=>{
+    const project=await prepared(false);
+    const upload=await registerFactoryUpload(member,{projectId:project.projectId,role:"photo",filename:"legacy.png",contentType:"image/png",byteSize:100,sha256:"a".repeat(64)});
+    await completeFactoryUpload(member,upload.id);
+    await approveFactoryPlan(member,{projectId:project.projectId,planId:project.planId});
+    await pool.query("UPDATE factory_build_versions SET working_data=(working_data #- '{inputUploads,0,sha256}')-'inputImageSelection' WHERE project_id=$1",[project.projectId]);
+    await pool.query("UPDATE factory_uploads SET sha256=$2 WHERE id=$1",[upload.id,"b".repeat(64)]);
+    await enable();const job=(await claimFactoryBuild())!;
+    expect(job.uploads[0]).toMatchObject({id:upload.id,storageKey:upload.storageKey});
+    expect(job.uploads[0]).not.toHaveProperty("sha256");expect(job.imageSelection).toBeUndefined();
+    expect(await saveFactoryBuildProgress({versionId:job.id,leaseToken:job.leaseToken,stage:"generate",workingData:{...job.workingData,inputImageSelection:"visual-v1"}})).toBe(true);
+    const progress=(await pool.query("SELECT working_data FROM factory_build_versions WHERE id=$1",[job.id])).rows[0].working_data;
+    expect(progress).not.toHaveProperty("inputImageSelection");expect(progress.inputUploads[0]).not.toHaveProperty("sha256");
+  });
+  it("keeps pending historical approvals on legacy selection when the worker or a repeated approval queues them",async()=>{
+    for(const repeatedApproval of [false,true]){
+      const project=await prepared(false),requestId=randomUUID();
+      await pool.query("INSERT INTO factory_build_requests(id,workspace_id,project_id,plan_id,approved_by) VALUES($1,$2,$3,$4,$5)",[requestId,ws,project.projectId,project.planId,member.user.id]);
+      if(repeatedApproval)await approveFactoryPlan(member,{projectId:project.projectId,planId:project.planId});
+      await enable();const job=(await claimFactoryBuild())!;
+      expect(job.projectId).toBe(project.projectId);expect(job.imageSelection).toBeUndefined();expect(job.workingData).not.toHaveProperty("inputImageSelection");
+      await failFactoryBuild({versionId:job.id,leaseToken:job.leaseToken,error:"End synthetic historical-approval test"});
+    }
+  });
   it("freezes approved logo and photo roles and publishes every selected optimized asset through the complete worker",async()=>{
     const project=await prepared(false),{runtime,objects}=await fixtureRuntime();
     const image=await sharp({create:{width:900,height:600,channels:4,background:{r:42,g:88,b:74,alpha:.6}}}).png().toBuffer();
-    async function upload(role:"logo"|"photo",filename:string,alt:string){const saved=await registerFactoryUpload(member,{projectId:project.projectId,role,alt,filename,contentType:"image/png",byteSize:image.length,sha256:"a".repeat(64)});objects.set(saved.storageKey,image);await completeFactoryUpload(member,saved.id);return saved;}
+    const imageHash=createHash("sha256").update(image).digest("hex");
+    async function upload(role:"logo"|"photo",filename:string,alt:string){const saved=await registerFactoryUpload(member,{projectId:project.projectId,role,alt,filename,contentType:"image/png",byteSize:image.length,sha256:imageHash});objects.set(saved.storageKey,image);await completeFactoryUpload(member,saved.id);return saved;}
     const logo=await upload("logo","brand.png","Approved business logo"),hero=await upload("photo","hero.png","Team supplied main business photo"),detail=await upload("photo","detail.png","Team supplied detail photo");
     await expect(upload("logo","replacement.png","Another logo")).rejects.toThrow("existing logo");
     await approveFactoryPlan(member,{projectId:project.projectId,planId:project.planId});
-    await pool.query("UPDATE factory_uploads SET alt='Changed after approval' WHERE id=$1",[hero.id]);
+    await pool.query("UPDATE factory_uploads SET alt='Changed after approval',sha256=$2 WHERE id=$1",[hero.id,"b".repeat(64)]);
     const saved=(await pool.query("SELECT working_data FROM factory_build_versions WHERE project_id=$1",[project.projectId])).rows[0].working_data.inputUploads;
-    expect(saved.find((item:{id:string})=>item.id===hero.id)).toMatchObject({role:"photo",alt:"Team supplied main business photo"});
+    expect(saved.find((item:{id:string})=>item.id===hero.id)).toMatchObject({role:"photo",alt:"Team supplied main business photo",sha256:imageHash});
     const concept=mediaBlueprint();
+    concept.heroImage.uploadId=hero.id;
     concept.media=[{id:"brand",role:"logo",source:"provided",uploadId:logo.id,prompt:"",alt:"Approved business logo",caption:"Team-provided logo"},{id:"detail",role:"photo",source:"provided",uploadId:detail.id,prompt:"",alt:"Team supplied detail photo",caption:"Team-provided business photo"},{id:"atmosphere",role:"photo",source:"generated",uploadId:null,prompt:"Illustrative architectural detail with natural light and considered material, no text.",alt:"Illustrative architectural detail",caption:"Illustrative concept imagery"}];
-    concept.presentation={version:1,fontTheme:"studio",heroEmphasis:null,logoAssetId:"brand",pageImages:[{pagePath:"services/index.html",assetId:"detail"}],sectionImages:[{pagePath:"index.html",sectionId:"benefits",assetId:"atmosphere",itemIndex:null}]};
+    concept.presentation={version:1,fontTheme:"studio",heroEmphasis:null,logoAssetId:"brand",imageFocalPoints:[],pageImages:[{pagePath:"services/index.html",assetId:"detail"}],sectionImages:[{pagePath:"index.html",sectionId:"benefits",assetId:"atmosphere",itemIndex:null}]};
     const execute=runtime.execute;runtime.execute=build=>async request=>{const response=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};if(request.stage!=="review")response.output[0].content[0].text=JSON.stringify(concept);return response;};
     await enable();for(let step=0;step<5;step++){const result=await runFactoryBuildWorkerStep(runtime);expect(result.status,JSON.stringify((await getFactoryProjectBuilds(member,project.projectId))!.versions[0])).toBe("processed");}
     const result=(await getFactoryProjectBuilds(member,project.projectId))!,version=result.versions[0],archive=unzipStored(objects.get((await getFactorySourceDownload(member,version.id)).storageKey)!);
@@ -271,7 +324,7 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
   it("retains an uncertain image charge and retries only its slot while preserving earlier prepared images",async()=>{
     const project=await prepared(),{runtime}=await fixtureRuntime(),concept=mediaBlueprint(),execute=runtime.execute;
     concept.media=[{id:"detail",role:"photo",source:"generated",uploadId:null,prompt:"Illustrative architectural close-up with intentional natural lighting and no text.",alt:"Illustrative detail",caption:"Illustrative concept image"}];
-    concept.presentation={version:1,fontTheme:"studio",heroEmphasis:null,logoAssetId:null,pageImages:[{pagePath:"services/index.html",assetId:"detail"}],sectionImages:[]};
+    concept.presentation={version:1,fontTheme:"studio",heroEmphasis:null,logoAssetId:null,imageFocalPoints:[],pageImages:[{pagePath:"services/index.html",assetId:"detail"}],sectionImages:[]};
     runtime.execute=build=>async request=>{const response=await execute(build)(request) as {output:Array<{content:Array<{text:string}>}>};if(request.stage!=="review")response.output[0].content[0].text=JSON.stringify(concept);return response;};
     const image=await sharp({create:{width:1000,height:700,channels:3,background:"#466c60"}}).png().toBuffer(),calls:string[]=[];let fail=true;
     runtime.hero=async(build,_prompt,id="hero")=>{

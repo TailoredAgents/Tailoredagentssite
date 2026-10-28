@@ -30,6 +30,8 @@ The output directory must not exist. Each run saves portable site files, every t
 
 ## Reproduce the original renderer
 
+`imagery-devices-2026-10-28-v1.json` records the next frozen comparison: four tested widths, unchanged plan/blueprint hashes, eight passes and the same two thin-content negatives. No provider calls or human ratings. New photo-selection/crop behavior is separately exercised by request, worker, browser and identity tests; frozen historical fixtures remain unchanged rather than being upgraded to the new contract.
+
 Archive exact baseline commit `194da47fa5e906caed55634ccf9bd8bbde6c7a35` into a new temporary directory, install that lockfile's dependencies (or use the identical local dependency tree), then overlay only `scripts/evaluate-factory-benchmarks.ts` and `lib/factory/site/quality-cohort.ts` from the evaluation release. Do not overlay renderer, prompts, models, CSS or images code. Run with `--cohort --source-revision=194da47fa5e906caed55634ccf9bd8bbde6c7a35` and without `--identity`. The reported exact source hashes document the two-file evaluation overlay as well as the original implementation. Browser/tool versions must be compared when interpreting differences.
 
 For a current release, run in a clean checkout without `--source-revision`. Never use the explicit revision option to disguise a modified implementation. The runner's source hashes and dirty-file list remain part of the evidence.

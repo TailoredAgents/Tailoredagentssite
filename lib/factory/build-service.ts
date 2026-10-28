@@ -45,11 +45,13 @@ async function lockedVersion(db:PoolClient,versionId:string,workspaceId?:string)
 }
 async function buildTransaction<T>(work:(db:PoolClient)=>Promise<T>){const db=await getDatabasePool().connect();try{await db.query("BEGIN");const result=await work(db);await db.query("COMMIT");return result;}catch(error){await db.query("ROLLBACK");throw error;}finally{db.release();}}
 async function snapshotUploads(db:PoolClient,projectId:string,workspaceId:string){
-  return (await db.query(`SELECT id,filename,role,alt,content_type AS "contentType",byte_size AS "byteSize",storage_key AS "storageKey",created_at AS "createdAt" FROM factory_uploads WHERE project_id=$1 AND workspace_id=$2 AND status='ready' ORDER BY created_at,id LIMIT 20`,[projectId,workspaceId])).rows.map(u=>({...u,createdAt:new Date(u.createdAt).toISOString()}));
+  // Freeze the normalized bytes' existing digest with the human-approved asset
+  // list. Older saved snapshots may omit it; never rewrite their input history.
+  return (await db.query(`SELECT id,filename,role,alt,sha256,content_type AS "contentType",byte_size AS "byteSize",storage_key AS "storageKey",created_at AS "createdAt" FROM factory_uploads WHERE project_id=$1 AND workspace_id=$2 AND status='ready' ORDER BY created_at,id LIMIT 20`,[projectId,workspaceId])).rows.map(u=>({...u,createdAt:new Date(u.createdAt).toISOString()}));
 }
-function preserveBuildInputs(saved:Record<string,unknown>,updated:Record<string,unknown>){return {...updated,inputUploads:saved.inputUploads??[],...(saved.draftRevision?{draftRevision:saved.draftRevision}:{})};}
+function preserveBuildInputs(saved:Record<string,unknown>,updated:Record<string,unknown>){return {...updated,inputUploads:saved.inputUploads??[],inputImageSelection:saved.inputImageSelection,...(saved.draftRevision?{draftRevision:saved.draftRevision}:{})};}
 /** Requires an existing approval row. Called in the approval transaction; never from research completion. */
-export async function queueApprovedFactoryBuild(db:PoolClient,requestId:string){
+export async function queueApprovedFactoryBuild(db:PoolClient,requestId:string,imageSelection?:"visual-v1"){
   const approved=(await db.query(`SELECT r.*,p.id project,l.anonymized_at FROM factory_build_requests r JOIN factory_projects p ON p.id=r.project_id AND p.workspace_id=r.workspace_id JOIN leads l ON l.id=p.lead_id AND l.workspace_id=p.workspace_id JOIN workspaces w ON w.id=p.workspace_id WHERE r.id=$1 AND l.anonymized_at IS NULL AND w.status='active' FOR UPDATE OF p`,[requestId])).rows[0];
   if(!approved)throw new FactoryInputError("An existing human-approved plan is required before building.");
   const existing=(await db.query("SELECT id FROM factory_build_versions WHERE build_request_id=$1 AND kind='initial'",[requestId])).rows[0];
@@ -57,7 +59,7 @@ export async function queueApprovedFactoryBuild(db:PoolClient,requestId:string){
   if((await db.query("SELECT 1 FROM factory_uploads WHERE project_id=$1 AND workspace_id=$2 AND status='pending' LIMIT 1",[approved.project_id,approved.workspace_id])).rowCount)throw new FactoryInputError("Wait for the image upload to finish before approving this website build.");
   const inputUploads=await snapshotUploads(db,approved.project_id,approved.workspace_id);
   const id=randomUUID(),token=randomBytes(24).toString("hex"),prefix=`factory/${approved.workspace_id}/${approved.project_id}/${id}/`;
-  await db.query(`INSERT INTO factory_build_versions(id,workspace_id,project_id,build_request_id,version,storage_prefix,preview_token,created_by,working_data) SELECT $1,$2,$3,$4,COALESCE(max(version),0)+1,$5,$6,$7,$8::jsonb FROM factory_build_versions WHERE project_id=$3 AND workspace_id=$2`,[id,approved.workspace_id,approved.project_id,requestId,prefix,token,approved.approved_by,JSON.stringify({inputUploads})]);
+  await db.query(`INSERT INTO factory_build_versions(id,workspace_id,project_id,build_request_id,version,storage_prefix,preview_token,created_by,working_data) SELECT $1,$2,$3,$4,COALESCE(max(version),0)+1,$5,$6,$7,$8::jsonb FROM factory_build_versions WHERE project_id=$3 AND workspace_id=$2`,[id,approved.workspace_id,approved.project_id,requestId,prefix,token,approved.approved_by,JSON.stringify({inputUploads,...(imageSelection?{inputImageSelection:imageSelection}:{})})]);
   return {versionId:id};
 }
 export async function saveFactoryBuildSettings(context:DashboardContext,input:unknown){
@@ -83,7 +85,7 @@ export async function claimFactoryBuild():Promise<FactoryClaimedBuild|null>{
     const claimed=(await db.query("UPDATE factory_build_versions SET status='running',lease_token=$2,lease_until=now()+interval '15 minutes',attempts=attempts+1,error=NULL,updated_at=now() WHERE id=$1 RETURNING lease_until",[row.id,lease])).rows[0];
     await db.query("UPDATE factory_build_requests SET status='building' WHERE id=$1",[row.build_request_id]);
     const uploads=row.working_data.inputUploads??[];
-    return {id:row.id,workspaceId:row.workspace_id,projectId:row.project_id,buildRequestId:row.build_request_id,planId:row.plan_id,plan:row.plan,version:row.version,stage:row.stage,leaseToken:lease,leaseUntil:new Date(claimed.lease_until).toISOString(),attempt:row.attempts+1,workingData:row.working_data,storagePrefix:row.storage_prefix,previewToken:row.preview_token,previewSlug:row.preview_slug,uploads};
+    return {id:row.id,workspaceId:row.workspace_id,projectId:row.project_id,buildRequestId:row.build_request_id,planId:row.plan_id,plan:row.plan,version:row.version,stage:row.stage,leaseToken:lease,leaseUntil:new Date(claimed.lease_until).toISOString(),attempt:row.attempts+1,workingData:row.working_data,storagePrefix:row.storage_prefix,previewToken:row.preview_token,previewSlug:row.preview_slug,imageSelection:row.working_data.inputImageSelection==="visual-v1"?"visual-v1":undefined,uploads};
   });
 }
 async function activeBuild(db:PoolClient,id:string,lease:string){

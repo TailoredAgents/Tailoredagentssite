@@ -9,6 +9,8 @@ export const sectionLayouts=["grid","rows","split","editorial","timeline","band"
 export const fontThemes=["studio","editorial","warm","technical"] as const;
 export type SiteMedia={id:string;role:"logo"|"photo";source:"provided"|"generated";uploadId:string|null;prompt:string;alt:string;caption:string};
 export type SitePresentation={version:1;fontTheme:typeof fontThemes[number];heroEmphasis:string|null;logoAssetId:string|null;
+  /** Optional on saved sites; controls crop position without changing original bytes. */
+  imageFocalPoints?:Array<{assetId:string;desktop:{x:number;y:number};mobile:{x:number;y:number}}>;
   pageImages:Array<{pagePath:string;assetId:string}>;
   sectionImages:Array<{pagePath:string;sectionId:string;assetId:string;itemIndex:number|null}>};
 export type SiteDesign={
@@ -36,12 +38,13 @@ export type SiteBlueprint={
   presentation?:SitePresentation;
   pages:Array<{path:string;title:string;description:string;hero:{eyebrow:string;headline:string;body:string;primaryCta:string;secondaryCta:string};
     sections:Array<{id:string;kind:"services"|"about"|"process"|"features"|"faq"|"contact"|"statement";layout:typeof sectionLayouts[number];eyebrow:string;title:string;body:string;items:Array<{title:string;body:string}>}>}>;
-  heroImage:{prompt:string;alt:string;caption:string};
+  heroImage:{prompt:string;alt:string;caption:string;uploadId?:string|null};
   contact:{email:string|null;phone:string|null;address:string|null};
   factualClaims:Array<{text:string;detailIndex:number}>;
   productionTasks:string[];assumptions:string[];
 };
 export type SiteAssetDescriptor={id:string;path:string;alt:string;provenance:"generated"|"provided";caption?:string;role?:"logo"|"photo"};
+export type SiteAssetEvidence={references:Array<{id:string;reference:string;role:"logo"|"photo";width:number;height:number;sha256:string}>;images:Array<{bytes:Uint8Array;label:string}>};
 export type PortableSiteBundle={version:1;title:string;designFamily:DesignFamilyId;pages:Array<{path:string;title:string}>;
   imageSlots:Array<{id:"hero";path:"assets/images/hero.png";prompt:string;alt:string;caption:string}>;
   productionTasks:string[];assumptions:string[];blueprint:SiteBlueprint};
@@ -49,4 +52,4 @@ export type SiteUsage={providerId:string;inputTokens:number;outputTokens:number;
 export type SiteModelRequest={stage:"generate"|"repair"|"review";model:string;body:Record<string,unknown>;inputBytes:number;maxOutputTokens:number;reservedMicros:number};
 /** Executor owns reserve -> commit attempt -> HTTP -> settle/uncertain. No HTTP retry. */
 export type SiteModelExecutor=(request:SiteModelRequest)=>Promise<unknown>;
-export type SiteGenerationInput={plan:FactoryPlanContent;family?:DesignFamilyId;previousBlueprint?:SiteBlueprint;repairIssues?:SiteIssue[];repairScreenshots?:SiteQaResult["screenshots"];assets?:SiteAssetDescriptor[]};
+export type SiteGenerationInput={plan:FactoryPlanContent;family?:DesignFamilyId;previousBlueprint?:SiteBlueprint;repairIssues?:SiteIssue[];repairScreenshots?:SiteQaResult["screenshots"];assets?:SiteAssetDescriptor[];assetEvidence?:SiteAssetEvidence;imageSelection?:"visual-v1"};

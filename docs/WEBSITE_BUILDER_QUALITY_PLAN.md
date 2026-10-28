@@ -1,6 +1,6 @@
 # Website Builder: consistent quality and salesperson independence
 
-Created October 27, 2026. Updated October 28. **Status: P0 baseline, P1 identity/export and P2 automated verification implemented; first P3 engineering slice implemented. Real-channel acceptance, measured design-quality gains and remaining P3-P6 work stay open.** Austin requested this plan after confirming that favicons and link-preview images should be standard and that the system must consistently produce impressive websites without Austin or Codex finishing them manually.
+Created October 27, 2026. Updated October 28. **Status: P0 baseline, P1 identity/export and P2 automated verification implemented; P3 imagery/design improvements and P4 wider-device/hosted-measurement tools implemented. Real-channel acceptance, measured design-quality gains and remaining P3-P6 work stay open.** Austin requested this plan after confirming that favicons and link-preview images should be standard and that the system must consistently produce impressive websites without Austin or Codex finishing them manually.
 
 ## Outcome we are building toward
 
@@ -18,9 +18,9 @@ Baseline: implementation `42222e7`, production verification recorded through doc
 | --- | --- | --- |
 | Intake and approval | Automatic new-lead research enabled; planning chat and exact-version approval implemented | Fresh-lead, real-provider acceptance across several input types |
 | Design | Six design families, multiple compositions, approved design recipe, local fonts, image slots and supplied branding | Measured variation, persuasive content and consistently strong real output beyond Cosmo |
-| Checks and correction | Desktop/phone checks, visual review, at most two scoped corrections and three reviews per version | Human calibration, wider viewport coverage, supported recovery from common interruptions |
+| Checks and correction | Four-width page checks, visual review, at most two scoped corrections and three reviews per version | Human calibration and supported recovery from common interruptions |
 | Identity and sharing | Local favicon/touch icons, branded sharing image, page-specific metadata, portable exports and anonymous final-verification gate implemented | Newly approved live build, actual phone/social-card display and cache observation |
-| Performance | Asset byte budgets and isolated, unthrottled browser observations | Reproducible throttled tests against hosted pages; real-device observations |
+| Performance | Asset byte budgets, isolated observations and a reproducible throttled hosted-page runner | Investigate measured bottlenecks; real-device and field observations |
 | Sales handoff | Website Builder/My Day updates, preview link and source export | Independent salesperson acceptance and clear stalled-worker diagnosis |
 
 Cosmo v9 required explicit manual revisions. Keep it as diagnostic/reference evidence; do not count it as an unattended success. Existing synthetic benchmarks prove the renderer can handle their inputs, not that the generator reliably chooses equally good designs.
@@ -90,7 +90,7 @@ P0/P1 checkboxes record implemented code, local artifacts and tests. P2 automate
 
 **Owner: Codex. Changes follow observed failures and the frozen baseline.**
 
-October 28 checkpoint: [the first P3 slice](WEBSITE_BUILDER_DESIGN_QUALITY.md) addresses advisory industry hints, competing template instructions, impossible approved contrast, purposeful sparse-page checks and observed renderer defects. Release `db06766` is verified live on CRM and builder; the final frozen ten-case comparison retained eight passes and two original negatives with no new findings. The checkboxes below cover the full work package, including real generated output and human comparison; local fixes alone do not complete them. Approved-photo selection remains a known gap: the first supplied photo is currently assigned to the hero without a role-aware suitability assessment.
+October 28 checkpoint: [the first P3 slice](WEBSITE_BUILDER_DESIGN_QUALITY.md) addresses advisory industry hints, competing template instructions, impossible approved contrast, purposeful sparse-page checks and observed renderer defects. Release `db06766` is verified live on CRM and builder; the final frozen ten-case comparison retained eight passes and two original negatives with no new findings. The [next imagery/device slice](WEBSITE_BUILDER_IMAGE_DEVICE_QUALITY.md) adds visual approved-photo selection, separate crops and wider checks, with [hosted performance evidence](WEBSITE_BUILDER_HOSTED_PERFORMANCE.md). The checkboxes below cover the full work package, including real generated output and human comparison; local fixes alone do not complete them.
 
 - [ ] Audit whether research, planning and generation agree on audience, requested work, likely industry, approved facts and assets. Preserve uncertainty and support a confident provisional design when facts are sparse.
 - [ ] Make the existing plan carry a concise creative direction: visitor benefit, public identity, supported visual recipe, page purposes, image roles and meaningful next actions. Prefer extending the existing planning/generation request over adding another paid agent stage.
@@ -106,7 +106,7 @@ October 28 checkpoint: [the first P3 slice](WEBSITE_BUILDER_DESIGN_QUALITY.md) a
 
 **Owner: Codex.**
 
-- [ ] Add viewport coverage for narrow phones, a common phone, tablet and desktop. Retain all-page checks at the existing main viewports; include long text, menus, service tabs, reduced-motion behavior, keyboard focus and form demonstration behavior.
+- [x] Add viewport coverage for narrow phones, a common phone, tablet and desktop. All-page checks now use 320/390/768/1440 px with keyboard/menu/tab/reduced-motion checks; only the original two views add reviewer screenshots. Long-text and extra-width regressions are covered. See the imagery/device release evidence.
 - [ ] Add reproducible throttled hosted-page performance checks. Record browser/tool version, device/CPU/network settings, cold versus warm cache, and three-run median. Initial engineering targets: mobile Lighthouse performance ≥90, lab LCP ≤2.5 s, CLS ≤0.1; investigate worst pages rather than averaging them away. Retain the existing 800 KB full-page mobile budget unless evidence justifies an explicit revision.
 - [ ] Keep lab scores separate from field Core Web Vitals. Field targets, where enough real traffic exists, are p75 LCP ≤2.5 s, INP ≤200 ms and CLS ≤0.1. Low-traffic previews may never have enough field data; do not invent an INP result or claim field success from in-memory QA.
 - [ ] Calibrate screenshot review with human labels and held-out examples. Check attractive Home pages with weak inner pages, polished but invented claims, legitimate minimalist designs, long names and missing business facts. A model must not reward extra words or blindly approve its own style preferences.
@@ -172,7 +172,7 @@ The visitor chatbot, unrestricted code-editing copilot, live inquiry delivery an
 
 ## Resume here
 
-**Next engineering step:** continue P3 with role-aware use of approved imagery and P4 with broader viewport and reproducible hosted performance evidence. Keep the same frozen cases and preserve negatives. Then collect the three-site, separately human-approved pilot and P2's actual phone/card observation within the remaining allowance. Do not return to manual Cosmo polishing or count synthetic fixtures as autonomous generated sites.
+**Next acceptance step:** collect the three-site, separately human-approved pilot and P2's actual phone/card observation within the remaining allowance. Record the visual imagery/device release's actual photo selection and completion results, investigate hosted performance findings, and run independent Member usability sessions. Keep the same frozen cases and preserve negatives. Do not return to manual Cosmo polishing or count synthetic fixtures as autonomous generated sites. Recovery/heartbeat improvements and human review calibration remain open in P4.
 
 Current completion: P0's original baseline is recorded, P1 and P2 automated checks are deployed, and P3 has its first focused engineering improvements. Real-channel P2 acceptance, the full P3 design outcome, P4 reliability/performance, P5 independent salesperson sessions and P6 real-build confidence remain open. See the linked release records for exact verification; keep the primary [factory resume guide](AI_WEBSITE_FACTORY_BUILD_PLAN.md) pointed here.
 
