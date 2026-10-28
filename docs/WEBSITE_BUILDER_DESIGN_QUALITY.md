@@ -39,8 +39,9 @@ Do not regenerate Cosmo, approve another lead or buy a test batch just because t
 
 ## Final verification and release
 
-- Final full suite: **696 passed; 386 environment-dependent cases skipped** across 75 passing and 15 skipped test files. The builder/journey database cases were then covered separately against their isolated local databases: **68 passed** with synthetic providers. Those integration checks preceded only the final narrow wording-classification fixes; the final full suite covers those fixes.
+- Final full suite: **696 passed; 386 environment-dependent cases skipped** across 75 passing and 15 skipped test files. Separately, builder/journey database cases ran against their isolated local databases: **68 passed** with synthetic providers. Those integration checks preceded only the final narrow wording-classification fixes; the final full suite covers those fixes.
 - Lint and production build, including TypeScript, passed. A separate TypeScript check also passed before the narrow follow-up fixes.
 - Independent review found and resolved three concrete edge cases before release: direct negation of a credential, bookkeeping/book-content actions mistaken for booking, and the adjective “professional” creating false industry ambiguity.
 - The ten-case frozen comparison retains eight passes and the two original `thin_page` negatives. No frozen inputs were padded and no human scores were invented. See the final comparison ledger for exact source and artifact hashes.
-- Deployment verification is pending; the source release and live CRM/worker observations will be recorded here after the push.
+- Source **`db06766af80f65376774f51f1408fef038dfae1e`** was pushed to `main` and verified **Deploy succeeded | Live** on both Render services on October 28: [CRM deployment](https://dashboard.render.com/web/srv-db6hod8473hc739q2uo0/deploys/dep-dbh1amh42hec739gs6l0) and [builder deployment](https://dashboard.render.com/cron/crn-dbfth6uk1f9s73amh7ig/deploys/dep-dbh1amp42hec739gs900). Both deployment pages identify the exact source commit.
+- After deployment, public `/api/health` returned 200. The existing Cosmo v9 short link returned 307 to the expected isolated preview host; the destination returned 200 with `noindex, nofollow, noarchive`. This verifies continued availability of the existing artifact, not a newly generated result.
