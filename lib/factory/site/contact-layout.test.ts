@@ -212,10 +212,20 @@ describe("Compact dedicated contact pages",()=>{
       await page.goto("https://contact-layout.test/areas/index.html");await page.evaluate(()=>document.fonts.ready);
       expect(await page.locator(".inquiry-context").count()).toBe(1);expect(await page.locator("#area-context.inquiry-context").count()).toBe(1);
       expect(await page.locator("#coverage-inquiry.compact-inquiry").count()).toBe(1);
+      expect(await page.locator("body.brief-inquiry-page").count()).toBe(1);
       expect(await page.locator("#coverage-inquiry form [name]").evaluateAll(elements=>elements.map(element=>element.getAttribute("name")))).toEqual(["location","message","preferredContact","contactDetail"]);
       const areas=b.pages.at(-1)!;
       for(const section of areas.sections){expect(await page.locator(`#${section.id} .section-copy`).textContent()).toBe(section.body);expect(await page.locator(`#${section.id}-heading`).textContent()).toBe(section.title);}
       expect(await page.locator("#area-context h2").evaluate(element=>parseFloat(getComputedStyle(element).fontSize))).toBeLessThanOrEqual(width>760?44.8:31);
+      const compact=await page.locator("#coverage-inquiry").evaluate(element=>{
+        const heading=element.querySelector(".section-heading")!.getBoundingClientRect(),details=element.querySelector(".contact-details")!.getBoundingClientRect();
+        return {channelGap:details.top-heading.bottom,headingSize:parseFloat(getComputedStyle(element.querySelector("h2")!).fontSize)};
+      });
+      expect(compact.channelGap).toBeGreaterThanOrEqual(0);expect(compact.channelGap).toBeLessThanOrEqual(30);
+      expect(compact.headingSize).toBeLessThanOrEqual(width>760?33.6:27.2);
+      expect(await page.locator(".hero-copy h1").evaluate(element=>parseFloat(getComputedStyle(element).fontSize))).toBeLessThanOrEqual(width>760?42.4:38.4);
+      // Longer approved headings may wrap; constrain decorative space, not content height.
+      expect(await page.locator("#area-context").evaluate(element=>parseFloat(getComputedStyle(element).paddingTop))).toBeLessThanOrEqual(width>760?31:25);
       expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2)).toBe(false);
       await writeFile(path.join(output,`coverage-${width}.png`),await page.screenshot({fullPage:true,animations:"disabled"}));
       expect(b).toEqual(original);
@@ -255,5 +265,21 @@ describe("Compact dedicated contact pages",()=>{
     delete b.presentation;
     const legacy=renderPortableSite(portableBundle(b),assets).files;
     expect(Buffer.from(legacy["index.html"]).toString()).not.toContain("contact-closing");expect(Buffer.from(legacy["areas/index.html"]).toString()).not.toContain("compact-inquiry");
+  });
+
+  it.each(["long context","section imagery","hero imagery","multiple forms","legacy"] as const)("does not simplify %s into a brief inquiry page",variation=>{
+    const b=closingAndCoverageFixture(),areas=b.pages.at(-1)!;
+    if(variation==="long context")areas.sections[0].body=Array.from({length:65},()=>"Context").join(" ");
+    if(variation==="section imagery")b.presentation!.sectionImages.push({pagePath:areas.path,sectionId:"area-story",assetId:"hero",itemIndex:null});
+    if(variation==="hero imagery")b.presentation!.pageImages.push({pagePath:areas.path,assetId:"hero"});
+    if(variation==="multiple forms"){
+      areas.sections[0].kind="contact";
+      b.interactions!.forms.push({pagePath:areas.path,sectionId:"area-story",fields:["email","message"],submitLabel:"Preview second inquiry"});
+    }
+    if(variation==="legacy")delete b.presentation;
+    const original=structuredClone(b),{files}=renderPortableSite(portableBundle(b),assets);
+    expect(Buffer.from(files[areas.path]).toString()).not.toContain("brief-inquiry-page");
+    expect(Buffer.from(files["index.html"]).toString()).not.toContain("brief-inquiry-page");
+    expect(b).toEqual(original);
   });
 });

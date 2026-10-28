@@ -203,6 +203,18 @@ export const portablePresentationCss=`
 .presentation-v1 .contact-closing .section-copy,.presentation-v1 .compact-inquiry .section-copy,.presentation-v1 .inquiry-context .section-copy{margin-top:16px}
 .presentation-v1 .compact-inquiry .section-heading{margin:0}.presentation-v1 .compact-inquiry .eyebrow,.presentation-v1 .inquiry-context .eyebrow{margin-bottom:14px}
 .presentation-v1 .inquiry-context{padding-bottom:24px}.presentation-v1 .inquiry-context .section-inner{max-width:1160px}.presentation-v1 .inquiry-context .section-heading{max-width:960px;margin:0}
+.presentation-v1.page-inner .compact-inquiry .section-inner{grid-template-rows:min-content 1fr}
+.presentation-v1.page-inner .compact-inquiry .section-heading{grid-row:1}
+.presentation-v1.page-inner .compact-inquiry .contact-details{grid-column:1;grid-row:2;align-self:start}
+.presentation-v1.page-inner.brief-inquiry-page .hero-copy h1{font-size:clamp(2rem,3vw,2.65rem)}
+.presentation-v1.page-inner.brief-inquiry-page .hero-text-only .hero-copy{padding-top:4px;padding-bottom:20px}
+.presentation-v1.page-inner.brief-inquiry-page .hero-description{margin-top:12px}.presentation-v1.page-inner.brief-inquiry-page .hero-actions{margin-top:16px}
+.presentation-v1.page-inner.brief-inquiry-page .site-section:not(.section-contact){padding:calc(var(--section-space,76px)*.4) 0}
+.presentation-v1.page-inner.brief-inquiry-page .site-section:not(.section-contact) .section-heading{max-width:960px;margin:0}
+.presentation-v1.page-inner.brief-inquiry-page .site-section:not(.section-contact) h2{font-size:clamp(1.5rem,2vw,1.9rem)}
+.presentation-v1.page-inner.brief-inquiry-page .inquiry-context .section-copy{margin-top:12px}
+.presentation-v1.page-inner.brief-inquiry-page .compact-inquiry{padding:calc(var(--section-space,76px)*.55) 0}
+.presentation-v1.page-inner.brief-inquiry-page .compact-inquiry h2{font-size:clamp(1.6rem,2.2vw,2.1rem)}
 .presentation-v1 .contact-composition{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:28px;width:min(var(--content-width),calc(100% - 96px));margin:8px auto 48px;align-items:start}
 .presentation-v1 .contact-composition>.site-section{min-width:0;padding:28px;border-radius:var(--radius);border:1px solid color-mix(in srgb,var(--ink) 14%,transparent)}
 .presentation-v1 .contact-composition .section-inner{display:block;width:100%;min-width:0}
@@ -239,6 +251,11 @@ export const portablePresentationCss=`
  .presentation-v1 .contact-closing,.presentation-v1 .compact-inquiry,.presentation-v1 .inquiry-context{padding:min(var(--section-space-mobile,50px),38px) 0}
  .presentation-v1 .contact-closing .section-inner{display:flex;flex-direction:column;gap:24px}.presentation-v1 .contact-closing h2,.presentation-v1 .compact-inquiry h2,.presentation-v1 .inquiry-context h2{font-size:1.9rem}
  .presentation-v1 .inquiry-context{padding-bottom:16px}
+ .presentation-v1.page-inner.brief-inquiry-page .hero-copy h1{font-size:clamp(1.9rem,7.5vw,2.4rem)}
+ .presentation-v1.page-inner.brief-inquiry-page .site-section:not(.section-contact){padding:calc(var(--section-space-mobile,50px)*.5) 0}
+ .presentation-v1.page-inner.brief-inquiry-page .site-section:not(.section-contact) h2{font-size:1.5rem}
+ .presentation-v1.page-inner.brief-inquiry-page .compact-inquiry{padding:calc(var(--section-space-mobile,50px)*.65) 0}
+ .presentation-v1.page-inner.brief-inquiry-page .compact-inquiry h2{font-size:1.7rem}
  .presentation-v1 .contact-composition{grid-template-columns:1fr;width:calc(100% - 40px);gap:20px;margin:4px auto 32px}
  .presentation-v1 .contact-composition>.site-section{padding:22px}.presentation-v1 .contact-composition h2{font-size:1.7rem}
  .presentation-v1 .contact-composition>.site-section .contact-form{padding:0;border:0;border-radius:0;background:transparent;color:inherit}.presentation-v1 .contact-composition .section-heading{margin-bottom:20px}
