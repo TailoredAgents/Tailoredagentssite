@@ -6,6 +6,8 @@ import { siteCsp } from "./render";
 import { assertPortableSiteSafety } from "./safety";
 import {actionDestinationIssue} from "./quality";
 import {installSiteLabObserver,measureSiteLabPerformance,type SiteLabPerformance} from "./performance";
+import sharp from "sharp";
+import {portableSiteIdentityAssets,assertSiteIdentityMetadata} from "./identity";
 
 /** Browser must come from the dedicated, unprivileged isolated QA runtime. This
  * helper never launches Chromium or inherits the application's secrets. Network
@@ -13,6 +15,12 @@ import {installSiteLabObserver,measureSiteLabPerformance,type SiteLabPerformance
  */
 export async function checkPortableSite(input:{files:SiteFiles;browser:Browser}):Promise<SiteQaResult> {
   assertPortableSiteSafety(input.files);
+  assertSiteIdentityMetadata(input.files);
+  for(const asset of portableSiteIdentityAssets(input.files).variants){
+    const decoder=sharp(input.files[asset.path],{limitInputPixels:1_000_000,failOn:"warning"}),meta=await decoder.metadata();
+    if(meta.width!==asset.width||meta.height!==asset.height||(meta.pages??1)!==1)throw new Error("A website identity asset did not decode at its declared size.");
+    await decoder.raw().toBuffer();
+  }
   const pages=Object.keys(input.files).filter(p=>p.endsWith(".html")).sort();if(pages.length>siteLimits.maximumPages)throw new Error("Too many pages for a bounded QA run.");
   const origin="https://portable-site.factory.test",issues:SiteIssue[]=[],screenshots:SiteQaResult["screenshots"]=[],labPerformance:SiteLabPerformance[]=[];
   for(const viewport of [{name:"desktop" as const,width:1440,height:1000},{name:"mobile" as const,width:390,height:844}]) {

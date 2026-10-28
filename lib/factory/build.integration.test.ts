@@ -7,7 +7,8 @@ import type {DashboardContext} from "@/lib/dashboard/data";
 import {getDatabasePool} from "@/lib/dashboard/db";
 import {approveFactoryPlan,startFactory} from "./service";
 import {claimFactoryBuild,saveFactoryBuildStage,saveFactoryBuildProgress,finishFactoryBuild,saveFactoryBuildSettings,failFactoryBuild,retryFactoryBuild,revokeFactoryPreview,restoreFactoryPreview,recoverFactoryBuilds,registerFactoryUpload,completeFactoryUpload,deleteFactoryUpload,claimFactoryStorageCleanup,finishFactoryStorageCleanup,queueApprovedFactoryBuild,rollbackFactoryBuildAttempt,requeueFactoryBuildQuality} from "./build-service";
-import {getFactoryProjectBuilds,getFactoryPreviewResolution,getFactorySourceDownload,getFactoryScreenshotDownload,getFactoryUploadDownload} from "./build-data";
+import {getFactoryProjectBuilds,getFactoryPreviewResolution,getFactorySourceDownload,getFactoryScreenshotDownload,getFactoryUploadDownload,factoryShareUrl} from "./build-data";
+import {factoryManifestFingerprint,FactoryPublicVerificationError} from "./public-verification";
 import {FactoryBuildBudgetError,reserveFactoryBuildCost,attemptFactoryBuildCost,settleFactoryBuildCost,uncertainFactoryBuildCost} from "./build-budget";
 import {FactoryBuildRequestNotAttemptedError} from "./build-provider";
 import type {FactoryClaimedBuild,FactoryBuildQa,FactoryBuildManifest} from "./build-types";
@@ -69,7 +70,8 @@ async function fixtureRuntime(){
     },
     async hero(build){const id=await reserveFactoryBuildCost({versionId:build.id,leaseToken:build.leaseToken,stage:build.stage,requestKey:"fixture-image",reservedMicros:2000000});await attemptFactoryBuildCost(id,build.leaseToken);await settleFactoryBuildCost(id,{actualMicros:130000,providerId:"synthetic-image"});return {bytes:image,provenance:{kind:"generated",model:"synthetic-fixture"}};},
     async qa(files){expect(files["index.html"]).toBeTruthy();expect(files["services/index.html"]).toBeTruthy();return {passed:true,issues:[],checkedAt:new Date().toISOString(),screenshots:Object.keys(files).filter(p=>p.endsWith(".html")).flatMap(page=>(["desktop","mobile"] as const).map(viewport=>({page,viewport,bytes:image})))};},
-    async verify(build,siteManifest){const resolution=await getFactoryPreviewResolution(build.previewToken,{verification:true});expect(resolution?.ready).toBe(false);for(const file of siteManifest.files)expect(objects.get(`${build.storagePrefix}preview/${file.path}`)?.byteLength).toBe(file.size);return {url:`https://previews.example.test/p/${build.previewToken}/`,status:200,checkedAt:new Date().toISOString()};}
+    async verify(build,siteManifest){const resolution=await getFactoryPreviewResolution(build.previewToken,{verification:true});expect(resolution?.ready).toBe(false);for(const file of siteManifest.files)expect(objects.get(`${build.storagePrefix}preview/${file.path}`)?.byteLength).toBe(file.size);return {url:`https://previews.example.test/p/${build.previewToken}/`,status:200,checkedAt:new Date().toISOString()};},
+    async verifyPublic(build,manifest){expect((await getFactoryPreviewResolution(build.previewToken))?.ready).toBe(true);expect((await getFactoryProjectBuilds(member,build.projectId))!.versions.find(v=>v.id===build.id)?.previewUrl).toBeNull();return {url:factoryShareUrl(build.previewToken,build.previewSlug)!,status:200,checkedAt:new Date().toISOString(),manifestHash:factoryManifestFingerprint(manifest)};}
   };return {runtime,objects};
 }
 function unzipStored(bytes:Uint8Array){const buffer=Buffer.from(bytes),files=new Map<string,Buffer>();let offset=0;while(buffer.readUInt32LE(offset)===0x04034b50){expect(buffer.readUInt16LE(offset+8)).toBe(0);const size=buffer.readUInt32LE(offset+18),nameSize=buffer.readUInt16LE(offset+26),extraSize=buffer.readUInt16LE(offset+28),name=buffer.toString("utf8",offset+30,offset+30+nameSize),start=offset+30+nameSize+extraSize;files.set(name,buffer.subarray(start,start+size));offset=start+size;}return files;}
@@ -203,8 +205,47 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     for(const stage of ["generate","images","qa","publish","verify"]){const result=await runFactoryBuildWorkerStep(runtime);expect(result).toMatchObject({status:"processed",stage});}
     const result=(await getFactoryProjectBuilds(member,project.projectId))!;expect(result.versions[0]).toMatchObject({status:"ready",sourceReady:true});expect(result.versions[0].previewUrl).toContain("/preview/");
     const source=await getFactorySourceDownload(member,result.versions[0].id),archive=unzipStored(objects.get(source.storageKey)!);expect(archive.has("build.mjs")).toBe(true);expect(archive.has("render.yaml")).toBe(true);expect(archive.has("package-lock.json")).toBe(true);expect(archive.has("site/services/index.html")).toBe(true);expect(archive.has("site/assets/images/hero.png")).toBe(false);expect(archive.has("site/assets/images/hero-mobile.webp")).toBe(true);expect(archive.has("site/assets/images/hero-desktop.webp")).toBe(true);expect(result.versions[0].qaReport?.designReview?.reviewedPages).toEqual(["index.html","services/index.html"]);expect(result.versions[0].qaReport?.pageScreenshots).toHaveLength(4);
-    const prefix=source.storageKey.slice(0,-"source.zip".length);for(const [name,bytes]of archive)if(name.startsWith("site/"))expect(bytes).toEqual(Buffer.from(objects.get(`${prefix}preview/${name.slice(5)}`)!));
+    const prefix=source.storageKey.slice(0,-"source.zip".length),sourceManifest=JSON.parse(archive.get("manifest.json")!.toString()) as FactoryBuildManifest;
+    for(const [name,bytes]of archive)if(name.startsWith("site/")){
+      const path=name.slice(5),entry=sourceManifest.files.find(file=>file.path===path)!;
+      expect(entry.sha256).toBe(createHash("sha256").update(bytes).digest("hex"));
+      if(!path.endsWith(".html"))expect(bytes).toEqual(Buffer.from(objects.get(`${prefix}preview/${path}`)!));
+      else {expect(bytes.toString()).not.toContain("previews.example.test");expect(bytes.toString()).toContain("assets/identity/");}
+    }
+    expect(JSON.parse(archive.get("preview-manifest.json")!.toString()).files).toEqual((await getFactoryPreviewResolution(result.versions[0].previewUrl!.split("/").at(-1)!))!.manifest.files);
     expect(result.monthSpentMicros).toBe(330000);expect((await pool.query("SELECT count(*)::int n FROM factory_build_costs WHERE status='settled'")).rows[0].n).toBe(3);
+  });
+  it("closes failed public verification and retries saved artifacts without new provider charges",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),verifyPublic=runtime.verifyPublic!;
+    runtime.verifyPublic=async(build,manifest)=>{await verifyPublic(build,manifest);throw new FactoryPublicVerificationError("The public preview link or sharing image could not be verified.");};
+    for(let step=0;step<4;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
+    const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];
+    expect(version).toMatchObject({status:"failed",stage:"verify",previewUrl:null});
+    const row=(await pool.query("SELECT preview_token FROM factory_build_versions WHERE id=$1",[version.id])).rows[0];
+    expect(await getFactoryPreviewResolution(row.preview_token)).toBeNull();
+    expect((await pool.query("SELECT count(*)::int n FROM factory_messages WHERE project_id=$1 AND request_id LIKE 'build-ready:%'",[project.projectId])).rows[0].n).toBe(0);
+    runtime.verifyPublic=verifyPublic;await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].status).toBe("ready");
+    expect((await getFactoryProjectBuilds(member,project.projectId))!.monthSpentMicros).toBe(330000);
+  });
+  it.each(["revoke","pause"])("does not mark a site ready when %s happens during its public check",async mode=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),verifyPublic=runtime.verifyPublic!;
+    runtime.verifyPublic=async(build,manifest)=>{const receipt=await verifyPublic(build,manifest);
+      if(mode==="revoke")await pool.query("UPDATE factory_build_versions SET revoked_at=now() WHERE id=$1",[build.id]);else await saveFactoryBuildSettings(owner,{enabled:false,monthlyBudgetDollars:50,perBuildBudgetDollars:5});
+      expect(await getFactoryPreviewResolution(build.previewToken)).toBeNull();return receipt;};
+    for(let step=0;step<4;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
+    expect((await getFactoryProjectBuilds(member,project.projectId))!.versions[0].status).not.toBe("ready");
+  });
+  it("rejects a fresh but earlier-attempt public receipt",async()=>{
+    const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),verifyPublic=runtime.verifyPublic!;
+    runtime.verifyPublic=async(build,manifest)=>({...await verifyPublic(build,manifest),checkedAt:new Date(Date.now()-60000).toISOString()});
+    for(let step=0;step<4;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
+    const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];
+    expect(version.status).toBe("failed");expect(version.previewUrl).toBeNull();
   });
   it("freezes approved logo and photo roles and publishes every selected optimized asset through the complete worker",async()=>{
     const project=await prepared(false),{runtime,objects}=await fixtureRuntime();

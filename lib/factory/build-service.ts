@@ -7,7 +7,8 @@ import type {DashboardContext} from "@/lib/dashboard/data";
 import {getDatabasePool,insertAuditLog} from "@/lib/dashboard/db";
 import {authorizeFactory,factoryTransaction} from "./data";
 import {FactoryInputError} from "./types";
-import {factoryPreviewUrl} from "./build-data";
+import {factoryPreviewUrl,factoryShareUrl} from "./build-data";
+import {hasFactoryIdentity,factoryManifestFingerprint,factoryPublicWindowOpen} from "./public-verification";
 import {factoryBuildConfiguration} from "./build-config";
 import type {FactoryClaimedBuild,FactoryBuildStage,FactoryBuildStageResult,FactoryBuildFinish,FactoryBuildManifest,FactoryBuildQa} from "./build-types";
 import {maximumReviewAttempts,maximumCorrectionAttempts} from "./build-types";
@@ -82,7 +83,7 @@ export async function claimFactoryBuild():Promise<FactoryClaimedBuild|null>{
     const claimed=(await db.query("UPDATE factory_build_versions SET status='running',lease_token=$2,lease_until=now()+interval '15 minutes',attempts=attempts+1,error=NULL,updated_at=now() WHERE id=$1 RETURNING lease_until",[row.id,lease])).rows[0];
     await db.query("UPDATE factory_build_requests SET status='building' WHERE id=$1",[row.build_request_id]);
     const uploads=row.working_data.inputUploads??[];
-    return {id:row.id,workspaceId:row.workspace_id,projectId:row.project_id,buildRequestId:row.build_request_id,planId:row.plan_id,plan:row.plan,version:row.version,stage:row.stage,leaseToken:lease,leaseUntil:new Date(claimed.lease_until).toISOString(),attempt:row.attempts+1,workingData:row.working_data,storagePrefix:row.storage_prefix,previewToken:row.preview_token,uploads};
+    return {id:row.id,workspaceId:row.workspace_id,projectId:row.project_id,buildRequestId:row.build_request_id,planId:row.plan_id,plan:row.plan,version:row.version,stage:row.stage,leaseToken:lease,leaseUntil:new Date(claimed.lease_until).toISOString(),attempt:row.attempts+1,workingData:row.working_data,storagePrefix:row.storage_prefix,previewToken:row.preview_token,previewSlug:row.preview_slug,uploads};
   });
 }
 async function activeBuild(db:PoolClient,id:string,lease:string){
@@ -135,13 +136,31 @@ export async function rollbackFactoryBuildAttempt(input:{versionId:string;leaseT
     return Boolean(updated.rowCount);
   });
 }
+/** The content is already approved, QA-passed, published and privately verified.
+ * Open a short, lease-bound public check before announcing workflow readiness. */
+export async function openFactoryPublicVerification(input:Pick<FactoryBuildFinish,"versionId"|"leaseToken"|"manifest"|"verification">){
+  return buildTransaction(async db=>{
+    const row=await activeBuild(db,input.versionId,input.leaseToken);if(!row||row.stage!=="verify"||row.revoked_at||new Date(row.expires_at).getTime()<=Date.now())return false;
+    const checked=Date.parse(input.verification.checkedAt);
+    if(!row.qa_report?.passed||!hasFactoryIdentity(input.manifest)||!isDeepStrictEqual(input.manifest,row.manifest)||input.verification.url!==factoryPreviewUrl(row.preview_token)||input.verification.status!==200||!Number.isFinite(checked)||checked>Date.now()||checked<Date.now()-300000)throw new FactoryInputError("Verify the checked website before its public sharing check.");
+    const window={leaseToken:input.leaseToken,manifestHash:factoryManifestFingerprint(input.manifest),checkedAt:new Date().toISOString()};
+    await db.query("UPDATE factory_build_versions SET working_data=jsonb_set(working_data,'{publicVerification}',$3::jsonb,true),updated_at=now() WHERE id=$1 AND lease_token=$2",[row.id,input.leaseToken,JSON.stringify(window)]);
+    return true;
+  });
+}
 export async function finishFactoryBuild(input:FactoryBuildFinish){
   return buildTransaction(async db=>{
-    const row=await activeBuild(db,input.versionId,input.leaseToken);if(!row||row.stage!=="verify")return false;
+    const row=await activeBuild(db,input.versionId,input.leaseToken);if(!row||row.stage!=="verify"||row.revoked_at||new Date(row.expires_at).getTime()<=Date.now())return false;
     validateArtifacts(row.storage_prefix,input.manifest,input.qaReport,input.sourceKey);
     const expected=factoryPreviewUrl(row.preview_token),checked=Date.parse(input.verification.checkedAt);
     if(!expected||input.verification.url!==expected||input.verification.status!==200||!Number.isFinite(checked)||checked>Date.now()+30000||checked<Date.now()-300000)throw new FactoryInputError("Verify the real hosted preview before marking this website ready.");
     if(!isDeepStrictEqual(input.manifest,row.manifest)||input.sourceKey!==row.source_key)throw new FactoryInputError("The verified preview must match the published artifact manifest.");
+    if(hasFactoryIdentity(input.manifest)){
+      const receipt=input.verification.public,time=Date.parse(receipt?.checkedAt||"");
+      const publicWindow=row.working_data.publicVerification as {checkedAt?:string}|undefined;
+      if(!Number.isFinite(time)||time<Date.parse(publicWindow?.checkedAt||""))throw new FactoryInputError("Verify the public sharing link again for this build attempt.");
+      if(!factoryPublicWindowOpen({status:row.status,stage:row.stage,leaseToken:row.lease_token,leaseUntil:row.lease_until,manifest:row.manifest,qaPassed:row.qa_report?.passed===true,window:row.working_data.publicVerification})||!receipt||receipt.url!==factoryShareUrl(row.preview_token,row.preview_slug)||receipt.status!==200||receipt.manifestHash!==factoryManifestFingerprint(row.manifest)||!Number.isFinite(time)||time>Date.now()+30000||time<Date.now()-300000)throw new FactoryInputError("Verify the public sharing link and identity assets before marking this website ready.");
+    }
     const snapshot=factoryDraftSnapshot(row.working_data,row.storage_prefix);
     await db.query(`UPDATE factory_build_versions SET status='ready',manifest=$3::jsonb,qa_report=$4::jsonb,source_key=$5,verification=$6::jsonb,draft_snapshot=$7::jsonb,working_data='{}',lease_token=NULL,lease_until=NULL,ready_at=now(),notified_at=now(),updated_at=now() WHERE id=$1 AND lease_token=$2`,[input.versionId,input.leaseToken,JSON.stringify(input.manifest),JSON.stringify(input.qaReport),input.sourceKey,JSON.stringify(input.verification),snapshot?JSON.stringify(snapshot):null]);
     await db.query("UPDATE factory_build_requests SET status='ready' WHERE id=$1",[row.build_request_id]);

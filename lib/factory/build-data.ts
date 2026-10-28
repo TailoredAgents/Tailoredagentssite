@@ -4,11 +4,12 @@ import type { DashboardContext } from "@/lib/dashboard/data";
 import { getDatabasePool } from "@/lib/dashboard/db";
 import { authorizeFactory,factoryTransaction } from "./data";
 import { FactoryInputError } from "./types";
-import type { FactoryBuildSettings,FactoryProjectBuilds,FactoryBuildVersion,FactoryUpload,FactoryBuildManifest } from "./build-types";
+import type { FactoryBuildSettings,FactoryProjectBuilds,FactoryBuildVersion,FactoryUpload } from "./build-types";
 import {factoryBuildConfiguration} from "./build-config";
 import {readBuildActivity} from "./build-progress";
 import {readFactoryFailureEvidence as failureEvidence,isFactoryEvidencePage} from "./build-failure-evidence";
 import {factoryDraftSnapshot} from "./draft-snapshot";
+import {factoryPublicWindowOpen} from "./public-verification";
 
 export function factoryPreviewOrigin() {
   const configured=(process.env.FACTORY_PREVIEW_ORIGIN||"").trim();
@@ -43,8 +44,13 @@ export async function getFactoryProjectBuilds(context:DashboardContext,projectId
 /** Capability lookup for the separate preview service. Never cache its result. */
 export async function getFactoryPreviewResolution(token:string,options:{verification?:boolean}={}){
   if(!/^(?:[0-9a-f]{48}|[a-z][a-z0-9-]{1,63})$/.test(token))return null;
-  const row=(await getDatabasePool().query<{id:string;storage_prefix:string;manifest:FactoryBuildManifest;expires_at:Date;status:string}>(`SELECT v.id,v.storage_prefix,v.manifest,v.expires_at,v.status FROM factory_build_versions v JOIN factory_projects p ON p.id=v.project_id AND p.workspace_id=v.workspace_id JOIN leads l ON l.id=p.lead_id AND l.workspace_id=p.workspace_id JOIN workspaces w ON w.id=v.workspace_id WHERE (v.preview_token=$1 OR v.preview_slug=$1) AND v.revoked_at IS NULL AND v.expires_at>now() AND v.manifest IS NOT NULL AND w.status='active' AND l.anonymized_at IS NULL AND (v.status='ready' OR ($2::boolean AND v.status='running' AND v.stage='verify' AND v.lease_until>now()))`,[token,Boolean(options.verification)])).rows[0];
-  return row?{versionId:row.id,storagePrefix:`${row.storage_prefix}preview/`,manifest:row.manifest,expiresAt:iso(row.expires_at)!,ready:row.status==="ready"}:null;
+  const row=(await getDatabasePool().query(`SELECT v.id,v.storage_prefix,v.manifest,v.expires_at,v.status,v.stage,v.lease_token,v.lease_until,v.qa_report,v.working_data,s.enabled FROM factory_build_versions v JOIN factory_projects p ON p.id=v.project_id AND p.workspace_id=v.workspace_id JOIN leads l ON l.id=p.lead_id AND l.workspace_id=p.workspace_id JOIN workspaces w ON w.id=v.workspace_id LEFT JOIN factory_build_settings s ON s.workspace_id=v.workspace_id WHERE (v.preview_token=$1 OR v.preview_slug=$1) AND v.revoked_at IS NULL AND v.expires_at>now() AND v.manifest IS NOT NULL AND w.status='active' AND l.anonymized_at IS NULL AND (v.status='ready' OR (v.status='running' AND v.stage='verify' AND v.lease_until>now()))`,[token])).rows[0];
+  if(!row)return null;
+  const publicCheck=row.enabled===true&&factoryPublicWindowOpen({status:row.status,stage:row.stage,leaseToken:row.lease_token,leaseUntil:row.lease_until,manifest:row.manifest,qaPassed:row.qa_report?.passed===true,window:row.working_data.publicVerification});
+  if(row.status!=="ready"&&!publicCheck&&!options.verification)return null;
+  // ready here means safe to serve anonymously. CRM READY/notifications still
+  // require the final public receipt; a failed check immediately closes access.
+  return {versionId:row.id,storagePrefix:`${row.storage_prefix}preview/`,manifest:row.manifest,expiresAt:iso(row.expires_at)!,ready:row.status==="ready"||publicCheck};
 }
 export async function getFactorySourceDownload(context:DashboardContext,versionId:string){
   return factoryTransaction(context.workspace.id,async db=>{

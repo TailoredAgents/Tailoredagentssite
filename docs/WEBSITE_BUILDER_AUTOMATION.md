@@ -1,6 +1,6 @@
 # Website Builder: salesperson-operated workflow
 
-**Next implementation plan:** [consistent quality, identity and sharing](WEBSITE_BUILDER_QUALITY_PLAN.md) adds the detailed favicon/link-card/export work and staged real-build acceptance required to earn confidence. Its proposed targets are not achievements of the deployed slice recorded below.
+**Quality roadmap:** [consistent quality, identity and sharing](WEBSITE_BUILDER_QUALITY_PLAN.md) tracks identity/sharing implementation and the staged real-build acceptance required to earn confidence. See [identity release notes](WEBSITE_BUILDER_IDENTITY_SHARING.md) for the completed first slice. Its proposed targets are not achievements of the deployed slice recorded below.
 
 ## Product goal
 

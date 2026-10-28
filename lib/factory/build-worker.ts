@@ -3,9 +3,9 @@ import {createHash} from "node:crypto";
 import {tmpdir} from "node:os";
 import {chromium} from "playwright";
 import {factoryBuildConfiguration,factoryStorageConfiguration} from "./build-config";
-import {factoryPreviewUrl} from "./build-data";
+import {factoryPreviewUrl,factoryShareUrl} from "./build-data";
 import {factoryStorage,type FactoryStorage} from "./storage";
-import {claimFactoryBuild,saveFactoryBuildStage,saveFactoryBuildProgress,requeueFactoryBuildQuality,rollbackFactoryBuildAttempt,finishFactoryBuild,failFactoryBuild,recoverFactoryBuilds,claimFactoryStorageCleanup,finishFactoryStorageCleanup} from "./build-service";
+import {claimFactoryBuild,saveFactoryBuildStage,saveFactoryBuildProgress,requeueFactoryBuildQuality,rollbackFactoryBuildAttempt,openFactoryPublicVerification,finishFactoryBuild,failFactoryBuild,recoverFactoryBuilds,claimFactoryStorageCleanup,finishFactoryStorageCleanup} from "./build-service";
 import {FactoryBuildBudgetError} from "./build-budget";
 import {factorySiteExecutor,generateFactoryHero,FactoryBuildRequestNotAttemptedError} from "./build-provider";
 import {generatePortableSite} from "./site/provider";
@@ -16,6 +16,8 @@ import type {FactoryDraftRevision} from "./draft-types";
 import {SiteGenerationResponseError} from "./site/errors";
 import {portableBundle,validateSiteBlueprint} from "./site/validate";
 import {renderPortableSite} from "./site/render";
+import {prepareSiteIdentity} from "./site/identity";
+import {hasFactoryIdentity,verifyFactoryPublicArtifacts,FactoryPublicVerificationError,type FactoryPublicReceipt} from "./public-verification";
 import {reviewSiteDepth} from "./site/quality";
 import {checkPortableSite} from "./site/qa";
 import {screenshotPath} from "./site/qa";
@@ -26,7 +28,7 @@ import {checkSiteDelivery} from "./site/performance";
 import {createPortableExport} from "./site/package";
 import type {SiteFiles,SiteQaResult,SiteIssue} from "./site/artifacts";
 import type {SiteModelExecutor,SiteBlueprint} from "./site/types";
-import type {FactoryClaimedBuild,FactoryBuildManifest,FactoryBuildQa,FactoryBuildFailureQa} from "./build-types";
+import type {FactoryClaimedBuild,FactoryBuildManifest,FactoryBuildQa,FactoryBuildFailureQa,FactoryBuildVerification} from "./build-types";
 import {maximumReviewAttempts,maximumCorrectionAttempts} from "./build-types";
 import type {FactoryBuildActivity,FactoryBuildActivityStep} from "./build-progress";
 
@@ -47,7 +49,7 @@ function canonicalData(value:unknown):unknown{
 // issue-N mapping) while hashing objects independently of serialization order.
 const contentHash=(value:unknown)=>createHash("sha256").update(JSON.stringify(canonicalData(value))).digest("hex");
 const blockingIssueFingerprint=(issues:SiteIssue[])=>contentHash(issues.filter(issue=>issue.severity==="error").map(issue=>JSON.stringify([issue.page,issue.sectionId??null,issue.code,issue.message])).sort());
-export type FactoryBuildRuntime={storage:FactoryStorage;execute(build:FactoryClaimedBuild):SiteModelExecutor;hero(build:FactoryClaimedBuild,prompt:string,slotId?:string):Promise<{bytes:Uint8Array;provenance:unknown}>;qa(files:SiteFiles):Promise<SiteQaResult>;verify(build:FactoryClaimedBuild,manifest:FactoryBuildManifest):Promise<{url:string;status:200;checkedAt:string}>};
+export type FactoryBuildRuntime={storage:FactoryStorage;execute(build:FactoryClaimedBuild):SiteModelExecutor;hero(build:FactoryClaimedBuild,prompt:string,slotId?:string):Promise<{bytes:Uint8Array;provenance:unknown}>;qa(files:SiteFiles):Promise<SiteQaResult>;verify(build:FactoryClaimedBuild,manifest:FactoryBuildManifest):Promise<FactoryBuildVerification>;verifyPublic?(build:FactoryClaimedBuild,manifest:FactoryBuildManifest):Promise<FactoryPublicReceipt>};
 function working(build:FactoryClaimedBuild):Working{return build.workingData as Working;}
 function checkDeadline(build:FactoryClaimedBuild){if(!Number.isFinite(Date.parse(build.leaseUntil))||Date.parse(build.leaseUntil)<=Date.now())throw new Error("The website worker lease expired.");}
 async function withSite(build:FactoryClaimedBuild,state:Working,runtime:FactoryBuildRuntime){
@@ -61,7 +63,9 @@ async function withSite(build:FactoryClaimedBuild,state:Working,runtime:FactoryB
     if(saved&&createHash("sha256").update(image).digest("hex")!==saved.sha256)throw new Error("A saved website image changed after preparation.");
     Object.assign(assets,slot.role==="logo"?await preparePortableLogo(image,slot.id):await preparePortableImages(image,slot.id,{mobileBytes}));
   }
-  return {bundle,...renderPortableSite(bundle,assets)};
+  Object.assign(assets,await prepareSiteIdentity(blueprint,assets));
+  const publicBaseUrl=factoryPreviewUrl(build.previewToken);if(!publicBaseUrl)throw new Error("The preview domain is not configured.");
+  return {bundle,...renderPortableSite(bundle,assets,{publicBaseUrl})};
 }
 export async function verifyHostedFactoryBuild(build:FactoryClaimedBuild,manifest:FactoryBuildManifest){
   const url=factoryPreviewUrl(build.previewToken);if(!url)throw new Error("The preview domain is not configured.");
@@ -79,6 +83,11 @@ export async function verifyHostedFactoryBuild(build:FactoryClaimedBuild,manifes
 }
 export function defaultFactoryBuildRuntime():FactoryBuildRuntime {
   return {storage:factoryStorage(),execute:factorySiteExecutor,hero:generateFactoryHero,verify:verifyHostedFactoryBuild,
+    async verifyPublic(build,manifest){
+      const previewUrl=factoryPreviewUrl(build.previewToken),shareUrl=factoryShareUrl(build.previewToken,build.previewSlug);
+      if(!previewUrl||!shareUrl)throw new FactoryPublicVerificationError("The preview domain is not configured.");
+      return verifyFactoryPublicArtifacts({previewUrl,shareUrl,manifest,checkDeadline:()=>checkDeadline(build)});
+    },
     async qa(files){
       // Generated data cannot become code. Even trusted QA gets no CRM/provider credentials.
       const browserEnv:Record<string,string>={PATH:process.env.PATH||"",HOME:tmpdir(),TMPDIR:tmpdir(),TEMP:tmpdir(),TMP:tmpdir()};
@@ -320,7 +329,7 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
     const pageScreenshots:NonNullable<FactoryBuildQa["pageScreenshots"]>=[];
     for(const shot of qa.screenshots){const key=`${build.storagePrefix}pages/${screenshotPath(shot.page,shot.viewport)}`;await runtime.storage.put(key,shot.bytes,"image/png");pageScreenshots.push({page:shot.page,viewport:shot.viewport,storageKey:key});}
     const visual=state.review!.result;
-    state.qaReport={passed:true,checks:["Approved page identities and content depth","Distinct content and concrete business claims","Desktop and mobile visual/content review","Mobile image and page-size budgets","Desktop and mobile layouts","Local links and images","Demo navigation and forms","Serious and critical accessibility checks","No external requests"],warnings:qa.issues.filter(i=>i.severity==="warning").map(i=>i.message),screenshots,
+    state.qaReport={passed:true,checks:["Approved page identities and content depth","Distinct content and concrete business claims","Desktop and mobile visual/content review","Mobile image and page-size budgets","Local icons, decoded sharing image and page metadata","Desktop and mobile layouts","Local links and images","Demo navigation and forms","Serious and critical accessibility checks","No external requests"],warnings:qa.issues.filter(i=>i.severity==="warning").map(i=>i.message),screenshots,
       designReview:{summary:visual.summary,reviewedPages:visual.reviewedPages,imageCount:visual.imageCount,...(visual.reviewVersion?{reviewVersion:visual.reviewVersion,overallScore:visual.overallScore,scorecard:visual.scorecard}:{})},delivery:{pages:qa.delivery.pages},...(qa.labPerformance?{labPerformance:qa.labPerformance}:{}),pageScreenshots};
     // Freeze the checked bytes before publication. A deployment between stages
     // must not re-render this version with a different template or encoder.
@@ -346,6 +355,11 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
   if(!state.manifest||!state.qaReport||!state.sourceKey)throw new Error("The published website is incomplete.");
   await report("verifying");
   const verification=await runtime.verify(build,state.manifest);
+  if(hasFactoryIdentity(state.manifest)){
+    if(!runtime.verifyPublic)throw new FactoryPublicVerificationError("The builder needs public sharing verification before this website can be marked ready.");
+    if(!await openFactoryPublicVerification({versionId:build.id,leaseToken:build.leaseToken,manifest:state.manifest,verification}))throw new Error("This website build was paused or removed.");
+    verification.public=await runtime.verifyPublic(build,state.manifest);
+  }
   if(!await finishFactoryBuild({versionId:build.id,leaseToken:build.leaseToken,manifest:state.manifest,qaReport:state.qaReport,sourceKey:state.sourceKey,verification}))throw new Error("This website build was paused or removed.");
 }
 export async function runFactoryBuildWorkerStep(injected?:FactoryBuildRuntime){
@@ -360,7 +374,7 @@ export async function runFactoryBuildWorkerStep(injected?:FactoryBuildRuntime){
   const build=await claimFactoryBuild();if(!build)return cleanup?{status:"cleaned" as const,more:true}:{status:"idle" as const,more:false};
   try{await performFactoryBuildStage(build,runtime);return {status:"processed" as const,stage:build.stage,more:true};}
   catch(error){
-    const message=error instanceof FactoryBuildBudgetError||error instanceof FactoryBuildQualityError||error instanceof SiteReviewResponseError||error instanceof SiteGenerationResponseError?error.message:"This website build could not complete. Check the builder connection and saved progress before retrying. Attempted AI usage remains counted.";
+    const message=error instanceof FactoryBuildBudgetError||error instanceof FactoryBuildQualityError||error instanceof SiteReviewResponseError||error instanceof SiteGenerationResponseError||error instanceof FactoryPublicVerificationError?error.message:"This website build could not complete. Check the builder connection and saved progress before retrying. Attempted AI usage remains counted.";
     await failFactoryBuild({versionId:build.id,leaseToken:build.leaseToken,error:message});
     return {status:"failed" as const,stage:build.stage,more:true};
   }

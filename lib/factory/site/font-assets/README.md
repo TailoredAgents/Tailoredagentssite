@@ -12,3 +12,7 @@ Retrieved October 27, 2026:
 License sources: https://github.com/google/fonts/tree/main/ofl/dmsans, https://github.com/google/fonts/tree/main/ofl/dmserifdisplay, https://github.com/google/fonts/tree/main/ofl/manrope. Copies are retained here and embedded with the data.
 
 The renderer uses `font-display: swap`, system fallbacks, and no external requests. Characters outside the supplied Latin subset use the browser's fallback fonts. Safety validation accepts only these exact font bytes and matching declarations.
+
+`identity-fonts.json` contains the same DM Sans, DM Serif Display regular and Manrope subsets unpacked to TTF for server-side sharing-card/icon outlines. Fontkit 2.0.4 supports the original WOFF2 glyphs, but its `getVariation()` does not preserve the compressed table directory; unpacking allows approved variable weights to work consistently. These derived fonts retain the same names, glyph outlines and SIL OFL licenses. They are internal renderer inputs, never additional browser font downloads. The generated PNG/JPEG identity assets contain no font dependency.
+
+The deterministic conversion used Python FontTools 4.68.0 and Brotli 1.2.1 decoding, with `TTFont(BytesIO(woff2), recalcTimestamp=False)`, `font.flavor=None`, and `font.save(BytesIO())`. No Python or conversion tools are needed in production. The source WOFF2 files and original license texts remain in `data.json`.

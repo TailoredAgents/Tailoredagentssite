@@ -38,7 +38,7 @@ function dependencies(files:SiteFiles,page:string,width:number){
   const visit=(node:DefaultTreeAdapterTypes.Node)=>{
     if("tagName" in node){
       const attrs=attributes(node);
-      if(node.tagName==="link"&&["stylesheet","preload"].includes(attrs.rel)&&matchesWidth(attrs.media||"",width))add(page,attrs.href);
+      if(node.tagName==="link"&&["stylesheet","preload","icon","apple-touch-icon"].includes(attrs.rel)&&matchesWidth(attrs.media||"",width))add(page,attrs.href);
       if(node.tagName==="script")add(page,attrs.src);
       if(node.tagName==="img"){
         const parent=node.parentNode;

@@ -13,7 +13,8 @@ import {runFactoryWorkerStep} from "./worker";
 import {runFactoryBuildWorkerStep,type FactoryBuildRuntime} from "./build-worker";
 import {saveFactoryBuildSettings} from "./build-service";
 import {getFactoryProject} from "./data";
-import {getFactoryProjectBuilds,getFactoryPreviewResolution} from "./build-data";
+import {getFactoryProjectBuilds,getFactoryPreviewResolution,factoryShareUrl} from "./build-data";
+import {factoryManifestFingerprint} from "./public-verification";
 import {reserveFactoryBuildCost,attemptFactoryBuildCost,settleFactoryBuildCost} from "./build-budget";
 import {syncFactoryWorkNotices,getFactoryWorkNotices} from "./work-notices";
 import {fixtureBlueprint,fixtureSitePlan} from "./site/fixtures";
@@ -109,6 +110,10 @@ describe.skipIf(!url)("Salesperson-only lead-to-hosted-preview journey (no paid 
         expect(await getFactoryPreviewResolution(build.previewToken)).toBeNull();
         for(const file of manifest.files){const bytes=objects.get(`${build.storagePrefix}preview/${file.path}`)!;expect(bytes.byteLength).toBe(file.size);expect(createHash("sha256").update(bytes).digest("hex")).toBe(file.sha256);}
         return {url:`https://previews.example.test/p/${build.previewToken}/`,status:200,checkedAt:new Date().toISOString()};
+      },
+      async verifyPublic(build,manifest){
+        expect((await getFactoryPreviewResolution(build.previewToken))?.ready).toBe(true);
+        return {url:factoryShareUrl(build.previewToken,build.previewSlug)!,status:200,checkedAt:new Date().toISOString(),manifestHash:factoryManifestFingerprint(manifest)};
       },
     };
     for(let step=0;step<10;step++){

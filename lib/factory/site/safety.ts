@@ -4,12 +4,15 @@ import { siteManifest, type SiteFiles } from "./artifacts";
 import { siteCsp, trustedSiteRuntime } from "./render";
 import { portableAllImages } from "./images";
 import { portableFontPaths,portableFontLicensePath,stripApprovedFontCss } from "./fonts";
+import {portableSiteIdentityAssets,assertSiteIdentityMetadata,siteIdentityPaths} from "./identity";
 
 /** Defense in depth at the browser boundary: even a corrupted stored bundle
  * cannot introduce executable code, remote resources, frames or form delivery.
  */
 export function assertPortableSiteSafety(files:SiteFiles) {
   siteManifest(files);
+  assertSiteIdentityMetadata(files);
+  const identityFiles=new Set(Object.keys(portableSiteIdentityAssets(files).files));
   const imageSet=portableAllImages(files),imageVariants=imageSet.variants;
   const imageFiles=new Set(Object.keys(imageSet.files));
   const fontFiles=new Set([...portableFontPaths,portableFontLicensePath]);
@@ -17,7 +20,7 @@ export function assertPortableSiteSafety(files:SiteFiles) {
   if(text("assets/runtime.js")!==trustedSiteRuntime)throw new Error("Only the trusted preview runtime can execute during website QA.");
   if(/@import|url\s*\(|image-set\s*\(|expression\s*\(/i.test(stripApprovedFontCss(text("assets/site.css"),files)))throw new Error("Portable styles cannot load resources or execute expressions.");
   for(const name of Object.keys(files)){
-    if(!imageFiles.has(name)&&!fontFiles.has(name)&&!/^(?:index\.html|[a-z][a-z0-9-]{0,48}\/index\.html|assets\/(?:site\.css|runtime\.js)|robots\.txt)$/.test(name))throw new Error("Unexpected public preview artifact.");
+    if(!imageFiles.has(name)&&!identityFiles.has(name)&&!fontFiles.has(name)&&!/^(?:index\.html|[a-z][a-z0-9-]{0,48}\/index\.html|assets\/(?:site\.css|runtime\.js)|robots\.txt)$/.test(name))throw new Error("Unexpected public preview artifact.");
     if(!name.endsWith(".html"))continue;
     const tree=parse(text(name));let scripts=0,styles=0,csp=0;
     const local=(value:string,target:string)=>value===path.posix.relative(path.posix.dirname(name),target);
@@ -40,11 +43,15 @@ export function assertPortableSiteSafety(files:SiteFiles) {
           if(!["img","source"].includes(node.tagName))throw new Error("Unexpected responsive image source.");
           checkSourceSet(attrs.srcset);
         }
-        if(attrs.sizes!==undefined&&(!attrs.srcset||!["img","source"].includes(node.tagName)||!/^(?:\(max-width: [1-9][0-9]{0,3}px\) )?[1-9][0-9]{0,3}(?:px|vw)(?:, [1-9][0-9]{0,3}(?:px|vw))?$/.test(attrs.sizes)))throw new Error("Unexpected responsive image sizing.");
+        if(attrs.sizes!==undefined&&node.tagName!=="link"&&(!attrs.srcset||!["img","source"].includes(node.tagName)||!/^(?:\(max-width: [1-9][0-9]{0,3}px\) )?[1-9][0-9]{0,3}(?:px|vw)(?:, [1-9][0-9]{0,3}(?:px|vw))?$/.test(attrs.sizes)))throw new Error("Unexpected responsive image sizing.");
         if(node.tagName==="script"){
           scripts++;if(!local(attrs.src,"assets/runtime.js")||node.childNodes.some(n=>"value" in n&&n.value.trim()))throw new Error("Only the trusted preview runtime can execute during website QA.");
         }else if(node.tagName==="link"){
-          styles++;if(attrs.rel!=="stylesheet"||!local(attrs.href,"assets/site.css"))throw new Error("Only local portable styles are allowed.");
+          if(attrs.rel==="stylesheet"){styles++;if(!local(attrs.href,"assets/site.css"))throw new Error("Only local portable styles are allowed.");}
+          else if(attrs.rel==="icon"||attrs.rel==="apple-touch-icon"){
+            const target=attrs.rel==="apple-touch-icon"?siteIdentityPaths.touch:attrs.sizes==="32x32"?siteIdentityPaths.icon32:attrs.sizes==="64x64"?siteIdentityPaths.icon64:null;
+            if(!target||!identityFiles.has(target)||!local(attrs.href,target)||attrs.sizes!==(attrs.rel==="apple-touch-icon"?"180x180":target===siteIdentityPaths.icon32?"32x32":"64x64")||(attrs.rel==="icon"&&attrs.type!=="image/png"))throw new Error("Only exact local identity icons are allowed.");
+          }else throw new Error("Only local portable styles and identity icons are allowed.");
         }else if(node.tagName==="style")throw new Error("Inline styles are not allowed in portable previews.");
         else if(node.tagName==="img"&&!localImage(attrs.src))throw new Error("Only local approved imagery is allowed.");
         else if(node.tagName==="source"){
