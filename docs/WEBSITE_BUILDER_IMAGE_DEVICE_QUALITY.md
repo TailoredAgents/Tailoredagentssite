@@ -39,4 +39,14 @@ After deployment, use three fresh separately human-approved plans: an establishe
 - Desktop and phone synthetic renders were visually inspected. The [frozen ten-case comparison](quality/imagery-devices-2026-10-28-v1.json) retained **eight passes and the same two intentional thin-content negatives**, with unchanged input hashes, no source changes during measurement and zero provider calls. No human design scores were assigned.
 - The hosted baseline recorded 17/18 valid observations; a separately retained Services follow-up passed 6/6. One original stylesheet failure has an unconfirmed cause. Details remain in the performance report; this is not an all-green production reliability claim.
 
-No paid generation or real client approval was performed. Deployment verification is recorded after rollout.
+No paid generation or real client approval was performed.
+
+## Deployment
+
+Implementation **`19f2cbf2e1b113df517c5a9f2a36876bde74a8e0`** was pushed to `main` and verified live on both Render services on October 28, 2026:
+
+- CRM: `dep-dbh1tsavcj2c73e251v0`, live at 12:14:46 PM America/New_York.
+- Website builder: `dep-dbh1tsqvcj2c73e253r0`, successful auto-deploy of the same commit.
+- After rollout, the public CRM health endpoint and existing Cosmo v9 branded preview both returned HTTP 200. The preview remains excluded from indexing. No existing client approval or public artifact was replaced.
+
+Next: fresh, separately human-approved pilot builds and independent salesperson acceptance, as described above. The occasional hosted stylesheet failure remains a recorded diagnostic finding; this release does not claim its cause is fixed.
