@@ -5,7 +5,7 @@ import {mkdir,writeFile} from "node:fs/promises";
 import path from "node:path";
 import {tmpdir} from "node:os";
 import {fixtureBlueprint,fixtureHeroSvg,fixtureSitePlan} from "./fixtures";
-import {applyApprovedDesign} from "./design";
+import {applyApprovedDesign,contrastRatio} from "./design";
 import {portableBundle} from "./validate";
 import {preparePortableImages,preparePortableLogo} from "./images";
 import {renderPortableSite,siteActionTarget} from "./render";
@@ -149,6 +149,25 @@ describe("Premium portable presentation",()=>{
         expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
       }finally{await context.close();}
     }
+  },30000);
+  it.each([[320,"#087f8c"],[390,"#f3ad46"],[1440,"#087f8c"]] as const)("keeps text-only service tabs together with a readable selected accent at %ipx",async(width,accent)=>{
+    const b=presentationFixture("professional");b.presentation!.sectionImages=[];b.media=b.media!.filter(media=>media.role==="logo");b.accent=accent;b.design!.palette.accent=accent;
+    const {files}=renderPortableSite(portableBundle(b),assets),context=await browser.newContext({viewport:{width,height:900}});
+    try{
+      await context.route("**/*",route=>{const key=new URL(route.request().url()).pathname.slice(1)||"index.html";return files[key]?route.fulfill({body:Buffer.from(files[key]),contentType:siteContentType(key)}):route.abort();});
+      const page=await context.newPage();await page.goto("https://presentation.test/index.html");await page.evaluate(()=>document.fonts.ready);
+      const tabs=page.getByRole("tab");await tabs.first().focus();await page.keyboard.press("End");
+      expect(await tabs.last().getAttribute("aria-selected")).toBe("true");expect(await page.getByRole("tabpanel").count()).toBe(1);
+      const result=await page.evaluate(()=>{
+        const tab=document.querySelector('[role="tab"][aria-selected="true"]')!,panel=document.querySelector('[role="tabpanel"]:not([hidden])')!,list=document.querySelector('[role="tablist"]')!;
+        const hex=(value:string)=>"#"+value.match(/\d+/g)!.slice(0,3).map(value=>Number(value).toString(16).padStart(2,"0")).join("");
+        return {ink:hex(getComputedStyle(tab).color),background:hex(getComputedStyle(tab).backgroundColor),gap:panel.querySelector("h3")!.getBoundingClientRect().top-list.getBoundingClientRect().bottom,padding:parseFloat(getComputedStyle(panel.querySelector(".item-body")!).paddingTop),overflow:document.documentElement.scrollWidth>innerWidth+2};
+      });
+      expect(result.background).toBe(accent);expect(contrastRatio(result.ink,result.background)).toBeGreaterThanOrEqual(4.5);
+      expect(result.padding).toBe(0);if(width<=760){expect(result.gap).toBeGreaterThanOrEqual(0);expect(result.gap).toBeLessThanOrEqual(18);}
+      expect(result.overflow).toBe(false);expect(await page.getByRole("tabpanel").locator(".service-link").getAttribute("href")).toBe("#contact");
+      await page.keyboard.press("Home");expect(await tabs.first().getAttribute("aria-selected")).toBe("true");
+    }finally{await context.close();}
   },30000);
   it("keeps a contact photo beside its form without overlap and handles a narrow screen and long name",async()=>{
     const b=presentationFixture("professional",true);

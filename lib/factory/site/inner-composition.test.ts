@@ -61,7 +61,7 @@ describe("Content-sized inner compositions",()=>{
           expect(width>760?box.sideBySide:box.stacked).toBe(true);expect(box.headingSize).toBeLessThanOrEqual(width>760?(section.kind==="statement"?48:42.4):38.4);
           if(width>760)expect(box.height).toBeLessThan(320);
           expect(box.readingWidth).toBe(box.contentWidth);
-          expect(box.padding).toBe(width>760?57:40);
+          expect(box.padding).toBe(section.id==="conversation"?(width>760?38:30):(width>760?57:40));
         }
         const contact=page.locator("#next-step .contact-item");
         expect(await contact.getByRole("heading",{name:"Start an inquiry"}).count()).toBe(1);
@@ -103,6 +103,29 @@ describe("Content-sized inner compositions",()=>{
     }
     delete b.presentation;delete b.media;b.pages[0].sections[0].layout="grid";const legacy=Buffer.from((await render(b))[about.path]).toString();expect(legacy).not.toContain("compact-content");expect(legacy).not.toContain("contact-heading-link");
   },60000);
+
+  it("gives a short inner overview and concluding note supporting weight without changing their content or tone",async()=>{
+    const b=readingFixture(),services=b.pages.find(page=>page.path==="services/index.html")!;
+    services.sections.unshift({id:"overview",kind:"statement",layout:"band",eyebrow:"Before the details",title:"Start with useful context.",body:"Consider which topic best fits the question you want to explore.",items:[]});
+    const original=structuredClone(b),files=await render(b),context=await browser.newContext();
+    try{
+      await serve(context,files);const page=await context.newPage();
+      for(const width of [390,1440]){
+        await page.setViewportSize({width,height:900});await page.goto("https://inner-composition.test/services/index.html");await page.evaluate(()=>document.fonts.ready);
+        const overview=page.locator("#overview");expect(await overview.getAttribute("class")).toContain("reading-introduction");
+        const sizing=await overview.evaluate(element=>({padding:parseFloat(getComputedStyle(element).paddingTop),size:parseFloat(getComputedStyle(element.querySelector("h2")!).fontSize)}));
+        expect(sizing.padding).toBe(width>760?38:30);expect(sizing.size).toBeLessThanOrEqual(width>760?33.6:24);
+        expect(await overview.locator(".section-copy").textContent()).toBe(services.sections[0].body);
+        await page.goto("https://inner-composition.test/about/index.html");await page.evaluate(()=>document.fonts.ready);
+        expect(await page.locator("#conversation.reading-conclusion").count()).toBe(1);
+        expect(await page.locator("#purpose.reading-conclusion,#care.reading-conclusion").count()).toBe(0);
+        const sizes=await page.evaluate(()=>["purpose","conversation"].map(id=>parseFloat(getComputedStyle(document.querySelector(`#${id} h2`)!).fontSize)));
+        expect(sizes[1]).toBeLessThan(sizes[0]);
+        await page.goto("https://inner-composition.test/index.html");expect(await page.locator(".reading-introduction,.reading-conclusion").count()).toBe(0);
+      }
+      expect(b).toEqual(original);
+    }finally{await context.close();}
+  },30000);
 
   it("passes full browser QA with an ink contact card and retains near-matching contact labels",async()=>{
     const b=readingFixture(),contact=b.pages.find(page=>page.title==="Contact")!;

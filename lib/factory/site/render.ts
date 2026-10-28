@@ -148,12 +148,18 @@ function sectionMarkup(section:SiteBlueprint["pages"][number]["sections"][number
   const precedesInquiry=blueprint.interactions?.forms.some(form=>form.pagePath===pagePath&&form.sectionId===page.sections[index+1]?.id);
   const compactContent=blueprint.presentation&&pagePath!=="index.html"&&section.kind!=="contact"&&!bindings.length&&!(copyOnly&&precedesInquiry)&&words<=(copyOnly?110:360);
   const readingSection=compactContent&&copyOnly&&Boolean(section.body)&&words<=110;
+  const previous=page.sections[index-1],following=page.sections[index+1];
+  // A brief orientation before detailed content and a closing note before
+  // contact have supporting roles. Keep a standalone statement expressive.
+  const readingIntroduction=readingSection&&words<=60&&index===0&&Boolean(following?.items.length);
+  const readingConclusion=readingSection&&words<=60&&following?.kind==="contact"&&previous&&!previous.items.length
+    &&previous.kind!=="contact"&&[previous.title,previous.body].join(" ").trim().split(/\s+/).length<=110;
   // A final direct-contact band has no form to fill its second grid column.
   // Use that column for its existing channels/actions; keep all copy intact.
   const contactClosing=blueprint.presentation&&blueprint.interactions&&!isContactPage(page)&&section.kind==="contact"&&!hasForm&&!sectionImage&&index===page.sections.length-1;
   const compactInquiry=blueprint.presentation&&!isContactPage(page)&&hasForm&&!sectionImage;
   const inquiryContext=blueprint.presentation&&pagePath!=="index.html"&&!isContactPage(page)&&copyOnly&&!sectionImage&&precedesInquiry;
-  return `<section id="${escape(section.id)}" class="site-section section-${section.kind} layout-${section.layout} section-order-${index%2}${tone?` tone-${tone}`:""}${copyOnly?" is-copy-only":""}${sectionImage?" has-section-image":""}${hasForm?" with-demo-form":""}${compactContent?" compact-content":""}${readingSection?" reading-section":""}${contactClosing?` contact-closing${hasContactDetails?"":" contact-copy-only"}`:""}${compactInquiry?" compact-inquiry":""}${inquiryContext?" inquiry-context":""}" aria-labelledby="${escape(section.id)}-heading"><div class="section-inner">${heading.replace("<h2>",`<h2 id="${escape(section.id)}-heading">`)}${illustration}${content}</div></section>`;
+  return `<section id="${escape(section.id)}" class="site-section section-${section.kind} layout-${section.layout} section-order-${index%2}${tone?` tone-${tone}`:""}${copyOnly?" is-copy-only":""}${sectionImage?" has-section-image":""}${hasForm?" with-demo-form":""}${compactContent?" compact-content":""}${readingSection?" reading-section":""}${readingIntroduction?" reading-introduction":""}${readingConclusion?" reading-conclusion":""}${contactClosing?` contact-closing${hasContactDetails?"":" contact-copy-only"}`:""}${compactInquiry?" compact-inquiry":""}${inquiryContext?" inquiry-context":""}" aria-labelledby="${escape(section.id)}-heading"><div class="section-inner">${heading.replace("<h2>",`<h2 id="${escape(section.id)}-heading">`)}${illustration}${content}</div></section>`;
 }
 
 export function renderPortableSite(bundle:PortableSiteBundle,assets:Record<string,Uint8Array>) {
