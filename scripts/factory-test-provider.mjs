@@ -54,6 +54,7 @@ const server=createServer(async(req,res)=>{
     calls++;
     if(failure)return json(res,503,{error:{message:"Synthetic provider interruption"}});
     const commercial=JSON.stringify(body.input).includes("commercial roofing");
+    const includeAbout=JSON.stringify(body.input).includes("Include an About page.");
     const unchanged=JSON.stringify(body.input).includes("No change please");
     const research=Boolean(body.tools?.some(t=>t.type==="web_search"));
     const plan={
@@ -63,7 +64,7 @@ const server=createServer(async(req,res)=>{
       knownDetails:[{label:"Requested service",value:"A first website",basis:"submitted",sourceIds:[]}],
       uncertainties:["Company name and service area are not confirmed.","No existing website was supplied; this does not establish that none exists."],
       assumptions:["Use a working concept title until branding is provided."],
-      pages:[{title:"Home",purpose:"Explain the offering and invite an inquiry",sections:["Clear introduction","Services","Contact"]},{title:"Services",purpose:commercial?"Explain commercial roofing services":"Leave service descriptions ready for confirmed details",sections:["Service overview","Request an estimate"]}],
+      pages:[{title:"Home",purpose:"Explain the offering and invite an inquiry",sections:["Clear introduction","Services","Contact"]},{title:"Services",purpose:commercial?"Explain commercial roofing services":"Leave service descriptions ready for confirmed details",sections:["Service overview","Request an estimate"]},...(includeAbout?[{title:"About",purpose:"Explain the approach",sections:["Discovery","Preparation"]}]:[])],
       callsToAction:[commercial?"Request a roofing estimate":"Discuss your project"],
       design:{direction:commercial?"Confident industrial design with a clear business focus":"Warm, readable editorial design",palette:["Background: #F5F7FA","Surface: #FFFFFF","Ink: #172B46","Muted: #50617A","Accent: #3769B2","AccentSecondary: #C5CFEF"],recipe:{version:1,family:commercial?"trades":"general",composition:commercial?"split":"centered",fontTheme:"studio",density:commercial?"compact":"balanced",radius:"soft"},typography:"Clear sans-serif headings and readable body text",imagery:"Illustrative concept imagery; no invented completed projects"},
       previewFeatures:["Responsive navigation","Demonstration inquiry form"],productionIntegrations:["Connect the real inquiry form","Confirm business content and domain"],

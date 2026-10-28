@@ -19,7 +19,7 @@ export default defineConfig({
         NODE_OPTIONS:`--require ${JSON.stringify(resolve("scripts/factory-test-preload.cjs"))}`,
         BETTER_AUTH_SECRET:"factory-browser-local-session-secret-1234567890",DASHBOARD_AUTH_MODE:"password",
         DASHBOARD_ALLOWED_EMAILS:"owner@example.test,member@example.test,viewer@example.test",DASHBOARD_INITIAL_PASSWORD:"factory-browser-bootstrap-only",
-        FACTORY_PREVIEW_ORIGIN:"https://factory-previews.example.test",FACTORY_OPENAI_API_KEY:"factory-synthetic-no-live-key",FACTORY_WORKER_SECRET:"factory-browser-local-worker-secret-1234567890",
+        FACTORY_PREVIEW_ORIGIN:"https://factory-previews.example.test",FACTORY_PREVIEW_SECRET:"factory-browser-local-preview-secret-1234567890",FACTORY_STORAGE_URL:"https://factory-storage.example.test",FACTORY_STORAGE_SECRET:"factory-browser-local-storage-secret-1234567890",FACTORY_OPENAI_API_KEY:"factory-synthetic-no-live-key",FACTORY_WORKER_SECRET:"factory-browser-local-worker-secret-1234567890",
         OPENAI_API_KEY:"",SEO_OPENAI_API_KEY:"",CRM_MAIL_SECRET:"",TWILIO_ACCOUNT_SID:"",TWILIO_AUTH_TOKEN:"",TWILIO_VOICE_ENABLED:"false",TWILIO_SMS_ENABLED:"false",RESEND_API_KEY:"",CONTACT_FROM_EMAIL:"",CONTACT_TO_EMAIL:""}},
   ],
 });

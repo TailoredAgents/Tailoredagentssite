@@ -9,8 +9,8 @@ October 27, 2026. Implemented, locally verified and deployed. This release imple
 1. Open **Website Builder**, choose the project, and select its newest finished or failed website version.
 2. If checks failed, expand **Failed quality checks & screenshots**. Select the affected page to see its recorded issues and desktop/mobile captures. These are private review images; the failed website has no public sharing link.
 3. Expand **Edit this draft**, then choose **Page** and **Part of the page**. The page introduction is separate from its content sections.
-4. Choose **Edit text & layout** to make changes directly, or **Ask AI to refine** to describe a change to that selected part. Manual edits show the saved wording beside the proposed wording. Apply or discard unsaved changes before switching parts.
-5. Select **Apply changes & check**. A new website version enters the existing build queue. Its saved images are reused; the normal content, desktop/mobile, visual and publication checks run. Open/share controls appear only after success. The previous working preview remains available if the revision fails.
+4. Choose **Edit text & layout** to make changes directly, or **Ask AI to refine** to describe a change to that selected part. Manual edits show the saved wording beside the proposed wording. For several manual edits, select **Keep this change**, choose another page/part, and repeat. The kept list supports revisiting or removing a change. Kept changes are local to the open editor until applied.
+5. Select **Apply changes & check**. The kept manual changes and any current edited part are submitted together as one new website version. Saved images are reused; the normal content, desktop/mobile, visual and publication checks run once for that version. Open/share controls appear only after success. The previous working preview remains available if the revision fails.
 
 The initial website still requires exact human plan approval. An explicit in-scope edit uses that existing approval; it does not send the salesperson back through planning. Submitting an edit is not a guarantee that it passes the checks.
 
@@ -20,6 +20,7 @@ The initial website still requires exact human plan approval. An explicit in-sco
 | --- | --- |
 | Manual introduction | Change that page's headline and description. If a Home headline no longer contains its previously emphasized phrase, the obsolete emphasis is removed. |
 | Manual content section | Change the heading, description, existing supported layout and item wording. Unbound section details can be added/removed within existing schema limits. Items with action or image bindings must retain their count and order. |
+| Several manual parts | Keep up to twelve unique page introductions/sections and submit one atomic revision. Invalid, stale or over-budget requests leave the original draft and queue unchanged. Editing the same part replaces its kept patch instead of adding a duplicate. |
 | Scoped AI revision | Give a direction for one selected introduction or section. The model receives the approved plan, saved website data and bounded screenshots of the affected page. It returns a content patch; application code applies only the selected target. |
 | Restore | **Undo the last saved revision → Restore previous draft** creates another version from the immediate parent's saved draft. It retains the same approval and reruns checks; it does not overwrite or delete either version. |
 
@@ -28,6 +29,7 @@ This is a structured section editor, not a visual drag-and-drop canvas or an arb
 ## Costs, versions and review
 
 - A direct manual edit makes no text-generation request. Its fresh visual assessment can still incur AI cost. An AI edit adds one bounded patch request before assessment; restore also reruns assessment.
+- A group of manual edits creates one version and receives one normal visual assessment; it does not request one review per changed section. The server bounds serialized patches to 200 KB and twelve unique targets. AI refinement remains a single-part action and cannot be combined with kept manual edits in one request.
 - All versions derived from the **same approved build request** share the configured per-website ceiling. Existing settled, reserved and uncertain charges count together. The approved pilot settings remain $50/month for building/images and $5 per approved website; research remains separate at $25/month. These are ceilings, not prices or automatic additional charges.
 - Existing image bytes are copied into the child version after scope and hash verification. This editing path does not generate replacement images. It preserves image identities, provenance and the approved upload snapshot.
 - New revisions start with their own normal review accounting but share cumulative spending. They do not reset the parent's counters, erase charges, or gain a fresh $5 allowance. A revision is already an explicit correction and does not receive another automatic full-site repair.

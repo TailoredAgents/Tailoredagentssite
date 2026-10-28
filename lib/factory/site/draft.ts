@@ -11,6 +11,34 @@ export const siteDraftContentSchema=z.object({
 }).strict();
 export type SiteDraftTarget=z.infer<typeof siteDraftTargetSchema>;
 export type SiteDraftContent=z.infer<typeof siteDraftContentSchema>;
+export const siteDraftBatchLimits={maxPatches:12,maxBytes:200_000} as const;
+export const siteDraftPatchSchema=z.object({target:siteDraftTargetSchema,content:siteDraftContentSchema}).strict();
+export type SiteDraftPatch=z.infer<typeof siteDraftPatchSchema>;
+const siteDraftPatchesSchema=z.array(siteDraftPatchSchema).min(1,"Keep at least one change before checking the website.").max(siteDraftBatchLimits.maxPatches,"Check up to 12 changed sections together.").superRefine((patches,context)=>{
+  const seen=new Set<string>();
+  patches.forEach((patch,index)=>{
+    const key=`${patch.target.pagePath}/${patch.target.sectionId}`;
+    if(seen.has(key))context.addIssue({code:"custom",path:[index,"target"],message:"Keep only one change for each page introduction or section."});
+    seen.add(key);
+  });
+});
+
+/** Bound serialized form input before parsing, including UTF-8 multibyte content. */
+export function parseSiteDraftPatches(input:unknown):SiteDraftPatch[]{
+  let value=input;
+  if(typeof value==="string"){
+    if(value.length>siteDraftBatchLimits.maxBytes||new TextEncoder().encode(value).byteLength>siteDraftBatchLimits.maxBytes)throw new SiteBlueprintError("These draft changes are too long. Check fewer sections together.");
+    try{value=JSON.parse(value);}catch{throw new SiteBlueprintError("Review the saved section changes before applying them.");}
+  }
+  const patches=siteDraftPatchesSchema.parse(value);
+  if(new TextEncoder().encode(JSON.stringify(patches)).byteLength>siteDraftBatchLimits.maxBytes)throw new SiteBlueprintError("These draft changes are too long. Check fewer sections together.");
+  return patches;
+}
+
+/** Validate every target before returning one immutable, all-or-nothing candidate. */
+export function applySiteDraftPatches(blueprint:SiteBlueprint,input:unknown):SiteBlueprint{
+  return parseSiteDraftPatches(input).reduce((candidate,patch)=>applySiteDraftPatch(candidate,patch.target,patch.content),blueprint);
+}
 
 /** A scoped data patch cannot change pages, contacts, forms, action targets or assets. */
 export function applySiteDraftPatch(blueprint:SiteBlueprint,target:SiteDraftTarget,content:SiteDraftContent):SiteBlueprint {

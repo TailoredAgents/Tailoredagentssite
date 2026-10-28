@@ -689,6 +689,12 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     function manual(draft:Awaited<ReturnType<typeof getFactoryDraft>>,requestId=randomUUID()){
       return {versionId:draft.versionId,fingerprint:draft.fingerprint,requestId,mode:"manual",pagePath:"index.html",sectionId:"__intro__",headline:"A clear next step for your project",body:draft.pages[0].hero.body,layout:null,items:null};
     }
+    function batch(draft:Awaited<ReturnType<typeof getFactoryDraft>>){
+      return {...manual(draft),patches:JSON.stringify([
+        {target:{pagePath:"index.html",sectionId:"__intro__"},content:{headline:"A clear next step for your project",body:draft.pages[0].hero.body,layout:null,items:null}},
+        {target:{pagePath:"services/index.html",sectionId:"options"},content:{headline:"Compare the paths available",body:draft.pages[1].sections[0].body,layout:"rows",items:draft.pages[1].sections[0].items}},
+      ])};
+    }
     it("allows an editable saved draft only to an active editing teammate, and removes access with its lead",async()=>{
       const data=await editableFixture();expect(data.draft.pages).toHaveLength(2);expect(data.draft.fingerprint).toMatch(/^[a-f0-9]{64}$/);
       expect(JSON.stringify(data.draft)).not.toContain("inputHash");expect(JSON.stringify(data.draft)).not.toContain(data.version.storage_prefix);
@@ -736,6 +742,47 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
       expect(hero).not.toHaveBeenCalled();expect((await getFactoryDraft(member,restore.versionId)).pages[0].hero.headline).toBe(data.draft.pages[0].hero.headline);
       expect((await pool.query("SELECT count(*)::int n FROM factory_build_requests WHERE project_id=$1",[data.projectId])).rows[0].n).toBe(1);
     });
+    it("checks a batch once, reuses the same approval and images, and deduplicates repeated submissions even after completion",async()=>{
+      const data=await editableFixture(true),initial=structuredClone(data.version),input=batch(data.draft);
+      const execute=data.runtime.execute,stages:string[]=[];data.runtime.execute=job=>async request=>{stages.push(request.stage);return execute(job)(request);};
+      const hero=vi.fn(data.runtime.hero);data.runtime.hero=hero;
+      await expect(reviseFactoryDraft(member,{...input,fingerprint:"0".repeat(64)})).rejects.toThrow("draft changed");
+      // Old form fields are ignored when the authoritative batch is present.
+      const revision=await reviseFactoryDraft(member,{...input,pagePath:"ignored/index.html",sectionId:"ignored",headline:"Ignored stale form value",items:"not-json"});
+      expect(await reviseFactoryDraft(member,input)).toEqual(revision);
+      for(let step=0;step<4;step++)expect((await runFactoryBuildWorkerStep(data.runtime)).status).toBe("processed");
+      expect(await reviseFactoryDraft(member,input)).toEqual(revision);
+      await expect(reviseFactoryDraft(member,{...input,requestId:randomUUID()})).rejects.toThrow("newest website version");
+      const child=(await pool.query("SELECT * FROM factory_build_versions WHERE id=$1",[revision.versionId])).rows[0],expected=structuredClone(initial.draft_snapshot.blueprint);
+      expected.pages[0].hero.headline="A clear next step for your project";expected.pages[1].sections[0].title="Compare the paths available";expected.pages[1].sections[0].layout="rows";
+      expect(child).toMatchObject({kind:"revision",status:"ready",parent_version_id:initial.id,build_request_id:initial.build_request_id,version:2});
+      expect(child.draft_snapshot.blueprint).toEqual(expected);expect(child.draft_snapshot.inputUploads).toEqual(initial.draft_snapshot.inputUploads);
+      expect(stages).toEqual(["review"]);expect(hero).not.toHaveBeenCalled();
+      expect(data.objects.get(`${child.storage_prefix}assets/hero.png`)).toEqual(data.objects.get(`${initial.storage_prefix}assets/hero.png`));
+      expect((await pool.query("SELECT * FROM factory_build_versions WHERE id=$1",[initial.id])).rows[0]).toEqual(initial);
+      expect((await pool.query("SELECT count(*)::int n FROM factory_messages WHERE project_id=$1 AND request_id=$2",[data.projectId,`draft:${input.requestId}`])).rows[0].n).toBe(1);
+      expect((await pool.query("SELECT count(*)::int n FROM factory_build_versions WHERE project_id=$1",[data.projectId])).rows[0].n).toBe(2);
+      expect((await pool.query("SELECT count(*)::int n FROM factory_build_requests WHERE project_id=$1",[data.projectId])).rows[0].n).toBe(1);
+      expect((await getFactoryDraft(member,child.id)).spentMicros).toBeGreaterThan(data.draft.spentMicros);
+    });
+    it("rejects an entire batch if a later patch is invalid, duplicated, outside scope or sent as AI/restore",async()=>{
+      const data=await editableFixture(),input=batch(data.draft),patches=JSON.parse(input.patches);
+      const before=(await pool.query("SELECT * FROM factory_build_versions WHERE project_id=$1",[data.projectId])).rows;
+      const requestsBefore=(await pool.query("SELECT * FROM factory_build_requests WHERE project_id=$1",[data.projectId])).rows;
+      for(const bad of [
+        [...patches,{target:{pagePath:"services/index.html",sectionId:"missing"},content:patches[0].content}],
+        [...patches,patches[0]],
+        [patches[0],{...patches[1],content:{...patches[1].content,forms:[]}}],
+        [patches[0],{...patches[1],target:{pagePath:"other-client/index.html",sectionId:"__intro__"}}],
+      ])await expect(reviseFactoryDraft(member,{...input,patches:JSON.stringify(bad)})).rejects.toThrow();
+      for(const mode of ["ai","restore"])await expect(reviseFactoryDraft(member,{...input,mode,instruction:"Alter this section"})).rejects.toThrow("only be applied as a manual revision");
+      await expect(reviseFactoryDraft(member,{...input,patches:JSON.stringify([{target:{pagePath:"index.html",sectionId:"__intro__"},content:{headline:data.draft.pages[0].hero.headline,body:data.draft.pages[0].hero.body,layout:null,items:null}}])})).rejects.toThrow("Make a change");
+      await expect(reviseFactoryDraft(other,input)).rejects.toThrow("no longer available");
+      expect((await pool.query("SELECT * FROM factory_build_versions WHERE project_id=$1",[data.projectId])).rows).toEqual(before);
+      expect((await pool.query("SELECT * FROM factory_build_requests WHERE project_id=$1",[data.projectId])).rows).toEqual(requestsBefore);
+      expect((await pool.query("SELECT count(*)::int n FROM factory_messages WHERE project_id=$1 AND request_id=$2",[data.projectId,`draft:${input.requestId}`])).rows[0].n).toBe(0);
+      expect((await getFactoryDraft(member,data.version.id)).spentMicros).toBe(data.draft.spentMicros);
+    });
     it("applies an AI patch only to the selected introduction with real screenshot context and no new images",async()=>{
       const data=await editableFixture(),execute=data.runtime.execute,hero=vi.fn(data.runtime.hero),requests:unknown[]=[];data.runtime.hero=hero;
       const target="services/index.html",patch={headline:"Explore the right next step",body:"Compare the questions and priorities for your project before choosing a direction.",layout:null,items:null};
@@ -777,7 +824,7 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
       const uncertain=await reserveFactoryBuildCost({versionId:parent.id,leaseToken:parent.leaseToken,stage:parent.stage,requestKey:"draft-parent-uncertain",reservedMicros:1_500_000});
       await attemptFactoryBuildCost(uncertain,parent.leaseToken);await uncertainFactoryBuildCost(uncertain);await failFactoryBuild({versionId:parent.id,leaseToken:parent.leaseToken,error:"Synthetic provider interruption."});
       const draft=await getFactoryDraft(member,parent.id);expect(draft.spentMicros).toBe(4_730_000);expect(draft.remainingMicros).toBe(270_000);
-      const revision=await reviseFactoryDraft(member,manual(draft));expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
+      const revision=await reviseFactoryDraft(member,batch(draft));expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
       const child=(await claimFactoryBuild())!;expect(child.id).toBe(revision.versionId);expect(child.stage).toBe("qa");
       const shared=await reserveFactoryBuildCost({versionId:child.id,leaseToken:child.leaseToken,stage:child.stage,requestKey:"draft-child-uncertain",reservedMicros:100_000});
       await attemptFactoryBuildCost(shared,child.leaseToken);await uncertainFactoryBuildCost(shared);
@@ -786,6 +833,7 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
       await attemptFactoryBuildCost(final,child.leaseToken);await uncertainFactoryBuildCost(final);await failFactoryBuild({versionId:child.id,leaseToken:child.leaseToken,error:"Synthetic quality interruption."});
       const spent=await getFactoryDraft(member,child.id);expect(spent.spentMicros).toBe(5_000_000);expect(spent.remainingMicros).toBe(0);
       await expect(reviseFactoryDraft(member,{...manual(spent),headline:"Another focused direction"})).rejects.toThrow("used its build allowance");
+      await expect(reviseFactoryDraft(member,{...batch(spent),patches:JSON.stringify([{target:{pagePath:"index.html",sectionId:"__intro__"},content:{headline:"Another focused direction",body:spent.pages[0].hero.body,layout:null,items:null}}])})).rejects.toThrow("used its build allowance");
       expect((await pool.query("SELECT count(*)::int n FROM factory_build_versions WHERE project_id=$1",[project.projectId])).rows[0].n).toBe(2);
     });
   });
