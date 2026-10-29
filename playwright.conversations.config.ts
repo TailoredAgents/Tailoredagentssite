@@ -8,8 +8,8 @@ if (!["postgres:","postgresql:"].includes(parsed.protocol) || !["127.0.0.1","loc
   throw new Error("Conversation browser tests require the exact disposable local database.");
 export default defineConfig({
   testDir:"./tests/conversations",fullyParallel:false,workers:1,timeout:90000,
-  use:{baseURL:origin,trace: "retain-on-failure", storageState: dashboardThemeStorage()},
-  projects:[{name:"desktop",use:{...devices["Desktop Chrome"],viewport:{width:1440,height:1000}}},{name:"phone",use:{...devices["iPhone 13"],defaultBrowserType:"chromium"}}],
+  use:{baseURL:origin,trace: "retain-on-failure", screenshot: "only-on-failure", storageState: dashboardThemeStorage()},
+  projects:[{name:"desktop",use:{...devices["Desktop Chrome"],viewport:{width:1440,height:1000}}},{name:"phone",use:{...devices["iPhone 13"],viewport:{width:390,height:844},defaultBrowserType:"chromium"}},{name:"phone-webkit",grep:/combines customer history|short windows|visual viewport/,use:{...devices["iPhone 13"],viewport:{width:390,height:844},defaultBrowserType:"webkit"}}],
   webServer:[
     {command:"node scripts/conversations-test-provider.mjs",url:"http://127.0.0.1:3151/health",reuseExistingServer:false,env:{CONVERSATIONS_TEST_DATABASE_URL:databaseUrl}},
     {command:"npm exec next dev -- --webpack --hostname 127.0.0.1 --port 3150",url:`${origin}/api/health`,reuseExistingServer:false,timeout:120000,

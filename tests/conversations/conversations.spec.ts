@@ -13,13 +13,15 @@ async function signIn(page:Page,name="owner") {
   await page.getByLabel("Team email").fill(`${name}@example.test`);
   await page.getByLabel("Password",{exact:true}).fill("Conversations-test-password-2026");
   await page.getByRole("button",{name:"Sign in",exact:true}).click();
-  await expect(page).toHaveURL(/\/dashboard(?:\/analytics)?$/);
+  await expect(page).toHaveURL(/\/dashboard(?:\/analytics)?$/, {timeout: 20000});
   await page.goto("/dashboard/inbox");
   await expect(page.getByRole("region",{name:"Customer conversations",exact:true})).toBeVisible();
 }
 async function pane(page:Page,name:"Conversations"|"Thread"|"Details") {
   const nav=page.getByRole("navigation",{name:"Conversation panes",exact:true});
   if (await nav.isVisible()) await nav.getByRole("button",{name,exact:true}).click();
+  else if (name === "Details" && await page.getByRole("button", {name: "Show customer details", exact: true}).isVisible()) await page.getByRole("button", {name: "Show customer details", exact: true}).click();
+  else if (name === "Thread" && await page.getByRole("button", {name: "Back to conversation", exact: true}).isVisible()) await page.getByRole("button", {name: "Back to conversation", exact: true}).click();
 }
 async function combine(page:Page,request:APIRequestContext) {
   const state=await control(request,"inspect");
@@ -80,7 +82,8 @@ test("prefills a new lead, preserves its draft and keeps first SMS and email tog
   await signIn(page);
   await page.goto(`/dashboard/inbox?lead=${lead.id}`);
   const sms=page.getByRole("form",{name:"Compose SMS",exact:true});
-  await expect(sms.getByRole("textbox",{name:"Recipient phone *",exact:true})).toHaveValue("+16785550103");
+  await expect(page.getByRole("combobox",{name:"Text to",exact:true}).locator("option:checked")).toContainText("555-0103");
+  await expect(sms.locator('input[name="to"]')).toHaveValue("+16785550103");
   await sms.getByRole("textbox",{name:"Text message *",exact:true}).fill("First message for Morgan");
   await sms.getByRole("button",{name:"Save private draft",exact:true}).click();
   await expect(sms.getByRole("status").filter({hasText:"Private draft saved"})).toBeVisible();
@@ -149,7 +152,8 @@ test("keeps new-recipient drafts separate and respects read-only send grants", a
   await page.goto("/dashboard/inbox?contact=00000000-0000-4000-8000-000000000904");
   await page.getByRole("tab",{name:"SMS",exact:true}).click();
   await expect(page.getByRole("textbox",{name:"Text message *",exact:true})).toBeEmpty();
-  await expect(page.getByRole("textbox",{name:"Recipient phone *",exact:true})).toHaveValue("+16785550102");
+  await expect(page.getByRole("combobox",{name:"Text to",exact:true}).locator("option:checked")).toContainText("555-0102");
+  await expect(page.getByRole("tabpanel",{name:"SMS",exact:true}).locator('input[name="to"]')).toHaveValue("+16785550102");
   await expect(page.getByRole("button",{name:"Send text",exact:true})).toBeDisabled();
   await page.getByRole("tab",{name:"Email",exact:true}).click();
   await expect(page.getByRole("button",{name:"Send reply",exact:true})).toBeDisabled();
@@ -173,13 +177,13 @@ test("combines customer history and exposes agency context in a responsive works
     await pane(page,"Thread");
     await expect(page.getByRole("tablist",{name:"Communication channel",exact:true})).toBeVisible();
   }
-  await page.setViewportSize(info.project.name==="phone"?{width:390,height:844}:{width:1440,height:1000});
+  await page.setViewportSize(info.project.use.isMobile?{width:390,height:844}:{width:1440,height:1000});
   await page.locator(".conversation-details-pane").evaluate(node=>{node.scrollTop=0;});
   await page.locator(".conversation-timeline").evaluate(node=>{node.scrollTop=0;});
   await expect(page.getByRole("button",{name:"Send reply",exact:true})).toBeInViewport();
   await expect(timeline.getByText("Email: Could you build our website and an AI receptionist?",{exact:true})).toBeInViewport();
   await page.screenshot({path: dashboardPreviewPath(`conversations-${info.project.name}.png`),fullPage:true,style:"nextjs-portal{display:none!important;}"});
-  if (info.project.name === "phone") {
+  if (info.project.use.isMobile) {
     for (const name of ["Conversations", "Details"] as const) {
       await pane(page, name);
       await page.locator(".conversation-details-pane").evaluate(node=>{node.scrollTop=0;});
@@ -345,7 +349,7 @@ test("AI drafts use client context and both channels without sending or overwrit
   await expect(page.locator("body")).toBeVisible();
   expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa"]).analyze()).violations).toEqual([]);
   await message.scrollIntoViewIfNeeded();
-  await page.screenshot({path:`test-results/ai-draft-${info.project.name}.png`,fullPage:info.project.name==="phone",style:"nextjs-portal{display:none!important;}"});
+  await page.screenshot({path:`test-results/ai-draft-${info.project.name}.png`,fullPage:info.project.use.isMobile,style:"nextjs-portal{display:none!important;}"});
   await expect(message).toHaveValue(/Jordan Example/);
   await message.fill("Edited by me before sending");
   await page.getByRole("tab",{name:"Email",exact:true}).click();
@@ -525,4 +529,71 @@ test("manages alternate numbers and keeps drafts and SMS history with the select
   const state=await control(request,"inspect");
   expect(state.smsCreates).toHaveLength(2);
   expect(state.sources.filter((source:Source)=>source.conversation_id===canonical && source.channel==="sms")).toHaveLength(2);
+});
+
+test("keeps reading and reply controls usable in short windows without losing drafts", async ({page, request}, info) => {
+  await signIn(page); await combine(page, request);
+  const timeline = page.getByRole("region", {name: "Conversation timeline", exact: true});
+  const message = page.getByRole("tabpanel", {name: "Email", exact: true}).getByRole("textbox", {name: "Message *", exact: true});
+  await message.fill("Keep this draft while I read and resize.");
+  const originalHeight = (await timeline.boundingBox())!.height;
+  await page.getByRole("button", {name: "Hide reply", exact: true}).click();
+  expect((await timeline.boundingBox())!.height).toBeGreaterThan(originalHeight + 100);
+
+  for (const [width, height] of [[320,568], [390,667], [768,600], [1024,768], [1100,700], [1280,720], [1440,900], [844,390]]) {
+    await page.setViewportSize({width, height});
+    await pane(page, "Thread");
+    await expect(timeline).toBeInViewport({ratio: 0.999});
+    await expect.poll(async () => (await timeline.boundingBox())!.height).toBeGreaterThan(100);
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth), {message: `${width}×${height}: no horizontal page overflow`}).toBeLessThanOrEqual(1);
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight - innerHeight), {message: `${width}×${height}: no vertical page overflow`}).toBeLessThanOrEqual(1);
+    await timeline.focus(); await page.keyboard.press("Home");
+    await expect.poll(() => timeline.evaluate(node => node.scrollTop)).toBe(0);
+    await timeline.press("End");
+    await expect.poll(() => timeline.evaluate(node => node.scrollHeight - node.clientHeight - node.scrollTop)).toBeLessThan(2);
+    await page.getByRole("button", {name: "Expand reply", exact: true}).click();
+    await expect(message).toHaveValue("Keep this draft while I read and resize.");
+    await expect(page.getByRole("button", {name: "Send reply", exact: true})).toBeInViewport({ratio: 0.999});
+    await page.getByRole("button", {name: "Hide reply", exact: true}).click();
+    await expect.poll(() => timeline.evaluate(node => node.scrollHeight - node.clientHeight - node.scrollTop)).toBeLessThan(2);
+    await pane(page, "Details");
+    await expect(page.getByRole("complementary", {name: "Customer details", exact: true})).toBeInViewport({ratio: 0.999});
+    await pane(page, "Thread");
+  }
+  await page.screenshot({path: `test-results/conversations-short-${info.project.name}.png`, style: "nextjs-portal{display:none!important;}"});
+  await page.getByRole("button", {name: "Expand reply", exact: true}).click();
+  await page.getByRole("button", {name: "Suggest message", exact: true}).click();
+  await page.getByLabel("Message direction").fill("A friendly follow-up");
+  await page.getByRole("button", {name: "Generate draft", exact: true}).scrollIntoViewIfNeeded();
+  await expect(page.getByRole("button", {name: "Generate draft", exact: true})).toBeInViewport({ratio: 0.999});
+  await page.getByRole("button", {name: "Close draft assistant", exact: true}).click();
+  await expect(message).toHaveValue("Keep this draft while I read and resize.");
+  const state = await control(request, "inspect");
+  expect(state.emailSends).toBe(0); expect(state.smsCreates).toHaveLength(0);
+});
+
+test("keeps a focused reply available when the visual viewport shrinks", async ({page, request}) => {
+  await signIn(page); await combine(page, request);
+  const message = page.getByRole("tabpanel", {name: "Email", exact: true}).getByRole("textbox", {name: "Message *", exact: true});
+  await message.fill("Typing while the keyboard opens");
+  // Desktop browser automation does not open a native software keyboard.
+  // Exercise its resize event separately from the physical viewport matrix.
+  await page.evaluate(() => {
+    Object.defineProperty(window.visualViewport!, "height", {configurable: true, value: 390});
+    window.visualViewport!.dispatchEvent(new Event("resize"));
+  });
+  await expect(page.getByRole("button", {name: "Shrink reply", exact: true})).toBeVisible();
+  await expect(message).toBeFocused();
+  await expect(message).toHaveValue("Typing while the keyboard opens");
+  await expect.poll(() => page.getByRole("button", {name: "Send reply", exact: true}).evaluate(node => {
+    const viewport = window.visualViewport!;
+    return node.getBoundingClientRect().bottom <= viewport.height + viewport.offsetTop;
+  })).toBeTruthy();
+  await page.evaluate(() => {
+    Reflect.deleteProperty(window.visualViewport!, "height");
+    window.visualViewport!.dispatchEvent(new Event("resize"));
+  });
+  await page.getByRole("button", {name: "Shrink reply", exact: true}).click();
+  await expect(page.getByRole("region", {name: "Conversation timeline", exact: true})).toBeVisible();
+  await expect(message).toHaveValue("Typing while the keyboard opens");
 });

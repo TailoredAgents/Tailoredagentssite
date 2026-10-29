@@ -99,6 +99,9 @@ createServer(async (request, response) => {
         if (body.action === "manyEmails") for (let i = 0; i < 132; i++) {
           const id = `bulk-${String(i).padStart(3,"0")}`;
           threads.set(id, { threadId: id, subject: `Synthetic inquiry ${i}`, messages: [mailMessage(`message-${id}`, `Fixture mail ${i}`, { from_addr: `person${i}@example.test`, from_name: `Person ${i}`, reply_target: [`person${i}@example.test`], created_at: stamp(-i-20) })] });
+          // The customer-only Inbox needs a saved relationship. Keep it beyond
+          // the first provider page to exercise discovery pagination as well.
+          if (i === 131) await pool.query("INSERT INTO leads(id,workspace_id,name,organization,email,description,source) VALUES($1,$2,$3,'',$3,'Synthetic pagination customer','manual')", [randomUUID(), workspace, `person${i}@example.test`]);
         }
         if (body.action === "manyHistory") {
           const thread = threads.get("thread-website");

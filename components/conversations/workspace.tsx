@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Archive, ArrowLeft, ArrowRight, CalendarClock, Check, ChevronLeft, ChevronRight, Inbox, Mail, MessageSquareText, PanelRightClose, PanelRightOpen, PenSquare, Phone, RefreshCw, Reply, Search, Settings2, ShieldCheck, UserRound, Users } from "lucide-react";
+import { Archive, ArrowLeft, ArrowRight, CalendarClock, Check, ChevronLeft, ChevronRight, CircleAlert, Inbox, Mail, MessageSquareText, PanelRightClose, PanelRightOpen, PenSquare, Phone, RefreshCw, Reply, Search, Settings2, ShieldCheck, UserRound, Users } from "lucide-react";
 import { markConversationReadAction, saveConversationWorkAction } from "@/lib/conversations/actions";
 import type { ConversationSummary, ConversationWorkspace as WorkspaceData } from "@/lib/conversations/types";
 import { InboxTime } from "@/components/inbox/time";
@@ -38,7 +38,41 @@ export function ConversationWorkspace({ data, userId, readOnly }: { data: Worksp
   const router = useRouter();
   const phone = useBrowserPhone();
   const [pane, setPane] = useState<"conversations" | "thread" | "details">(selected || data.recipient ? "thread" : "conversations");
-  const [detailsOpen, setDetailsOpen] = useState(true);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [shortViewport, setShortViewport] = useState(false);
+  const workspace = useRef<HTMLElement>(null);
+  const detailsToggle = useRef<HTMLButtonElement>(null);
+  const detailsBack = useRef<HTMLButtonElement>(null);
+  const mobileThread = useRef<HTMLButtonElement>(null);
+  useLayoutEffect(() => {
+    const element = workspace.current;
+    if (!element) return;
+    // Use the actual space below dashboard navigation / viewer notices. The
+    // visual viewport also follows a phone's keyboard without a fixed offset.
+    const viewport = window.visualViewport;
+    const resize = () => {
+      if (viewport && viewport.scale !== 1) return;
+      // Anchor to the document, so focus-induced page scrolling cannot grow
+      // the Inbox and create a second page scrollbar after a resize.
+      const top = element.getBoundingClientRect().top + window.scrollY;
+      const height = Math.max(0, (viewport?.height ?? window.innerHeight) + (viewport?.offsetTop ?? 0) - top);
+      element.style.setProperty("--conversation-available-height", `${height}px`);
+      element.dataset.short = String(height < 650);
+      setShortViewport(height < 650);
+    };
+    resize();
+    const observer = new ResizeObserver(resize);
+    document.querySelectorAll(".dashboard-sidebar, .dashboard-readonly").forEach(node => observer.observe(node));
+    window.addEventListener("resize", resize);
+    viewport?.addEventListener("resize", resize);
+    viewport?.addEventListener("scroll", resize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", resize);
+      viewport?.removeEventListener("resize", resize);
+      viewport?.removeEventListener("scroll", resize);
+    };
+  }, []);
   const view = queueLabels[data.view] ? data.view : "team";
   const filters = { ...(data.recipient ? { [data.recipient.kind]: data.recipient.id } : {}), view, q: data.q || undefined, page: data.page > 1 ? String(data.page) : undefined, conversation: selected?.conversation.id, sourcePage: selected && selected.historyPage > 1 ? String(selected.historyPage) : undefined };
   const href = conversationHref({ ...filters, sourcePage: undefined });
@@ -52,15 +86,14 @@ export function ConversationWorkspace({ data, userId, readOnly }: { data: Worksp
     return () => window.clearInterval(interval);
   }, [router]);
 
-  return <section className="conversation-workspace" aria-label="Customer conversations">
+  return <section ref={workspace} className="conversation-workspace" aria-label="Customer conversations">
     <header className="conversation-page-header">
       <div><span className="conversation-eyebrow">Tailored Agents · Relationships</span><h1>Conversations</h1><p><strong>{data.counts.needs_reply || 0}</strong> need reply<span aria-hidden="true"> · </span><strong>{data.counts.unread || 0}</strong> unread<span className="conversation-header-reassurance"><ShieldCheck size={13} aria-hidden="true" />Email from leads & customers.</span></p></div>
-      <div className="conversation-header-actions"><button className="conversation-icon-button voice-inbox-launcher" type="button" aria-label="Open browser phone" onClick={() => phone.setExpanded(true)}><Phone size={18} aria-hidden="true" /></button><button className="conversation-icon-button" type="button" onClick={() => router.refresh()} aria-label="Refresh conversations"><RefreshCw size={18} aria-hidden="true" /></button><Link className="conversation-button is-primary" href="/dashboard/inbox/new"><PenSquare size={16} aria-hidden="true" /><span>New conversation</span></Link></div>
+      <div className="conversation-header-actions">{!selected && data.recipient ? <button ref={detailsToggle} className="conversation-icon-button conversation-details-toggle" type="button" aria-label={detailsOpen ? "Hide customer details" : "Show customer details"} aria-expanded={detailsOpen} aria-controls="conversation-customer-details" onClick={() => { setDetailsOpen(!detailsOpen); if (!detailsOpen) requestAnimationFrame(() => detailsBack.current?.focus()); }}>{detailsOpen ? <PanelRightClose size={19} aria-hidden="true" /> : <PanelRightOpen size={19} aria-hidden="true" />}</button> : null}{attention.length ? <details className="conversation-connections"><summary className="conversation-icon-button" aria-label={`Channel connections: ${attention.length} need attention`} title="Channel connections need attention"><CircleAlert size={18} aria-hidden="true" /></summary><ConnectionNotices entries={attention} /></details> : null}<button className="conversation-icon-button voice-inbox-launcher" type="button" aria-label="Open browser phone" onClick={() => phone.setExpanded(true)}><Phone size={18} aria-hidden="true" /></button><button className="conversation-icon-button" type="button" onClick={() => router.refresh()} aria-label="Refresh conversations"><RefreshCw size={18} aria-hidden="true" /></button><Link className="conversation-button is-primary" href="/dashboard/inbox/new"><PenSquare size={16} aria-hidden="true" /><span>New conversation</span></Link></div>
     </header>
 
-    {attention.length ? <><div className="conversation-sync-desktop"><ConnectionNotices entries={attention} /></div><details className="conversation-sync-mobile"><summary>Channel connections<span>{attention.length} need attention</span></summary><ConnectionNotices entries={attention} /></details></> : null}
 
-    <nav className="conversation-mobile-panes" aria-label="Conversation panes">{([["conversations", "Conversations", Inbox], ["thread", "Thread", MessageSquareText], ["details", "Details", UserRound]] as const).map(([value, label, Icon]) => <button type="button" key={value} disabled={value !== "conversations" && !selected && !data.recipient} aria-current={pane === value ? "page" : undefined} onClick={() => setPane(value)}><Icon size={16} aria-hidden="true" />{label}</button>)}</nav>
+    <nav className="conversation-mobile-panes" aria-label="Conversation panes">{([["conversations", "Conversations", Inbox], ["thread", "Thread", MessageSquareText], ["details", "Details", UserRound]] as const).map(([value, label, Icon]) => <button ref={value === "thread" ? mobileThread : undefined} type="button" key={value} disabled={value !== "conversations" && !selected && !data.recipient} aria-current={pane === value ? "page" : undefined} onClick={() => setPane(value)}><Icon size={16} aria-hidden="true" />{label}</button>)}</nav>
 
     <div className={`conversation-frame ${detailsOpen ? "" : "is-details-closed"}`} data-mobile-pane={pane}>
       <section className="conversation-list-pane" aria-label="Conversation list">
@@ -72,15 +105,15 @@ export function ConversationWorkspace({ data, userId, readOnly }: { data: Worksp
       </section>
 
       <section className={`conversation-thread-pane ${data.recipientConversations.length > 1 ? "has-related-histories" : ""}`} aria-label="Selected customer conversation">{selected ? <>
-        <header className="conversation-thread-heading"><div className="conversation-thread-identity"><span className="conversation-avatar" aria-hidden="true">{selected.conversation.personName.slice(0, 1).toUpperCase()}</span><div><h2>{data.recipient?.name || selected.conversation.personName}</h2><p>{selected.conversation.businessName || selected.conversation.title}</p></div></div><button className="conversation-icon-button conversation-details-toggle" type="button" aria-label={detailsOpen ? "Hide customer details" : "Show customer details"} aria-expanded={detailsOpen} onClick={() => setDetailsOpen(!detailsOpen)}>{detailsOpen ? <PanelRightClose size={19} aria-hidden="true" /> : <PanelRightOpen size={19} aria-hidden="true" />}</button></header>
+        <header className="conversation-thread-heading"><div className="conversation-thread-identity"><span className="conversation-avatar" aria-hidden="true">{selected.conversation.personName.slice(0, 1).toUpperCase()}</span><div><h2>{data.recipient?.name || selected.conversation.personName}</h2><p>{selected.conversation.businessName || selected.conversation.title}</p></div></div><button ref={detailsToggle} className="conversation-icon-button conversation-details-toggle" type="button" aria-label={detailsOpen ? "Hide customer details" : "Show customer details"} aria-expanded={detailsOpen} aria-controls="conversation-customer-details" onClick={() => { setDetailsOpen(!detailsOpen); if (!detailsOpen) requestAnimationFrame(() => detailsBack.current?.focus()); }}>{detailsOpen ? <PanelRightClose size={19} aria-hidden="true" /> : <PanelRightOpen size={19} aria-hidden="true" />}</button></header>
         <div className="conversation-work-bar"><div><span className={`conversation-state is-${selected.conversation.status}`}>{conversationWorkLabel(selected.conversation)}</span><span className="conversation-work-owner">{selected.conversation.ownerName || "Unassigned"}</span>{selected.conversation.remindAt ? <span className="conversation-work-reminder"><CalendarClock size={14} aria-hidden="true" /><InboxTime value={selected.conversation.remindAt} /></span> : null}</div><div className="conversation-work-actions">
           {selected.conversation.unread ? <ConversationActionForm action={markConversationReadAction} label="Mark read" className="is-compact"><input type="hidden" name="conversationId" value={selected.conversation.id} /></ConversationActionForm> : <span className="conversation-read-indicator"><Check size={13} aria-hidden="true" />Read</span>}
           <ConversationActionForm action={saveConversationWorkAction} label={selected.conversation.status === "done" ? "Needs reply" : "Done"} className="is-compact" disabled={readOnly}><input type="hidden" name="conversationId" value={selected.conversation.id} /><input type="hidden" name="ownerId" value={selected.conversation.ownerId || ""} /><input type="hidden" name="status" value={selected.conversation.status === "done" ? "needs_reply" : "done"} /><input type="hidden" name="remindAt" value="" /></ConversationActionForm>
         </div></div>
-        {data.recipientConversations.length > 1 ? <nav className="conversation-related-histories" aria-label="Other conversations with this person">{data.recipientConversations.map(c => <Link key={c.id} href={`/dashboard/inbox?${data.recipient!.kind}=${data.recipient!.id}&conversation=${c.id}`} aria-current={selected.conversation.id === c.id ? "page" : undefined}>{c.channels.join(" / ")} · <InboxTime value={c.lastActivityAt} short /></Link>)}</nav> : null}<ConversationTimeline key={`${selected.conversation.id}:${selected.historyPage}`} record={selected} filters={filters} readOnly={readOnly} /><ConversationComposer data={data} record={selected} userId={userId} readOnly={readOnly} returnHref={href} />
+        {data.recipientConversations.length > 1 ? <nav className="conversation-related-histories" aria-label="Other conversations with this person">{data.recipientConversations.map(c => <Link key={c.id} href={`/dashboard/inbox?${data.recipient!.kind}=${data.recipient!.id}&conversation=${c.id}`} aria-current={selected.conversation.id === c.id ? "page" : undefined}>{c.channels.join(" / ")} · <InboxTime value={c.lastActivityAt} short /></Link>)}</nav> : null}<ConversationTimeline key={`${selected.conversation.id}:${selected.historyPage}`} record={selected} filters={filters} readOnly={readOnly} /><ConversationComposer shortViewport={shortViewport} data={data} record={selected} userId={userId} readOnly={readOnly} returnHref={href} />
       </> : data.recipient ? <RecipientConversation recipient={data.recipient} data={data} userId={userId} readOnly={readOnly} /> : <div className="conversation-empty is-thread"><span className="conversation-empty-illustration"><MessageSquareText size={36} aria-hidden="true" /></span><h2>Your customer conversations,<br />connected.</h2><p>Choose a conversation to see its history, reply, and keep the next step moving.</p><span className="conversation-empty-channels"><Mail size={16} aria-hidden="true" />Email<span aria-hidden="true">·</span><MessageSquareText size={16} aria-hidden="true" />SMS<span aria-hidden="true">·</span>Team notes</span></div>}</section>
 
-      <aside className="conversation-details-pane" aria-label="Customer details">{selected ? <><header className="conversation-details-heading"><h2>Customer context</h2><button className="conversation-icon-button" type="button" aria-label="Back to conversation" onClick={() => setPane("thread")}><ArrowLeft size={17} aria-hidden="true" /></button></header><ConversationContextPanel record={selected} data={data} readOnly={readOnly} /></> : data.recipient ? <div className="conversation-recipient-context"><span className="conversation-avatar">{data.recipient.name.slice(0,1)}</span><h2>{data.recipient.name}</h2><p>{data.recipient.businessName}</p><p>{data.recipient.email}</p><PhoneNumbers recipient={data.recipient} readOnly={readOnly}/>{data.recipient.kind === "lead" ? <Link href={`/dashboard/leads/${data.recipient.id}`}>Open lead</Link> : null}</div> : <div className="conversation-empty"><UserRound size={26} aria-hidden="true" /><p>Customer context and next actions appear here.</p></div>}</aside>
+      <aside id="conversation-customer-details" className="conversation-details-pane" aria-label="Customer details">{selected || data.recipient ? <header className="conversation-details-heading"><h2>Customer context</h2><button ref={detailsBack} className="conversation-icon-button" type="button" aria-label="Back to conversation" onClick={() => { setPane("thread"); setDetailsOpen(false); requestAnimationFrame(() => (window.matchMedia("(max-width: 1024px)").matches ? mobileThread : detailsToggle).current?.focus()); }}><ArrowLeft size={17} aria-hidden="true" /></button></header> : null}{selected ? <ConversationContextPanel record={selected} data={data} readOnly={readOnly} /> : data.recipient ? <div className="conversation-recipient-context"><span className="conversation-avatar">{data.recipient.name.slice(0,1)}</span><h2>{data.recipient.name}</h2><p>{data.recipient.businessName}</p><p>{data.recipient.email}</p><PhoneNumbers recipient={data.recipient} readOnly={readOnly}/>{data.recipient.kind === "lead" ? <Link href={`/dashboard/leads/${data.recipient.id}`}>Open lead</Link> : null}</div> : <div className="conversation-empty"><UserRound size={26} aria-hidden="true" /><p>Customer context and next actions appear here.</p></div>}</aside>
     </div>
   </section>;
 }

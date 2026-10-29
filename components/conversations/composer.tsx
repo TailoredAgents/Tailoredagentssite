@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Mail, MessageSquareText, Phone, StickyNote } from "lucide-react";
+import { ChevronDown, ChevronUp, Mail, Maximize2, MessageSquareText, Minimize2, Phone, StickyNote } from "lucide-react";
 import { InboxComposer } from "@/components/inbox/composer";
 import { SmsComposer } from "@/components/sms/composer";
 import type { ConversationRecord, ConversationWorkspace } from "@/lib/conversations/types";
@@ -12,7 +12,18 @@ import { ConversationNoteComposer } from "./note-composer";
 import { conversationHref } from "./shared";
 import { VoiceCallComposer } from "@/components/voice/call-composer";
 
-export function ConversationComposer({ record, userId, readOnly, returnHref, data }: { record: ConversationRecord; userId: string; readOnly: boolean; returnHref?: string; data?: ConversationWorkspace }) {
+export function ConversationComposer({ record, userId, readOnly, returnHref, data, shortViewport = false }: { record: ConversationRecord; userId: string; readOnly: boolean; returnHref?: string; data?: ConversationWorkspace; shortViewport?: boolean }) {
+  const [mode, setMode] = useState<"compact" | "expanded" | "hidden" | "auto-hidden">("compact");
+  const hidden = mode === "hidden" || mode === "auto-hidden";
+  const shell = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    setMode(current => {
+      if (!shortViewport) return current === "auto-hidden" ? "compact" : current;
+      if (current !== "compact") return current;
+      return shell.current?.querySelector(".conversation-composer-body")?.contains(document.activeElement) ? "expanded" : "auto-hidden";
+    });
+  }, [shortViewport]);
+  const openChannel = () => setMode(shortViewport ? "expanded" : hidden ? "compact" : mode);
   const emailSources = record.sources.filter((source) => source.channel === "email" && source.mailbox && source.mailRecord);
   const smsSources = record.sources.filter((source) => source.channel === "sms" && source.number && source.smsRecord);
   const [channel, setChannel] = useState<"email" | "sms" | "call" | "note">(emailSources.length ? "email" : smsSources.length ? "sms" : record.sources.some(source => source.channel === "call") ? "call" : "note");
@@ -21,10 +32,16 @@ export function ConversationComposer({ record, userId, readOnly, returnHref, dat
   const email = emailSources.find((source) => source.id === emailId) || emailSources[0];
   const sms = smsSources.find((source) => source.id === smsId) || smsSources[0];
   const href = returnHref || conversationHref({ conversation: record.conversation.id });
-  return <div className="conversation-composer-shell"><div className="conversation-composer-tabs" role="tablist" aria-label="Communication channel">{([ ["email", "Email", Mail], ["sms", "SMS", MessageSquareText], ["call", "Call", Phone], ["note", "Note", StickyNote] ] as const).map(([value, label, Icon]) => <button key={value} type="button" role="tab" id={`conversation-tab-${value}`} aria-selected={channel === value} aria-controls={`conversation-compose-${value}`} onClick={() => setChannel(value)} tabIndex={channel === value ? 0 : -1} onKeyDown={(event) => {
+  return <div ref={shell} className="conversation-composer-shell" data-mode={hidden ? "hidden" : mode}><div className="conversation-composer-toolbar"><div className="conversation-composer-tabs" role="tablist" aria-label="Communication channel">{([ ["email", "Email", Mail], ["sms", "SMS", MessageSquareText], ["call", "Call", Phone], ["note", "Note", StickyNote] ] as const).map(([value, label, Icon]) => <button key={value} type="button" role="tab" id={`conversation-tab-${value}`} aria-selected={channel === value} aria-controls={`conversation-compose-${value}`} onClick={() => { setChannel(value); openChannel(); }} tabIndex={channel === value ? 0 : -1} onKeyDown={(event) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-    event.preventDefault(); const tabs = ["email", "sms", "call", "note"] as const; const index = tabs.indexOf(channel); const next = event.key === "Home" ? "email" : event.key === "End" ? "note" : tabs[(index + (event.key === "ArrowRight" ? 1 : 3)) % 4]; setChannel(next); document.getElementById(`conversation-tab-${next}`)?.focus();
+    event.preventDefault(); const tabs = ["email", "sms", "call", "note"] as const; const index = tabs.indexOf(channel); const next = event.key === "Home" ? "email" : event.key === "End" ? "note" : tabs[(index + (event.key === "ArrowRight" ? 1 : 3)) % 4]; setChannel(next); openChannel(); document.getElementById(`conversation-tab-${next}`)?.focus();
   }}><Icon size={16} aria-hidden="true" />{label}</button>)}</div>
+      <div className="conversation-composer-size">
+        <button type="button" className="conversation-icon-button" aria-label={mode === "expanded" ? "Shrink reply" : "Expand reply"} title={mode === "expanded" ? "Shrink reply" : "Expand reply"} aria-controls="conversation-composer-body" onClick={() => setMode(mode === "expanded" ? shortViewport ? "hidden" : "compact" : "expanded")}>{mode === "expanded" ? <Minimize2 size={17} aria-hidden="true" /> : <Maximize2 size={17} aria-hidden="true" />}</button>
+        <button type="button" className="conversation-icon-button" aria-label={hidden ? "Show reply" : "Hide reply"} title={hidden ? "Show reply" : "Hide reply"} aria-expanded={!hidden} aria-controls="conversation-composer-body" onClick={() => setMode(hidden ? "expanded" : "hidden")}>{hidden ? <ChevronUp size={18} aria-hidden="true" /> : <ChevronDown size={18} aria-hidden="true" />}</button>
+      </div>
+    </div>
+    <div className="conversation-composer-body" id="conversation-composer-body" hidden={hidden}>
     <div className="conversation-composer-slot" id="conversation-compose-email" role="tabpanel" aria-labelledby="conversation-tab-email" hidden={channel !== "email"}>
       {email?.mailbox && email.mailRecord ? <>{emailSources.length > 1 ? <label className="conversation-source-picker"><span>Reply to email thread</span><select aria-label="Reply to email thread" value={email.id} onChange={(event) => setEmailId(event.target.value)}>{emailSources.map((source) => <option key={source.id} value={source.id}>{source.mailRecord?.conversation.subject || "No subject"} · {source.label}</option>)}</select><small>Save a private draft before changing threads.</small></label> : null}<InboxComposer key={email.id} mailbox={email.mailbox} threadId={email.threadId || email.mailRecord.conversation.id} subject={email.mailRecord.conversation.subject} messages={email.mailRecord.messages} draft={email.mailRecord.draft} recipient={record.recipient} crmConversationId={record.conversation.id} userId={userId} readOnly={readOnly} conversationHref={href} compact /></> : record.recipient && data ? <RecipientChannelComposer channel="email" recipient={record.recipient} data={data} record={record} userId={userId} readOnly={readOnly} /> : <div className="conversation-channel-empty"><Mail size={22} aria-hidden="true" /><p>No readable email thread is connected to this relationship yet.</p><Link href="/dashboard/inbox?channel=email&compose=1" className="conversation-button">Start a new email</Link><small>Connect the resulting conversation to this customer after it appears.</small></div>}
     </div>
@@ -33,5 +50,5 @@ export function ConversationComposer({ record, userId, readOnly, returnHref, dat
     </div>
     <div className="conversation-composer-slot" id="conversation-compose-call" role="tabpanel" aria-labelledby="conversation-tab-call" hidden={channel !== "call"}><VoiceCallComposer record={record} recipient={record.recipient} /></div>
     <div className="conversation-composer-slot" id="conversation-compose-note" role="tabpanel" aria-labelledby="conversation-tab-note" hidden={channel !== "note"}><ConversationNoteComposer conversationId={record.conversation.id} sources={record.sources} readOnly={readOnly} /></div>
-  </div>;
+  </div></div>;
 }
