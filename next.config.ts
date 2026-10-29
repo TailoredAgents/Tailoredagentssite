@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import type { NextConfig } from "next";
-import { browserScriptSources, voiceBrowserFixture, voiceDashboardHeaders } from "./lib/security/voice-browser";
+import { browserScriptSources, browserUpgradeDirective, voiceBrowserFixture, voiceDashboardHeaders } from "./lib/security/voice-browser";
 
 const voiceFixture = voiceBrowserFixture();
 const fixtureWebpack: NextConfig["webpack"] = (config, { isServer }) => {
@@ -18,7 +18,7 @@ const securityHeaders = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
-  { key: "Content-Security-Policy", value: `default-src 'self'; script-src ${browserScriptSources()}${metaScript}; style-src 'self' 'unsafe-inline'; img-src 'self' data:${metaEvents}; font-src 'self'; connect-src 'self'${metaEvents}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests` },
+  { key: "Content-Security-Policy", value: `default-src 'self'; script-src ${browserScriptSources()}${metaScript}; style-src 'self' 'unsafe-inline'; img-src 'self' data:${metaEvents}; font-src 'self'; connect-src 'self'${metaEvents}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'${browserUpgradeDirective()}` },
 ];
 
 const nextConfig: NextConfig = {
@@ -34,7 +34,7 @@ const nextConfig: NextConfig = {
     return [
       { source: "/(.*)", headers: securityHeaders },
       { source: "/dashboard/:path*", headers: voiceDashboardHeaders(voiceFixture) },
-      { source: "/sign-in", headers: [{ key: "Content-Security-Policy", value: `default-src 'self'; script-src ${browserScriptSources()}; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests` }] },
+      { source: "/sign-in", headers: [{ key: "Content-Security-Policy", value: `default-src 'self'; script-src ${browserScriptSources()}; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'${browserUpgradeDirective()}` }] },
     ];
   },
 };
