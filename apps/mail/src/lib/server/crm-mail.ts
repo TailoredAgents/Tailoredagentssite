@@ -11,7 +11,8 @@ import {
   crmThreadAttachments,
 } from "./crm-mail-store";
 import { getAttachmentForUser, readAttachmentBytes } from "./attachments";
-import { replyTarget, sendAndStore, type ComposeInput } from "./outbox";
+import { sendAndStore, type ComposeInput } from "./outbox";
+import { crmInternalAddresses, crmMessagePerspective } from "./crm-mail-perspective";
 import { buildReferences, displaySubject } from "./threads";
 import { stripHtml } from "./html";
 import {
@@ -186,12 +187,13 @@ export async function handleCrmMail(
       if (originals.length > 200) return json({ error: "open_in_mail" }, 422);
       const messages = originals;
       const files = await crmThreadAttachments(env.DB, scope, body.threadId);
+      const internal = await crmInternalAddresses(env.DB);
       return json({
         threadId: body.threadId,
         subject: displaySubject(messages[0].subject),
         messages: messages.map((message) => ({
           id: message.id,
-          direction: message.direction,
+          ...crmMessagePerspective(message, internal),
           from_addr: message.from_addr,
           from_name: message.from_name,
           to_addr: message.to_addr,
@@ -200,11 +202,9 @@ export async function handleCrmMail(
           body_text:
             message.body_text?.trim() ||
             (message.body_html ? stripHtml(message.body_html) : ""),
-          status: message.status,
           status_detail: message.status_detail,
           is_read: message.is_read === 1,
           created_at: message.created_at,
-          reply_target: replyTarget(message),
           attachments: files
             .filter((file) => file.email_id === message.id)
             .map((file) => ({
@@ -297,7 +297,12 @@ export async function handleCrmMail(
           body.replyToMessageId,
         );
         if (!original) return json({ error: "not_found" }, 404);
-        const recipients = replyTarget(original);
+        const recipients = crmMessagePerspective(original, await crmInternalAddresses(env.DB)).reply_target;
+        // Old/stale composers must not silently change from the teammate to the
+        // customer when the corrected Mail deployment goes live.
+        if (original.team_copy === 1 && (!Array.isArray(body.expectedReplyTargets) ||
+            JSON.stringify(body.expectedReplyTargets) !== JSON.stringify(recipients)))
+          return json({ error: "conversation_advanced" }, 409);
         // A successful repeat should replay even after its own sent message advanced the thread.
         const prior = await env.DB.prepare(
           `SELECT email_id FROM send_attempts WHERE user_id=? AND id=? AND status='sent'`,
@@ -365,7 +370,7 @@ export async function handleCrmMail(
           if (
             !latest ||
             latest.id !== body.replyToMessageId ||
-            replyTarget(latest).join(", ") !== input.to
+            crmMessagePerspective(latest, await crmInternalAddresses(env.DB)).reply_target.join(", ") !== input.to
           ) {
             throw new CrmMailAccessError(409, "conversation_advanced");
           }

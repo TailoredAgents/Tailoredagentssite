@@ -17,7 +17,7 @@ export function InboxComposer({ mailbox, threadId, subject: threadSubject = "", 
   const router = useRouter();
   const replyMessage = messages.find((message) => message.id === draft?.replyToMessageId && message.replyTargets.length) || [...messages].reverse().find((message) => message.replyTargets.length);
   const replyTargets = replyMessage?.replyTargets || [];
-  const [to, setTo] = useState(draft?.to && (!threadId || replyTargets.includes(draft.to)) ? draft.to : replyTargets[0] || recipient?.email || "");
+  const [to, setTo] = useState(threadId ? replyTargets.join(", ") : draft?.to || recipient?.email || "");
   const [subject, setSubject] = useState(draft?.subject || (threadId ? (/^re:/i.test(threadSubject) ? threadSubject : `Re: ${threadSubject}`) : ""));
   const [text, setText] = useState(draft?.text || "");
   const [replyToMessageId, setReplyToMessageId] = useState(replyMessage?.id || "");
@@ -90,7 +90,7 @@ export function InboxComposer({ mailbox, threadId, subject: threadSubject = "", 
   }, [sendResult, storageKey, newRecipientKey, threadId, mailbox.id, router, conversationHref]);
 
   const envelopeFields = <><div className="inbox-from"><span>From</span><strong>{mailbox.email}</strong></div>
-    {threadId ? <label className="inbox-field"><span>To</span><input name="to" type="email" value={to} readOnly aria-describedby="inbox-reply-target-note" /><small id="inbox-reply-target-note">Tailored Mail supplies the recipient and subject for this reply.</small></label> : <label className="inbox-field"><span>To *</span><input type="email" name="to" required maxLength={254} value={to} readOnly={unresolved} placeholder="name@business.com" onChange={(event) => setTo(event.target.value)} autoComplete="email" /></label>}
+    {threadId ? <label className="inbox-field"><span>To</span><input name="to" type="text" value={to} readOnly aria-describedby="inbox-reply-target-note" /><small id="inbox-reply-target-note">{replyMessage?.teamOutreach ? "Reply goes to the customer recipients shown here. Copied teammates are not included." : "Tailored Mail supplies the recipient and subject for this reply."}</small></label> : <label className="inbox-field"><span>To *</span><input type="email" name="to" required maxLength={254} value={to} readOnly={unresolved} placeholder="name@business.com" onChange={(event) => setTo(event.target.value)} autoComplete="email" /></label>}
     <label className="inbox-field"><span>Subject{threadId ? "" : " *"}</span><input name="subject" required={!threadId} maxLength={500} value={subject} readOnly={Boolean(threadId) || unresolved} placeholder="A useful next step for your website" onChange={(event) => setSubject(event.target.value)} /></label></>;
   return <section className="inbox-composer" aria-labelledby="inbox-composer-title"><div className="inbox-composer-heading"><h2 id="inbox-composer-title">{threadId ? "Reply by email" : "New email"}</h2><span><LockKeyhole size={13} aria-hidden="true" />Drafts are private to you</span></div>
     <form action={sendAction} aria-label={threadId ? "Reply by email" : "Compose email"} aria-busy={busy} onSubmit={(event) => {

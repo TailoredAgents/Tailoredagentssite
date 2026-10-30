@@ -17,6 +17,32 @@ async function signIn(page:Page,name="owner") {
   await page.goto("/dashboard/inbox");
   await expect(page.getByRole("region",{name:"Customer conversations",exact:true})).toBeVisible();
 }
+
+test("copied team outreach shows recipients, waits for the customer and addresses the customer reply", async ({page,request}, info) => {
+  await control(request,"teamEmailCopy");
+  await signIn(page);
+  const state = await control(request,"inspect");
+  const source = (state.sources as Source[]).find(source => source.thread_id === "thread-team-copy")!;
+  await page.goto(`/dashboard/inbox?view=team&conversation=${source.conversation_id}`);
+  await pane(page,"Thread");
+  const thread = page.getByRole("region",{name:"Selected customer conversation",exact:true});
+  await expect(thread.getByRole("heading",{name:"customer@example.test",exact:true})).toBeVisible();
+  await expect(thread).toContainText("Waiting");
+  await expect(thread).toContainText("Team outreach · Copied to this mailbox");
+  await expect(thread).toContainText("To: customer@example.test · Cc: sales@example.test");
+  await page.getByRole("tab",{name:"Email",exact:true}).click();
+  await page.getByText("Reply details",{exact:false}).click();
+  await expect(thread.locator('input[name="to"]')).toHaveValue("customer@example.test");
+  await expect(thread).toContainText("Copied teammates are not included");
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth+1)).toBeTruthy();
+  await page.screenshot({path:`test-results/team-email-copy-${info.project.name}.png`,fullPage:true});
+  expect((await control(request,"inspect")).emailSends).toBe(0);
+  await control(request,"incomingEmail",{threadId:"thread-team-copy",text:"Thanks, tell me more."});
+  await page.reload();
+  await pane(page,"Thread");
+  await expect(thread).toContainText("Needs reply");
+  await expect(thread).toContainText("Thanks, tell me more.");
+});
 async function pane(page:Page,name:"Conversations"|"Thread"|"Details") {
   const nav=page.getByRole("navigation",{name:"Conversation panes",exact:true});
   if (await nav.isVisible()) await nav.getByRole("button",{name,exact:true}).click();

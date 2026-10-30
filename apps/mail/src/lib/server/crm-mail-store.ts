@@ -11,6 +11,7 @@ import { displaySubject } from "./threads";
 import { buildThreadParticipants } from "./thread-participants";
 import { stripHtml } from "./html";
 import { stripQuotedText } from "$lib/utils/quotes";
+import { CRM_TEAM_COPY_SQL } from "./crm-mail-perspective";
 
 // email.address_id is the server's routed envelope identity, not a To-header
 // guess. Exclude manual reassignment where that address was only a fallback.
@@ -42,13 +43,13 @@ export async function crmThreadRows(
 ) {
   const rows = await db
     .prepare(
-      `SELECT e.* FROM emails e WHERE ${CRM_ADDRESS_SCOPE}
+      `SELECT e.*,${CRM_TEAM_COPY_SQL} AS team_copy FROM emails e WHERE ${CRM_ADDRESS_SCOPE}
     AND COALESCE(e.thread_id,e.id)=? ORDER BY datetime(e.created_at),e.id LIMIT 201`,
     )
     .bind(...scopeArgs(scope), threadId)
-    .all<EmailRow>();
+    .all<EmailRow & { team_copy: number }>();
   if (rows.results.length > 200) return null;
-  return Promise.all(rows.results.map((row) => hydrateContent(bucket, row)));
+  return Promise.all(rows.results.map(async (row) => ({ ...await hydrateContent(bucket, row), team_copy: row.team_copy })));
 }
 
 export async function crmMessageVisible(

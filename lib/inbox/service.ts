@@ -288,6 +288,10 @@ export async function sendInboxMessage(
     recipients = original.replyTargets.map((address) =>
       address.trim().toLowerCase(),
     );
+    if (original.teamOutreach && input.to.toLowerCase() !== recipients.join(", "))
+      throw new InboxInputError(
+        "The reply recipients have changed. Refresh this conversation and review the customer address before sending. Your message has not been sent.",
+      );
     if (
       !recipients.length ||
       recipients.length > 20 ||
@@ -388,6 +392,7 @@ export async function sendInboxMessage(
       fromAddressId: mailbox.id,
       threadId: input.threadId,
       replyToMessageId: input.replyToMessageId,
+      expectedReplyTargets: input.threadId ? recipients : undefined,
       to: input.threadId ? undefined : recipients[0],
       subject: input.subject,
       text: input.text,

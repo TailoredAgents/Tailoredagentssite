@@ -16,6 +16,7 @@ export type InboxMessage = {
   to: string; cc: string | null; subject: string; text: string;
   deliveryStatus: string | null; deliveryDetail: string | null; createdAt: string;
   replyTargets: string[];
+  teamOutreach?: boolean;
   attachments: { id: string; filename: string; contentType: string; size: number }[];
 };
 export type MailThreadRecord = { threadId: string; subject: string; messages: InboxMessage[] };
@@ -34,5 +35,5 @@ export type InboxWorkspace = {
   composeDraft?: InboxDraft | null;
 };
 export type InboxFilters = { mailbox?: string | string[]; thread?: string | string[]; view?: string | string[]; q?: string | string[]; page?: string | string[]; unread?: string | string[]; compose?: string | string[] };
-export type MailSendInput = { mailboxId: string; fromAddressId: string; threadId?: string; replyToMessageId?: string; to?: string; subject?: string; text: string; idempotencyKey: string };
+export type MailSendInput = { mailboxId: string; fromAddressId: string; threadId?: string; replyToMessageId?: string; expectedReplyTargets?: string[]; to?: string; subject?: string; text: string; idempotencyKey: string };
 export type MailSendResult = { messageId: string; threadId: string; providerId?: string; status: "accepted" | "pending" };

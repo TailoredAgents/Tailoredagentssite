@@ -33,7 +33,7 @@ export const draftSchema = z.object({
   mailboxId: providerId,
   threadId: optionalProviderId,
   text: z.string().max(50000).default(""),
-  to: z.string().trim().max(254).default(""),
+  to: z.string().trim().max(4000).default(""),
   subject: z.string().trim().max(500).default(""),
   replyToMessageId: optionalProviderId,
 });

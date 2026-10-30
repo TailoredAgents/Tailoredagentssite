@@ -10,7 +10,7 @@ import {
 import { parseEmailIdentities } from "./email-address";
 import { hydrateContent } from "./content";
 import { stripHtml } from "./html";
-import { replyTarget } from "./outbox";
+import { CRM_TEAM_COPY_SQL, crmInternalAddresses, crmMessagePerspective } from "./crm-mail-perspective";
 import { displaySubject } from "./threads";
 
 const args = (scope: CrmAddressScope) => [
@@ -44,11 +44,13 @@ type ReplyMessage = Pick<
   | "direction"
   | "from_addr"
   | "to_addr"
+  | "cc_addr"
+  | "status"
   | "reply_to_addr"
   | "subject"
   | "message_id"
   | "references_header"
->;
+> & { team_copy: number };
 export async function crmReplyContext(
   db: D1Database,
   scope: CrmAddressScope,
@@ -57,7 +59,7 @@ export async function crmReplyContext(
   excludeId?: string,
 ) {
   const columns =
-    "e.id,e.direction,e.from_addr,e.to_addr,e.reply_to_addr,e.subject,e.message_id,e.references_header";
+    `e.id,e.direction,e.from_addr,e.to_addr,e.cc_addr,e.status,e.reply_to_addr,e.subject,e.message_id,e.references_header,${CRM_TEAM_COPY_SQL} AS team_copy`;
   const original = await db
     .prepare(
       `SELECT ${columns} FROM emails e WHERE ${CRM_ADDRESS_SCOPE} AND COALESCE(e.thread_id,e.id)=? AND e.id=?`,
@@ -89,28 +91,20 @@ export async function crmConversationIndex(
     await db
       .prepare(
         `WITH scoped AS (
-    SELECT e.id,COALESCE(e.thread_id,e.id) AS thread_id,e.direction,e.status,${timeSql} AS created_at,
+    SELECT e.id,COALESCE(e.thread_id,e.id) AS thread_id,e.direction,e.status,${CRM_TEAM_COPY_SQL} AS team_copy,${timeSql} AS created_at,
       EXISTS(SELECT 1 FROM email_attachments a WHERE a.email_id=e.id) AS has_attachments,
       row_number() OVER(PARTITION BY COALESCE(e.thread_id,e.id) ORDER BY julianday(e.created_at) DESC,e.id DESC) AS recency
     FROM emails e WHERE ${CRM_ADDRESS_SCOPE} AND COALESCE(e.thread_id,e.id)>?
   ) SELECT thread_id,max(CASE WHEN recency=1 THEN id END) AS latest_message_id,max(created_at) AS last_message_at,
-    max(CASE WHEN direction='inbound' THEN created_at END) AS last_inbound_at,
-    max(CASE WHEN direction='outbound' AND status IN ('sent','delivered','delayed') THEN created_at END) AS last_outbound_at,max(has_attachments) AS has_attachments
+    max(CASE WHEN direction='inbound' AND NOT team_copy THEN created_at END) AS last_inbound_at,
+    max(CASE WHEN team_copy OR (direction='outbound' AND status IN ('sent','delivered','delayed')) THEN created_at END) AS last_outbound_at,max(has_attachments) AS has_attachments
     FROM scoped GROUP BY thread_id ORDER BY thread_id LIMIT ?`,
       )
       .bind(...args(scope), cursor?.id ?? "", limit + 1)
       .all<IndexRow>()
   ).results;
   const selected = rows.slice(0, limit);
-  const internal = new Set(
-    (
-      await db
-        .prepare(
-          "SELECT lower(address) AS address FROM addresses UNION SELECT lower(email) AS address FROM users",
-        )
-        .all<{ address: string }>()
-    ).results.map((row) => row.address),
-  );
+  const internal = await crmInternalAddresses(db);
   internal.add(scope.address.toLowerCase());
   const items = [];
   let bytes = 0;
@@ -215,7 +209,7 @@ export async function crmThreadHistory(
   const rows = (
     await db
       .prepare(
-        `SELECT e.*,${timeSql} AS sort_at FROM emails e WHERE ${CRM_ADDRESS_SCOPE} AND COALESCE(e.thread_id,e.id)=?
+        `SELECT e.*,${CRM_TEAM_COPY_SQL} AS team_copy,${timeSql} AS sort_at FROM emails e WHERE ${CRM_ADDRESS_SCOPE} AND COALESCE(e.thread_id,e.id)=?
     ${cursor ? "AND (julianday(e.created_at)<julianday(?) OR (julianday(e.created_at)=julianday(?) AND e.id<?))" : ""}
     ORDER BY julianday(e.created_at) DESC,e.id DESC LIMIT ?`,
       )
@@ -225,7 +219,7 @@ export async function crmThreadHistory(
         ...(cursor ? [cursor.at, cursor.at, cursor.id] : []),
         limit + 1,
       )
-      .all<EmailRow & { sort_at: string }>()
+      .all<EmailRow & { sort_at: string; team_copy: number }>()
   ).results;
   const candidates = rows.slice(0, limit),
     files = [];
@@ -250,6 +244,7 @@ export async function crmThreadHistory(
       ).results,
     );
   }
+  const internal = await crmInternalAddresses(db);
   const messages = [];
   let bytes = 0;
   for (const row of candidates) {
@@ -274,18 +269,16 @@ export async function crmThreadHistory(
       throw new CrmMailPageError(422, "message_too_large");
     const item = {
       id: message.id,
-      direction: message.direction,
+      ...crmMessagePerspective({ ...message, team_copy: row.team_copy }, internal),
       from_addr: message.from_addr,
       from_name: message.from_name,
       to_addr: message.to_addr,
       cc_addr: message.cc_addr,
       subject: message.subject,
       body_text: body,
-      status: message.status,
       status_detail: message.status_detail,
       is_read: message.is_read === 1,
       created_at: row.sort_at,
-      reply_target: replyTarget(message),
       attachments,
     };
     const size = new TextEncoder().encode(JSON.stringify(item)).byteLength;

@@ -15,6 +15,102 @@ import {
 } from "../src/lib/server/email-provider";
 import { recoverOutgoing } from "../src/lib/server/outgoing-recovery";
 
+async function copiedTeamEmail(f: Awaited<ReturnType<typeof fixture>>) {
+  f.sqlite.exec("INSERT INTO addresses(id,user_id,domain_id,address) VALUES('devon-address','devon','domain','devon@example.test')");
+  await insertEmail(f.db, {
+    id: "private-team-original", userId: "devon", direction: "outbound",
+    from: "devon@example.test", to: "customer@outside.test, partner@outside.test",
+    cc: "sales@example.test", bcc: "hidden@outside.test", subject: "Website",
+    bodyText: "Private sent copy", messageId: "confirmed-team-send@example.test",
+    addressId: "devon-address", domainId: "domain", status: "sent", subjectMatch: false,
+  });
+  await insertEmail(f.db, {
+    id: "received-team-copy", userId: "owner", direction: "inbound",
+    from: "devon@example.test", fromName: "Devon",
+    to: '"Customer, Inc" <customer@outside.test>, partner@outside.test',
+    cc: "sales@example.test, customer@outside.test", subject: "Website",
+    bodyText: "The shared copy", messageId: "confirmed-team-send@example.test",
+    addressId: "sales", domainId: "domain", subjectMatch: false,
+  });
+  f.sqlite.exec("UPDATE emails SET created_at='2026-10-30 20:20:00' WHERE id='received-team-copy'");
+}
+
+test("copied team outreach has team direction and customer reply targets without sharing the sender mailbox", async () => {
+  const f = await fixture();
+  await f.approve(true);
+  await copiedTeamEmail(f);
+  const index = await (await f.call({ action: "conversationIndex", mailboxId: "sales" })).json();
+  assert.equal(index.items.length, 1);
+  assert.equal(index.items[0].lastInboundAt, null);
+  assert.equal(index.items[0].lastOutboundAt, "2026-10-30T20:20:00.000Z");
+  assert.deepEqual(index.items[0].externalAddresses, ["customer@outside.test", "partner@outside.test"]);
+  for (const action of ["thread", "threadHistory"]) {
+    const response = await f.call({ action, mailboxId: "sales", threadId: "received-team-copy" });
+    assert.equal(response.status, 200);
+    const data = await response.json();
+    assert.equal(data.messages.length, 1);
+    assert.equal(data.messages[0].direction, "outbound");
+    assert.equal(data.messages[0].team_outreach, true);
+    assert.equal(data.messages[0].status, "sent");
+    assert.deepEqual(data.messages[0].reply_target, ["customer@outside.test", "partner@outside.test"]);
+    assert.ok(!JSON.stringify(data).includes("hidden@outside.test"));
+    assert.ok(!JSON.stringify(data).includes("Private sent copy"));
+  }
+  assert.equal((await f.call({ action: "thread", mailboxId: "devon-address", threadId: "private-team-original" })).status, 403);
+  // Normal Mail must continue showing the original received copy.
+  assert.equal(f.sqlite.query("SELECT direction FROM emails WHERE id='received-team-copy'").all()[0].direction, "inbound");
+
+  const send = { action: "send", mailboxId: "sales", fromAddressId: "sales", threadId: "received-team-copy",
+    replyToMessageId: "received-team-copy", text: "Following up with the customer", idempotencyKey: crypto.randomUUID() };
+  assert.equal((await f.call(send)).status, 409);
+  assert.equal((await f.call({ ...send, expectedReplyTargets: ["devon@example.test"] })).status, 409);
+  assert.equal(f.sent.length, 0);
+  const reviewed = { ...send, expectedReplyTargets: ["customer@outside.test", "partner@outside.test"] };
+  assert.equal((await f.call(reviewed)).status, 200);
+  assert.equal((await f.call(reviewed)).status, 200);
+  assert.equal(f.sent.length, 1);
+  assert.deepEqual((f.sent[0] as { to: string[] }).to, ["customer@outside.test", "partner@outside.test"]);
+});
+
+test("a customer response after copied outreach is incoming and reopens the reply clock", async () => {
+  const f = await fixture();
+  await f.approve();
+  await copiedTeamEmail(f);
+  await insertEmail(f.db, {
+    id: "customer-response", userId: "owner", direction: "inbound", from: "customer@outside.test",
+    to: "sales@example.test", cc: "devon@example.test", subject: "Re: Website", bodyText: "Yes please",
+    messageId: "customer-response@outside.test", replyToEmailId: "received-team-copy", addressId: "sales", domainId: "domain",
+  });
+  f.sqlite.exec("UPDATE emails SET created_at='2026-10-30 20:30:00' WHERE id='customer-response'");
+  const index = await (await f.call({ action: "conversationIndex", mailboxId: "sales" })).json();
+  assert.equal(index.items[0].lastInboundAt, "2026-10-30T20:30:00.000Z");
+  assert.equal(index.items[0].lastOutboundAt, "2026-10-30T20:20:00.000Z");
+  const history = await (await f.call({ action: "threadHistory", mailboxId: "sales", threadId: "received-team-copy" })).json();
+  assert.equal(history.messages.at(-1).direction, "inbound");
+  assert.equal(history.messages.at(-1).team_outreach, false);
+  assert.deepEqual(history.messages.at(-1).reply_target, ["customer@outside.test"]);
+});
+
+test("known teammate headers alone and unconfirmed sends never suppress incoming mail", async () => {
+  const f = await fixture();
+  await f.approve();
+  await copiedTeamEmail(f);
+  for (const change of [
+    "UPDATE emails SET message_id='unmatched' WHERE id='received-team-copy'",
+    "UPDATE emails SET message_id='confirmed-team-send@example.test' WHERE id='received-team-copy'; UPDATE emails SET status='queued' WHERE id='private-team-original'",
+    "UPDATE emails SET status='failed' WHERE id='private-team-original'",
+    "UPDATE emails SET status='sent',subject='Different subject' WHERE id='private-team-original'",
+  ]) {
+    f.sqlite.exec(change);
+    const index = await (await f.call({ action: "conversationIndex", mailboxId: "sales" })).json();
+    assert.equal(index.items[0].lastInboundAt, "2026-10-30T20:20:00.000Z");
+    assert.equal(index.items[0].lastOutboundAt, null);
+    const history = await (await f.call({ action: "threadHistory", mailboxId: "sales", threadId: "received-team-copy" })).json();
+    assert.equal(history.messages[0].direction, "inbound");
+    assert.deepEqual(history.messages[0].reply_target, ["devon@example.test"]);
+  }
+});
+
 const secret = "synthetic-crm-bridge-secret-2026-local-only";
 const token = "a".repeat(48);
 async function fixture() {

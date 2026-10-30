@@ -29,6 +29,26 @@ Technical steps and alert operation: [Meta setup](docs/META_SETUP.md). New-lead 
 
 ## Shared Sales inbox — remaining work
 
+### October 30: deploy the copied-team-email CRM fix
+
+Austin reported Devon's email to a Facebook lead, with Austin on CC, appearing as an incoming customer message. Mail correctly received Austin's copy, but the CRM used mailbox-relative direction, incorrectly showing **Needs reply** and targeting Devon in its reply box.
+
+The fix on `main` projects a confirmed team send as outgoing activity in the CRM. It shows **Team outreach · Copied to this mailbox**, shows visible To/Cc recipients, and replies to the external customer recipients rather than copied teammates. Genuine later customer replies still become **Needs reply**. It uses an existing matching sent Message-ID and registered sender; a teammate-looking From header alone is insufficient. Original Mail messages, grants and private BCCs are unchanged. Existing copies are reclassified when the CRM reloads history or completes its next metadata sweep; no database migration or lead reimport is needed.
+
+**Deployment needed:** the Cloudflare CLI on Austin's computer is signed out. Deploy the Mail service from an authenticated machine after pulling `main` (and verify the website's Render deployment includes this update):
+
+```powershell
+git pull --ff-only origin main
+npm --prefix apps/mail ci
+npm --prefix apps/mail run deploy:production
+```
+
+No new environment variables, mailbox grants or credentials are needed. Deploying the website alone does not activate the corrected classification or reply destination. The website remains compatible with the older Mail response until Mail is deployed; stale copied-message reply forms are rejected instead of silently changing recipients.
+
+After deployment, refresh Austin's CRM Inbox and open Devon's **Website** email from October 30. Verify **Team outreach**, **Waiting** (unless someone explicitly changed its work status), visible lead recipient/Austin CC, and **Reply details → To** pointing to the lead. Do not send a test message to that real lead. With an authorized test recipient, verify a subsequent customer reply becomes incoming/Needs reply. Ordinary Mail still shows Devon's message as received, because Austin was CC'd.
+
+Local verification: 409 Mail tests, 20 PostgreSQL Inbox integration tests, 14 Inbox unit tests, and the new desktop/phone workflow checks passed; Mail check/build and website lint/typecheck/production build passed. All sends in these tests used synthetic providers. Production Mail activation remains pending the Cloudflare deployment above.
+
 The setup is complete: **sales@tailoredagents.com** belongs to Jeffrey's existing Mail account, with explicit **read and send** permission for **jeffrey@tailoredagents.com**, **austin@tailoredagents.com** and **devon@tailoredagents.com**. Personal inboxes are outside that shared permission. Austin now has Mail management access; Jeffrey retains ownership. Devon has dashboard approval and remains a regular teammate. Passwords were not changed.
 
 Remaining work:

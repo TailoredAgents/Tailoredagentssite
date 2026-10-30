@@ -71,6 +71,7 @@ const pageSchema = z.object({
 const messageSchema = z.object({
   id: identifier,
   direction: z.enum(["inbound", "outbound"]),
+  team_outreach: z.boolean().optional(),
   from_addr: safeText(500),
   from_name: safeText(500).nullable(),
   to_addr: safeText(4000),
@@ -331,6 +332,7 @@ function inboxMessage(m: z.infer<typeof messageSchema>): InboxMessage {
     deliveryDetail: m.status_detail,
     createdAt: m.created_at,
     replyTargets: m.reply_target,
+    teamOutreach: m.team_outreach ?? false,
     attachments: m.attachments.map((a) => ({
       id: a.id,
       filename: a.filename,

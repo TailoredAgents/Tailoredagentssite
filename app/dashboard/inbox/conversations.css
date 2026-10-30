@@ -157,6 +157,7 @@
 .conversation-delivery.is-delivered { color: var(--workspace-success); }
 .conversation-quoted-email { margin-top: 10px; font-size: 14px; color: var(--workspace-muted); }
 .conversation-quoted-email summary { cursor: pointer; min-height: 30px; }
+.conversation-email-addresses { overflow-wrap: anywhere; }
 .conversation-media-notice, .conversation-history-notice { margin: 0; font-size: 14px; line-height: 1.5; color: var(--workspace-muted); }
 .conversation-history-notice { padding: 10px 12px; border: 1px dashed var(--workspace-line); border-radius: 6px; text-align: center; }
 .conversation-history-controls { display: flex; flex-direction: column; align-items: center; flex: 0 0 auto; gap: 8px; margin-bottom: 4px; }

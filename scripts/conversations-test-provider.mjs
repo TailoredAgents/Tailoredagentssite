@@ -95,6 +95,15 @@ createServer(async (request, response) => {
           const thread = threads.get(body.threadId || "thread-website");
           thread.messages.push(mailMessage(`incoming-${randomUUID()}`, body.text || "A new customer email.", { created_at: new Date().toISOString() }));
         }
+        if (body.action === "teamEmailCopy") {
+          threads.set("thread-team-copy", { threadId: "thread-team-copy", subject: "Website outreach", messages: [
+            mailMessage("team-copy", "Hi Jordan, here is our website proposal.", {
+              direction: "outbound", team_outreach: true, from_addr: "devon@example.test", from_name: "Devon",
+              to_addr: "customer@example.test", cc_addr: "sales@example.test", status: "sent", created_at: new Date().toISOString(),
+            }),
+          ] });
+          await pool.query("UPDATE crm_conversation_sync SET last_completed_at=now()-interval '1 minute' WHERE workspace_id=$1", [workspace]);
+        }
         if (body.action === "removeEmail") threads.delete(body.threadId || "thread-website");
         if (body.action === "manyEmails") for (let i = 0; i < 132; i++) {
           const id = `bulk-${String(i).padStart(3,"0")}`;
@@ -155,7 +164,7 @@ createServer(async (request, response) => {
       const rows = items.map(t => ({ threadId: t.threadId, latestMessageId: t.messages.at(-1).id, lastMessageAt: t.messages.at(-1).created_at,
         lastInboundAt: [...t.messages].reverse().find(m=>m.direction === "inbound")?.created_at || null,
         lastOutboundAt: [...t.messages].reverse().find(m=>m.direction === "outbound")?.created_at || null,
-        externalAddresses: [...new Set(t.messages.flatMap(m=>[m.from_addr,m.to_addr]).filter(a=>a !== mailbox.email))], hasAttachments: t.messages.some(m=>m.attachments.length) }));
+        externalAddresses: [...new Set(t.messages.flatMap(m=>[m.from_addr,m.to_addr]).filter(a=>![mailbox.email,"devon@example.test"].includes(a)))], hasAttachments: t.messages.some(m=>m.attachments.length) }));
       const last = items.at(-1)?.threadId;
       const complete = !last || ![...threads.keys()].some(id => id > last);
       return reply(response, { items: rows, cursor: complete ? null : last, complete });

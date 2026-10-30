@@ -110,6 +110,18 @@ let pool: Pool;
 describe.skipIf(!databaseUrl)(
   "Inbox metadata and outbound intents in isolated PostgreSQL",
   () => {
+    it("refuses a stale teammate recipient and sends a reviewed team-copy reply only to its customer", async () => {
+      const copied = structuredClone(thread);
+      Object.assign(copied.messages[0], { direction: "outbound", teamOutreach: true,
+        from: "devon@tailoredagents.com", to: "prospect@example.test", cc: mailbox.email, deliveryStatus: "sent" });
+      gateway.thread.mockResolvedValue(copied);
+      const input = compose({ ...envelope, replyToMessageId: "message-1", to: "devon@tailoredagents.com" });
+      await expect(sendInboxMessage(owner, input)).rejects.toThrow("reply recipients have changed");
+      expect(gateway.send).not.toHaveBeenCalled();
+      expect((await pool.query("SELECT 1 FROM inbox_outbound_intents")).rowCount).toBe(0);
+      expect((await sendInboxMessage(owner, { ...input, to: "prospect@example.test" })).sendState).toBe("accepted");
+      expect(gateway.send).toHaveBeenCalledWith(owner, expect.objectContaining({ expectedReplyTargets: ["prospect@example.test"] }));
+    });
     beforeAll(async () => {
       const url = new URL(databaseUrl!);
       if (
