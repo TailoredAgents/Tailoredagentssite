@@ -12,6 +12,8 @@ import {renderPortableSite} from "../lib/factory/site/render";
 import {checkPortableSite,screenshotPath} from "../lib/factory/site/qa";
 import {reviewSiteDepth} from "../lib/factory/site/quality";
 import {checkSiteDelivery} from "../lib/factory/site/performance";
+import {applyApprovedDesign} from "../lib/factory/site/design";
+import {validateSiteBlueprint} from "../lib/factory/site/validate";
 
 async function main(){
   if(!process.argv[2])throw new Error("Use: node --conditions=react-server --import tsx scripts/evaluate-factory-draft.ts <extracted-diagnostic-directory> [new-output-directory]");
@@ -23,7 +25,8 @@ async function main(){
     const bytes=await readFile(target);if(bytes.byteLength>maximumBytes)throw new Error("A diagnostic file exceeds its local replay size limit.");return bytes;
   }
   const diagnostic=parseFactoryDraftDiagnostic(JSON.parse((await load("draft.json",factoryDiagnosticLimits.jsonBytes)).toString("utf8")));
-  const assets=await prepareFactoryDiagnosticAssets(diagnostic,load),{files}=renderPortableSite(portableBundle(diagnostic.blueprint),assets);
+  const blueprint=validateSiteBlueprint(applyApprovedDesign(diagnostic.blueprint,diagnostic.plan),diagnostic.plan);
+  const assets=await prepareFactoryDiagnosticAssets(diagnostic,load),{files}=renderPortableSite(portableBundle(blueprint),assets);
   // Require a new directory so a replay never overwrites source artifacts or
   // leaves stale pages from an earlier run in the review evidence.
   const output=process.argv[3]?path.resolve(process.argv[3]):await mkdtemp(path.join(tmpdir(),"factory-draft-replay-"));
@@ -33,7 +36,7 @@ async function main(){
   const browser=await chromium.launch({headless:true,env:browserEnv,chromiumSandbox:process.platform==="linux"});
   try{
     for(const [filename,bytes]of Object.entries(files)){const destination=path.join(output,"site",filename);await mkdir(path.dirname(destination),{recursive:true});await writeFile(destination,bytes);}
-    const qa=await checkPortableSite({files,browser}),content=reviewSiteDepth(diagnostic.blueprint,diagnostic.plan),delivery=checkSiteDelivery(files);
+    const qa=await checkPortableSite({files,browser,blueprint}),content=reviewSiteDepth(blueprint,diagnostic.plan),delivery=checkSiteDelivery(files);
     const issues=[...qa.issues,...content,...delivery.issues],passed=qa.passed&&!issues.some(issue=>issue.severity==="error");
     for(const shot of qa.screenshots){const destination=path.join(output,screenshotPath(shot.page,shot.viewport));await mkdir(path.dirname(destination),{recursive:true});await writeFile(destination,shot.bytes);}
     const report={kind:"local-saved-draft-replay",generatedAt:new Date().toISOString(),websiteVersion:diagnostic.websiteVersion??null,providerRequests:0,paidVisualReview:false,productionWrite:false,fieldPerformanceMeasured:false,passed,issues,delivery,labPerformance:qa.labPerformance,regions:qa.screenshots.map(({page,viewport,regions})=>({page,viewport,regions}))};

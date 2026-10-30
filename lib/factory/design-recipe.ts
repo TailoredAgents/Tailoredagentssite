@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { designFamilies } from "./site/families";
-import { designFamilyIds, fontThemes, heroCompositions } from "./site/types";
+import { designFamilyIds, fontThemes, heroCompositions, homeSurfaces } from "./site/types";
 import type { FactoryDesignRecipe } from "./types";
 
 export const factoryDesignRecipeSchema = z.object({
@@ -10,6 +10,7 @@ export const factoryDesignRecipeSchema = z.object({
   fontTheme: z.enum(fontThemes),
   density: z.enum(["compact", "balanced", "airy"]),
   radius: z.enum(["square", "soft", "rounded"]),
+  homeSurface: z.enum(homeSurfaces).optional(),
 }).strict();
 
 /** Use the renderer's real family map, not a second independently drifting list. */
@@ -18,6 +19,8 @@ export function assertFactoryDesignRecipe(recipe: FactoryDesignRecipe) {
   if (!designFamilies[recipe.family].compositions.includes(recipe.composition)) {
     throw new Error("The proposed design uses a homepage composition that its design family does not support.");
   }
+  if(recipe.composition === "immersive" && recipe.homeSurface && recipe.homeSurface !== "background")
+    throw new Error("A full-image opening uses its image overlay; choose the default opening surface or a non-immersive composition.");
 }
 
 /** Serializable context for both planning and generation; no provider or UI dependencies. */
@@ -33,5 +36,6 @@ export const factoryDesignCapabilities = {
   },
   density: { compact: "Close, focused section rhythm", balanced: "Moderate section rhythm", airy: "Generous section rhythm where content supports it" },
   radius: { square: "Near-square corners", soft: "Gently softened corners", rounded: "Pronounced rounded corners" },
+  homeSurfaces: {background:"Default opening; full-image openings keep their image overlay",surface:"Surface background with Ink text",ink:"Ink background with Background text",accent:"Accent background with Background text; requires 4.5:1 contrast"},
   innerIntroductions: "Compact and text-only unless an approved, purposeful inner image is placed explicitly.",
 };

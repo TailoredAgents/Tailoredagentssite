@@ -5,7 +5,7 @@ import { factoryModelPolicy, factoryReservation, factoryUsageCost } from "./conf
 import { attemptFactoryCost, reserveFactoryCost, settleFactoryCost, uncertainFactoryCost, type FactoryCostRequest } from "./budget";
 import { websitePlanningContract, websiteQualityStandards } from "./website-standards";
 import { assertFactoryDesignRecipe, factoryDesignCapabilities } from "./design-recipe";
-import { approvedDesignConstraints, approvedPaletteContrastIssues } from "./site/design";
+import { approvedDesignConstraints, approvedPaletteContrastIssues, assertApprovedOpeningContrast } from "./site/design";
 import { factoryPlanSchema, factoryPlanResponseSchema, factoryPlanGenerationSchema } from "./plan-schema";
 export { factoryPlanSchema, factoryPlanResponseSchema, factoryPlanGenerationSchema } from "./plan-schema";
 
@@ -148,6 +148,7 @@ export function parseFactoryPlan(raw:unknown,research:FactoryResearch,previous:F
   if(previous && !result.changed)return {...result,plan:previous};
   assertDeclaredPageCount(result.plan);
   const plan={...result.plan,sources:research.sources};
+  assertApprovedOpeningContrast(plan);
   const paletteIssues=approvedPaletteContrastIssues(plan);
   if(paletteIssues.length){
     const roles={ink:"Ink",muted:"Muted",background:"Background",surface:"Surface"};

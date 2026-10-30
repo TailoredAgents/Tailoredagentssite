@@ -20,6 +20,7 @@ import {prepareSiteIdentity} from "./site/identity";
 import {hasFactoryIdentity,verifyFactoryPublicArtifacts,FactoryPublicVerificationError,type FactoryPublicReceipt} from "./public-verification";
 import {reviewSiteDepth} from "./site/quality";
 import {checkPortableSite} from "./site/qa";
+import {applyApprovedDesign} from "./site/design";
 import {screenshotPath} from "./site/qa";
 import {preparePortableImages,preparePortableLogo,portableMobileImageBudget} from "./site/images";
 import {factoryBuildAssetDescriptors,resolveFactoryBuildImages,verifyFactoryUpload,type FactorySavedImage} from "./build-assets";
@@ -50,12 +51,12 @@ function canonicalData(value:unknown):unknown{
 // issue-N mapping) while hashing objects independently of serialization order.
 const contentHash=(value:unknown)=>createHash("sha256").update(JSON.stringify(canonicalData(value))).digest("hex");
 const blockingIssueFingerprint=(issues:SiteIssue[])=>contentHash(issues.filter(issue=>issue.severity==="error").map(issue=>JSON.stringify([issue.page,issue.sectionId??null,issue.code,issue.message])).sort());
-export type FactoryBuildRuntime={storage:FactoryStorage;execute(build:FactoryClaimedBuild):SiteModelExecutor;hero(build:FactoryClaimedBuild,prompt:string,slotId?:string):Promise<{bytes:Uint8Array;provenance:unknown}>;qa(files:SiteFiles):Promise<SiteQaResult>;verify(build:FactoryClaimedBuild,manifest:FactoryBuildManifest):Promise<FactoryBuildVerification>;verifyPublic?(build:FactoryClaimedBuild,manifest:FactoryBuildManifest):Promise<FactoryPublicReceipt>};
+export type FactoryBuildRuntime={storage:FactoryStorage;execute(build:FactoryClaimedBuild):SiteModelExecutor;hero(build:FactoryClaimedBuild,prompt:string,slotId?:string):Promise<{bytes:Uint8Array;provenance:unknown}>;qa(files:SiteFiles,blueprint?:SiteBlueprint):Promise<SiteQaResult>;verify(build:FactoryClaimedBuild,manifest:FactoryBuildManifest):Promise<FactoryBuildVerification>;verifyPublic?(build:FactoryClaimedBuild,manifest:FactoryBuildManifest):Promise<FactoryPublicReceipt>};
 function working(build:FactoryClaimedBuild):Working{return build.workingData as Working;}
 function checkDeadline(build:FactoryClaimedBuild){if(!Number.isFinite(Date.parse(build.leaseUntil))||Date.parse(build.leaseUntil)<=Date.now())throw new Error("The website worker lease expired.");}
 async function withSite(build:FactoryClaimedBuild,state:Working,runtime:FactoryBuildRuntime){
   if(!state.blueprint||state.heroKey!==`${build.storagePrefix}assets/hero.png`)throw new Error("The saved website assets are incomplete.");
-  const blueprint=validateSiteBlueprint(state.blueprint,build.plan,factoryBuildAssetDescriptors(build)),bundle=portableBundle(blueprint);
+  const blueprint=validateSiteBlueprint(applyApprovedDesign(state.blueprint,build.plan),build.plan,factoryBuildAssetDescriptors(build)),bundle=portableBundle(blueprint);
   const assets:SiteFiles={},slots=resolveFactoryBuildImages(build,blueprint),mobileBytes=portableMobileImageBudget(slots.filter(slot=>slot.role==="photo").length);
   for(const slot of slots){
     const saved=state.imageAssets?.[slot.id],key=`${build.storagePrefix}assets/${slot.id}.png`;
@@ -89,12 +90,12 @@ export function defaultFactoryBuildRuntime():FactoryBuildRuntime {
       if(!previewUrl||!shareUrl)throw new FactoryPublicVerificationError("The preview domain is not configured.");
       return verifyFactoryPublicArtifacts({previewUrl,shareUrl,manifest,checkDeadline:()=>checkDeadline(build)});
     },
-    async qa(files){
+    async qa(files,blueprint){
       // Generated data cannot become code. Even trusted QA gets no CRM/provider credentials.
       const browserEnv:Record<string,string>={PATH:process.env.PATH||"",HOME:tmpdir(),TMPDIR:tmpdir(),TEMP:tmpdir(),TMP:tmpdir()};
       for(const key of ["SystemRoot","WINDIR","DISPLAY","PLAYWRIGHT_BROWSERS_PATH"])if(process.env[key])browserEnv[key]=process.env[key]!;
       const browser=await chromium.launch({headless:true,env:browserEnv,chromiumSandbox:process.platform==="linux"});
-      try{return await checkPortableSite({files,browser});}finally{await browser.close();}
+      try{return await checkPortableSite({files,browser,blueprint});}finally{await browser.close();}
     }};
 }
 /** One leased, bounded stage. Test dependencies cannot be selected through environment variables. */
@@ -265,7 +266,7 @@ export async function performFactoryBuildStage(build:FactoryClaimedBuild,depende
     if(state.correctionPending)throw new FactoryBuildQualityError("The previous correction request was interrupted before its response could be saved. Its possible charge remains included. An administrator must review this attempt before more correction requests; the previous preview is preserved.");
     const inspect = async (files:SiteFiles) => {
       await report(state.repaired?"rechecking":"browser_checks");
-      const browserQa=await runtime.qa(files),depth=reviewSiteDepth(state.blueprint!,build.plan),delivery=checkSiteDelivery(files);
+      const browserQa=await runtime.qa(files,applyApprovedDesign(state.blueprint!,build.plan)),depth=reviewSiteDepth(state.blueprint!,build.plan),delivery=checkSiteDelivery(files);
       const issues=[...browserQa.issues,...depth,...delivery.issues];
       return {...browserQa,passed:browserQa.passed&&!issues.some(i=>i.severity==="error"),issues,delivery};
     };

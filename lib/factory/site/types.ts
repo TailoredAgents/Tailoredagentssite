@@ -7,6 +7,8 @@ export const heroCompositions=["split","immersive","editorial","centered","asymm
 export type HeroComposition=typeof heroCompositions[number];
 export const sectionLayouts=["grid","rows","split","editorial","timeline","band","showcase","checklist","spotlight","feature-list","comparison","image-grid","alternating","service-tabs"] as const;
 export const fontThemes=["studio","editorial","warm","technical"] as const;
+export const homeSurfaces=["background","surface","ink","accent"] as const;
+export type HomeSurface=typeof homeSurfaces[number];
 export type SiteMedia={id:string;role:"logo"|"photo";source:"provided"|"generated";uploadId:string|null;prompt:string;alt:string;caption:string};
 export type SitePresentation={version:1;fontTheme:typeof fontThemes[number];heroEmphasis:string|null;logoAssetId:string|null;
   /** Optional on saved sites; controls crop position without changing original bytes. */
@@ -15,6 +17,7 @@ export type SitePresentation={version:1;fontTheme:typeof fontThemes[number];hero
   sectionImages:Array<{pagePath:string;sectionId:string;assetId:string;itemIndex:number|null}>};
 export type SiteDesign={
   version:1;
+  homeSurface?:HomeSurface;
   palette:{background:string;surface:string;ink:string;muted:string;accent:string;accentSecondary:string};
   typography:{heading:"modern"|"editorial"|"humanist"|"geometric";body:"modern"|"humanist";scale:"balanced"|"expressive";weight:400|600|700|800};
   density:"compact"|"balanced"|"airy";radius:"square"|"soft"|"rounded";
@@ -23,6 +26,9 @@ export type SiteDesign={
 };
 export const siteFormFields=["name","email","phone","location","message","preferredContact","contactDetail"] as const;
 export type SiteInteractions={version:1;
+  /** Missing on saved drafts. New presentations treat item actions as explicit. */
+  serviceLinks?:"explicit"|"automatic";
+  heroActions?:Array<{pagePath:string;slot:"primary"|"secondary";targetPage:string;targetSection:string|null}>;
   forms:Array<{pagePath:string;sectionId:string;fields:Array<typeof siteFormFields[number]>;submitLabel:string}>;
   actions:Array<{pagePath:string;sectionId:string;itemIndex:number;label:string;targetPage:string;targetSection:string|null}>;
 };

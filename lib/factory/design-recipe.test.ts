@@ -16,6 +16,15 @@ describe("Approved renderer design contract",()=>{
     expect(json.properties.plan.properties.design.required).toContain("recipe");
     expect(factoryPlanGenerationSchema.parse({changed:false,reply:"Unchanged",changeSummary:"Question answered",plan:{...legacy,design:{...legacy.design,recipe:null}}}).plan.design.recipe).toBeNull();
   });
+  it("requires an explicit opening surface in new recipes while preserving saved plans",()=>{
+    const {sources:_sources,...plan}=fixtureSitePlan;
+    const recipe={version:1 as const,family:"professional" as const,composition:"asymmetric" as const,fontTheme:"editorial" as const,density:"balanced" as const,radius:"soft" as const};
+    const value={changed:true,reply:"Review the direction",changeSummary:"Opening treatment",plan:{...plan,design:{...plan.design,recipe}}};
+    expect(()=>factoryPlanGenerationSchema.parse(value)).toThrow();
+    expect(factoryPlanSchema.parse(value.plan).design.recipe).toEqual(recipe);
+    expect(factoryPlanGenerationSchema.parse({...value,plan:{...value.plan,design:{...value.plan.design,recipe:{...recipe,homeSurface:"accent"}}}}).plan.design.recipe?.homeSurface).toBe("accent");
+    expect(()=>assertFactoryDesignRecipe({...recipe,family:"hospitality",composition:"immersive",homeSurface:"accent"})).toThrow("image overlay");
+  });
   it("derives available compositions directly from the renderer family map",()=>{
     for(const [family,definition] of Object.entries(designFamilies)){
       expect(factoryDesignCapabilities.families[family].compositions).toEqual(definition.compositions);

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { factoryDesignRecipeSchema } from "./design-recipe";
+import { homeSurfaces } from "./site/types";
 
 const copy=z.string().trim().min(1);
 const shortList=z.array(copy.max(1000)).max(16);
@@ -22,5 +23,5 @@ export const factoryPlanResponseSchema=z.object({
 // New requests make every property explicit for strict structured output. Saved
 // responses/plans without a recipe still parse without rewriting their approval.
 export const factoryPlanGenerationSchema=factoryPlanResponseSchema.extend({
-  plan:factoryPlanSchema.extend({design:factoryPlanSchema.shape.design.extend({recipe:factoryDesignRecipeSchema.nullable()})}),
+  plan:factoryPlanSchema.extend({design:factoryPlanSchema.shape.design.extend({recipe:factoryDesignRecipeSchema.extend({homeSurface:z.enum(homeSurfaces)}).nullable()})}),
 });

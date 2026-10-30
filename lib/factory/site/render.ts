@@ -4,7 +4,7 @@ import { relativeSiteLink,siteManifest,type SiteFiles } from "./artifacts";
 import type { PortableSiteBundle,SiteBlueprint } from "./types";
 import { validateBlueprintStructure } from "./validate";
 import { portablePolishCss,portableDesignCss,portablePresentationCss } from "./polish";
-import { siteDesignCss,colorLuminance } from "./design";
+import { siteDesignCss,colorLuminance,homeSurfaceCss } from "./design";
 import { portableHeroImages,portableSlotImages,portableLogoImage } from "./images";
 import {configuredDemoForm,configuredFormRuntime} from "./interactions";
 import {portableFontCss,portableFontFiles} from "./fonts";
@@ -61,6 +61,24 @@ export function siteActionTarget(label:string,b:SiteBlueprint,page:SiteBlueprint
     const section=page.sections.find(s=>s.kind===kind);if(section)return `#${section.id}`;
   }
   return fallback;
+}
+
+/** Historical opening labels can reuse an exact, unambiguous saved item
+ * destination. Never guess an industry route or choose between conflicting
+ * same-label actions. New generation supplies each opening slot explicitly. */
+export function configuredHeroTarget(b:SiteBlueprint,page:SiteBlueprint["pages"][number],slot:"primary"|"secondary"){
+  const label=page.hero[slot==="primary"?"primaryCta":"secondaryCta"];
+  const explicit=b.interactions?.heroActions?.find(action=>action.pagePath===page.path&&action.slot===slot);
+  const normalize=(value:string)=>value.normalize("NFKC").trim().replace(/\s+/g," ").toLowerCase();
+  const matches=(b.interactions?.actions||[]).filter(action=>normalize(action.label)===normalize(label));
+  const destinations=new Set(matches.map(action=>JSON.stringify([action.targetPage,action.targetSection])));
+  const action=explicit||(destinations.size===1?matches[0]:undefined);
+  if(!action)return null;
+  return siteActionTarget(label,b,page,`${relativeSiteLink(page.path,action.targetPage)}${action.targetSection?`#${action.targetSection}`:""}`,true);
+}
+
+export function usesAutomaticServiceLinks(b:SiteBlueprint){
+  return b.interactions?.serviceLinks==="automatic"||(!b.presentation&&b.interactions?.serviceLinks!=="explicit");
 }
 function heroHeadline(text:string,emphasis:string|null|undefined){
   const index=emphasis?text.indexOf(emphasis):-1;
@@ -154,10 +172,9 @@ function sectionMarkup(section:SiteBlueprint["pages"][number]["sections"][number
     const specified=sectionActions.find(a=>a.itemIndex===i);
     const page=blueprint.pages.find(p=>p.path===pagePath)!;
     const destination=specified?siteActionTarget(specified.label,blueprint,page,`${relativeSiteLink(pagePath,specified.targetPage)}${specified.targetSection?`#${specified.targetSection}`:""}`,true):detail?relativeSiteLink(pagePath,detail.path):contactTarget;
-    // Once a new presentation configures a section's actions, do not add
-    // fallback links to its remaining explanatory items. Unconfigured sections
-    // and legacy presentations retain their useful automatic service links.
-    const action=specified||section.kind==="services"&&(!blueprint.presentation||!sectionActions.length)&&(detail||hasContactDestination(blueprint))?`<a class="service-link" href="${escape(destination)}">${escape(specified?.label||(detail?"Explore this service":"Discuss your needs"))}<span aria-hidden="true">↗</span></a>`:"";
+    // An empty configured action list is meaningful: explanatory items need
+    // no generic inquiry link. Automatic links remain an explicit/legacy opt-in.
+    const action=specified||section.kind==="services"&&usesAutomaticServiceLinks(blueprint)&&(!blueprint.presentation||!sectionActions.length)&&(detail||hasContactDestination(blueprint))?`<a class="service-link" href="${escape(destination)}">${escape(specified?.label||(detail?"Explore this service":"Discuss your needs"))}<span aria-hidden="true">↗</span></a>`:"";
     const imageBinding=bindings.find(binding=>binding.itemIndex===i);
     const panelAttrs=section.layout==="service-tabs"?` id="${escape(section.id)}-panel-${i}" aria-labelledby="${escape(section.id)}-tab-${i}" data-service-panel tabindex="0"`:"";
     const numbering=section.layout==="service-tabs"?"":`<span class="item-number" aria-hidden="true">${section.layout==="checklist"?"✓":String(i+1).padStart(2,"0")}</span>`;
@@ -212,6 +229,8 @@ export function renderPortableSite(bundle:PortableSiteBundle,assets:Record<strin
   files["assets/site.css"]=encoder.encode(`:root{--background:${family.background};--surface:${family.surface};--ink:${family.ink};--muted:${family.muted};--accent:${b.accent};--accent-ink:${ink};--radius:${family.radius};--heading-font:${b.fontPair==="editorial"?'Georgia,"Times New Roman",serif':b.fontPair==="humanist"?'"Trebuchet MS",Arial,sans-serif':'Arial,Helvetica,sans-serif'};}\n${portableSiteCss}\n${portablePolishCss}\n${b.design?`${portableDesignCss}\n${siteDesignCss(b)}`:""}\n${b.presentation?`${portablePresentationCss}\n${portableFontCss(b.presentation.fontTheme,b.design?.typography.weight)}`:""}`);
   const cropCss=imageCompositionCss(b);
   if(cropCss)files["assets/site.css"]=encoder.encode(`${new TextDecoder().decode(files["assets/site.css"])}\n${cropCss}`);
+  const openingCss=homeSurfaceCss(b);
+  if(openingCss)files["assets/site.css"]=encoder.encode(`${new TextDecoder().decode(files["assets/site.css"])}\n${openingCss}`);
   for(const page of b.pages){
     const local=(target:string)=>relativeSiteLink(page.path,target);
     const imageMarkup:ImageMarkup=(assetId,lazy=false)=>{
@@ -236,12 +255,12 @@ export function renderPortableSite(bundle:PortableSiteBundle,assets:Record<strin
     const focusedContact=compactIntro&&(contactComposition||hasSingleContactForm(b,page));
     const contactAvailable=hasContactDestination(b);
     const callTarget=b.contact.phone?`tel:${b.contact.phone.replace(/[^+0-9]/g,"")}`:null;
-    const primaryTarget=siteActionTarget(page.hero.primaryCta,b,page,contactTarget);
-    const secondaryTarget=siteActionTarget(page.hero.secondaryCta,b,page,page.sections[0]?`#${page.sections[0].id}`:contactTarget);
+    const primaryTarget=configuredHeroTarget(b,page,"primary")??siteActionTarget(page.hero.primaryCta,b,page,contactTarget);
+    const secondaryTarget=configuredHeroTarget(b,page,"secondary")??siteActionTarget(page.hero.secondaryCta,b,page,page.sections[0]?`#${page.sections[0].id}`:contactTarget);
     const breadcrumb=page.path==="index.html"?"":`<div class="page-breadcrumb"><a href="${escape(local("index.html"))}">Home</a><span aria-hidden="true">/</span><span>${escape(page.title)}</span></div>`;
     const mobileContact=focusedContact||!contactAvailable?"":`<nav class="mobile-contact" aria-label="Quick contact">${callTarget?`<a class="button mobile-call" href="${escape(callTarget)}">Call now</a>`:""}<a class="button button-primary" href="${contactTarget}">Get in touch</a></nav>`;
     const repeatedContactAction=(target:string)=>focusedContact&&(target===contactTarget||target===callTarget||!!b.contact.email&&target===`mailto:${b.contact.email}`);
-    const heroActions=[usableHeroAction(page.hero.primaryCta,b)&&!repeatedContactAction(primaryTarget)?`<a class="button button-primary" href="${escape(primaryTarget)}">${escape(page.hero.primaryCta)}<span aria-hidden="true">↗</span></a>`:"",page.hero.secondaryCta&&usableHeroAction(page.hero.secondaryCta,b)&&!repeatedContactAction(secondaryTarget)?`<a class="text-link" href="${escape(secondaryTarget)}">${escape(page.hero.secondaryCta)} <span aria-hidden="true">↗</span></a>`:""].join("");
+    const heroActions=[usableHeroAction(page.hero.primaryCta,b)&&!repeatedContactAction(primaryTarget)?`<a data-hero-action="primary" class="button button-primary" href="${escape(primaryTarget)}">${escape(page.hero.primaryCta)}<span aria-hidden="true">↗</span></a>`:"",page.hero.secondaryCta&&usableHeroAction(page.hero.secondaryCta,b)&&!repeatedContactAction(secondaryTarget)?`<a data-hero-action="secondary" class="text-link" href="${escape(secondaryTarget)}">${escape(page.hero.secondaryCta)} <span aria-hidden="true">↗</span></a>`:""].join("");
     const heroCopy=`<div class="hero-copy">${breadcrumb}<p class="eyebrow"><span aria-hidden="true"></span>${escape(page.hero.eyebrow||b.tagline)}</p><h1>${heroHeadline(page.hero.headline,b.presentation?.heroEmphasis)}</h1><p class="hero-description">${escape(page.hero.body)}</p>${heroActions?`<div class="hero-actions">${heroActions}</div>`:""}</div>`;
     const renderedSections=page.sections.map((section,index)=>sectionMarkup(section,index,b,imageMarkup,page.path,contactTarget));
     const sections=contactComposition?`<div class="contact-composition">${renderedSections.slice(0,2).join("")}</div>${renderedSections.slice(2).join("")}`:renderedSections.join("");

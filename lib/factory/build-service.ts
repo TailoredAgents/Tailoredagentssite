@@ -13,6 +13,7 @@ import {factoryBuildConfiguration} from "./build-config";
 import type {FactoryClaimedBuild,FactoryBuildStage,FactoryBuildStageResult,FactoryBuildFinish,FactoryBuildManifest,FactoryBuildQa} from "./build-types";
 import {maximumReviewAttempts,maximumCorrectionAttempts} from "./build-types";
 import {factoryDraftSnapshot} from "./draft-snapshot";
+import {factoryBuildRecovery} from "./workflow";
 
 const uuid=z.string().uuid();
 const dollars=z.coerce.number().finite().min(1).refine(v=>Math.abs(Math.round(v*100)-v*100)<1e-8,"Use at most two decimal places.");
@@ -197,6 +198,7 @@ export async function retryFactoryBuild(context:DashboardContext,input:unknown){
     const request=`${context.user.id}:${data.requestId}`;
     if((await db.query("SELECT 1 FROM factory_build_retries WHERE version_id=$1 AND request_key=$2",[row.id,request])).rowCount)return {projectId:row.project_id};
     if(row.status!=="failed")throw new FactoryInputError("Only a failed website build can be retried.");
+    if(row.stage==="qa"&&Number(row.working_data?.reviewAttempts)>=maximumReviewAttempts&&factoryBuildRecovery(row.error,Number(row.working_data?.reviewAttempts)||0).kind==="plan")throw new FactoryInputError("This version has no visual reviews remaining. Review the saved findings and create a checked revision within the existing allowance, or approve a revised plan for a different direction.");
     if((await db.query("SELECT 1 FROM factory_build_versions WHERE project_id=$1 AND workspace_id=$2 AND id<>$3 AND (version>$4 OR status IN ('queued','running')) LIMIT 1",[row.project_id,context.workspace.id,row.id,row.version])).rowCount)throw new FactoryInputError("Open the newest website version before retrying. Earlier drafts stay preserved in version history.");
     if(row.retry_count>=3)throw new FactoryInputError("This website version has reached its three retry limit. Review the failure before requesting another approved version.");
     await db.query("INSERT INTO factory_build_retries(version_id,request_key) VALUES($1,$2)",[row.id,request]);

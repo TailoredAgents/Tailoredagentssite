@@ -2,7 +2,10 @@ import type { Browser } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
 import path from "node:path";
 import { siteContentType,type SiteFiles,type SiteIssue,type SiteQaResult,siteLimits } from "./artifacts";
-import { siteCsp } from "./render";
+import { siteCsp, configuredHeroTarget, usesAutomaticServiceLinks, siteActionTarget } from "./render";
+import { relativeSiteLink } from "./artifacts";
+import { homeSurfaceColors } from "./design";
+import type { SiteBlueprint } from "./types";
 import { assertPortableSiteSafety } from "./safety";
 import {actionDestinationIssue} from "./quality";
 import {installSiteLabObserver,measureSiteLabPerformance,type SiteLabPerformance} from "./performance";
@@ -23,7 +26,7 @@ const qaViewports=[
  * helper never launches Chromium or inherits the application's secrets. Network
  * requests are fulfilled from this version's memory bundle; all others abort.
  */
-export async function checkPortableSite(input:{files:SiteFiles;browser:Browser}):Promise<SiteQaResult> {
+export async function checkPortableSite(input:{files:SiteFiles;browser:Browser;blueprint?:SiteBlueprint}):Promise<SiteQaResult> {
   assertPortableSiteSafety(input.files);
   assertSiteIdentityMetadata(input.files);
   for(const asset of portableSiteIdentityAssets(input.files).variants){
@@ -79,7 +82,12 @@ export async function checkPortableSite(input:{files:SiteFiles;browser:Browser})
               const rect=element.getBoundingClientRect();
               return Math.min(rect.right,stripRect.right)-Math.max(rect.left,stripRect.left)>2&&Math.min(rect.bottom,stripRect.bottom)-Math.max(rect.top,stripRect.top)>2;
             }));
+            const hero=document.querySelector(".site-hero"),heading=hero?.querySelector("h1");
             return {overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)>innerWidth+2,
+              opening:{background:hero?getComputedStyle(hero).backgroundColor:null,color:heading?getComputedStyle(heading).color:null},
+              focusedContact:document.body.classList.contains("focused-contact"),
+              heroActions:[...document.querySelectorAll<HTMLAnchorElement>(".hero-actions a")].map(a=>({slot:a.dataset.heroAction,href:a.href})),
+              serviceLinks:[...document.querySelectorAll<HTMLAnchorElement>(".site-section .service-link")].map(a=>({sectionId:a.closest(".site-section")!.id,label:(a.textContent||"").replace(/↗/g,"").trim(),href:a.href})),
               contactOverlay,
               missingImages:[...document.images].filter(i=>!i.complete||!i.naturalWidth).map(i=>i.getAttribute("src")||""),
               links:[...document.querySelectorAll<HTMLAnchorElement>("a[href]")].map(a=>({href:a.getAttribute("href")||"",resolved:a.href,label:(a.textContent||"").trim()})),
@@ -93,6 +101,21 @@ export async function checkPortableSite(input:{files:SiteFiles;browser:Browser})
           if(!inspection.title.trim()||inspection.h1!==1||inspection.main!==1)add("page_structure","Each page needs a title, one primary heading and one main landmark.");
           if(inspection.duplicateIds.length)add("duplicate_ids","Page sections contain duplicate identifiers.");
           if(!inspection.notices.includes("demonstrations"))add("demo_notice","The website concept must identify demo interactions.");
+          const blueprint=input.blueprint,plannedPage=blueprint?.pages.find(page=>page.path===file);
+          if(blueprint&&plannedPage){
+            const defect=(code:string,message:string)=>issues.push({code,message:`${viewport.label}${message}`,page:file,viewport:viewport.name,severity:"error",repairability:"technical"});
+            const opening=file==="index.html"&&blueprint.design?homeSurfaceColors(blueprint.design.palette,blueprint.design.homeSurface):null;
+            const rgb=(hex:string)=>`rgb(${[1,3,5].map(index=>parseInt(hex.slice(index,index+2),16)).join(", ")})`;
+            if(opening&&(inspection.opening.background!==rgb(opening.background)||inspection.opening.color!==rgb(opening.color)))defect("opening_treatment","The rendered Home opening does not use its specified background and text colors.");
+            if(!inspection.focusedContact)for(const slot of ["primary","secondary"] as const){
+              const expected=configuredHeroTarget(blueprint,plannedPage,slot);
+              if(expected&&inspection.heroActions.find(action=>action.slot===slot)?.href!==new URL(expected,`${origin}/${file}`).href)defect("opening_action",`The ${slot} opening action does not reach its configured page and section.`);
+            }
+            if(!usesAutomaticServiceLinks(blueprint))for(const link of inspection.serviceLinks){
+              const expected=(blueprint.interactions?.actions||[]).some(action=>action.pagePath===file&&action.sectionId===link.sectionId&&action.label===link.label&&new URL(siteActionTarget(action.label,blueprint,plannedPage,`${relativeSiteLink(file,action.targetPage)}${action.targetSection?`#${action.targetSection}`:""}`,true),`${origin}/${file}`).href===link.href);
+              if(!expected)defect("unplanned_item_action",`The section ${link.sectionId} contains an item action absent from its explicit action list.`);
+            }
+          }
           for(const link of inspection.links){
             const incorrectAction=actionDestinationIssue(link.label,link.href);if(incorrectAction)add("misleading_action",incorrectAction);
             const url=new URL(link.resolved);

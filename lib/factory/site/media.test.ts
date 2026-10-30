@@ -1,8 +1,7 @@
 import {describe,expect,it,vi} from "vitest";
 vi.mock("server-only",()=>({}));
-import {z} from "zod";
 import {fixtureBlueprint,fixtureSitePlan} from "./fixtures";
-import {siteGenerationSchema,validateBlueprintStructure,validateSiteBlueprint} from "./validate";
+import {validateBlueprintStructure,validateSiteBlueprint} from "./validate";
 import {generatePortableSite} from "./provider";
 import type {SiteAssetDescriptor,SiteBlueprint} from "./types";
 
@@ -54,9 +53,14 @@ describe("Approved premium presentation contract",()=>{
     b.presentation!.sectionImages.push({...b.presentation!.sectionImages[0]});expect(()=>validateBlueprintStructure(b)).toThrow("duplicate");
   });
   it("sends a fully required strict schema but can recover an older saved response",async()=>{
-    const schema=z.toJSONSchema(siteGenerationSchema,{target:"draft-7"});
-    const visit=(value:unknown)=>{if(!value||typeof value!=="object")return;const node=value as Record<string,unknown>;if(node.type==="object"&&node.properties){expect(node.additionalProperties).toBe(false);expect(new Set(node.required as string[])).toEqual(new Set(Object.keys(node.properties as object)));}Object.values(node).forEach(child=>Array.isArray(child)?child.forEach(visit):visit(child));};visit(schema);
-    const old=await generatePortableSite({plan:fixtureSitePlan},async()=>response(fixtureBlueprint()));expect(old.blueprint.presentation).toBeUndefined();
+    const visit=(value:unknown)=>{if(!value||typeof value!=="object")return;const node=value as Record<string,unknown>;if(node.type==="object"&&node.properties){expect(node.additionalProperties).toBe(false);expect(new Set(node.required as string[])).toEqual(new Set(Object.keys(node.properties as object)));}Object.values(node).forEach(child=>Array.isArray(child)?child.forEach(visit):visit(child));};
+    const old=await generatePortableSite({plan:fixtureSitePlan},async request=>{
+      const schema=(request.body.text as {format:{schema:{properties:Record<string,{required:string[]}>}}}).format.schema;
+      visit(schema);
+      expect(schema.properties.design.required).toContain("homeSurface");
+      expect(schema.properties.interactions.required).toEqual(expect.arrayContaining(["serviceLinks","heroActions"]));
+      return response(fixtureBlueprint());
+    });expect(old.blueprint.presentation).toBeUndefined();
   });
   it("freezes paid media during targeted repairs and does not admit new image requests",async()=>{
     const original=presentation(),next=presentation();next.media![1].prompt="A different prompt that must not trigger a replacement image.";

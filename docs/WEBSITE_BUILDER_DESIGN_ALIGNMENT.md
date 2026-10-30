@@ -22,6 +22,7 @@ New or revised planning requests propose `design.recipe` alongside the existing 
 | `fontTheme` | `studio`, `technical`, `editorial`, `warm` |
 | `density` | `compact`, `balanced`, `airy` |
 | `radius` | `square`, `soft`, `rounded` |
+| `homeSurface` | `background` (default treatment), `surface` with Ink text, or `ink`/`accent` with Background text |
 
 The planner receives the actual renderer capability map. Unsupported family/composition combinations and a serif/sans disagreement between the chosen theme and heading description are rejected before saving a changed plan. No separate model call is added to choose these controls.
 
@@ -91,3 +92,16 @@ All three short desktop statement bands fell from approximately 399 to 213 px. T
 Actual local delivery accounting: approximately 208 KB for the full mobile Home page and 462 KB desktop, with inner pages about 104–108 KB. These are local resource totals, not deployed field Core Web Vitals or user-network speed claims. No AI requests were made during the comparison.
 
 Evidence: [About desktop, local render](previews/cosmos-v6-local-about-desktop.png), [Contact phone, local render](previews/cosmos-v6-local-contact-mobile.png). These images show the unpublished saved draft rerendered with the updated software; they are not a new public Cosmo preview.
+
+
+## October 30 opening and action follow-up
+
+A saved three-page professional-services concept exposed a renderer gap: the approved palette explicitly assigned a contrasting Home opening, but the rendered page retained its default canvas. The same draft had correct item-level buying/selling destinations while its opening buttons guessed different targets. Guidance items with no configured actions acquired six generic inquiry links. A link could exist and still be the wrong destination; the former browser checks did not detect that mismatch.
+
+- New plan requests include `recipe.homeSurface`; generation includes `design.homeSurface`, `interactions.heroActions` and `interactions.serviceLinks`. Each labeled opening slot needs an existing page/section destination. A deliberately automatic service-link policy is supported, but `explicit` is the default for modern presentation drafts. Empty item-action lists mean no links.
+- Historical schemas remain readable. A narrow compatibility rule translates only an unambiguous Accent/Ink palette line that explicitly assigns the Home opening with Background-colored text. Structured choices take precedence; vague, negated or conflicting prose is not inferred. Existing item actions can supply an opening destination only when the exact normalized label has one unique destination. This does not invent a route or change the saved approval.
+- Home-only surface CSS follows the approved palette and keeps inner-page treatments, images, crops and composition. Planning checks known explicit opening color pairs before approval; blueprint validation checks complete colors and rejects a conflicting solid surface on an immersive image opening.
+- Actual browser QA compares specified opening colors, configured opening destinations and rendered service links with the effective blueprint. Valid-but-wrong internal links are technical failures. These checks add no provider request or review images.
+- Technical recovery rerenders saved assets using the approved direction. Original state and paid response fingerprints remain intact; checked publication files remain frozen. Current quality-failure messages respect the three-review cap in both UI and server. An exhausted version requires a checked draft revision sharing the original allowance, or a changed plan with exact human approval. Storage/publication recovery and replay of a saved response are not blocked merely by the review count.
+
+Verification: 555 Factory tests passed across the full suite and focused rerun, including isolated-database build/recovery tests and the synthetic Chromium/WebKit opening/action regressions. The 33 tests requiring other dedicated databases were not run. Lint, TypeScript and production build passed. The actual saved three-page draft replay passed browser/content/delivery checks with zero findings at desktop, phone, narrow-phone and tablet widths; desktop/phone screenshots were inspected. Replay made zero provider requests or production writes. A local replay is not a new paid visual assessment, a deployed change or evidence of unattended quality across other businesses. The optional Contact copy refinement remains separate from these renderer corrections. No spending limit, attempt count, lead requirement or quality threshold changes.

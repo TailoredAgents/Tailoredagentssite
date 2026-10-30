@@ -537,7 +537,10 @@ describe.skipIf(!url)("Website builds, artifacts and separate spending",()=>{
     for(let step=0;step<4;step++)expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("processed");
     expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");
     const version=(await getFactoryProjectBuilds(member,project.projectId))!.versions[0];expect(version.error).toContain("bounded automatic");expect(version.previewUrl).toBeNull();expect(repairs).toBe(2);expect(reviews).toBe(3);
-    await retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()});expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("failed");expect(repairs).toBe(2);expect(reviews).toBe(3);
+    await expect(retryFactoryBuild(member,{versionId:version.id,requestId:randomUUID()})).rejects.toThrow("no visual reviews remaining");
+    expect((await pool.query("SELECT retry_count FROM factory_build_versions WHERE id=$1",[version.id])).rows[0].retry_count).toBe(0);
+    expect((await pool.query("SELECT count(*)::int n FROM factory_build_retries WHERE version_id=$1",[version.id])).rows[0].n).toBe(0);
+    expect((await runFactoryBuildWorkerStep(runtime)).status).toBe("idle");expect(repairs).toBe(2);expect(reviews).toBe(3);
   });
   it("rejects an automatic correction cycle after a jsonb round trip",async()=>{
     const project=await prepared();await enable();const {runtime}=await fixtureRuntime(),execute=runtime.execute;let reviews=0,repairs=0;

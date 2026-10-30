@@ -1,9 +1,9 @@
 import { z } from "zod";
 import type { FactoryPlanContent } from "../types";
 import { safeSitePath } from "./artifacts";
-import { designFamilyIds,heroCompositions,sectionLayouts,siteFormFields,fontThemes,type SiteBlueprint,type PortableSiteBundle,type SiteAssetDescriptor } from "./types";
+import { designFamilyIds,heroCompositions,sectionLayouts,siteFormFields,fontThemes,homeSurfaces,type SiteBlueprint,type PortableSiteBundle,type SiteAssetDescriptor } from "./types";
 import { designFamilies } from "./families";
-import { sitePaletteContrastIssues } from "./design";
+import { sitePaletteContrastIssues, homeSurfaceColors, contrastRatio } from "./design";
 import { SiteBlueprintError } from "./errors";
 const text=z.string().trim().max(1400),short=z.string().trim().max(180);
 const color=z.string().regex(/^#[0-9a-fA-F]{6}$/);
@@ -18,11 +18,14 @@ export const sitePresentationSchema=z.object({version:z.literal(1),fontTheme:z.e
   sectionImages:z.array(z.object({pagePath:z.string().max(100),sectionId,assetId,itemIndex:z.number().int().min(0).max(7).nullable()}).strict()).max(40),
 }).strict();
 export const siteInteractionsSchema=z.object({version:z.literal(1),
+  serviceLinks:z.enum(["explicit","automatic"]).optional(),
+  heroActions:z.array(z.object({pagePath:z.string().max(100),slot:z.enum(["primary","secondary"]),targetPage:z.string().max(100),targetSection:sectionId.nullable()}).strict()).max(20).optional(),
   forms:z.array(z.object({pagePath:z.string().max(100),sectionId,fields:z.array(z.enum(siteFormFields)).min(1).max(7),submitLabel:short.min(1)}).strict()).max(10),
   actions:z.array(z.object({pagePath:z.string().max(100),sectionId,itemIndex:z.number().int().min(0).max(7),label:short.min(1),targetPage:z.string().max(100),targetSection:sectionId.nullable()}).strict()).max(40),
 }).strict();
 export const siteDesignSchema=z.object({
   version:z.literal(1),
+  homeSurface:z.enum(homeSurfaces).optional(),
   palette:z.object({background:color,surface:color,ink:color,muted:color,accent:color,accentSecondary:color}).strict(),
   typography:z.object({heading:z.enum(["modern","editorial","humanist","geometric"]),body:z.enum(["modern","humanist"]),scale:z.enum(["balanced","expressive"]),weight:z.union([z.literal(400),z.literal(600),z.literal(700),z.literal(800)])}).strict(),
   density:z.enum(["compact","balanced","airy"]),radius:z.enum(["square","soft","rounded"]),
@@ -85,6 +88,14 @@ export function validateBlueprintStructure(value:unknown):SiteBlueprint {
   }
   if(data.interactions){
     const forms=new Set<string>(),actions=new Set<string>();
+    for(const action of data.interactions.heroActions||[]){
+      const page=data.pages.find(page=>page.path===action.pagePath),target=data.pages.find(page=>page.path===action.targetPage),key=`hero:${action.pagePath}:${action.slot}`;
+      if(!page||!page.hero[action.slot==="primary"?"primaryCta":"secondaryCta"]||!target||actions.has(key)||(action.targetSection&&!target.sections.some(section=>section.id===action.targetSection)))throw new SiteBlueprintError("An opening action references a missing or duplicate slot, page or section.");
+      actions.add(key);
+    }
+    if(data.interactions.heroActions)for(const page of data.pages)for(const slot of ["primary","secondary"] as const){
+      if(page.hero[slot==="primary"?"primaryCta":"secondaryCta"]&&!actions.has(`hero:${page.path}:${slot}`))throw new SiteBlueprintError("Each labeled opening action needs an explicit destination.");
+    }
     for(const form of data.interactions.forms){
       const section=data.pages.find(p=>p.path===form.pagePath)?.sections.find(s=>s.id===form.sectionId);
       const key=`${form.pagePath}#${form.sectionId}`;
@@ -102,6 +113,9 @@ export function validateBlueprintStructure(value:unknown):SiteBlueprint {
   }
   if(data.design){
     const palette=data.design.palette;
+    if(data.composition==="immersive"&&data.design.homeSurface&&data.design.homeSurface!=="background")throw new SiteBlueprintError("A full-image opening cannot also use a solid opening surface.");
+    const opening=homeSurfaceColors(palette,data.design.homeSurface);
+    if(opening&&contrastRatio(opening.color,opening.background)<4.5)throw new SiteBlueprintError("The opening text must have at least 4.5:1 contrast on its approved surface.");
     if(sitePaletteContrastIssues(palette).length)throw new SiteBlueprintError("Website palette text must have at least 4.5:1 contrast on its backgrounds.");
     const styled=new Set<string>();for(const style of data.design.sectionStyles){
       const key=`${style.pagePath}#${style.sectionId}`;

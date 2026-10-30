@@ -8,6 +8,7 @@ export type FactoryDesignRecipe = {
   fontTheme: "studio" | "editorial" | "warm" | "technical";
   density: "compact" | "balanced" | "airy";
   radius: "square" | "soft" | "rounded";
+  homeSurface?: import("./site/types").HomeSurface;
 };
 export type FactoryPlanContent = {
   summary: string; goal: string; audience: string;

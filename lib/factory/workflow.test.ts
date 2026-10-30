@@ -37,4 +37,12 @@ describe("salesperson website workflow", () => {
       expect(factoryBuildRecovery(error).kind).toBe("help");
     expect(factoryBuildRecovery("This build step exceeds the remaining allowance for this approved website.").summary).toContain("owner");
   });
+  it("recognizes exhausted current quality messages without blocking publication recovery",()=>{
+    for(const error of ["These findings need a technical fix or a changed plan.","The website still needs attention after its bounded automatic checks and corrections.","Automatic correction could not safely resolve these findings.","The correction did not resolve the same remaining findings."]){
+      expect(factoryBuildRecovery(error,2).kind).toBe("help");
+      expect(factoryBuildRecovery(error,3).kind).toBe("plan");
+    }
+    expect(factoryBuildRecovery("Preview verification temporarily unavailable",3).kind).toBe("retry");
+    expect(factoryBuildRecovery("Saving checked files failed",3).kind).toBe("retry");
+  });
 });

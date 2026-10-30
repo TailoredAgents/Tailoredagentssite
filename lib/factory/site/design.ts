@@ -1,7 +1,7 @@
 import type { FactoryPlanContent } from "../types";
 import { designFamilies } from "./families";
 import { assertFactoryDesignRecipe } from "../design-recipe";
-import type { SiteBlueprint, SiteDesign } from "./types";
+import type { HomeSurface, SiteBlueprint, SiteDesign } from "./types";
 
 export function colorLuminance(hex:string){
   const rgb=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
@@ -9,6 +9,33 @@ export function colorLuminance(hex:string){
 }
 export function contrastRatio(a:string,b:string){const x=colorLuminance(a),y=colorLuminance(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);}
 export function readableInk(background:string){return colorLuminance(background)>.179?"#000000":"#ffffff";}
+
+export function homeSurfaceColors(palette:SiteDesign["palette"],surface?:HomeSurface){
+  if(!surface||surface==="background")return null;
+  return {background:palette[surface],color:surface==="surface"?palette.ink:palette.background};
+}
+
+/** Recover only an explicit, unambiguous historical palette assignment. This
+ * translates an already-approved instruction; it never infers colors from a
+ * business, rewrites a plan or changes a published bundle. */
+export function approvedHomeSurface(plan:Pick<FactoryPlanContent,"design">):HomeSurface|undefined{
+  if(plan.design.recipe?.homeSurface)return plan.design.recipe.homeSurface;
+  const roles=plan.design.palette.flatMap(label=>{
+    const role=label.match(/^\s*(Accent|Ink):\s*#[0-9a-f]{6}\b/i)?.[1].toLowerCase() as "accent"|"ink"|undefined;
+    return role&&!/\b(?:not|no|avoid|without)\b/i.test(label)
+      &&/\b(?:home(?:page)? (?:opening|hero)|opening (?:landmark|background|surface))\b/i.test(label)
+      &&/\bwith background(?:[- ]colou?red)? text\b/i.test(label)?[role]:[];
+  });
+  return new Set(roles).size===1?roles[0]:undefined;
+}
+
+export function assertApprovedOpeningContrast(plan:Pick<FactoryPlanContent,"design">){
+  const surface=approvedHomeSurface(plan),palette=planPalette(plan).explicitPalette;
+  if(surface&&surface!=="background"){
+    const color=surface==="surface"?palette.ink:palette.background,background=palette[surface];
+    if(color&&background&&contrastRatio(color,background)<4.5)throw new Error("The proposed opening surface needs 4.5:1 text contrast before approval. Adjust its explicit palette or choose a different opening surface.");
+  }
+}
 
 /** Check only known pairs. Partial planning palettes need no invented colors. */
 export function sitePaletteContrastIssues(palette:Partial<SiteDesign["palette"]>){
@@ -118,7 +145,20 @@ export function applyApprovedDesign(b:SiteBlueprint,plan:FactoryPlanContent):Sit
     if(!serif&&themeIsSerif)presentation={...presentation,fontTheme:constraints.typography.heading==="geometric"?"technical":"studio"};
   }
   return {...directed,...(presentation?{presentation}:{}),accent:palette.accent,fontPair:constraints.typography.heading==="geometric"?"modern":constraints.typography.heading||b.fontPair,
-    design:{...design,...(recipe?{density:recipe.density,radius:recipe.radius}:{}),palette,typography:{...design.typography,...constraints.typography}}};
+    design:{...design,...(recipe?{density:recipe.density,radius:recipe.radius}:{}),...(approvedHomeSurface(plan)?{homeSurface:approvedHomeSurface(plan)}:{}),palette,typography:{...design.typography,...constraints.typography}}};
+}
+
+/** Scoped to Home's opening; inner pages, image crops and section tones keep
+ * their own composition. Append after presentation CSS so it cannot erase an
+ * explicitly approved surface. */
+export function homeSurfaceCss(b:SiteBlueprint){
+  const colors=b.design&&homeSurfaceColors(b.design.palette,b.design.homeSurface);
+  if(!colors)return "";
+  const selector="body.page-home .site-hero";
+  return `${selector}{background:${colors.background};color:${colors.color};--ink:${colors.color};--muted:${colors.color};--accent-secondary:${colors.color};padding-bottom:1px}
+${selector} :is(h1,.hero-description,.eyebrow,.text-link,.hero-image-caption,.hero-index){color:${colors.color}}
+${selector} .button-primary{background:${colors.color};color:${colors.background};border-color:${colors.color}}
+${selector} .hero-index{border-color:color-mix(in srgb,${colors.color} 30%,transparent)}`;
 }
 
 export function siteDesignCss(b:SiteBlueprint){

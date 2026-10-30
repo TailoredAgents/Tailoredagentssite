@@ -35,9 +35,9 @@ describe("Explicit portable forms and service navigation",()=>{
     const services=html.match(/<section id="services"[\s\S]*?<\/section>/)![0];
     expect(services.match(/class="service-link"/g)).toHaveLength(1);expect(services).toContain("Let&#39;s discuss cooling");expect(services).toContain('href="services/index.html#options"');
     expect(services).not.toContain("Discuss your needs");
-    const configured=b.interactions!.actions;b.interactions!.actions=[];
+    const configured=b.interactions!.actions;b.interactions!.actions=[];b.interactions!.serviceLinks="automatic";
     const automatic=Buffer.from(renderPortableSite(portableBundle(b),{"assets/images/hero.png":hero}).files["index.html"]).toString().match(/<section id="services"[\s\S]*?<\/section>/)![0];
-    expect(automatic.match(/class="service-link"/g)).toHaveLength(3);b.interactions!.actions=configured;
+    expect(automatic.match(/class="service-link"/g)).toHaveLength(3);b.interactions!.actions=configured;delete b.interactions!.serviceLinks;
     delete b.presentation;
     const legacy=Buffer.from(renderPortableSite(portableBundle(b),{"assets/images/hero.png":hero}).files["index.html"]).toString().match(/<section id="services"[\s\S]*?<\/section>/)![0];
     expect(legacy.match(/class="service-link"/g)).toHaveLength(3);
