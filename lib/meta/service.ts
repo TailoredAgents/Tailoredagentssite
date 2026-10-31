@@ -1,3 +1,4 @@
+import { enqueueLeadIntroduction } from "@/lib/lead-intro/service";
 import "server-only";
 import { enqueueFactoryLead } from "@/lib/factory/service";
 import { enqueueLeadAlerts } from "./lead-alerts";
@@ -111,6 +112,17 @@ export async function runMetaLeadWorker() {
         [job.id, lease, leadId],
       );
       await enqueueLeadAlerts(client, workspaceId, job.id, leadId);
+      // Optional outreach must never make a valid lead disappear from the CRM.
+      await client.query("SAVEPOINT lead_introduction");
+      try {
+        await enqueueLeadIntroduction(client, workspaceId, job.id, leadId);
+        await client.query("RELEASE SAVEPOINT lead_introduction");
+      } catch {
+        await client.query("ROLLBACK TO SAVEPOINT lead_introduction");
+        await client.query("RELEASE SAVEPOINT lead_introduction");
+        await client.query("UPDATE lead_intro_settings SET last_error_code='enqueue_failed' WHERE workspace_id=$1",[workspaceId]);
+        console.error("lead_introduction_enqueue_failed");
+      }
       await enqueueFactoryLead(client, workspaceId, leadId);
       await insertAuditLog(client, {
         workspaceId,

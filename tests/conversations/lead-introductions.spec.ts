@@ -1,0 +1,28 @@
+import { test,expect } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
+import pg from 'pg';
+const url=process.env.CONVERSATIONS_TEST_DATABASE_URL||'postgresql://ta_test@127.0.0.1:55433/ta_conversations_browser_test';
+const parsed=new URL(url);
+if(parsed.hostname!=='127.0.0.1'||parsed.port!=='55433'||parsed.pathname!=='/ta_conversations_browser_test'||parsed.search||parsed.hash)throw new Error('Disposable loopback database only');
+const pool=new pg.Pool({connectionString:url,max:1});
+test.afterAll(async()=>{await pool.end();});
+test('lead introduction pilot settings, takeover and promised-call workflow',async({page,request},info)=>{
+ const control=async(action:string)=>{const r=await request.post('http://127.0.0.1:3151/control',{headers:{authorization:'Bearer conversations-synthetic-control'},data:{action}});expect(r.ok()).toBeTruthy();return r.json();};
+ await control('reset');
+ await page.goto('/sign-in');await page.getByLabel('Team email').fill('owner@example.test');await page.getByLabel('Password',{exact:true}).fill('Conversations-test-password-2026');await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page).toHaveURL(/\/dashboard(?:\/analytics)?$/,{timeout:30000});
+ await page.goto('/dashboard/settings#lead-introductions');
+ const form=page.getByRole('form',{name:'Save introduction settings'});
+ await expect(form).toBeVisible();await expect(form.getByRole('checkbox',{name:'Send one automatic introduction to eligible new leads'})).toBeDisabled();
+ await form.getByLabel('Business sending number').selectOption('00000000-0000-4000-8000-000000000801');await form.getByLabel('Teammate responsible for the promised call').selectOption('conv-owner');await form.getByLabel('Eligible Meta form IDs, separated by commas').fill('222222222');await form.getByRole('button',{name:'Save introduction settings'}).click();await expect(form.getByRole('status')).toContainText('Saved.');
+ expect((await pool.query('SELECT enabled FROM lead_intro_settings')).rows[0].enabled).toBe(false);await expect(form.getByLabel('Business sending number')).toHaveValue('00000000-0000-4000-8000-000000000801');
+ await page.screenshot({path:`test-results/lead-intro-settings-${info.project.name}.png`,fullPage:true});
+ await page.goto('/dashboard/inbox');const state=await control('inspect');const source=state.sources.find((s:{channel:string})=>s.channel==='sms');expect(source).toBeTruthy();const id=randomUUID();
+ await pool.query(`INSERT INTO lead_intro_jobs(id,workspace_id,lead_id,recipient_key,phone,revision,number_id,actor_user_id,owner_user_id,conversation_id,sms_conversation_id,due_at,expires_at) VALUES($1::uuid,'00000000-0000-4000-8000-000000000001',$2,$1::text,'+16785550101',1,$3,'conv-owner','conv-owner',$4,$5,now()+interval '20 seconds',now()+interval '1 day')`,[id,state.leadId,state.numberId,source.conversation_id,state.smsId]);
+ await page.goto(`/dashboard/inbox?view=team&conversation=${source.conversation_id}`);
+ const nav=page.getByRole('navigation',{name:'Conversation panes',exact:true});if(await nav.isVisible())await nav.getByRole('button',{name:'Details',exact:true}).click();else if(await page.getByRole('button',{name:'Show customer details',exact:true}).isVisible())await page.getByRole('button',{name:'Show customer details',exact:true}).click();
+ await page.getByRole('button',{name:'Stop introduction & take over'}).click();await expect(page.getByRole('button',{name:'Stop introduction & take over'})).toHaveCount(0);await expect.poll(async()=>(await pool.query('SELECT status FROM lead_intro_jobs WHERE id=$1',[id])).rows[0].status).toBe('cancelled');
+ await pool.query("INSERT INTO lead_intro_call_tasks(job_id,workspace_id,owner_user_id) VALUES($1,'00000000-0000-4000-8000-000000000001','conv-owner')",[id]);
+ await page.goto('/dashboard/sales/today');await expect(page.getByRole('heading',{name:'New leads to call'})).toBeVisible();await page.getByText('Record call outcome',{exact:true}).click();const outcome=page.getByRole('form',{name:'Save call outcome'});await outcome.getByLabel('Outcome',{exact:true}).fill('Synthetic call completed; follow-up agreed.');await outcome.getByRole('button',{name:'Save call outcome'}).click();await expect(page.getByRole('heading',{name:'New leads to call'})).toHaveCount(0);expect((await pool.query('SELECT status FROM lead_intro_call_tasks WHERE job_id=$1',[id])).rows[0].status).toBe('completed');
+ expect((await control('inspect')).smsCreates).toHaveLength(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});

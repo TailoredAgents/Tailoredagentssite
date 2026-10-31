@@ -1,3 +1,4 @@
+import { runLeadIntroductionStep } from "@/lib/lead-intro/worker";
 import { runIncomingSmsAlertWorker } from "@/lib/sms/alerts";
 import { runLeadAlertWorker } from "@/lib/meta/lead-alerts";
 import { timingSafeEqual } from "node:crypto";
@@ -44,13 +45,14 @@ export async function POST(request: Request) {
     ]);
     const textAlerts = await runIncomingSmsAlertWorker().catch(() => ({ checked: 0, failed: 1, more: false }));
     const leadAlerts = await runLeadAlertWorker().catch(() => ({ checked: 0, failed: 1, more: false }));
+    const introductions = await runLeadIntroductionStep().catch(() => ({ checked: 0, failed: 1, more: false }));
     const due = await getDatabasePool()
       .query(`SELECT 1 FROM integration_sync_runs WHERE
       status IN ('queued','retry_wait','running') AND next_attempt_at <= now()
       AND (lease_expires_at IS NULL OR lease_expires_at < now()) LIMIT 1`);
     return privateJson({
       ok: true,
-      more: Boolean(due.rowCount) || callRecordings.more || metaLeads.more || metaConversions.more || leadAlerts.more || textAlerts.more,
+      more: introductions.more || Boolean(due.rowCount) || callRecordings.more || metaLeads.more || metaConversions.more || leadAlerts.more || textAlerts.more,
       checked: outcomes.length,
       failed: outcomes.filter((outcome) => outcome.status === "failed").length,
       voice,
@@ -59,6 +61,7 @@ export async function POST(request: Request) {
       metaConversions,
       leadAlerts,
       textAlerts,
+      introductions,
     });
   } catch {
     console.error("reporting_worker_failed");

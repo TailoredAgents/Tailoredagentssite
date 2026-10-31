@@ -1,5 +1,6 @@
 "use client";
 
+import { LeadIntroCard } from "@/components/lead-intro-card";
 import { PhoneNumbers } from "./phone-numbers";
 import Link from "next/link";
 import { ClientBrief } from "./client-brief";
@@ -38,6 +39,7 @@ export function ConversationContextPanel({ record, data, readOnly }: { record: C
 
     {record.recipient ? <div className="conversation-context-section"><PhoneNumbers recipient={record.recipient} readOnly={readOnly}/></div> : null}
 
+    <LeadIntroCard intro={record.introduction}/>
     <ClientBrief key={conversation.id} record={record} readOnly={readOnly} />
 
     <details className="conversation-context-section conversation-disclosure" open><summary><span><UserRound size={16} aria-hidden="true" />Ownership & follow-up</span><ChevronDown size={15} aria-hidden="true" /></summary>

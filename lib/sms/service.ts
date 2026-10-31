@@ -474,6 +474,11 @@ function validProvider(
 export async function sendSmsMessage(
   context: DashboardContext,
   raw: unknown,
+  automation?: {
+    beforeReserve: (db: PoolClient, phone: string) => Promise<void>;
+    onReserved: (db: PoolClient, conversationId: string) => Promise<void>;
+    beforeDelivery: () => Promise<void>;
+  },
 ): Promise<SmsActionState> {
   const input = sendSchema.parse(raw);
   await requireSmsNumber(context, input.numberId, true);
@@ -514,6 +519,10 @@ export async function sendSmsMessage(
         );
       return { created: false, intent: existing };
     }
+    // Internal worker hooks are not parsed from form input. Keep the normal
+    // grant, quota, suppression, durable intent and callback pipeline intact.
+    if (automation) await automation.beforeReserve(db, phone);
+    else await db.query("UPDATE lead_intro_jobs SET status='cancelled',reason='human_text',lease_token=NULL,updated_at=now() WHERE workspace_id=$1 AND phone=$2 AND status IN ('queued','generating','ready')", [context.workspace.id, phone]);
     const quota = (
       await db.query<{ actor: number; number: number }>(
         "SELECT count(*) FILTER(WHERE actor_user_id=$3)::int AS actor,count(*)::int AS number FROM sms_outbound_intents WHERE workspace_id=$1 AND number_id=$2 AND created_at>now()-interval '1 hour'",
@@ -566,6 +575,7 @@ export async function sendSmsMessage(
     await audit(db, context, "sms.send_reserved", conversation.id, {
       requestId: input.requestId,
     });
+    if (automation) await automation.onReserved(db, conversation.id);
     return {
       created: true,
       intent: {
@@ -600,6 +610,7 @@ export async function sendSmsMessage(
       ).rowCount
     )
       throw new SmsInputError("This phone number has opted out of SMS.");
+    if (automation) await automation.beforeDelivery();
     const sent = await createSms({
       from: intent.phone,
       to: intent.remote_phone,
@@ -853,6 +864,7 @@ export async function receiveSmsWebhook(params: Record<string, string>) {
       "UPDATE sms_conversations SET updated_at=now(),status='open' WHERE workspace_id=$1 AND id=$2",
       [number.workspace_id, conversation.id],
     );
+    await db.query("UPDATE lead_intro_jobs SET status='cancelled',reason='customer_replied',lease_token=NULL,updated_at=now() WHERE workspace_id=$1 AND phone=$2 AND status IN ('queued','generating','ready')", [number.workspace_id, input.From]);
     const stop =
       input.OptOutType?.toUpperCase() === "STOP" ||
       ["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT"].includes(

@@ -83,6 +83,7 @@ export type ConversationContext = {
   mockup: { status: string; previewUrl: string | null } | null;
 };
 export type ConversationRecord = {
+  introduction?: import("@/lib/lead-intro/data").LeadIntroduction | null;
   clientMemory?: import("./memory-types").ClientMemory[];
   recipient?: ConversationRecipient | null;
   conversation: ConversationSummary;

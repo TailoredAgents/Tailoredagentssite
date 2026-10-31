@@ -1,3 +1,4 @@
+import { getConversationIntroduction } from "@/lib/lead-intro/data";
 import { leadOptionLabel } from "@/lib/operations/format";
 import "server-only";
 import { loadClientMemory } from "./memory";
@@ -311,6 +312,7 @@ export async function listConversationWorkspace(
           )
         ).rows[0]?.interest ?? null;
     selected = {
+      introduction: await getConversationIntroduction(context, summary.id),
       clientMemory: await loadClientMemory(context, summary.id, sources),
       recipient,
       conversation: summary,

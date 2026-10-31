@@ -824,3 +824,14 @@ a.dashboard-nav-item:hover { background: var(--workspace-nav-hover); color: var(
 .crm-phone-numbers .dashboard-form-footer { flex-wrap:wrap; gap:8px; }
 .crm-phone-numbers .dashboard-operation-form { padding:8px 0; }
 .crm-phone-numbers input { min-width:0; width:100%; }
+
+/* First-message pilot: keep configuration readable at dashboard and phone widths. */
+.lead-intro-settings { margin-top: 20px; }
+.lead-intro-settings > p, .lead-intro-settings > details, .lead-intro-settings > h3 { margin: 16px 22px; }
+.lead-intro-settings p, .lead-intro-settings blockquote { font-size: .875rem; line-height: 1.6; color: var(--workspace-muted); }
+.lead-intro-settings blockquote { margin: 14px 0; padding: 16px; border-left: 3px solid var(--workspace-accent, #2563eb); }
+.lead-intro-fields { display: grid; gap: 16px; }
+.lead-intro-weekdays { display: flex; flex-wrap: wrap; gap: 12px 20px; }
+.lead-intro-settings summary { cursor: pointer; }
+.lead-intro-calls { padding: 22px; margin-bottom: 24px; }
+.lead-intro-calls > p { color: var(--workspace-muted); margin-top: 10px; }

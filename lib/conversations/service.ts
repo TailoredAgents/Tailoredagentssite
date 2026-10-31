@@ -408,6 +408,10 @@ async function merge(
       `UPDATE crm_conversation_notes SET conversation_id=$3 WHERE workspace_id=$1 AND conversation_id=$2 ${onlySource ? "AND audience_source_id=$4" : ""}`,
       [context.workspace.id, fromId, toId, ...(onlySource ? [onlySource] : [])],
     );
+    await db.query(`UPDATE lead_intro_jobs j SET conversation_id=$3,
+      status=CASE WHEN j.status IN ('queued','generating','ready') THEN 'cancelled' ELSE j.status END,
+      reason=CASE WHEN j.status IN ('queued','generating','ready') THEN 'human_merge' ELSE j.reason END,updated_at=now()
+      FROM crm_conversation_sources s WHERE j.workspace_id=$1 AND j.conversation_id=$2 AND s.workspace_id=j.workspace_id AND s.sms_conversation_id=j.sms_conversation_id AND s.conversation_id=$3`,[context.workspace.id,fromId,toId]);
     const remaining = (
       await db.query(
         "SELECT 1 FROM crm_conversation_sources WHERE workspace_id=$1 AND conversation_id=$2",

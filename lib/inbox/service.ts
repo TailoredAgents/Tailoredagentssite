@@ -328,6 +328,8 @@ export async function sendInboxMessage(
     )
     .digest("hex");
   const reservation = await transaction(context, async (db) => {
+    await db.query(`UPDATE lead_intro_jobs j SET status='cancelled',reason='human_email',updated_at=now()
+      FROM leads l WHERE j.workspace_id=$1 AND l.workspace_id=j.workspace_id AND l.id=j.lead_id AND lower(l.email)=ANY($2::text[]) AND j.status IN ('queued','generating','ready')`,[context.workspace.id,recipients.map(r=>r.toLowerCase())]);
     const existing = await db.query<Intent>(
       "SELECT * FROM inbox_outbound_intents WHERE workspace_id=$1 AND request_id=$2 FOR UPDATE",
       [context.workspace.id, input.requestId],

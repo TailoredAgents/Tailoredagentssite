@@ -532,6 +532,7 @@ export async function createVoiceIntent(
       id = randomUUID(),
       expires = new Date(Date.now() + 120000);
     await linkRecipient(binding.conversationId);
+    await db.query("UPDATE lead_intro_jobs SET status='cancelled',reason='human_call',updated_at=now() WHERE workspace_id=$1 AND phone=$2 AND status IN ('queued','generating','ready')",[context.workspace.id,i.to]);
     await db.query(
       "INSERT INTO voice_calls(id,workspace_id,line_id,voice_conversation_id,actor_user_id,direction,from_phone,to_phone,callback_phone) VALUES($1,$2,$3,$4,$5,'outbound',$6,$7,$8)",
       [

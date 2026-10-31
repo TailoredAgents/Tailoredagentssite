@@ -1,3 +1,4 @@
+import { runLeadIntroductionWindow } from "@/lib/lead-intro/worker";
 import { runLeadAlertWorker } from "@/lib/meta/lead-alerts";
 import { timingSafeEqual } from "node:crypto";
 import { after } from "next/server";
@@ -10,6 +11,7 @@ import {
 } from "@/lib/meta/validation";
 import { enqueueMetaLeads, runMetaLeadWorker } from "@/lib/meta/service";
 
+export const maxDuration = 120;
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const reply = (status: number) =>
@@ -67,7 +69,7 @@ export async function POST(request: Request) {
     after(async () => {
       try {
         await runMetaLeadWorker();
-        await runLeadAlertWorker();
+        await Promise.all([runLeadAlertWorker(), runLeadIntroductionWindow()]);
       } catch {
         console.error("meta_lead_worker_failed");
       }
