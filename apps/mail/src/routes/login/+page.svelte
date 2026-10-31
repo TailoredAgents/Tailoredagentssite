@@ -2,14 +2,17 @@
   import { onMount } from 'svelte';
   let mounted = $state(false);
   onMount(() => { mounted = true; });
-  import { goto,invalidateAll } from '$app/navigation';
+  import { page } from '$app/state';
+  import { safeNextPath } from '$lib/next-url';
+  import { goto } from '$app/navigation';
   let email=$state(''); let password=$state(''); let busy=$state(false); let error=$state('');
   async function submit(event: SubmitEvent) {
     event.preventDefault(); busy=true; error='';
+    const next=safeNextPath(page.url.searchParams.get('next'));
     try {
       const response=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
       const body=await response.json(); if(!response.ok){error=body.error;return;}
-      await invalidateAll(); await goto(body.user.must_change_password?'/account/setup':'/inbox');
+      await goto(body.user.must_change_password ? '/account/setup'+(next?'?next='+encodeURIComponent(next):'') : next??'/inbox',{invalidateAll:true});
     } catch {error='Could not connect. Please try again.';} finally {busy=false;}
   }
 </script>

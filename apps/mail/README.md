@@ -10,6 +10,13 @@ Based on Quickinbox commit `2af17e2fcd824aff0f5e8c91194f226dc2090d87`. Its MIT l
 
 **Trial scope.** The owner requested deployment to the final address before completing attachment investigation. The attachment issue has since been fixed and verified on the live application. The remaining launch checklist items still apply; passing the attachment checks alone does not establish every mail-client behavior or mailbox placement.
 
+## Assistant connection (local repair, awaiting deployment approval)
+
+The existing authenticated MCP integration has been repaired and expanded locally.
+Production has **not** been enabled by this change. See [MCP setup, permissions,
+verification and deployment](MCP_SETUP.md). That runbook supersedes historical
+statements below that MCP is entirely disabled; ordinary private APIs remain closed.
+
 ## For the team
 
 - Sign in with your email address and password. A temporary password must be changed before opening your inbox.

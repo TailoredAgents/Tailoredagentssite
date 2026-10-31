@@ -1,8 +1,10 @@
+import { normalizeOAuthForm } from './lib/server/mcp-routing';
 import type { ExecutionContext, MessageBatch } from '@cloudflare/workers-types';
 import { maintainMail, processJob, type JobEnv } from './lib/server/mail-jobs';
 type WorkerEnv = JobEnv;
 export default function createMailWorker(sveltekit: { fetch(request:Request,env:WorkerEnv,ctx:ExecutionContext):Promise<Response> }) { return {
-  fetch(request: Request, env: WorkerEnv, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: WorkerEnv, ctx: ExecutionContext): Promise<Response> {
+    try { request = await normalizeOAuthForm(request); } catch { return Response.json({error:'invalid_request'}, {status:400}); }
     return sveltekit.fetch(request,env,ctx);
   },
   async queue(batch: MessageBatch<{id:string}>,env: WorkerEnv) {

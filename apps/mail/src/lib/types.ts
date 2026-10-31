@@ -36,7 +36,7 @@ export type ConnectedApp = {
 	client_name: string;
 	client_uri: string | null;
 	logo_uri: string | null;
-	scopes: Extract<ApiScope, 'mail:read' | 'mail:send'>[];
+	scopes: ('mail:read' | 'mail:send' | 'mail:manage')[];
 	/** Live token pairs for this client (usually one per device). */
 	sessions: number;
 	connected_at: string;

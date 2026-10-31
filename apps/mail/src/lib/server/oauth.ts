@@ -1,6 +1,5 @@
 import type { D1Database } from '@cloudflare/workers-types';
 import { hashToken } from './crypto';
-import type { ApiScope } from './api-tokens';
 import type { ConnectedApp, User } from '$lib/types';
 
 /**
@@ -15,17 +14,12 @@ import type { ConnectedApp, User } from '$lib/types';
  * sessions and API keys. That keeps revocation instant and needs no signing key.
  */
 
-export const OAUTH_SCOPES = ['mail:read', 'mail:send'] as const satisfies readonly ApiScope[];
+export const OAUTH_SCOPES = ['mail:read', 'mail:send', 'mail:manage'] as const;
 export type OAuthScope = (typeof OAUTH_SCOPES)[number];
 
 export const ACCESS_TOKEN_TTL_MS = 60 * 60 * 1000;
 export const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export const AUTH_CODE_TTL_MS = 2 * 60 * 1000;
-/** Metadata documents are re-fetched after this long. */
-const CLIENT_METADATA_TTL_MS = 60 * 60 * 1000;
-const CLIENT_METADATA_MAX_BYTES = 64 * 1024;
-const CLIENT_METADATA_TIMEOUT_MS = 5000;
-
 const ACCESS_TOKEN_PREFIX = 'qi_mcp_';
 const REFRESH_TOKEN_PREFIX = 'qi_rt_';
 const MAX_TOKEN_LENGTH = 256;
@@ -67,7 +61,7 @@ export function authorizationServerMetadata(origin: string) {
 		token_endpoint_auth_methods_supported: ['none'],
 		revocation_endpoint_auth_methods_supported: ['none'],
 		code_challenge_methods_supported: ['S256'],
-		client_id_metadata_document_supported: true,
+		client_id_metadata_document_supported: false,
 		authorization_response_iss_parameter_supported: true,
 		service_documentation: `${origin}/settings/connections`
 	};
@@ -79,7 +73,7 @@ export function protectedResourceMetadata(origin: string) {
 		authorization_servers: [origin],
 		scopes_supported: [...OAUTH_SCOPES],
 		bearer_methods_supported: ['header'],
-		resource_name: 'Quickinbox MCP',
+		resource_name: 'Tailored Agents Mail',
 		resource_documentation: `${origin}/settings/connections`
 	};
 }
@@ -90,16 +84,12 @@ export function isOAuthScope(value: unknown): value is OAuthScope {
 	return typeof value === 'string' && (OAUTH_SCOPES as readonly string[]).includes(value);
 }
 
-/**
- * Space-separated scope string → known scopes. Empty means "everything we
- * offer"; a request naming only unknown scopes is an error rather than a
- * silently different grant.
- */
+/** Omitted scope is read-only. Unknown scopes fail instead of being silently dropped. */
 export function normalizeScope(input: string | null | undefined): OAuthScope[] {
 	const requested = (input ?? '').split(/\s+/).filter(Boolean);
-	if (requested.length === 0) return [...OAUTH_SCOPES];
+	if (requested.length === 0) return ['mail:read'];
 	const scopes = OAUTH_SCOPES.filter((scope) => requested.includes(scope));
-	if (scopes.length === 0) {
+	if (scopes.length === 0 || requested.some(scope => !isOAuthScope(scope))) {
 		throw new OAuthError('invalid_scope', `Supported scopes: ${OAUTH_SCOPES.join(' ')}`);
 	}
 	return [...scopes];
@@ -113,7 +103,7 @@ export function parseStoredScope(value: string): OAuthScope[] {
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 /** Schemes a browser would execute or read local files with — never a callback. */
-const FORBIDDEN_SCHEMES = new Set(['javascript:', 'data:', 'file:', 'blob:', 'vbscript:', 'about:', 'ws:', 'wss:', 'ftp:']);
+const FORBIDDEN_SCHEMES = new Set(['javascript:', 'data:', 'file:', 'blob:', 'vbscript:', 'about:', 'ws:', 'wss:', 'ftp:', 'mailto:', 'tel:', 'sms:']);
 
 /**
  * https, http on loopback, or a private-use scheme (RFC 8252). Desktop clients
@@ -127,7 +117,9 @@ export function isAllowedRedirectUri(value: string): boolean {
 	} catch {
 		return false;
 	}
-	if (url.username || url.password) return false;
+	// Reject control characters rather than allowing URL parsing to normalize them.
+	// eslint-disable-next-line no-control-regex
+	if (url.username || url.password || value.includes('#') || /[\u0000-\u0020\u007f]/.test(value)) return false;
 	if (url.protocol === 'https:') return url.hostname.length > 0;
 	if (url.protocol === 'http:') return LOOPBACK_HOSTS.has(url.hostname);
 	if (FORBIDDEN_SCHEMES.has(url.protocol)) return false;
@@ -136,6 +128,7 @@ export function isAllowedRedirectUri(value: string): boolean {
 
 /** Exact match, except loopback redirects may use any port (RFC 8252 §7.3). */
 export function redirectUriMatches(registered: string[], requested: string): boolean {
+	if (!isAllowedRedirectUri(requested)) return false;
 	if (registered.includes(requested)) return true;
 	let wanted: URL;
 	try {
@@ -146,6 +139,7 @@ export function redirectUriMatches(registered: string[], requested: string): boo
 	if (wanted.protocol !== 'http:' || !LOOPBACK_HOSTS.has(wanted.hostname)) return false;
 	return registered.some((entry) => {
 		try {
+			if (!isAllowedRedirectUri(entry)) return false;
 			const known = new URL(entry);
 			return (
 				known.protocol === 'http:' &&
@@ -201,6 +195,8 @@ function httpsOrNull(value: unknown): string | null {
 }
 
 function cleanName(value: unknown, fallback: string): string {
+	// OAuth client display names are untrusted; strip non-printing characters.
+	// eslint-disable-next-line no-control-regex
 	const name = typeof value === 'string' ? value.replace(/[\u0000-\u001f\u007f-\u009f]/g, '').trim() : '';
 	return (name || fallback).slice(0, 100);
 }
@@ -364,81 +360,13 @@ export function isBlockedMetadataHost(hostname: string): boolean {
 	return false;
 }
 
-async function readCappedText(response: Response, maxBytes: number): Promise<string> {
-	const declared = Number(response.headers.get('content-length'));
-	if (Number.isFinite(declared) && declared > maxBytes) {
-		throw new OAuthError('invalid_client', 'Client metadata document is too large', 401);
-	}
-	const reader = response.body?.getReader();
-	if (!reader) return '';
-	const chunks: Uint8Array[] = [];
-	let total = 0;
-	while (true) {
-		const { done, value } = await reader.read();
-		if (done) break;
-		total += value.byteLength;
-		if (total > maxBytes) {
-			await reader.cancel();
-			throw new OAuthError('invalid_client', 'Client metadata document is too large', 401);
-		}
-		chunks.push(value);
-	}
-	const bytes = new Uint8Array(total);
-	let offset = 0;
-	for (const chunk of chunks) {
-		bytes.set(chunk, offset);
-		offset += chunk.byteLength;
-	}
-	return new TextDecoder().decode(bytes);
-}
-
-async function fetchClientMetadataDocument(
-	clientId: string,
-	fetchImpl: typeof fetch
-): Promise<Omit<OAuthClient, 'client_id' | 'created_at'>> {
-	const controller = new AbortController();
-	const timer = setTimeout(() => controller.abort(), CLIENT_METADATA_TIMEOUT_MS);
-	let response: Response;
-	try {
-		response = await fetchImpl(clientId, {
-			headers: { accept: 'application/json' },
-			redirect: 'error',
-			signal: controller.signal
-		});
-	} catch {
-		throw new OAuthError('invalid_client', 'Could not fetch the client metadata document', 401);
-	} finally {
-		clearTimeout(timer);
-	}
-	if (!response.ok) {
-		throw new OAuthError('invalid_client', 'Client metadata document is unavailable', 401);
-	}
-	const text = await readCappedText(response, CLIENT_METADATA_MAX_BYTES);
-	let doc: unknown;
-	try {
-		doc = JSON.parse(text);
-	} catch {
-		throw new OAuthError('invalid_client', 'Client metadata document is not JSON', 401);
-	}
-	if (typeof doc !== 'object' || doc === null || (doc as { client_id?: unknown }).client_id !== clientId) {
-		throw new OAuthError('invalid_client', 'Client metadata document client_id does not match', 401);
-	}
-	try {
-		return parseClientMetadata(doc);
-	} catch (error) {
-		if (error instanceof OAuthError) throw new OAuthError('invalid_client', error.message, 401);
-		throw error;
-	}
-}
-
 /**
- * Look a client up. Registered clients come straight from D1; metadata-document
- * clients are fetched on first use and refreshed hourly.
+ * Look up locally registered clients. Arbitrary metadata URLs are not fetched.
  */
 export async function getClient(
 	db: D1Database,
 	clientId: string,
-	fetchImpl: typeof fetch = fetch
+	_fetchImpl: typeof fetch = fetch
 ): Promise<OAuthClient | null> {
 	if (!clientId || clientId.length > 2048) return null;
 	const row = await db
@@ -448,40 +376,14 @@ export async function getClient(
 		.bind(clientId)
 		.first<ClientRow>();
 
-	const fresh =
-		row && (!row.fetched_at || Date.now() - Date.parse(row.fetched_at) < CLIENT_METADATA_TTL_MS);
-	if (row && fresh) return mapClient(row);
-	if (!isClientMetadataUrl(clientId)) return row ? mapClient(row) : null;
-
-	let meta: Omit<OAuthClient, 'client_id' | 'created_at'>;
-	try {
-		meta = await fetchClientMetadataDocument(clientId, fetchImpl);
-	} catch (error) {
-		// A stale copy beats failing the login because the client's CDN hiccuped.
-		if (row) return mapClient(row);
-		throw error;
-	}
-	const now = new Date().toISOString();
-	await db
-		.prepare(
-			`INSERT INTO oauth_clients (client_id, client_name, client_uri, logo_uri, redirect_uris, created_at, fetched_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?)
-			 ON CONFLICT(client_id) DO UPDATE SET
-				client_name = excluded.client_name,
-				client_uri = excluded.client_uri,
-				logo_uri = excluded.logo_uri,
-				redirect_uris = excluded.redirect_uris,
-				fetched_at = excluded.fetched_at`
-		)
-		.bind(clientId, meta.client_name, meta.client_uri, meta.logo_uri, JSON.stringify(meta.redirect_uris), row?.created_at ?? now, now)
-		.run();
-	return { client_id: clientId, created_at: row?.created_at ?? now, ...meta };
+	// Only locally registered public clients. CIMD requires a DNS-safe fetcher.
+	return row && !row.fetched_at && !clientId.includes(':') ? mapClient(row) : null;
 }
 
 // ---- PKCE -------------------------------------------------------------------
 
 export function isValidCodeChallenge(value: unknown): value is string {
-	return typeof value === 'string' && /^[A-Za-z0-9._~-]{43,128}$/.test(value);
+	return typeof value === 'string' && /^[A-Za-z0-9_-]{43}$/.test(value);
 }
 
 export function isValidCodeVerifier(value: unknown): value is string {
@@ -570,7 +472,7 @@ export async function consumeAuthorizationCode(
 		.bind(hash)
 		.first<CodeRow>();
 	if (!row) return null;
-	if (Date.parse(row.expires_at) <= Date.now()) return null;
+	if (!(Date.parse(row.expires_at) > Date.now())) return null;
 	return {
 		client_id: row.client_id,
 		user_id: row.user_id,
@@ -596,6 +498,10 @@ export type TokenResponse = {
 	scope: string;
 };
 
+export async function requireActiveOAuthUser(db: D1Database, userId: string) {
+	if (!await db.prepare('SELECT id FROM users WHERE id=? AND disabled_at IS NULL AND must_change_password=0').bind(userId).first()) throw new OAuthError('invalid_grant','Account unavailable');
+}
+
 async function insertGrant(
 	db: D1Database,
 	input: { clientId: string; userId: string; scope: OAuthScope[]; resource: string; familyId: string }
@@ -603,11 +509,11 @@ async function insertGrant(
 	const accessToken = randomToken(ACCESS_TOKEN_PREFIX);
 	const refreshToken = randomToken(REFRESH_TOKEN_PREFIX);
 	const now = Date.now();
-	await db
+	const inserted = await db
 		.prepare(
 			`INSERT INTO oauth_grants
 			 (id, family_id, client_id, user_id, scope, resource, access_hash, refresh_hash, access_expires_at, refresh_expires_at, created_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+			 SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM oauth_families WHERE id=? AND revoked_at IS NULL)`
 		)
 		.bind(
 			crypto.randomUUID(),
@@ -620,9 +526,10 @@ async function insertGrant(
 			await hashToken(refreshToken),
 			new Date(now + ACCESS_TOKEN_TTL_MS).toISOString(),
 			new Date(now + REFRESH_TOKEN_TTL_MS).toISOString(),
-			new Date(now).toISOString()
+			new Date(now).toISOString(), input.familyId
 		)
 		.run();
+	if (!inserted.meta.changes) throw new OAuthError('invalid_grant','Authorization revoked during refresh');
 	return {
 		access_token: accessToken,
 		token_type: 'Bearer',
@@ -637,7 +544,10 @@ export async function issueGrant(
 	db: D1Database,
 	input: { clientId: string; userId: string; scope: OAuthScope[]; resource: string }
 ): Promise<TokenResponse> {
-	return insertGrant(db, { ...input, familyId: crypto.randomUUID() });
+	await requireActiveOAuthUser(db,input.userId);
+	const familyId = crypto.randomUUID();
+	await db.prepare('INSERT INTO oauth_families(id,user_id,client_id) VALUES (?,?,?)').bind(familyId,input.userId,input.clientId).run();
+	return insertGrant(db, { ...input, familyId });
 }
 
 type GrantRow = {
@@ -657,7 +567,7 @@ type GrantRow = {
  */
 export async function refreshGrant(
 	db: D1Database,
-	input: { refreshToken: string; clientId: string; scope?: string | null }
+	input: { refreshToken: string; clientId: string; scope?: string | null; resource: string }
 ): Promise<TokenResponse> {
 	if (!input.refreshToken.startsWith(REFRESH_TOKEN_PREFIX) || input.refreshToken.length > MAX_TOKEN_LENGTH) {
 		throw new OAuthError('invalid_grant', 'Unknown refresh token');
@@ -674,11 +584,13 @@ export async function refreshGrant(
 	if (row.client_id !== input.clientId) {
 		throw new OAuthError('invalid_grant', 'Refresh token was issued to a different client');
 	}
+	if (row.resource !== input.resource) throw new OAuthError('invalid_target', 'Wrong token resource');
+	await requireActiveOAuthUser(db, row.user_id);
 	if (row.revoked_at) {
 		await revokeFamily(db, row.family_id);
 		throw new OAuthError('invalid_grant', 'Refresh token was already used; all tokens for this login were revoked');
 	}
-	if (Date.parse(row.refresh_expires_at) <= Date.now()) {
+	if (!(Date.parse(row.refresh_expires_at) > Date.now())) {
 		throw new OAuthError('invalid_grant', 'Refresh token has expired');
 	}
 
@@ -713,6 +625,7 @@ export async function refreshGrant(
 }
 
 async function revokeFamily(db: D1Database, familyId: string): Promise<void> {
+	await db.prepare("UPDATE oauth_families SET revoked_at=? WHERE id=?").bind(new Date().toISOString(),familyId).run();
 	await db
 		.prepare('UPDATE oauth_grants SET revoked_at = ? WHERE family_id = ? AND revoked_at IS NULL')
 		.bind(new Date().toISOString(), familyId)
@@ -740,11 +653,14 @@ export type OAuthTokenAuth = {
 	user: User;
 	scopes: OAuthScope[];
 	grantId: string;
+	familyId: string;
 	clientId: string;
 };
 
 type TokenUserRow = {
+	resource: string; disabled_at: string | null; family_revoked_at: string | null;
 	grant_id: string;
+	family_id: string;
 	client_id: string;
 	scope: string;
 	access_expires_at: string;
@@ -759,20 +675,20 @@ type TokenUserRow = {
 };
 
 /** Resolve an MCP bearer token to its user. Null for unknown, expired, or revoked tokens. */
-export async function getUserByOAuthToken(db: D1Database, token: string): Promise<OAuthTokenAuth | null> {
+export async function getUserByOAuthToken(db: D1Database, token: string, resource: string): Promise<OAuthTokenAuth | null> {
 	if (!token.startsWith(ACCESS_TOKEN_PREFIX) || token.length > MAX_TOKEN_LENGTH) return null;
 	const hash = await hashToken(token);
 	const row = await db
 		.prepare(
-			`SELECT g.id AS grant_id, g.client_id, g.scope, g.access_expires_at, g.revoked_at, g.last_used_at,
+			`SELECT g.id AS grant_id, g.family_id, g.client_id, g.scope, g.access_expires_at, g.revoked_at, g.last_used_at, g.resource, u.disabled_at, f.revoked_at AS family_revoked_at,
 			        u.id, u.email, u.name, u.is_admin, u.must_change_password, u.created_at
-			 FROM oauth_grants g JOIN users u ON u.id = g.user_id
+			 FROM oauth_grants g JOIN users u ON u.id = g.user_id JOIN oauth_families f ON f.id=g.family_id
 			 WHERE g.access_hash = ?`
 		)
 		.bind(hash)
 		.first<TokenUserRow>();
-	if (!row || row.revoked_at || row.must_change_password === 1) return null;
-	if (Date.parse(row.access_expires_at) <= Date.now()) return null;
+	if (!row || row.revoked_at || row.family_revoked_at || row.disabled_at || row.resource !== resource || row.must_change_password === 1) return null;
+	if (!(Date.parse(row.access_expires_at) > Date.now())) return null;
 
 	const lastUsed = row.last_used_at ? Date.parse(row.last_used_at) : 0;
 	if (!lastUsed || Date.now() - lastUsed >= LAST_USED_THROTTLE_MS) {
@@ -793,6 +709,7 @@ export async function getUserByOAuthToken(db: D1Database, token: string): Promis
 		},
 		scopes: parseStoredScope(row.scope),
 		grantId: row.grant_id,
+		familyId: row.family_id,
 		clientId: row.client_id
 	};
 }
@@ -849,6 +766,7 @@ function clientNameFromId(clientId: string): string {
 
 /** Disconnect an app: every live token this user issued to the client. */
 export async function revokeClientForUser(db: D1Database, userId: string, clientId: string): Promise<number> {
+	await db.prepare("UPDATE oauth_families SET revoked_at=? WHERE user_id=? AND client_id=?").bind(new Date().toISOString(),userId,clientId).run();
 	const result = await db
 		.prepare('UPDATE oauth_grants SET revoked_at = ? WHERE user_id = ? AND client_id = ? AND revoked_at IS NULL')
 		.bind(new Date().toISOString(), userId, clientId)
@@ -866,7 +784,7 @@ export function bearerChallenge(
 	const params = [
 		...(extra ? [`error="${extra.error}"`, `error_description="${extra.description.replaceAll('"', "'")}"`] : []),
 		`resource_metadata="${origin}/.well-known/oauth-protected-resource/mcp"`,
-		`scope="${OAUTH_SCOPES.join(' ')}"`
+		'scope="mail:read"'
 	];
 	return `Bearer ${params.join(', ')}`;
 }

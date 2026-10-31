@@ -32,7 +32,7 @@ test('private messages, drafts, attachments, search and owner screens reject ano
  const search=await other.request.get('/api/mail?q=private-needle');expect((await search.json()).total).toBe(0);
  expect((await other.request.post('/api/drafts',{headers:{Origin:origin},data:{id:'browser-private-draft',text:'overwrite'}})).status()).toBe(400);
  expect((await page.request.post('/api/drafts',{headers:{Origin:'https://attacker.example'},data:{text:'cross-site'}})).status()).toBe(403);
- for(const url of ['/mcp','/api/apikeys','/api/auth/pair','/api/settings/ai'])expect((await page.request.get(url)).status()).toBe(404);
+ for(const url of ['/api/apikeys','/api/auth/pair','/api/settings/ai'])expect((await page.request.get(url)).status()).toBe(404);
  expect((await page.request.post('/api/setup',{headers:{Origin:origin},data:{}})).status()).toBe(403);
  await context.close();
 });

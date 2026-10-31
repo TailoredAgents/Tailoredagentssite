@@ -21,7 +21,7 @@
 </script>
 <svelte:head><title>Settings · Tailored Agents Mail</title></svelte:head>
 <div class="ta-page">
- <a href="/inbox">← Inbox</a><h1>Settings</h1>
+ <a href="/inbox">← Inbox</a><h1>Settings</h1><p><a href="/settings/connections">Connected assistants — review permissions or disconnect</a></p>
  {#if error}<p role="alert" class="ta-warning">{error}</p>{/if}
  {#if notice}<p role="status">{notice}</p>{/if}
  {#if show('general')}

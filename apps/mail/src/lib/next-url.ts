@@ -5,7 +5,7 @@
  */
 export function safeNextPath(value: string | null | undefined): string | null {
 	if (!value || value.length > 4096) return null;
-	if (!value.startsWith('/oauth/authorize?')) return null;
+	if (!value.startsWith('/oauth/authorize?') && !/^\/settings\/connections(?:\/delete\/[a-f0-9-]{36})?$/.test(value)) return null;
 	if (/[\s\\]/.test(value)) return null;
 	return value;
 }

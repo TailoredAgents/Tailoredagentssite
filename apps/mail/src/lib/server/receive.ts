@@ -9,7 +9,7 @@ import { normalizeContentId } from './attachments';
 import { saveContent } from './content';
 import { sha256Hex } from './send-attempts';
 
-export type MailEnv = { DB: D1Database; ATTACHMENTS: R2Bucket; RESEND_API_KEY: string; MAIL_DOMAIN: string };
+export type MailEnv = { APP_URL?: string; API_SEND_ENABLED?: string; API_DAILY_SEND_LIMIT?: string; DB: D1Database; ATTACHMENTS: R2Bucket; RESEND_API_KEY: string; MAIL_DOMAIN: string };
 export function recipientAddresses(email: Pick<ReceivedEmail, 'to' | 'cc' | 'bcc'>, domain: string): string[] {
   // Resend's `to` is the SMTP envelope, including CC/BCC deliveries. The visible
   // CC and MIME headers are not authority to deliver another person's copy.

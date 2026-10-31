@@ -1,3 +1,4 @@
+import { requireMcpAuthorization, type McpAuthorization } from './mcp-authorization';
 import { indexFullText } from './search';
 import { cleanComposedHtml, saveContent } from './content';
 import type { D1Database, R2Bucket } from '@cloudflare/workers-types';
@@ -19,13 +20,11 @@ import { parseEmailAddress, parseEmailAddresses } from './email-address';
 import { getEmailSignature, getSignatureBanner, signatureBannerAttachment } from './email-signature';
 import { stripHtml } from './html';
 import { insertEmail, listThreadMessages } from './mail-store';
-import { initialOutboundStatus, ProviderError, type EmailProvider } from './email-provider';
+import { ProviderError, type EmailProvider } from './email-provider';
 import {
 	claimSendAttempt,
-	completeSendAttempt,
 	failSendAttempt,
 	markSendUncertain,
-	recordProviderAccepted,
 	sha256Hex
 } from './send-attempts';
 import {
@@ -35,7 +34,7 @@ import {
 	utcDay,
 	type ApiSendPolicy
 } from './send-policy';
-import { escapeHtml, parseRecipients, sendOutboundEmail, validateSubject } from './send-mail';
+import { parseRecipients, sendOutboundEmail, validateSubject } from './send-mail';
 
 export type ComposeInput = {
 	fromAddressId?: string | null;
@@ -59,6 +58,7 @@ export type ComposeInput = {
 	idempotencyKey?: string | null;
 	/** Set when an API key or OAuth token is sending, never for a browser session. */
 	apiPolicy?: ApiSendPolicy;
+	oauthAuthorization?: McpAuthorization;
 	/** Server-only authorization recheck immediately before delivery. */
 	beforeDelivery?: () => Promise<void>;
 	/** Server-only CRM origin, saved before any recoverable provider payload. */
@@ -284,7 +284,15 @@ export async function sendAndStore(
   const attachments = [...(input.attachments ?? []),...(banner ? [await signatureBannerAttachment(env.ATTACHMENTS,banner,contentId)] : [])];
   // The automatic image can be one extra file, but still counts toward 20 MB.
   assertOutboundAttachments(attachments,true);
-  if (input.apiPolicy) throw new SendPolicyError('api_sending_disabled',403,'External sending is disabled.');
+  if (input.apiPolicy && (!input.apiPolicy.enabled || !input.oauthAuthorization)) throw new SendPolicyError('api_sending_disabled',403,'External sending is disabled.');
+  if(input.apiPolicy) {
+    if(/[\r\n]/.test(input.subject)) throw new Error('Subject must not contain line breaks');
+    for(const field of [input.to,input.cc,input.bcc]) {
+      if(!field) continue;
+      const parts=field.split(',').map(v=>v.trim()).filter(Boolean);
+      if(parts.length>50 || parts.some(v=>/[\r\n]/.test(v) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(parseEmailAddress(v)))) throw new Error('Invalid recipient list');
+    }
+  }
   const subjectError = validateSubject(input.subject); if (subjectError) throw new Error(subjectError);
   if (!parseRecipients(input.to).length) throw new Error('At least one valid recipient is required');
   if (!input.idempotencyKey) throw new Error('Please reload the composer before sending.');
@@ -298,7 +306,17 @@ export async function sendAndStore(
   const payloadKey = `outgoing/${attempt.id}/${fingerprint}.json`;
   const messageId = `${emailId}@${from.domain_name}`;
   let providerCalled = false;
+  let budgetClaimed = false;
+  const budgetDay = utcDay();
   try {
+    if(input.oauthAuthorization) {
+      await requireMcpAuthorization(env.DB,user.id,input.oauthAuthorization,'mail:send');
+      await env.DB.prepare('INSERT INTO oauth_send_authorizations(attempt_id,family_id,resource) VALUES(?,?,?) ON CONFLICT(attempt_id) DO UPDATE SET family_id=excluded.family_id,resource=excluded.resource').bind(attempt.id,input.oauthAuthorization.familyId,input.oauthAuthorization.resource).run();
+    }
+    if(input.apiPolicy?.dailyLimit != null) {
+      budgetClaimed = await claimDailySend(env.DB,user.id,input.apiPolicy.dailyLimit,budgetDay);
+      if(!budgetClaimed) throw new SendPolicyError('daily_send_limit',429,'Daily send limit reached');
+    }
     await saveContent(env.ATTACHMENTS,contentKey,{text,html:html ?? null});
     await insertEmail(env.DB,{id:emailId,userId:user.id,direction:'outbound',from:from.address,fromName:from.label || user.name,
       to:parseRecipients(input.to).join(', '),cc:parseRecipients(input.cc).join(', ') || null,bcc:parseRecipients(input.bcc).join(', ') || null,
@@ -311,6 +329,11 @@ export async function sendAndStore(
       inReplyTo:input.inReplyTo,references:input.references,headers:{'Message-ID':`<${messageId}>`},idempotencyKey:`${attempt.id}:${fingerprint}`};
     await env.ATTACHMENTS.put(payloadKey,JSON.stringify(payload));
     await env.DB.prepare("UPDATE send_attempts SET email_id=?,payload_key=?,first_provider_call_at=NULL WHERE id=?").bind(emailId,payloadKey,attempt.id).run();
+    if(input.oauthAuthorization) {
+      await requireMcpAuthorization(env.DB,user.id,input.oauthAuthorization,'mail:send');
+      const currentSender=await getAddressForUser(env.DB,user.id,from.id);
+      if(currentSender?.address!==from.address) throw new Error('Sender ownership changed');
+    }
     await input.beforeDelivery?.();
     // Start the safety window BEFORE calling Resend. Recovery reuses the exact saved request.
     await env.DB.prepare("UPDATE send_attempts SET first_provider_call_at=datetime('now') WHERE id=?").bind(attempt.id).run();
@@ -323,6 +346,7 @@ export async function sendAndStore(
     return {emailId,providerId:result.providerId,from};
   } catch (error) {
     const refused = !providerCalled || providerRefused(error);
+    if (refused && budgetClaimed) await refundDailySend(env.DB,user.id,budgetDay);
     await (refused ? failSendAttempt : markSendUncertain)(env.DB,attempt.id,new Error(refused ? 'Message was not sent.' : 'Waiting to confirm delivery.'));
     await env.DB.prepare('UPDATE emails SET status=?,status_detail=? WHERE id=?').bind(refused?'failed':'queued',refused?'Message was not sent. Your draft is still available.':'Checking whether this message was sent. Please do not send a second copy.',emailId).run();
     throw error;

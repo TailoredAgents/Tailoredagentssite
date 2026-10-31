@@ -10,13 +10,13 @@ import {
 import { createTestDb, insertTestUser } from './test-db';
 
 describe('apiSendPolicy', () => {
-	test('sends are enabled with the default limit when nothing is configured', () => {
+	test('sends require an explicit enabled setting', () => {
 		assert.deepEqual(apiSendPolicy({}), {
-			enabled: true,
+			enabled: false,
 			dailyLimit: DEFAULT_API_DAILY_SEND_LIMIT
 		});
 		assert.deepEqual(apiSendPolicy(undefined), {
-			enabled: true,
+			enabled: false,
 			dailyLimit: DEFAULT_API_DAILY_SEND_LIMIT
 		});
 	});

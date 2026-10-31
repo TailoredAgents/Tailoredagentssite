@@ -1,7 +1,7 @@
+import { publicMailOrigin } from '$lib/server/mcp-routing';
 import type { D1Database } from '@cloudflare/workers-types';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { readLinkedTokens, resolveLinkedSessions } from '$lib/server/accounts';
 import {
 	getClient,
 	isValidCodeChallenge,
@@ -98,7 +98,7 @@ async function parseAuthorizeRequest(
 	if (!isValidCodeChallenge(codeChallenge)) {
 		throw bounce('invalid_request', 'code_challenge is required (PKCE S256)');
 	}
-	const method = param(source, 'code_challenge_method') ?? 'S256';
+	const method = param(source, 'code_challenge_method');
 	if (method !== 'S256') {
 		throw bounce('invalid_request', 'code_challenge_method must be S256');
 	}
@@ -151,9 +151,9 @@ export const load: PageServerLoad = async ({ url, locals, platform, fetch, setHe
 
 	let request: AuthorizeRequest;
 	try {
-		request = await parseAuthorizeRequest(db, url.origin, url.searchParams, fetch);
+		request = await parseAuthorizeRequest(db, publicMailOrigin(platform?.env,url), url.searchParams, fetch);
 	} catch (error) {
-		return { invalid: handleAuthorizeError(url.origin, error), request: null };
+		return { invalid: handleAuthorizeError(publicMailOrigin(platform?.env,url), error), request: null };
 	}
 
 	return {
@@ -175,7 +175,7 @@ export const load: PageServerLoad = async ({ url, locals, platform, fetch, setHe
 };
 
 export const actions: Actions = {
-	default: async ({ request, url, locals, platform, cookies, fetch }) => {
+	default: async ({ request, url, locals, platform, fetch }) => {
 		const db = platform?.env.DB;
 		if (!locals.user || !db) {
 			throw redirect(303, loginHref(`${url.pathname}${url.search}`));
@@ -184,22 +184,22 @@ export const actions: Actions = {
 		// SvelteKit already rejects cross-site form posts in production; the
 		// consent decision is important enough to check again here regardless.
 		const origin = request.headers.get('origin');
-		if (origin !== url.origin) {
+		if (origin !== publicMailOrigin(platform?.env,url)) {
 			return fail(403, { invalid: { code: 'invalid_request', message: 'Cross-site consent is not allowed' } });
 		}
 
 		const form = await request.formData();
 		let parsed: AuthorizeRequest;
 		try {
-			parsed = await parseAuthorizeRequest(db, url.origin, form, fetch);
+			parsed = await parseAuthorizeRequest(db, publicMailOrigin(platform?.env,url), form, fetch);
 		} catch (error) {
-			return fail(400, { invalid: handleAuthorizeError(url.origin, error) });
+			return fail(400, { invalid: handleAuthorizeError(publicMailOrigin(platform?.env,url), error) });
 		}
 
 		if (form.get('decision') !== 'allow') {
 			throw redirect(
 				303,
-				redirectWith(url.origin, parsed.redirectUri, {
+				redirectWith(publicMailOrigin(platform?.env,url), parsed.redirectUri, {
 					error: 'access_denied',
 					error_description: 'The user declined the request',
 					state: parsed.state
@@ -207,29 +207,23 @@ export const actions: Actions = {
 			);
 		}
 
-		// The person may authorize any account signed in on this browser, not just
-		// the active one — but nothing else.
-		let userId = locals.user.id;
-		const chosen = param(form, 'user_id', 128);
-		if (chosen && chosen !== locals.user.id) {
-			const linked = await resolveLinkedSessions(db, readLinkedTokens(cookies));
-			if (!linked.some((session) => session.user.id === chosen)) {
-				return fail(400, {
-					invalid: { code: 'invalid_request', message: 'That account is not signed in on this browser' }
-				});
-			}
-			userId = chosen;
-		}
+
+        const userId = locals.user.id;
+        if (form.get('user_id') !== userId) return fail(400, {invalid:{code:'invalid_request',message:'Account changed. Reopen the connection screen.'}});
+        // Each write scope is an explicit checkbox, independent of client defaults.
+        const selected = form.getAll('grant_scope');
+        if (!selected.length || selected.some(s => !['mail:read','mail:send','mail:manage'].includes(String(s)))) return fail(400,{invalid:{code:'invalid_scope',message:'Choose at least one permission.'}});
+        const scope = normalizeScope(selected.join(' '));
 
 		const code = await issueAuthorizationCode(db, {
 			client_id: parsed.client.client_id,
 			user_id: userId,
 			redirect_uri: parsed.redirectUri,
 			code_challenge: parsed.codeChallenge,
-			scope: parsed.scope,
+			scope,
 			resource: parsed.resource
 		});
 
-		throw redirect(303, redirectWith(url.origin, parsed.redirectUri, { code, state: parsed.state }));
+		throw redirect(303, redirectWith(publicMailOrigin(platform?.env,url), parsed.redirectUri, { code, state: parsed.state }));
 	}
 };

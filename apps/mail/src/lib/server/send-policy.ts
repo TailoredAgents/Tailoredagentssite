@@ -19,7 +19,7 @@ export type ApiSendPolicy = {
 export function apiSendPolicy(
 	env: { API_SEND_ENABLED?: string; API_DAILY_SEND_LIMIT?: string } | undefined
 ): ApiSendPolicy {
-	const enabled = env?.API_SEND_ENABLED?.trim().toLowerCase() !== 'false';
+	const enabled = env?.API_SEND_ENABLED?.trim().toLowerCase() === 'true';
 	const raw = env?.API_DAILY_SEND_LIMIT?.trim();
 	const limit = raw ? Number(raw) : DEFAULT_API_DAILY_SEND_LIMIT;
 	// A malformed value keeps the default rather than silently lifting the cap.

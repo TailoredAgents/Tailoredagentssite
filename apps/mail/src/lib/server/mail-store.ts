@@ -1039,7 +1039,8 @@ export async function listThreadMessages(
 	db: D1Database,
 	userId: string,
 	email: EmailRow,
-	bucket?: R2Bucket
+	bucket?: R2Bucket,
+	page?: {limit:number;offset:number}
 ): Promise<ThreadMessage[]> {
 	const threadId = email.thread_id ?? email.id;
 
@@ -1058,9 +1059,9 @@ export async function listThreadMessages(
 			 AND COALESCE(e.thread_id, e.id) = ?
 			 AND (e.status IS NULL OR e.status <> 'draft')
 			 ${scope}
-			 ORDER BY datetime(e.created_at) ASC`
+			 ORDER BY datetime(e.created_at) ASC, e.id ASC ${page ? 'LIMIT ? OFFSET ?' : ''}`
 		)
-		.bind(userId, threadId)
+		.bind(userId, threadId, ...(page ? [page.limit,page.offset] : []))
 		.all<
 			Omit<ThreadMessage, 'attachments' | 'is_read' | 'is_starred'> & {
 				is_read: number;

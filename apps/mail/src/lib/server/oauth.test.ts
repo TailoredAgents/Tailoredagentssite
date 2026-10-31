@@ -46,10 +46,10 @@ describe('redirect URIs', () => {
 });
 
 describe('scopes', () => {
-	test('empty means everything, unknown entries are dropped', () => {
-		assert.deepEqual(normalizeScope(null), ['mail:read', 'mail:send']);
-		assert.deepEqual(normalizeScope(''), ['mail:read', 'mail:send']);
-		assert.deepEqual(normalizeScope('mail:send bogus'), ['mail:send']);
+	test('empty means read-only, unknown scopes are rejected', () => {
+		assert.deepEqual(normalizeScope(null), ['mail:read']);
+		assert.deepEqual(normalizeScope(''), ['mail:read']);
+		assert.throws(()=>normalizeScope('mail:send bogus'),OAuthError);
 		assert.deepEqual(normalizeScope('  mail:read   mail:read'), ['mail:read']);
 	});
 
@@ -170,7 +170,7 @@ describe('discovery', () => {
 
 	test('bearer challenge carries resource_metadata and escapes quotes', () => {
 		const challenge = bearerChallenge('https://m.example', { error: 'invalid_token', description: 'say "hi"' });
-		assert.match(challenge, /^Bearer error="invalid_token", error_description="say 'hi'", resource_metadata="https:\/\/m\.example\/\.well-known\/oauth-protected-resource\/mcp", scope="mail:read mail:send"$/);
+		assert.match(challenge, /^Bearer error="invalid_token", error_description="say 'hi'", resource_metadata="https:\/\/m\.example\/\.well-known\/oauth-protected-resource\/mcp", scope="mail:read"$/);
 	});
 });
 

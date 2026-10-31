@@ -1,3 +1,4 @@
+import { publicMailOrigin } from '$lib/server/mcp-routing';
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { checkRateLimit } from '$lib/server/auth';
 import {
@@ -55,13 +56,13 @@ export const POST: RequestHandler = async ({ request, platform, url, getClientAd
 				if (code.client_id !== clientId) {
 					throw new OAuthError('invalid_grant', 'Authorization code was issued to a different client');
 				}
-				if (params.redirect_uri !== undefined && params.redirect_uri !== code.redirect_uri) {
+				if (params.redirect_uri !== code.redirect_uri) {
 					throw new OAuthError('invalid_grant', 'redirect_uri does not match the authorization request');
 				}
 				if (!(await verifyPkce(params.code_verifier, code.code_challenge))) {
 					throw new OAuthError('invalid_grant', 'PKCE verification failed');
 				}
-				if (params.resource && params.resource !== code.resource) {
+				if (code.resource !== mcpResourceUri(publicMailOrigin(platform?.env,url)) || (params.resource && params.resource !== code.resource)) {
 					throw new OAuthError('invalid_target', `This server issues tokens for ${mcpResourceUri(url.origin)} only`);
 				}
 				const tokens = await issueGrant(db, {
@@ -79,7 +80,8 @@ export const POST: RequestHandler = async ({ request, platform, url, getClientAd
 				const tokens = await refreshGrant(db, {
 					refreshToken: params.refresh_token,
 					clientId,
-					scope: params.scope
+					scope: params.scope,
+					resource: params.resource || mcpResourceUri(publicMailOrigin(platform?.env,url))
 				});
 				return json(tokens, { headers: NO_STORE });
 			}

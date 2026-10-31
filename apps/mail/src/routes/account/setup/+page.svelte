@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { safeNextPath } from '$lib/next-url';
 	import Logo from '$lib/components/Logo.svelte';
 	import { APP_NAME } from '$lib/constants';
 	import { t } from '$lib/i18n';
@@ -59,7 +60,8 @@
 				error = setupErrorMessage(body.code);
 				return;
 			}
-			window.location.href = '/login?setup=complete';
+			const next = safeNextPath(new URL(window.location.href).searchParams.get('next'));
+			window.location.href = '/login?setup=complete' + (next ? '&next=' + encodeURIComponent(next) : '');
 		} catch {
 			error = t('common.networkError');
 		} finally {
