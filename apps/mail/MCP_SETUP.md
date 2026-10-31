@@ -1,6 +1,8 @@
 # Tailored Agents Mail MCP — deployment and connection handoff
 
-Prepared October 30, 2026. **Commit/push authorized; deployment and production enablement still pending approval.**
+Updated October 31, 2026. **Commit/push and production sending authorized; Cloudflare deployment remains pending authentication.**
+Production configuration now enables OAuth sending with a starting cap of 25 messages
+per user per UTC day. This is a source configuration change, not a verified live deployment.
 No production clients, access tokens, credentials, or mailbox grants were created.
 No real messages were sent. Unit tests use a mocked provider; browser tests use
 disposable local accounts, drafts and OAuth credentials.
@@ -50,9 +52,10 @@ full implemented capabilities. Refresh can narrow, never widen, a grant.
 
 `whoami` reports the account, owned addresses, effective permissions and send policy.
 Tool discovery follows the token's permissions. A production emergency send switch
-still applies. `API_SEND_ENABLED=false` remains in the checked-in configuration until
-the user approves enabling production sends; the implementation supports sending
-when explicitly enabled and granted. Mailbox management does not depend on this switch.
+still applies. Production now sets `API_SEND_ENABLED=true` and `API_DAILY_SEND_LIMIT=25`;
+local and staging sending remain disabled. Sending still requires an explicit `mail:send`
+grant, and the client must request approval for each send. Mailbox management does not
+depend on this switch. Normal Mail browser sending is not subject to this assistant cap.
 
 Reading never marks read. `get_thread` retains optional `markRead:false`; `true` is
 rejected and the assistant must use `update_thread({id,isRead:true})` instead.
@@ -168,13 +171,14 @@ The root `npm run lint` does not cover `apps/mail`; it is not a substitute for M
 ## Deployment — only after the user's explicit approval
 
 This is the **Cloudflare Mail Worker**, not the Render website. The user approved
-committing and pushing this update on October 30, 2026. Remote migration, deployment,
-production enablement, creating a connection and the live send test still require
+committing and pushing this update on October 30, 2026, then requested deployment and
+enabled production sending on October 31. Cloudflare CLI authentication is unavailable
+on this computer. Creating a persistent connection and the live send test still require
 separate approval. Do not copy local fixture accounts/tokens.
 
-1. Review the diff and local results. Confirm whether approval includes enabling
-   `mail:send` in production, and agree on the daily cap. Commit/push to `main` only
-   once publishing is authorized. Do not force-push or overwrite collaborator changes.
+1. Review the diff and local results. Production sending is authorized with a configured
+   starting cap of 25 per user per UTC day. Commit/push to `main` is authorized.
+   Do not force-push or overwrite collaborator changes.
 2. Use the Cloudflare account already authorized for Mail. Do not create new secrets
    without approval. Existing Resend/D1/R2/queue bindings are reused.
 3. From `apps/mail`, export a pre-migration backup **to a private location outside Git**:
@@ -192,8 +196,8 @@ separate approval. Do not copy local fixture accounts/tokens.
    ```
 
 5. Verify `env.production.vars.APP_URL` is exactly `https://mail.tailoredagents.com`.
-   If sending was approved, set **only production** `API_SEND_ENABLED` to `"true"` and
-   `API_DAILY_SEND_LIMIT` to the agreed integer (e.g. `"25"`). Keep staging/local choices
+   Verify **only production** has `API_SEND_ENABLED` set to `"true"` and
+   `API_DAILY_SEND_LIMIT` set to `"25"`. Keep staging/local choices
    separate. Changing this flag alone would not have fixed the old outbox; this code does.
 6. Deploy the wrapped Worker, including queue and scheduled recovery handlers:
 
