@@ -50,6 +50,7 @@ async function recordId(name: string) {
 }
 
 test.describe.configure({ mode: "serial" });
+test.use({ timezoneId: "America/Los_Angeles" }); // CRM scheduling must still use Eastern.
 
 test("reviewed prospect import, scheduled sales and mockup handoff convert into a connected client project", async ({ page }, info) => {
   test.setTimeout(180000);
@@ -107,11 +108,17 @@ test("reviewed prospect import, scheduled sales and mockup handoff convert into 
   await appointment.getByLabel("Title *", { exact: true }).fill(`Preview appointment ${info.project.name}`);
   await appointment.getByRole("combobox", { name: "Type", exact: true }).selectOption("appointment");
   const dateInput = appointment.locator('input[name="dueAtLocal"]');
+  await dateInput.fill("2030-03-10T02:30");
+  expect(await dateInput.evaluate(input => (input as HTMLInputElement).validity.customError)).toBe(true);
+  await expect(appointment.locator('input[name="dueAt"]')).toHaveValue("");
+  await dateInput.fill("2030-11-03T01:30");
+  await appointment.getByLabel("Daylight saving time occurrence").selectOption("2030-11-03T06:30:00.000Z");
+  await expect(appointment.locator('input[name="dueAt"]')).toHaveValue("2030-11-03T06:30:00.000Z");
   const localDate = "2030-04-08T14:30";
   await dateInput.fill(localDate);
-  const expectedIso = await page.evaluate(value => new Date(value).toISOString(), localDate);
+  const expectedIso = "2030-04-08T18:30:00.000Z"; // 2:30 PM Eastern, regardless of browser zone.
   await expect(appointment.locator('input[name="dueAt"]')).toHaveValue(expectedIso);
-  await expect(appointment).toContainText("Time zone:");
+  await expect(appointment).toContainText("Time zone: US Eastern (America/New_York)");
   await appointment.getByLabel("Location / meeting link", { exact: true }).fill("https://example.test/meet/website-preview");
   await appointment.getByRole("button", { name: "Schedule next step", exact: true }).click();
   await expect(appointment.getByRole("status")).toHaveText("Scheduled work saved.");

@@ -1,3 +1,5 @@
+import { formatEasternTime } from "@/lib/time";
+
 type LeadIdentity = { organization?: string | null; name?: string | null; phone?: string | null; email?: string | null };
 
 /** Exact placeholder answers only: real names such as "None Such Studio" survive. */
@@ -28,10 +30,7 @@ export function leadOptionLabel(lead: LeadIdentity) {
 
 export function formatOperationalDate(value: string | null | undefined, options?: { dateOnly?: boolean }) {
   if (!value) return "Not set";
-  return new Intl.DateTimeFormat("en-US", options?.dateOnly
-    ? { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }
-    : { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "UTC", timeZoneName: "short" })
-    .format(new Date(value));
+  return formatEasternTime(value, options);
 }
 
 export function inputDate(value: string | null | undefined) {

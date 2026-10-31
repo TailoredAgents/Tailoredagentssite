@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { formatEasternTime } from "@/lib/time";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -35,25 +36,9 @@ function selectionQuery(selection: ReportSelection) {
   ).toString();
 }
 function LocalTime({ value }: { value: string | null }) {
-  const [formatted, setFormatted] = useState(
-    value
-      ? `${value.replace("T", " ").slice(0, 16)} UTC`
-      : "No activity recorded",
-  );
-  useEffect(() => {
-    if (value)
-      setFormatted(
-        new Intl.DateTimeFormat(undefined, {
-          dateStyle: "medium",
-          timeStyle: "short",
-        }).format(new Date(value)) +
-          " (" +
-          Intl.DateTimeFormat().resolvedOptions().timeZone +
-          ")",
-      );
-  }, [value]);
-  return <time dateTime={value ?? undefined}>{formatted}</time>;
+  return <time dateTime={value ?? undefined}>{value ? formatEasternTime(value) : "No activity recorded"}</time>;
 }
+
 function Comparison({
   value,
   previous,
@@ -1011,7 +996,7 @@ export function ReportingDashboard({
       </details>
       <footer className="report-footer">
         Reports for Tailored Agents · Private to your team · Update times shown
-        in your local timezone
+        in US Eastern (EST/EDT)
       </footer>
     </main>
   );
