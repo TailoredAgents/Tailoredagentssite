@@ -4,6 +4,11 @@ The recorded demonstration and matching read-aloud script are complete. This is
 evidence for the existing own-business integration, not confirmation that every
 Meta submission requirement is satisfied or that Meta approved the app.
 
+**Submission update:** Jeffrey confirmed video upload and App usage completion.
+The remaining form was completed and submitted November 1; Meta showed **Review
+in progress** at **22:30:59 UTC / 5:30:59 PM EST**, persisting after reload.
+See [the submission and reviewer-access record](META_SETUP.md#app-review-submitted--november-1-2026).
+
 ## Deliverables
 
 Private local folder: `~/Movies/TailoredAgentsMetaReview-2026-11-01/`.
@@ -77,21 +82,21 @@ response and CRM evidence. It does not reuse the old test's Success result.
   dependencies. Enabled toggles do not prove that broader features exist or that
   Advanced Access is approved. The CRM has no ad editor, budget manager, Page-feed
   viewer or ad-performance dashboard.
-- [ ] Isolated reviewer account and synthetic-only reviewer workspace provisioned
-  and tested. Never supply Jeffrey's credentials or access to real customer records.
-- [ ] Exact processor processing/access countries completed in the private review
-  form. See the provider inventory in [META_SETUP.md](META_SETUP.md).
-- [ ] Video attachments saved in Meta's private submission and confirmed there.
-  The completed local MP4 has not been uploaded by this recording task.
-- [ ] Contradictory submission/testing state resolved and final submission accepted.
+- [x] Isolated reviewer account and synthetic-only workspace provisioned and tested;
+  main-workspace record access returns 404, with no mailbox/SMS/voice grants.
+- [x] Five processor entries and processing/access country selections saved, with
+  the published-source basis in [META_SETUP.md](META_SETUP.md).
+- [x] Jeffrey confirmed video upload and App usage completion before this final
+  setup work. No replacement video upload was performed by the automation.
+- [x] Final submission accepted by the actual dashboard; **Review in progress**
+  confirmed after reload. The connector's contradictory fields remain unreliable.
 - [ ] Final Meta permission approval received.
 
-The latest read-only requirements check still reports `can_submit: false` because
-a previous submission is in review. It reports screencasts incomplete for seven
-requested permissions and `api_precheck: false` for several, despite the dashboard's
-previously observed Completed API checks. Privacy-policy and business-verification
-prerequisites pass; usage descriptions and allowed-use agreements remain complete.
-No additional 500-call batch or final review submission was performed.
+The submitted reviewer instructions disclose that the video shows an existing
+permission grant and that the review workspace contains a synthetic copy of the
+recorded live test. The reviewer can inspect the returned answers and test internal
+notes/next actions without access to customer records or live Page credentials.
+No additional Meta lead, team alerts or 500-call batch was created for this setup.
 
 ## Read-aloud script
 

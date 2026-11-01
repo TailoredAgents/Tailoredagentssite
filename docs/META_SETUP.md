@@ -2,7 +2,95 @@
 
 Connection owner: Jeffrey, assigned by Austin October 23, 2026. See [new jeffrey.md](../new%20jeffrey.md#meta-leads--connection-and-remaining-checks) for remaining acceptance checks. Austin retains business-account ownership and can supply needed asset access. Jeffrey's SEO and shared-email handoffs continue alongside this work.
 
-**Current acceptance:** the app is published, the Facebook Page and both webhook subscriptions are connected, and imports are enabled. Jeffrey confirmed a Meta test-form submission appeared in CRM Leads on October 24. On October 27, a real Facebook lead reported by Austin was recovered from its saved receipt after correcting unanswered-field handling; see the incident record below. Production permission/App Review requirements remain unresolved; this successful retrieval does not settle those requirements or establish Instagram-placement delivery. Austin previously confirmed website PageView and Lead events after a saved website-review inquiry. Pixel/Dataset ID is **1785858192683666**. Preserve this working installation; the setup sections below are reference, not a request to create duplicate assets. CRM-stage Conversions API feedback was activated October 28 with five successful test deliveries followed by five accepted production events; see [CRM conversion setup](META_CONVERSIONS_SETUP.md) for the verification record and remaining sales-funnel/eligibility checks. Server-side website conversions remain deferred.
+**Current acceptance:** the app is published, the Facebook Page and both webhook subscriptions are connected, and imports are enabled. Jeffrey confirmed a Meta test-form submission appeared in CRM Leads on October 24. On October 27, a real Facebook lead reported by Austin was recovered from its saved receipt after correcting unanswered-field handling; see the incident record below. App Review was submitted November 1 and the dashboard shows **Review in progress**; permission approval remains pending. Successful retrieval does not establish Instagram-placement delivery. Austin previously confirmed website PageView and Lead events after a saved website-review inquiry. Pixel/Dataset ID is **1785858192683666**. Preserve this working installation; the setup sections below are reference, not a request to create duplicate assets. CRM-stage Conversions API feedback was activated October 28 with five successful test deliveries followed by five accepted production events; see [CRM conversion setup](META_CONVERSIONS_SETUP.md) for the verification record and remaining sales-funnel/eligibility checks. Server-side website conversions remain deferred.
+
+## App Review submitted — November 1, 2026
+
+The signed-in dashboard accepted submission **1589418512396237** for app
+**1589418445729577**. At **22:30:59 UTC / 5:30:59 PM EST**, it showed **Review in
+progress**; the same status persisted after reload. Meta says most submissions
+are reviewed within 20 days, with longer timelines if follow-up is needed. This
+is submission acceptance, not permission approval. The existing ten requested
+permissions/features remain in the request. Do not submit another copy or repeat
+the API test batch.
+
+Jeffrey confirmed that he uploaded the video and completed App usage. The
+remaining work added the missing **Website** platform (`https://www.tailoredagents.com/`),
+completed the five processor entries, and saved detailed reviewer instructions and
+private test credentials. All four reviewer text fields and **Facebook Login: No**
+were read back after leaving and reopening the section. The instructions explicitly
+explain that the CRM uses Mail sign-in, while the owner authorizes Meta Page/API
+access separately through Meta's tools and the existing Business Login grant.
+They identify the synthetic copy and the existing-consent recording accurately.
+
+The controller remains **Tailored Agents, United States**, with **No** national-security
+disclosures in the last 12 months, as Jeffrey supplied. **None of the above** remains
+the answer for existing public-authority request procedures: no adopted procedure
+was established, and recommended practices were not represented as existing policy.
+
+### Submitted provider disclosures
+
+All five entries use **IT solutions and services, including cloud storage and
+processing**. Country selections follow the published processing/support footprint
+applicable to the configured services; these are disclosures of possible processing
+and access locations, not guarantees that every record has visited each location.
+
+| Submitted provider | Country-selection basis |
+| --- | --- |
+| Render Services, Inc. | United States: configured Ohio runtime/database, [DPA](https://render.com/dpa), [security/subprocessors](https://render.com/security) and [terms](https://render.com/terms). |
+| Resend, Inc. | United States: [GDPR processing/storage description](https://resend.com/security/gdpr) and [subprocessor list](https://resend.com/legal/subprocessors). |
+| OpenAI | 29 published API processing/moderation/support countries from the [October 14 subprocessor list](https://openai.com/policies/sub-processor-list/), including Finland and the Philippines. The application uses the ordinary API endpoint; US-only residency was not claimed. |
+| Twilio Inc. | 16 countries from [processor-policy Appendix 1](https://www.twilio.com/en-us/legal/bcr/processor), including support/group access beyond the default US1 communications workload. See the [service-specific subprocessor list](https://www.twilio.com/en-us/legal/sub-processors). |
+| Cloudflare, Inc. | 134 countries/territories: the [published network](https://www.cloudflare.com/network/) outside the separately contracted China Network, plus EEA locations not present in that network list, and the [service/support subprocessor footprint](https://www.cloudflare.com/gdpr/subprocessors/cloudflare-services/). The Mail Worker has no regional placement restriction. The [China Network requires a separate Enterprise subscription](https://developers.cloudflare.com/china-network/get-started/), which is not configured here. |
+
+The OpenAI selections are Australia, Belgium, Brazil, Canada, Denmark, Finland,
+France, Germany, India, Indonesia, Ireland, Italy, Japan, Malaysia, Mexico,
+Netherlands, New Zealand, Norway, Philippines, Poland, Singapore, South Africa,
+South Korea, Spain, Sweden, Switzerland, United Arab Emirates, United Kingdom and
+United States. Twilio selections are Australia, Brazil, Canada, Colombia, Estonia,
+France, Germany, Hong Kong, India, Ireland, Japan, Singapore, Spain, Sweden,
+United Kingdom and United States. Exact Cloudflare selections and research evidence
+are retained in the private operations folder. Production Mail has no configured AI
+provider and no Telegram secrets; unused Anthropic/Telegram code paths were not
+listed as enabled direct processors.
+
+### Isolated reviewer access and verification
+
+The dedicated non-admin Mail identity is prelinked to a CRM **member** in workspace
+`d63e064c-c2c7-410f-8c52-a3155cbd60ec`, named **Meta App Review — Synthetic Data**.
+It contains only reviewer lead `0d796206-1881-4097-8f04-742e251b9338`, a clearly
+labelled copy of the recorded synthetic lead. It has no Meta intake receipt or
+Page credentials. Provisioning did not submit another Meta test, send team alerts,
+or initiate customer outreach.
+
+Fix **09dcfb9** preserves explicit workspace assignments at Mail login instead of
+adding every approved identity to the main internal workspace. It also refuses
+login for the oldest suspended/removed membership or archived workspace. Nine
+PostgreSQL-backed login tests passed, including repeated isolated login, suspension
+and archived-workspace denial; typecheck, lint and production build passed.
+Render deployment **dep-dbjrmap5efls73ecb1f0** became live at **22:22:45 UTC**.
+
+A real browser login at **22:26:03 UTC** showed exactly the reviewer lead and the
+correct workspace. Opening the original main-workspace lead returned **404**.
+Read-only audit **job-dbjrq5ff3r2c73cvcrag** at **22:29:12 UTC** confirmed exactly
+one active member assignment, one lead, zero Meta receipts and zero SMS/voice
+grants. Mail D1 separately confirmed zero owned addresses and zero CRM mailbox
+grants. Existing Mail authorization also prevents non-admins from creating addresses.
+The private credentials supplied to Meta are to remain valid through at least
+**November 2, 2027**, matching its one-year test-access requirement.
+
+Evidence and credentials remain outside Git in
+`~/Library/Application Support/TailoredAgents/operations/meta-review-completion-2026-11-01/`.
+The folder contains the submitted-status screenshot/JSON, reviewer validation,
+form readback, country selections, and private credentials. Do not copy passwords,
+password hashes or session tokens into this repository.
+
+The connector still returned inconsistent information immediately before submission:
+its status referred to different submission **1589418515729570** with `UNSUBMITTED`
+and an approved flag, while requirements claimed a previous review blocked submission.
+The observed browser submission and persisted **Review in progress** status are the
+current evidence. Final permission approval, acceptance of the existing-grant footage,
+and any reviewer follow-up remain pending.
 
 ## Missing-answer recovery — October 27, 2026
 
@@ -33,7 +121,7 @@ This establishes delivery from Meta's live testing tool into the CRM. It does no
 
 Meta's [Marketing API use-case guide](https://developers.facebook.com/documentation/development/create-an-app/marketing-api-use-cases) distinguishes own/managed business data from other businesses' data and says webhooks themselves do not require App Review. Its [Lead Ads guide](https://developers.facebook.com/documentation/ads-commerce/marketing-api/guides/lead-ads) separately calls for App Review including `leads_retrieval` and `pages_manage_ads`. The generic own-business rules alone do not settle this app's lead-retrieval requirements. Prepare truthful usage explanations and demonstrations for permissions that Meta requires; do not request unrelated capabilities or represent a granted token scope as reviewed production access.
 
-### November 1 production and App Review check
+### November 1 preparation history — before final submission
 
 Read-only production inspection found 15 imported receipts, no pending/failed imports,
 and no duplicate Page/lead receipt groups. Latest import: October 31 at 21:58:37 UTC.
@@ -60,7 +148,7 @@ run. However, the review tool still reports `api_precheck=false` and blocks
 submission with “Cannot submit to App Review while a previous submission is in
 review.” Its status also previously combined an approved flag with `UNSUBMITTED`.
 These inconsistent signals do not establish final approval. Required screencasts,
-processor-location entries and reviewer instructions/access remain unfinished.
+processor-location entries and reviewer instructions/access were unfinished at that check; the later submission record above supersedes these blockers.
 
 Meta's [Retrieving Leads guide](https://developers.facebook.com/documentation/ads-commerce/marketing-api/guides/lead-ads/retrieving)
 and [Permissions Reference](https://developers.facebook.com/docs/permissions/)
@@ -77,12 +165,12 @@ answers, and the existence of external service providers, were entered in the
 autosaved data-handling draft. Repository/privacy-policy review found no documented
 government-request procedure. The draft therefore selects **None of the above**
 for existing request procedures; recommended practices are not evidence of adoption.
-This is not a submission or a legal determination. Meta's [data-handling question
+Those were preparation-stage entries, not a legal determination. Meta's [data-handling question
 guide](https://developers.meta.com/vr/resources/data-handling-questions/) illustrates
 the same distinction between actual practices and the listed options; that guide is
 for Horizon, while the exact questions were inspected in this app's own dashboard.
 
-Processor inventory for the remaining private review form:
+Processor inventory used during preparation:
 
 | Provider | Actual data path to review | Primary provider reference |
 | --- | --- | --- |
@@ -95,11 +183,8 @@ Processor inventory for the remaining private review form:
 Meta asks for **all processing/access countries, including remote access**, not just
 the provider's headquarters or the selected hosting region. The current provider
 lists include multiple regions and service-specific conditions. Do not label every
-provider US-only from the CRM's Ohio location. Exact applicable locations remain to
-be confirmed before completing the provider entries and submitting the review.
-Reviewer access must also use isolated synthetic data; no real customer records or
-teammate credentials were exposed to reviewers. A complete demonstration and the
-final requested-permission list remain open.
+provider US-only from the CRM's Ohio location. The completed location disclosures and isolated reviewer access are recorded above.
+No real customer records or teammate credentials were supplied to reviewers.
 
 ### Recorded demonstration — November 1, 2026
 
@@ -118,11 +203,10 @@ confirmed the linked record and **delivered** alerts to Austin, Devon and Jeffre
 Lead introductions remained disabled. Only this synthetic record received the
 demonstration note, Jeffrey assignment and internal next action.
 
-The video shows an existing grant, not a first-time consent dialog. Reviewer access,
-processor countries, attachment upload and final submission/approval remain open.
-Meta's requirements tool still blocks submission because a previous submission is
-in review; its screencast and API-precheck flags remain incomplete. Do not mark all
-App Review requirements complete merely because this local recording is ready.
+The video shows an existing grant, not a first-time consent dialog. Jeffrey later
+confirmed uploading it. Reviewer access, provider disclosures and submission are
+complete as recorded above; Meta's final approval and any requests for further
+evidence remain pending.
 
 ### App Review preparation
 
