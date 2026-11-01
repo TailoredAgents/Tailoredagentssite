@@ -1,5 +1,7 @@
 'use client';
 import Link from 'next/link';
+import Image from 'next/image';
+import austinHeadshot from '@/public/team/austin-dugger.png';
 import {useEffect,useRef,useState} from 'react';
 import {ArrowDownToLine,ArrowRight,ArrowUpRight,Check,Code2,Globe,Layers3,Mail,MessageCircle,Phone,Send,Sparkles,Workflow} from 'lucide-react';
 import {BrandLogo} from '@/components/brand-logo';
@@ -11,6 +13,7 @@ function track(source:Source,event:string){if(navigator.doNotTrack==='1'||(navig
 export function SmartCardProfile({profile,card,channel}:{profile:CardProfile;card?:string;channel:CardChannel}){
  const source:Source={profile:profile.slug,card,channel};const seen=useRef(false);
  const [interest,setInterest]=useState('Let’s talk');const first=profile.display_name.split(' ')[0];
+ const headshot=profile.slug==='austin'?austinHeadshot:null;
  useEffect(()=>{if(!seen.current){seen.current=true;track({profile:profile.slug,card,channel},'visit');}},[profile.slug,card,channel]);
  function inquiry(value='Let’s talk'){setInterest(value);track(source,'inquiry_open');document.getElementById('card-connect')?.scrollIntoView({behavior:'smooth',block:'start'});}
  return <div className="smart-card-page"><div className="smart-card-shell">
@@ -18,7 +21,9 @@ export function SmartCardProfile({profile,card,channel}:{profile:CardProfile;car
   <div className="sc-layout">
    <aside className="sc-person">
     <div className="sc-person-heading">
-     <div className="sc-person-art" aria-hidden="true"><span className="sc-orbit sc-orbit-one"/><span className="sc-orbit sc-orbit-two"/><span className="sc-monogram">{profile.display_name.split(' ').map(n=>n[0]).join('')}</span><span className="sc-art-caption">People. Ideas. Possibilities.</span></div>
+     <div className="sc-person-art">
+      {headshot?<Image className="sc-headshot" src={headshot} alt={`Portrait of ${profile.display_name}`} fill sizes="(max-width: 760px) 64px, (max-width: 1000px) 280px, (min-width: 1400px) 340px, 320px" loading="eager"/>:<><span className="sc-orbit sc-orbit-one" aria-hidden="true"/><span className="sc-orbit sc-orbit-two" aria-hidden="true"/><span className="sc-monogram" aria-hidden="true">{profile.display_name.split(' ').map(n=>n[0]).join('')}</span><span className="sc-art-caption" aria-hidden="true">People. Ideas. Possibilities.</span></>}
+     </div>
      <div className="sc-person-identity"><span className="sc-eyebrow">YOUR CONNECTION AT TAILORED AGENTS</span><h1>{profile.display_name}</h1><p className="sc-role">{profile.title}</p></div>
     </div>
     <div className="sc-person-body">
