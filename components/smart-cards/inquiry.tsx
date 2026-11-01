@@ -5,11 +5,13 @@ import {ArrowUpRight,Check} from 'lucide-react';
 import {cardInterests,type HandoffDraft} from '@/lib/smart-cards/handoff';
 import type {CardChannel} from '@/lib/smart-cards/types';
 import type {PublicSlot} from '@/lib/booking/calendar';
-import {formatEasternTime} from '@/lib/time';
+import {formatEasternTime,easternInputValue} from '@/lib/time';
 type Source={profile:string;card?:string;channel:CardChannel};
 export function CardInquiry({source,initialInterest='Let’s talk',initialKind='inquiry',stepVersion=0,draft}:{source:Source;initialInterest?:string;initialKind?:'inquiry'|'appointment';stepVersion?:number;draft?:HandoffDraft}){
  const [interest,setInterest]=useState(draft?.interest??initialInterest),[kind,setKind]=useState(draft?.requestKind??initialKind);
  const [pending,setPending]=useState(false),[result,setResult]=useState(''),[error,setError]=useState('');
+ const today=easternInputValue(new Date().toISOString()).slice(0,10);const [day,setDay]=useState(today);
+ const maxDay=new Date(Date.parse(today+'T12:00:00Z')+90*86400000).toISOString().slice(0,10);
  const [slots,setSlots]=useState<PublicSlot[]>([]),[slotId,setSlotId]=useState(''),[loading,setLoading]=useState(false),[timesError,setTimesError]=useState(''),[refresh,setRefresh]=useState(0);
  const [booking,setBooking]=useState<(PublicSlot&{status:string})|null>(null);
  const confirmation=useRef<HTMLDivElement>(null);
@@ -21,12 +23,12 @@ export function CardInquiry({source,initialInterest='Let’s talk',initialKind='
  useEffect(()=>{
   if(kind!=='appointment')return;
   const abort=new AbortController();setLoading(true);setTimesError('');setSlotId('');
-  fetch('/api/smart-cards/availability',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(source),signal:abort.signal})
+  fetch('/api/smart-cards/availability',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...source,day}),signal:abort.signal})
    .then(async r=>{const data=await r.json();if(!r.ok)throw new Error(data.message||'Times could not be loaded.');setSlots(data.slots);})
    .catch(e=>{if(!abort.signal.aborted){setSlots([]);setTimesError(e instanceof Error?e.message:'Times could not be loaded.');}})
    .finally(()=>{if(!abort.signal.aborted)setLoading(false);});
   return()=>abort.abort();
- },[kind,source.profile,source.card,source.channel,refresh]);
+ },[kind,source.profile,source.card,source.channel,refresh,day]);
  const selected=slots.find(s=>s.id===slotId);
  async function submit(event:React.FormEvent<HTMLFormElement>){
   event.preventDefault();if(lock.current)return;lock.current=true;setPending(true);setError('');const form=new FormData(event.currentTarget);
@@ -42,9 +44,11 @@ export function CardInquiry({source,initialInterest='Let’s talk',initialKind='
   <label>Next step<select value={kind} onChange={e=>{setKind(e.target.value as typeof kind);setSlotId('');}}><option value="inquiry">Send the team a request</option><option value="appointment">Arrange a phone consultation</option></select></label>
   {kind==='appointment'?<div className="sc-booking-picker">
    <strong>Choose a time with {source.profile[0].toUpperCase()+source.profile.slice(1)}</strong><p>Times are shown in US Eastern (EST/EDT). We’ll call your number. Bookings need at least two hours’ notice.</p>
+   <label>Appointment date (Eastern time)<input type="date" value={day} min={today} max={maxDay} onChange={e=>{if(/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)){setDay(e.target.value);setSlotId('');}}}/></label>
+   <div className="sc-date-navigation"><button type="button" className="sc-text-link" disabled={day<=today} onClick={()=>{setDay(new Date(Date.parse(day+'T12:00:00Z')-86400000).toISOString().slice(0,10));setSlotId('');}}>Previous day</button><button type="button" className="sc-text-link" disabled={day>=maxDay} onClick={()=>{setDay(new Date(Date.parse(day+'T12:00:00Z')+86400000).toISOString().slice(0,10));setSlotId('');}}>Next day</button></div>
    {loading?<p role="status">Checking available times…</p>:null}
    {timesError?<p role="alert">{timesError} You can still request a time below.</p>:null}
-   {!loading&&!timesError&&!slots.length?<p>No times are open right now. Send your preferred time and we’ll arrange it with you.</p>:null}
+   {!loading&&!timesError&&!slots.length?<p>No times are available on this date. Choose another day or send a preferred-time request.</p>:null}
    <label>Available consultation<select value={slotId} disabled={loading} onChange={e=>setSlotId(e.target.value)}><option value="">Ask the team to arrange a time</option>{slots.map(s=><option value={s.id} key={s.id}>{formatEasternTime(s.startsAt)} · {Math.round((Date.parse(s.endsAt)-Date.parse(s.startsAt))/60000)} min</option>)}</select></label>
    <button type="button" className="sc-text-link" disabled={loading} onClick={()=>setRefresh(n=>n+1)}>Refresh available times</button>
    {selected?<p className="sc-booking-confirm"><strong>Ready to confirm:</strong> {formatEasternTime(selected.startsAt)} — {Math.round((Date.parse(selected.endsAt)-Date.parse(selected.startsAt))/60000)} minutes. This time is reserved only after you confirm below.</p>:<label>Preferred time and time zone <span>(optional)</span><input name="preferredTime" defaultValue={draft?.preferredTime??''} maxLength={240} placeholder="For example, Tuesday afternoon, Eastern time"/><small>This is a request, not a confirmed appointment.</small></label>}

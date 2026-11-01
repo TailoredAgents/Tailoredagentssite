@@ -29,7 +29,7 @@ Operational today:
 - Durable project-inquiry and free website-review capture in PostgreSQL, with live Resend notifications to Jeffrey and Austin. One labeled test inquiry reached both inboxes exactly once on October 21.
 - Privacy-conscious first-party measurement for public page views, acquisition, next-step clicks, and inquiry conversions.
 - Conceptual Growth Hub and analytics visuals labeled as illustrative.
-- Personalized NFC/QR Smart Cards for Austin, Jeffrey and Devon, with contact downloads, the Tailored Agents AI assistant, visitor-reviewed inquiry drafts, and confirmed phone consultations from the shared internal booking calendar. Staff publish availability in Team calendar; bookings also appear in My day. See [Smart Cards setup and programming](docs/SMART_CARDS.md).
+- Personalized NFC/QR Smart Cards for Austin, Jeffrey and Devon, with contact downloads, the Tailored Agents AI assistant, visitor-reviewed inquiry drafts, and confirmed phone consultations from the shared internal booking calendar. Availability repeats daily from 8 AM–7 PM Eastern for all three teammates; staff manage exceptions in Team calendar, and bookings also appear in My day. See [Smart Cards setup and programming](docs/SMART_CARDS.md).
 
 ### Private dashboard
 

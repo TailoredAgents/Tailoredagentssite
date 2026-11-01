@@ -4,6 +4,8 @@ import {readFile,readdir} from 'node:fs/promises';
 import pg from 'pg';
 vi.mock('server-only',()=>({}));
 import {getDatabasePool} from '@/lib/dashboard/db';
+import {ensureRecurringSlots} from '@/lib/booking/recurring';
+import {easternInputValue} from '@/lib/time';
 import {changeCalendar,availableSlots,getBookingCalendar,guardSalesAppointment} from '@/lib/booking/calendar';
 import {askCardAssistant,CARD_AI_RESERVATION} from './assistant';
 import {saveCardInquiry} from './inquiries';
@@ -20,7 +22,7 @@ const chat=()=>({profile:'austin',requestId:randomUUID(),sessionId:randomUUID(),
 function response(){return Response.json({status:'completed',output:[{type:'reasoning'},{type:'message',content:[{type:'output_text',text:JSON.stringify({answer:'We build websites, custom software, and AI assistants. What would you like to explore?',draft:null})}]}],usage:{input_tokens:900,output_tokens:100}});}
 describe.skipIf(!databaseUrl)('Smart Cards database and public boundaries',()=>{
  beforeAll(async()=>{const target=new URL(databaseUrl!);if(!['127.0.0.1','localhost'].includes(target.hostname)||target.pathname!=='/ta_smart_cards_test')throw new Error('Use the dedicated local disposable Smart Cards database.');vi.stubEnv('DATABASE_URL',databaseUrl);vi.stubEnv('BETTER_AUTH_SECRET','synthetic-smart-card-test-secret-123456789');vi.stubEnv('OPENAI_API_KEY','synthetic-test-key');vi.stubEnv('RESEND_API_KEY','');pool=getDatabasePool();await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public');for(const filename of (await readdir('db/migrations')).filter(f=>f.endsWith('.sql')).sort())await pool.query(await readFile(`db/migrations/${filename}`,'utf8'));await pool.query(`INSERT INTO "user"(id,name,email,"emailVerified","createdAt","updatedAt") VALUES('card-owner','Austin','austin@tailoredagents.com',true,now(),now()),('card-viewer','Viewer','viewer@example.test',true,now(),now())`);await pool.query(`INSERT INTO workspace_memberships(id,workspace_id,user_id,role,status) VALUES($1,$2,'card-owner','owner','active'),($3,$2,'card-viewer','viewer','active')`,[randomUUID(),CARD_WORKSPACE,randomUUID()]);},30000);
- beforeEach(async()=>{vi.stubGlobal('fetch',vi.fn(async()=>response()));await pool.query('TRUNCATE smart_card_ai_requests,smart_card_ai_usage,smart_card_events,request_rate_limits');await pool.query('TRUNCATE booking_slots');await pool.query("DELETE FROM leads WHERE source='smart_card'");await pool.query('UPDATE smart_cards SET active=true');await pool.query('UPDATE smart_card_profiles SET published=true');await pool.query('UPDATE smart_card_ai_settings SET enabled=true,monthly_limit_micros=25000000');});
+ beforeEach(async()=>{vi.stubGlobal('fetch',vi.fn(async()=>response()));await pool.query('TRUNCATE smart_card_ai_requests,smart_card_ai_usage,smart_card_events,request_rate_limits');await pool.query('TRUNCATE booking_slots');await pool.query('DELETE FROM booking_schedules');await pool.query("DELETE FROM leads WHERE source='smart_card'");await pool.query('UPDATE smart_cards SET active=true');await pool.query('UPDATE smart_card_profiles SET published=true');await pool.query('UPDATE smart_card_ai_settings SET enabled=true,monthly_limit_micros=25000000');});
  afterAll(async()=>{await pool?.end();delete (globalThis as {tailoredAgentsDatabasePool?:pg.Pool}).tailoredAgentsDatabasePool;vi.unstubAllEnvs();vi.unstubAllGlobals();});
  it('publishes all three approved contacts and keeps login identity private',async()=>{for(const slug of ['austin','jeffrey','devon']){const p=await getCardProfile(slug);expect(p?.phone).toBe('+16785417725');expect(p).not.toHaveProperty('login_email');expect(p?.email).toBe(`${slug}@tailoredagents.com`);}expect(await getCardProfile('../settings')).toBeNull();});
  it('resolves six stable links, honors pause, and redirects without permanent caching',async()=>{for(const slug of ['austin','jeffrey','devon'])for(const kind of ['personal','giveaway'])expect((await resolveCard(`${slug}-${kind}`))?.profile_slug).toBe(slug);const r=await redirectGet(new Request(`${CARD_ORIGIN}/go/austin-personal?via=qr`),{params:Promise.resolve({code:'austin-personal'})});expect(r.status).toBe(307);expect(r.headers.get('location')).toContain('/c/austin?card=austin-personal&via=qr');expect(r.headers.get('cache-control')).toBe('no-store');await pool.query("UPDATE smart_cards SET active=false WHERE code='austin-personal'");expect(await resolveCard('austin-personal')).toBeNull();});
@@ -87,6 +89,44 @@ describe.skipIf(!databaseUrl)('Smart Cards database and public boundaries',()=>{
   await expect(saveCardInquiry({...inquiry(),requestKind:'appointment',phone:'+16785550123',slotId:slot.id})).rejects.toThrow('no longer available');
   expect((await pool.query("SELECT id FROM leads WHERE source='smart_card'")).rowCount).toBe(0);
   await pool.query('DELETE FROM crm_tasks WHERE id=$1',[task]);await pool.query('DELETE FROM crm_conversation_sources WHERE id=$1',[source]);await pool.query('DELETE FROM crm_conversations WHERE id=$1',[conversation]);
+ });
+
+ const enableDaily=async()=>{await pool.query('INSERT INTO booking_schedules(workspace_id,profile_slug) SELECT workspace_id,slug FROM smart_card_profiles');};
+ const tomorrow=async()=>(await pool.query("SELECT ((now() AT TIME ZONE 'America/New_York')::date+1)::text AS date_key")).rows[0].date_key as string;
+ it('offers daily 8 AM–7 PM Eastern times for all three profiles without requiring a first staff login',async()=>{
+  await enableDaily();const day=await tomorrow();
+  for(const profile of ['austin','devon','jeffrey']){const slots=await availableSlots(profile,undefined,day);expect(slots).toHaveLength(22);expect(easternInputValue(slots[0].startsAt)).toBe(day+'T08:00');expect(easternInputValue(slots.at(-1)!.endsAt)).toBe(day+'T19:00');}
+  const totals=(await pool.query('SELECT profile_slug,count(*)::int total FROM booking_slots GROUP BY profile_slug')).rows;expect(totals).toHaveLength(3);expect(totals.every(r=>r.total===91*22)).toBe(true);
+  const weekends=(await pool.query("SELECT count(*)::int total FROM booking_slots WHERE profile_slug='devon' AND extract(isodow from starts_at AT TIME ZONE 'America/New_York') IN (6,7)")).rows[0];expect(weekends.total).toBeGreaterThan(0);
+  const calendar=await getBookingCalendar(owner);expect(calendar.slots).toHaveLength(0);expect(calendar.profiles.every(p=>p.opens_minute===480&&p.closes_minute===1140)).toBe(true);
+ });
+ it('refills the rolling horizon once without resurrecting closed or cancelled slots',async()=>{
+  await enableDaily();await Promise.all([ensureRecurringSlots(CARD_WORKSPACE),ensureRecurringSlots(CARD_WORKSPACE)]);const day=await tomorrow(),first=(await availableSlots('austin',undefined,day))[0];
+  await changeCalendar(owner,{operation:'close',id:first.id});
+  // Simulate yesterday's generation watermark, leaving the current day records intact.
+  await pool.query("DELETE FROM booking_slots WHERE (starts_at AT TIME ZONE 'America/New_York')::date=(now() AT TIME ZONE 'America/New_York')::date+90");
+  await pool.query('UPDATE booking_schedules SET generated_through=generated_through-1');
+  await Promise.all([ensureRecurringSlots(CARD_WORKSPACE),ensureRecurringSlots(CARD_WORKSPACE)]);
+  expect((await pool.query('SELECT count(*)::int total FROM booking_slots')).rows[0].total).toBe(3*91*22);
+  expect((await availableSlots('austin',undefined,day)).some(s=>s.id===first.id)).toBe(false);
+ });
+ it('blocks full days and weeks without deleting recurring availability, and restores it on removal',async()=>{
+  await enableDaily();const day=await tomorrow(),slots=await availableSlots('austin',undefined,day);
+  await changeCalendar(owner,{operation:'publish',profile:'austin',startsAt:slots[0].startsAt,minutes:660,mode:'blocked'});
+  expect(await availableSlots('austin',undefined,day)).toEqual([]);expect(await availableSlots('devon',undefined,day)).toHaveLength(22);
+  const block=(await pool.query("SELECT id FROM booking_slots WHERE status='blocked'")).rows[0];await changeCalendar(owner,{operation:'close',id:block.id});expect(await availableSlots('austin',undefined,day)).toHaveLength(22);
+  await changeCalendar(owner,{operation:'publish',profile:'jeffrey',startsAt:slots[0].startsAt,minutes:10080,mode:'blocked'});expect(await availableSlots('jeffrey',undefined,day)).toEqual([]);
+ });
+ it('preserves an existing manual opening when recurring hours begin',async()=>{
+  const first=await publish();await enableDaily();const slots=await availableSlots('austin',undefined,easternInputValue(first.startsAt).slice(0,10));expect(slots.some(s=>s.id===first.id)).toBe(true);
+  expect(slots.filter(s=>s.id!==first.id).every(s=>Date.parse(s.endsAt)<=Date.parse(first.startsAt)||Date.parse(s.startsAt)>=Date.parse(first.endsAt))).toBe(true);
+ });
+ it('confirms a recurring slot only once and refuses time off over a booking',async()=>{
+  await enableDaily();const day=await tomorrow(),slot=(await availableSlots('devon',undefined,day))[0];
+  const request={...inquiry(),profile:'devon',card:'devon-personal',requestKind:'appointment',phone:'+16785550123',slotId:slot.id};
+  const results=await Promise.allSettled([saveCardInquiry(request),saveCardInquiry({...request,submissionId:randomUUID(),email:'second@example.test'})]);expect(results.filter(r=>r.status==='fulfilled')).toHaveLength(1);
+  expect(await availableSlots('devon',undefined,day)).toHaveLength(21);
+  await expect(changeCalendar(owner,{operation:'publish',profile:'devon',startsAt:slot.startsAt,minutes:660,mode:'blocked'})).rejects.toThrow('overlaps');
  });
 
 });
