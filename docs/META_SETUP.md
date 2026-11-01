@@ -44,12 +44,32 @@ lead, was unchanged. The bounded operator job did not invoke an import, alert or
 introduction worker. This verifies production receipt deduplication, not HTTP
 signature delivery or deliberate interruption of a live worker.
 
-The signed-in App Review dashboard still has incomplete permission descriptions,
-screencasts and API prerequisites. The review tool's status/requirements disagree
-(an approved flag alongside `UNSUBMITTED`, and a previous-review blocking reason);
-do not interpret those flags as final approval. The dashboard is the visible evidence
-that submission work remains. No second 500-call batch was run. A `pages_show_list`
-draft save was attempted but not verified persisted; its text remains preparatory.
+The signed-in App Review dashboard now has saved usage descriptions and allowed-use
+agreements for all nine requested non-profile permissions/features; the existing
+`public_profile` agreement is also saved. The review tool independently confirms
+those steps complete. Newly completed explanations cover `pages_show_list`,
+`business_management`, `ads_read`, `pages_read_engagement`, `ads_management`, and
+Marketing API Access Tier. They describe our own-business lead-reading flow and
+its documented dependencies; they do not claim campaign editing, spend reporting,
+a Page-feed viewer or a Facebook Login button in the CRM. `ads_read` uses the
+**Other** option, with its lead-retrieval dependency explained.
+
+The actual dashboard now shows **Completed** for the API-call checks, including
+Marketing API Access Tier's 500-call/85%-success requirement. No second batch was
+run. However, the review tool still reports `api_precheck=false` and blocks
+submission with “Cannot submit to App Review while a previous submission is in
+review.” Its status also previously combined an approved flag with `UNSUBMITTED`.
+These inconsistent signals do not establish final approval. Required screencasts,
+processor-location entries and reviewer instructions/access remain unfinished.
+
+Meta's [Retrieving Leads guide](https://developers.facebook.com/documentation/ads-commerce/marketing-api/guides/lead-ads/retrieving)
+and [Permissions Reference](https://developers.facebook.com/docs/permissions/)
+were checked November 1. The latter lists Ads Management Standard Access,
+`ads_management`, `ads_read`, `business_management`, `pages_manage_ads`,
+`pages_read_engagement` and `pages_show_list` as `leads_retrieval` dependencies.
+This supports explaining those dependencies without inventing broader app features;
+it does not prove that Meta will approve the submitted use or resolve the tier's
+naming difference. Reconcile the contradictory review state before final submission.
 
 Jeffrey supplied the controller **Tailored Agents, United States (Georgia)** and
 confirmed **no national-security disclosures in the preceding 12 months**. Those
@@ -119,7 +139,7 @@ The controlled request is `GET /v26.0/act_648139277774553/ads?fields=id,name,eff
 
 **Completed at 20:59:49 UTC (4:59:49 PM EDT): 500 successful HTTP 200 requests across 502 attempts, a 99.60% success rate.** Both unsuccessful attempts remain in the evidence: a development-tier rate-limit response (`17`, subcode `2446079`) after 86 successful requests, and a connection timeout after 458. The rate-limit recovery used a 330-second cooldown and a minimum six-second delay between requests; the reviewed timeout recovery continued from the saved count. No further errors occurred. The usage headers had remained at 2% before the rate-limit response, so the documented per-account limit must be respected independently of those readings. The completed checkpoint was validated against the app/account/business identity, read-only endpoint, all 502 numbered attempts and their response statuses.
 
-**Meta's acknowledgement remains pending.** Immediately after completion, its review tool still reported the Marketing API Access Tier `api_precheck` as incomplete. Our response counts establish that the read requests succeeded; they do not establish that Meta has credited its qualification counter or approved App Review. Do not repeat the batch just because the counter has not refreshed.
+**October 27 observation; November 1 dashboard update above supersedes it.** Immediately after completion, its review tool still reported the Marketing API Access Tier `api_precheck` as incomplete. Our response counts establish that the read requests succeeded; they do not establish that Meta has credited its qualification counter or approved App Review. Do not repeat the batch just because the counter has not refreshed.
 
 The temporary test ran on Jeffrey's Mac and has exited; it did not run on the production website or its scheduled worker. The private result is `marketing-api-read-test-20261027.json`. A separate local monitor independently validated the completed totals and successfully requested a macOS notification at **21:00:00 UTC**; notification visibility depends on the Mac's settings. The earlier timeout notification was retained separately. No recurring testing job was installed.
 

@@ -1,13 +1,17 @@
 # Tailored Agents SEO manager
 
-Updated October 24, 2026. Applies only to **https://www.tailoredagents.com**. Work stays on `main`. See [the Jeffrey handoff](../new%20jeffrey.md) for the live acceptance record.
+Updated November 1, 2026. Applies only to **https://www.tailoredagents.com**. Work stays on `main`. See [the Jeffrey handoff](../new%20jeffrey.md) for the live acceptance record.
 
 **Current state, November 1:** free daily monitoring is working (nine completed
 14-page scans), Google remains connected, and Jeffrey's business-facts review is
 saved. The dedicated SEO project/key and enforced $10/month provider limit are
 configured. Both real comparison models and all five safety cases succeeded with
-14 settled receipts totaling **$0.697127**. Named human pilot approval and paid
-weekly activation remain pending; see the [actual pilot review](SEO_PILOT_REVIEW_2026-11-01.md).
+14 settled receipts totaling **$0.697127**. Jeffrey approved the named pilot review
+and enabled weekly Sol recommendations within the $10 cap. His separately approved
+`/seo` metadata was published at about 18:44 UTC and verified by the existing
+scheduled worker at 18:45 UTC; observation review is due November 29. See the
+[actual pilot review](SEO_PILOT_REVIEW_2026-11-01.md). The first scheduled weekly
+paid cycle and 28 complete reporting days still require real elapsed time.
 Do not repeat paid pilot calls or earlier infrastructure setup.
 
 The dedicated **Tailored Agents SEO** project is under **Stonegatejunkremoval** at
@@ -21,19 +25,19 @@ provider invoice remains separate evidence.
 
 ## Current release and costs
 
-Daily monitoring checks the 14 registered public pages. Once activated, weekly paid strategy proposes useful improvements, with a separate critique request and exact supporting quotations. An owner/admin must review the final public title and description before publication. Matching social metadata, live verification, version checks, rollback and 28-finalized-day outcome review are implemented; the first real reviewed publication remains unverified. Articles, page-body changes, city-ranking measurements, automatic code repair, outreach and client sites are outside this release.
+Daily monitoring checks the 14 registered public pages. Enabled weekly paid strategy proposes useful improvements, with a separate critique request and exact supporting quotations. An owner/admin must review the final public title and description before publication. Matching social metadata, live verification, version checks, rollback and 28-finalized-day outcome review are implemented. The first real reviewed publication was live-verified November 1; its outcome review remains pending. Articles, page-body changes, city-ranking measurements, automatic code repair, outreach and client sites are outside this release.
 
 **DataForSEO is optional and off. Do not create or fund its account for this release.** Search Console supplies the site's own search evidence free of API charges. The five Georgia service areas guide business relevance; they are not office claims or measured city rankings.
 
 The maximum is **$10 per UTC calendar month**, including manual requests, retries, the real model pilot and unresolved reservations. Hosting, call analysis and taxes are separate. Five weekly Sol plan/critique pairs reserve at most approximately $3.50 at the configured context/output limits and standard 30-minute cache-write rates. Actual charges depend on tokens and cache use. Provider funding is separate from consumption; no automatic top-up is implemented.
 
-Configured model for activation: `gpt-6.1-sol`, medium reasoning, standard service tier, maximum 8,000 output tokens, bounded plain-text context, no hosted tools. It has not passed the real pilot yet. Preserve this role and evaluate before changing models. The comparison pilot may use Astra explicitly, within its own **$5 sub-limit** of the same monthly allowance.
+Approved active model: `gpt-6.1-sol`, medium reasoning, standard service tier, maximum 8,000 output tokens, bounded plain-text context, no hosted tools. It passed the real pilot and Jeffrey's named review. Preserve this role and evaluate before changing models. The comparison pilot may use Astra explicitly, within its own **$5 sub-limit** of the same monthly allowance.
 
 Sources checked October 24: [Sol pricing](https://developers.openai.com/api/docs/models/gpt-6.1-sol), [cache accounting](https://developers.openai.com/api/docs/guides/prompt-caching), [project limits](https://developers.openai.com/api/docs/guides/spend-limits), [free Search Console API](https://developers.google.com/webmaster-tools/pricing), [Render cron billing](https://render.com/docs/cronjobs).
 
 ## Connection and deployment
 
-This is the reusable operator procedure. Production migration, worker configuration and free monitoring are already complete. Continue with the missing dedicated key/spending control and the pilot; preserve the installed secrets and working Google connection.
+This is the reusable operator procedure. Production migration, worker configuration and free monitoring are already complete. Dedicated project/key, spending control, pilot review and activation are also complete. Preserve installed secrets and the working Google connection; do not repeat these setup steps.
 
 1. Preserve existing Mail, Google, Meta, Twilio, database and login settings. Apply the ordered website migrations through **0018_affordable_seo.sql**. It preserves costs/reports/publications, caps the saved allowance at $10, and starts paid AI/pilot controls off.
 2. Create a dedicated OpenAI project and key for SEO. Store it as `SEO_OPENAI_API_KEY` on `tailored-agents-web`. Never substitute the call-analysis `OPENAI_API_KEY`. Set a project spending limit of $10 and enable hard enforcement where available. Provider enforcement can lag; application reservations remain required.
@@ -87,4 +91,4 @@ Rollback: pause paid AI/pilot, unset only the cron's `SEO_WORKER_URL`, and prese
 
 ## Acceptance record
 
-Keep actual results in [the handoff's release evidence](../new%20jeffrey.md#release-evidence), and update its single remaining-work checklist as checks pass. Successful scans and scheduled idle checks do not prove paid model quality or the next complete daily/weekly run. A no-change pilot is valid; publication acceptance remains open until a warranted change is verified. The 28-day outcome review remains due afterward.
+Keep actual results in [the handoff's release evidence](../new%20jeffrey.md#release-evidence), and update its single remaining-work checklist as checks pass. Successful scans and scheduled idle checks do not prove paid model quality or the next complete daily/weekly run. A no-change pilot is valid. The warranted `/seo` publication passed November 1; the 28-day outcome review remains due afterward.

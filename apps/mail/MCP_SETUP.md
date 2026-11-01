@@ -4,8 +4,11 @@ Updated November 1, 2026. **Production deployment and public protocol checks pas
 Austin's personal ChatGPT/Mail connection remains incomplete.** Production configuration
 enables OAuth sending with a starting cap of 25 messages per user per UTC day.
 No production assistant clients, access tokens, or mailbox grants were created during deployment.
-No real messages were sent. Unit tests use a mocked provider; browser tests use
-disposable local accounts, drafts and OAuth credentials.
+No real messages were sent through MCP. Unit tests use a mocked provider; browser
+tests use disposable local accounts, drafts and OAuth credentials. Separately,
+Jeffrey approved one CRM Sales test on November 1: delivery and the Hotmail reply
+were verified, with the original landing in Junk. That test does not establish
+Austin's MCP sending or inbox placement. See the [Sales acceptance record](../../new%20jeffrey.md#november-1-hotmail-round-trip-and-timestamp-correction).
 
 ## Production verification — November 1, 2026
 

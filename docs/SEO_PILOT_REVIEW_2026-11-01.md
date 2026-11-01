@@ -1,6 +1,6 @@
 # SEO model pilot — November 1, 2026
 
-**Prepared for Jeffrey's review. Approval and paid weekly activation are not yet recorded.**
+**Jeffrey approved the pilot and weekly Sol activation on November 1. The named review is recorded, paid weekly recommendations are enabled within the existing $10/month cap, and the separately approved `/seo` metadata is published and live-verified.**
 
 Recommendation: use **GPT-6.1 Sol** for regular weekly planning. Both comparison
 runs used the same saved production website/business/measurement evidence, standard
@@ -40,29 +40,32 @@ that the inquiry came from organic search or that these samples proved improveme
 Both kept future content briefs separate from published content. Georgia cities
 remain service areas, not offices. DataForSEO/city-rank measurements remain off.
 
-## Optional public metadata proposal
+## Separately approved public metadata
 
-Only this real Astra proposal is ready for separate human factual approval:
+Jeffrey separately approved the exact title and description below in this conversation:
 [review it in the CRM](https://www.tailoredagents.com/dashboard/seo/changes/aa75367e-9ffe-44d7-b9e5-5547fd026fb7).
-Approving the model pilot alone does not approve publication.
+That separate approval authorized publication; pilot approval alone would not have done so.
 
 - **Page:** `/seo`
-- **Current title:** Local SEO, Analytics & Growth Hub — Tailored Agents
-- **Proposed title:** Managed Local SEO & Website Analytics — Tailored Agents
-- **Current description:** Managed local SEO, website analytics, technical improvements, conversion measurement, and a clear client reporting direction for growing service businesses.
-- **Proposed description:** Managed local SEO for service businesses, with technical improvements, website analytics, conversion measurement, and human-reviewed priorities.
+- **Previous title:** Local SEO, Analytics & Growth Hub — Tailored Agents
+- **Published title:** Managed Local SEO & Website Analytics — Tailored Agents
+- **Previous description:** Managed local SEO, website analytics, technical improvements, conversion measurement, and a clear client reporting direction for growing service businesses.
+- **Published description:** Managed local SEO for service businesses, with technical improvements, website analytics, conversion measurement, and human-reviewed priorities.
 
 The current public page explicitly offers managed SEO, analytics and technical
 improvements, while describing Growth Hub as an illustrative future direction with
-synthetic data. Fresh public HTML verified that wording and the current metadata.
+synthetic data. Fresh public HTML verified that wording before publication and the exact approved metadata afterward.
 The change clarifies the current service; any search benefit is still a hypothesis.
 No prices, location claims, body content, canonical URLs or technical directives
 change. Production change history was empty before the pilot, so no earlier recorded
-SEO measurement window conflicts. Publication still needs the app's fresh checks.
+SEO measurement window conflicts. The app's publication checks passed.
 
-After an approved publication, verify the actual public title/description and retain
-the baseline. Wait for 28 complete reporting days before evaluating results; sparse
-evidence may require longer, and a comparison cannot prove causation.
+Published November 1 at approximately **18:44 UTC (1:44 PM EST)**. The existing
+scheduled worker verified the live change at **18:45 UTC**; its 18:45:28 UTC log
+reported one SEO item checked, zero needing review. The dashboard shows live
+verification at 1:45 PM EST and an observation review due **November 29 at
+1:44 PM EST**. Wait for 28 complete reporting days before evaluating results;
+sparse evidence may require longer, and a comparison cannot prove causation.
 
 ## Reproduction identifiers
 
@@ -83,7 +86,10 @@ credentials are unchanged. No key value belongs in this document.
 | No change | `b2b5c9cd-98a1-4e0d-b0a0-4bab4e4506ec` |
 
 Both comparison runs finished by 18:28:12 UTC; all safety cases finished by
-18:31:37 UTC. Pilot mode returned to false automatically. At the audit,
-`ai_enabled=false`, `ai_reviewed_at=null`; business review was saved at 18:10:16 UTC.
-Use the [operator procedure](SEO_MANAGER_SETUP.md#real-model-pilot-and-approval) for recording an
-actual named review, then activate paid weekly planning through the dashboard.
+18:31:37 UTC. Pilot mode returned to false automatically. Business review was saved
+at 18:10:16 UTC. After Jeffrey's explicit approval, production job
+`job-dbjogmfb9u1s73el00rg` recorded the named review for
+`jeffrey@tailoredagents.com` using both comparison IDs and all five case IDs. The
+signed-in Jeffrey admin then enabled weekly recommendations through the dashboard;
+readback confirmed paid AI on and budget 10. A genuine scheduled weekly paid cycle
+has not yet elapsed. No extra paid run was started to manufacture that evidence.
