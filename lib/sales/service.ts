@@ -1,3 +1,4 @@
+import {guardSalesAppointment} from "@/lib/booking/calendar";
 import { leadDisplayName, leadBusinessName } from "@/lib/operations/format";
 import "server-only";
 import { randomUUID, createHash } from "node:crypto";
@@ -448,6 +449,7 @@ export async function logActivity(context: DashboardContext, input: unknown) {
 export async function saveTask(context: DashboardContext, input: unknown) {
   const data = taskSchema.parse(input);
   return transaction(context, async (db) => {
+    if(data.kind==='appointment'){try{await guardSalesAppointment(db,context.workspace.id,data.ownerUserId,data.dueAt,data.endAt);}catch(e){throw new SalesInputError(e instanceof Error?e.message:'The appointment conflicts with the shared calendar.');}}
     const o = await opportunity(db, context, data.opportunityId);
     await owner(db, context, data.ownerUserId);
     if (data.taskId) {

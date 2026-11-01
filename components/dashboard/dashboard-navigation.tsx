@@ -37,6 +37,7 @@ const navigationGroups = [
     items: [
       { label: "Overview", href: "/dashboard", icon: Gauge },
       { label: "Inbox", href: "/dashboard/inbox", icon: Inbox },
+      { label: "Team calendar", href: "/dashboard/calendar", icon: CalendarCheck2 },
       { label: "My day", href: "/dashboard/sales/today", icon: CalendarCheck2 },
     ],
   },

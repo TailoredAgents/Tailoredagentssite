@@ -4,6 +4,7 @@ import {readFile,readdir} from 'node:fs/promises';
 import pg from 'pg';
 vi.mock('server-only',()=>({}));
 import {getDatabasePool} from '@/lib/dashboard/db';
+import {changeCalendar,availableSlots,getBookingCalendar,guardSalesAppointment} from '@/lib/booking/calendar';
 import {askCardAssistant,CARD_AI_RESERVATION} from './assistant';
 import {saveCardInquiry} from './inquiries';
 import {cardAccess,getCardProfile,resolveCard,validateCardSource} from './data';
@@ -16,10 +17,10 @@ const owner={user:{id:'card-owner',name:'Austin',email:'austin@tailoredagents.co
 let pool:pg.Pool;
 const inquiry=()=>({profile:'austin',card:'austin-giveaway',channel:'qr',submissionId:randomUUID(),name:'Synthetic Visitor',email:'visitor@example.test',organization:'Example Company',interest:'Smart cards',message:'Please tell me more about the cards.',consent:true,startedAt:Date.now()-5000});
 const chat=()=>({profile:'austin',requestId:randomUUID(),sessionId:randomUUID(),messages:[{role:'user',content:'What does Tailored Agents do?'}]});
-function response(){return Response.json({status:'completed',output:[{type:'reasoning'},{type:'message',content:[{type:'output_text',text:'We build websites, custom software, and AI assistants. What would you like to explore?'}]}],usage:{input_tokens:900,output_tokens:100}});}
+function response(){return Response.json({status:'completed',output:[{type:'reasoning'},{type:'message',content:[{type:'output_text',text:JSON.stringify({answer:'We build websites, custom software, and AI assistants. What would you like to explore?',draft:null})}]}],usage:{input_tokens:900,output_tokens:100}});}
 describe.skipIf(!databaseUrl)('Smart Cards database and public boundaries',()=>{
  beforeAll(async()=>{const target=new URL(databaseUrl!);if(!['127.0.0.1','localhost'].includes(target.hostname)||target.pathname!=='/ta_smart_cards_test')throw new Error('Use the dedicated local disposable Smart Cards database.');vi.stubEnv('DATABASE_URL',databaseUrl);vi.stubEnv('BETTER_AUTH_SECRET','synthetic-smart-card-test-secret-123456789');vi.stubEnv('OPENAI_API_KEY','synthetic-test-key');vi.stubEnv('RESEND_API_KEY','');pool=getDatabasePool();await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public');for(const filename of (await readdir('db/migrations')).filter(f=>f.endsWith('.sql')).sort())await pool.query(await readFile(`db/migrations/${filename}`,'utf8'));await pool.query(`INSERT INTO "user"(id,name,email,"emailVerified","createdAt","updatedAt") VALUES('card-owner','Austin','austin@tailoredagents.com',true,now(),now()),('card-viewer','Viewer','viewer@example.test',true,now(),now())`);await pool.query(`INSERT INTO workspace_memberships(id,workspace_id,user_id,role,status) VALUES($1,$2,'card-owner','owner','active'),($3,$2,'card-viewer','viewer','active')`,[randomUUID(),CARD_WORKSPACE,randomUUID()]);},30000);
- beforeEach(async()=>{vi.stubGlobal('fetch',vi.fn(async()=>response()));await pool.query('TRUNCATE smart_card_ai_requests,smart_card_ai_usage,smart_card_events,request_rate_limits');await pool.query("DELETE FROM leads WHERE source='smart_card'");await pool.query('UPDATE smart_cards SET active=true');await pool.query('UPDATE smart_card_profiles SET published=true');await pool.query('UPDATE smart_card_ai_settings SET enabled=true,monthly_limit_micros=25000000');});
+ beforeEach(async()=>{vi.stubGlobal('fetch',vi.fn(async()=>response()));await pool.query('TRUNCATE smart_card_ai_requests,smart_card_ai_usage,smart_card_events,request_rate_limits');await pool.query('TRUNCATE booking_slots');await pool.query("DELETE FROM leads WHERE source='smart_card'");await pool.query('UPDATE smart_cards SET active=true');await pool.query('UPDATE smart_card_profiles SET published=true');await pool.query('UPDATE smart_card_ai_settings SET enabled=true,monthly_limit_micros=25000000');});
  afterAll(async()=>{await pool?.end();delete (globalThis as {tailoredAgentsDatabasePool?:pg.Pool}).tailoredAgentsDatabasePool;vi.unstubAllEnvs();vi.unstubAllGlobals();});
  it('publishes all three approved contacts and keeps login identity private',async()=>{for(const slug of ['austin','jeffrey','devon']){const p=await getCardProfile(slug);expect(p?.phone).toBe('+16785417725');expect(p).not.toHaveProperty('login_email');expect(p?.email).toBe(`${slug}@tailoredagents.com`);}expect(await getCardProfile('../settings')).toBeNull();});
  it('resolves six stable links, honors pause, and redirects without permanent caching',async()=>{for(const slug of ['austin','jeffrey','devon'])for(const kind of ['personal','giveaway'])expect((await resolveCard(`${slug}-${kind}`))?.profile_slug).toBe(slug);const r=await redirectGet(new Request(`${CARD_ORIGIN}/go/austin-personal?via=qr`),{params:Promise.resolve({code:'austin-personal'})});expect(r.status).toBe(307);expect(r.headers.get('location')).toContain('/c/austin?card=austin-personal&via=qr');expect(r.headers.get('cache-control')).toBe('no-store');await pool.query("UPDATE smart_cards SET active=false WHERE code='austin-personal'");expect(await resolveCard('austin-personal')).toBeNull();});
@@ -35,4 +36,57 @@ describe.skipIf(!databaseUrl)('Smart Cards database and public boundaries',()=>{
  it('prevents simultaneous requests from overspending the shared budget',async()=>{await pool.query('UPDATE smart_card_ai_settings SET monthly_limit_micros=$1',[CARD_AI_RESERVATION]);let finish:(r:Response)=>void=()=>{};const wait=new Promise<Response>(resolve=>{finish=resolve;});vi.mocked(fetch).mockReturnValue(wait);const first=askCardAssistant(chat(),'ip-a');await vi.waitFor(()=>expect(fetch).toHaveBeenCalledTimes(1));await expect(askCardAssistant({...chat(),profile:'devon'},'ip-b')).rejects.toThrow('allowance');finish(response());await first;expect(fetch).toHaveBeenCalledTimes(1);});
  it('honors assistant pause and the eight-message session limit',async()=>{await pool.query('UPDATE smart_card_ai_settings SET enabled=false');await expect(askCardAssistant(chat(),'ip-one')).rejects.toThrow('break');expect(fetch).not.toHaveBeenCalled();await pool.query('UPDATE smart_card_ai_settings SET enabled=true');const v=chat();for(let i=0;i<8;i++)await pool.query(`INSERT INTO smart_card_ai_requests(id,workspace_id,month,session_id,request_hash,amount_micros,status) VALUES($1,$2,current_date,$3,'test',0,'completed')`,[randomUUID(),CARD_WORKSPACE,v.sessionId]);await expect(askCardAssistant(v,'ip-two')).rejects.toThrow('longer');});
  it('retains current records and removes expired engagement and usage data',async()=>{await pool.query(`INSERT INTO smart_card_events(id,workspace_id,profile_slug,session_id,channel,event_name,created_at) VALUES($1,$2,'austin',$3,'direct','visit',now()-interval '26 months')`,[randomUUID(),CARD_WORKSPACE,randomUUID()]);await pool.query('SELECT perform_reporting_retention()');expect((await pool.query('SELECT id FROM smart_card_events')).rowCount).toBe(0);expect(await getCardProfile('austin')).not.toBeNull();});
+ it('returns an editable draft without writing a lead or appointment',async()=>{
+  const draft={name:'Visitor',email:'visitor@example.test',phone:'',organization:'',message:'I would like a website.',interest:'Website',requestKind:'appointment',preferredTime:'Tuesday afternoon Eastern'};
+  vi.mocked(fetch).mockResolvedValue(Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({answer:'Review your request below. Nothing is booked yet.',draft})}]}],usage:{input_tokens:900,output_tokens:100}}));
+  const result=await askCardAssistant(chat(),'ip-one');expect(result.draft).toEqual(draft);expect((await pool.query("SELECT id FROM leads WHERE source='smart_card'")).rowCount).toBe(0);
+  const body=JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string);expect(body.text.format.strict).toBe(true);expect(body.tools).toBeUndefined();
+ });
+ it('rejects malformed AI output and preserves its spend reservation',async()=>{
+  vi.mocked(fetch).mockResolvedValue(Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'{"answer":"Booked!","draft":{"execute":"book"}}'}]}],usage:{input_tokens:900,output_tokens:100}}));
+  await expect(askCardAssistant(chat(),'ip-one')).rejects.toThrow('finish');expect((await pool.query('SELECT id FROM booking_slots')).rowCount).toBe(0);
+ });
+ it('saves reviewed appointment requests without pretending to reserve a time',async()=>{
+  const result=await saveCardInquiry({...inquiry(),handoff:'assistant',requestKind:'appointment',preferredTime:'Tuesday afternoon Eastern'});expect(result.booking).toBeNull();
+  const lead=(await pool.query("SELECT description,smart_card_context FROM leads WHERE source='smart_card'")).rows[0];expect(lead.description).toContain('not booked');expect(lead.smart_card_context).toMatchObject({handoff:'assistant',requestKind:'appointment',preferredTime:'Tuesday afternoon Eastern'});
+ });
+ const publish=async()=>{await changeCalendar(owner,{operation:'publish',profile:'austin',startsAt:new Date(Date.now()+86400000).toISOString(),minutes:30,mode:'open'});return (await availableSlots('austin'))[0];};
+ it('publishes only real staff times, rejects overlap and protects staff controls',async()=>{
+  const slot=await publish();expect(slot.id).toBeTruthy();expect(await availableSlots('devon')).toEqual([]);
+  await expect(changeCalendar(owner,{operation:'publish',profile:'austin',startsAt:slot.startsAt,minutes:30,mode:'open'})).rejects.toThrow('overlaps');
+  await expect(changeCalendar({...owner,user:{...owner.user,id:'card-viewer'}},{operation:'close',id:slot.id})).rejects.toThrow();
+  await changeCalendar(owner,{operation:'close',id:slot.id});expect(await availableSlots('austin')).toEqual([]);
+ });
+ it('books atomically, rejects a second visitor, and replays confirmation safely',async()=>{
+  const slot=await publish(),first={...inquiry(),requestKind:'appointment',phone:'+16785550123',slotId:slot.id};
+  const second={...first,submissionId:randomUUID(),name:'Another Visitor',email:'another@example.test'};
+  const results=await Promise.allSettled([saveCardInquiry(first),saveCardInquiry(second)]);expect(results.filter(r=>r.status==='fulfilled')).toHaveLength(1);expect(results.filter(r=>r.status==='rejected')).toHaveLength(1);
+  expect((await pool.query("SELECT id FROM leads WHERE source='smart_card'")).rowCount).toBe(1);expect(await availableSlots('austin')).toEqual([]);
+  const winner=results[0].status==='fulfilled'?first:second;expect((await saveCardInquiry(winner)).booking?.id).toBe(slot.id);
+  const row=(await getBookingCalendar(owner)).slots[0];expect(row.status).toBe('booked');expect(row.phone).toBe('+16785550123');
+  const db=await pool.connect();try{await db.query('BEGIN');await expect(guardSalesAppointment(db,CARD_WORKSPACE,'card-owner',slot.startsAt,slot.endsAt)).rejects.toThrow('booking');await db.query('ROLLBACK');}finally{db.release();}
+  await expect(changeCalendar(owner,{operation:'cancel',id:slot.id})).rejects.toThrow('Contact');await changeCalendar(owner,{operation:'cancel',id:slot.id,contacted:'on'});expect((await saveCardInquiry(winner)).booking?.status).toBe('cancelled');expect(await availableSlots('austin')).toEqual([]);
+ });
+ it('refuses booking without consent or phone, and refuses mismatched or stale slots',async()=>{
+  const slot=await publish(),v={...inquiry(),requestKind:'appointment',slotId:slot.id};
+  await expect(saveCardInquiry(v)).rejects.toThrow();await expect(saveCardInquiry({...v,phone:'+16785550123',consent:false})).rejects.toThrow();
+  await expect(saveCardInquiry({...v,profile:'devon',card:'devon-personal',phone:'+16785550123'})).rejects.toThrow('no longer available');
+  await pool.query("UPDATE booking_slots SET starts_at=now()+interval '30 minutes',ends_at=now()+interval '60 minutes'");expect(await availableSlots('austin')).toEqual([]);await expect(saveCardInquiry({...v,phone:'+16785550123'})).rejects.toThrow('no longer available');
+ });
+ it('hides slots when the owner is suspended or the card is paused',async()=>{
+  await publish();await pool.query("UPDATE workspace_memberships SET status='suspended' WHERE user_id='card-owner'");expect(await availableSlots('austin')).toEqual([]);await pool.query("UPDATE workspace_memberships SET status='active' WHERE user_id='card-owner'");await pool.query("UPDATE smart_cards SET active=false WHERE code='austin-personal'");await expect(availableSlots('austin','austin-personal')).rejects.toThrow();
+ });
+
+ it('rechecks sales appointments created after availability was published',async()=>{
+  const slot=await publish(),conversation=randomUUID(),source=randomUUID(),task=randomUUID();
+  await pool.query('INSERT INTO crm_conversations(id,workspace_id) VALUES($1,$2)',[conversation,CARD_WORKSPACE]);
+  await pool.query("INSERT INTO crm_conversation_sources(id,workspace_id,conversation_id,channel,mailbox_id,thread_id) VALUES($1,$2,$3,'email','synthetic-mailbox',$4)",[source,CARD_WORKSPACE,conversation,source]);
+  await pool.query("INSERT INTO crm_tasks(id,workspace_id,conversation_source_id,owner_user_id,kind,title,due_at,end_at) VALUES($1,$2,$3,'card-owner','appointment','Synthetic sales call',$4,$5)",[task,CARD_WORKSPACE,source,slot.startsAt,slot.endsAt]);
+  expect(await availableSlots('austin')).toEqual([]);
+  await pool.query('UPDATE crm_tasks SET end_at=due_at WHERE id=$1',[task]);expect(await availableSlots('austin')).toEqual([]);
+  await expect(saveCardInquiry({...inquiry(),requestKind:'appointment',phone:'+16785550123',slotId:slot.id})).rejects.toThrow('no longer available');
+  expect((await pool.query("SELECT id FROM leads WHERE source='smart_card'")).rowCount).toBe(0);
+  await pool.query('DELETE FROM crm_tasks WHERE id=$1',[task]);await pool.query('DELETE FROM crm_conversation_sources WHERE id=$1',[source]);await pool.query('DELETE FROM crm_conversations WHERE id=$1',[conversation]);
+ });
+
 });
