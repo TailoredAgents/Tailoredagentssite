@@ -33,6 +33,54 @@ This establishes delivery from Meta's live testing tool into the CRM. It does no
 
 Meta's [Marketing API use-case guide](https://developers.facebook.com/documentation/development/create-an-app/marketing-api-use-cases) distinguishes own/managed business data from other businesses' data and says webhooks themselves do not require App Review. Its [Lead Ads guide](https://developers.facebook.com/documentation/ads-commerce/marketing-api/guides/lead-ads) separately calls for App Review including `leads_retrieval` and `pages_manage_ads`. The generic own-business rules alone do not settle this app's lead-retrieval requirements. Prepare truthful usage explanations and demonstrations for permissions that Meta requires; do not request unrelated capabilities or represent a granted token scope as reviewed production access.
 
+### November 1 production and App Review check
+
+Read-only production inspection found 15 imported receipts, no pending/failed imports,
+and no duplicate Page/lead receipt groups. Latest import: October 31 at 21:58:37 UTC.
+At **November 1, 18:30:31 UTC**, two concurrent calls to the actual production
+`enqueueMetaLeads` function replayed one already imported Page/form/lead tuple. Both
+returned zero accepted receipts; the single existing record, including its linked
+lead, was unchanged. The bounded operator job did not invoke an import, alert or
+introduction worker. This verifies production receipt deduplication, not HTTP
+signature delivery or deliberate interruption of a live worker.
+
+The signed-in App Review dashboard still has incomplete permission descriptions,
+screencasts and API prerequisites. The review tool's status/requirements disagree
+(an approved flag alongside `UNSUBMITTED`, and a previous-review blocking reason);
+do not interpret those flags as final approval. The dashboard is the visible evidence
+that submission work remains. No second 500-call batch was run. A `pages_show_list`
+draft save was attempted but not verified persisted; its text remains preparatory.
+
+Jeffrey supplied the controller **Tailored Agents, United States (Georgia)** and
+confirmed **no national-security disclosures in the preceding 12 months**. Those
+answers, and the existence of external service providers, were entered in the
+autosaved data-handling draft. Repository/privacy-policy review found no documented
+government-request procedure. The draft therefore selects **None of the above**
+for existing request procedures; recommended practices are not evidence of adoption.
+This is not a submission or a legal determination. Meta's [data-handling question
+guide](https://developers.meta.com/vr/resources/data-handling-questions/) illustrates
+the same distinction between actual practices and the listed options; that guide is
+for Horizon, while the exact questions were inspected in this app's own dashboard.
+
+Processor inventory for the remaining private review form:
+
+| Provider | Actual data path to review | Primary provider reference |
+| --- | --- | --- |
+| Render | CRM runtime, lead database and private website artifacts; selected production region is Ohio | [Security/subprocessors](https://render.com/security) |
+| OpenAI | Enabled lead research, planning and follow-up drafting can process supplied lead context | [Subprocessor locations](https://openai.com/policies/sub-processor-list/) |
+| Twilio | New-lead team alerts and configured customer communication | [Service-specific processors](https://www.twilio.com/en-us/legal/sub-processors) |
+| Cloudflare | Mail Worker, mailbox storage and incoming/outgoing CRM mail containing lead correspondence | [Subprocessors](https://www.cloudflare.com/gdpr/subprocessors/) |
+| Resend | Mail delivery and configured inquiry notifications | [Subprocessors](https://resend.com/legal/subprocessors) |
+
+Meta asks for **all processing/access countries, including remote access**, not just
+the provider's headquarters or the selected hosting region. The current provider
+lists include multiple regions and service-specific conditions. Do not label every
+provider US-only from the CRM's Ohio location. Exact applicable locations remain to
+be confirmed before completing the provider entries and submitting the review.
+Reviewer access must also use isolated synthetic data; no real customer records or
+teammate credentials were exposed to reviewers. A complete demonstration and the
+final requested-permission list remain open.
+
 ### App Review preparation
 
 These are draft explanations, not a submitted or approved application. Confirm which permissions Meta requires for this own-business app before submitting. Becoming a Tech Provider for other businesses is outside this release.

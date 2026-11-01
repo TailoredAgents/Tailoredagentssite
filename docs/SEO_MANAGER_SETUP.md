@@ -2,7 +2,22 @@
 
 Updated October 24, 2026. Applies only to **https://www.tailoredagents.com**. Work stays on `main`. See [the Jeffrey handoff](../new%20jeffrey.md) for the live acceptance record.
 
-**Current state:** migration 0018, the shared scheduled job and free monitoring are deployed. The first 14-page production scan and scheduled checks succeeded. Paid AI/pilot controls remain off; the dedicated SEO key, provider spending control, business-facts review and real model evaluation are outstanding. Use [the remaining-work checklist](../new%20jeffrey.md#seo-manager--remaining-work) before repeating setup.
+**Current state, November 1:** free daily monitoring is working (nine completed
+14-page scans), Google remains connected, and Jeffrey's business-facts review is
+saved. The dedicated SEO project/key and enforced $10/month provider limit are
+configured. Both real comparison models and all five safety cases succeeded with
+14 settled receipts totaling **$0.697127**. Named human pilot approval and paid
+weekly activation remain pending; see the [actual pilot review](SEO_PILOT_REVIEW_2026-11-01.md).
+Do not repeat paid pilot calls or earlier infrastructure setup.
+
+The dedicated **Tailored Agents SEO** project is under **Stonegatejunkremoval** at
+Jeffrey's explicit direction. Its service key is stored as `SEO_OPENAI_API_KEY` only
+on `tailored-agents-web`; configuration deploy `dep-dbjo70142hec73dkai1g` went live
+November 1 at 18:25:05 UTC on `c9bb7ca`. No call-analysis credential was changed,
+credits purchased or auto-reload enabled. Provider Usage had not yet displayed the
+new project activity at the immediate check; returned token-usage receipts were
+independently recalculated and matched every application charge. The monthly
+provider invoice remains separate evidence.
 
 ## Current release and costs
 

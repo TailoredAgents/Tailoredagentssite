@@ -1,11 +1,35 @@
 # Tailored Agents Mail MCP — deployment and connection handoff
 
-Updated October 31, 2026. **Commit/push and production sending authorized; Cloudflare deployment remains pending authentication.**
-Production configuration now enables OAuth sending with a starting cap of 25 messages
-per user per UTC day. This is a source configuration change, not a verified live deployment.
-No production clients, access tokens, credentials, or mailbox grants were created.
+Updated November 1, 2026. **Production deployment and public protocol checks passed;
+Austin's personal ChatGPT/Mail connection remains incomplete.** Production configuration
+enables OAuth sending with a starting cap of 25 messages per user per UTC day.
+No production assistant clients, access tokens, or mailbox grants were created during deployment.
 No real messages were sent. Unit tests use a mocked provider; browser tests use
 disposable local accounts, drafts and OAuth credentials.
+
+## Production verification — November 1, 2026
+
+- Built from main `c9bb7cacb626ac6232dce1f9396d8eb2eded1134`; deployed Worker
+  `1a5cc2d4-babc-45db-81a2-8719609c7e4f` at **1:02:13 PM EST** using
+  `npm run deploy:production`. Production account, D1, R2, queue, domain and existing
+  secret binding names matched the intended configuration; no secrets were replaced.
+- Private D1 export verified before migration at **12:59:48 PM EST**, outside Git
+  and shared folders, on FileVault storage with operator-only permissions.
+- Migration `0038_mcp_authorization.sql` applied at **1:01:49 PM EST**; no migrations
+  remain pending. Historical assistant grants were revoked. Existing assistants must
+  reconnect; normal Mail sessions and CRM Sales grants remain intact.
+- All three OAuth/resource discovery endpoints returned **200 JSON**. Unauthenticated
+  MCP GET and POST returned **401** with the resource-metadata challenge. `/login`
+  returned 200 and anonymous `/` redirected to login. This is curl evidence, not
+  proof of access from Austin's ChatGPT client.
+- Deployed vars are `APP_URL=https://mail.tailoredagents.com`,
+  `API_SEND_ENABLED=true`, `API_DAILY_SEND_LIMIT=25`. Austin's effective token policy
+  still needs his actual `whoami` check after consent.
+- Fresh local verification passed **424/424 tests**, **2/2 MCP browser tests**,
+  Worker build, and Svelte/TypeScript check with zero errors or warnings.
+- Actual Austin OAuth consent, tools in this conversation, live read/send/manage,
+  token refresh and existing scheduled-email integration remain unverified. Follow
+  the account-specific acceptance checklist in [new jeffrey.md](../../new%20jeffrey.md).
 
 ## What changed
 
@@ -145,8 +169,9 @@ and `git diff --check`
 passed. Desktop/mobile consent screenshots were inspected. The browser test callback
 is deliberately a nonexistent local path, so its expected callback-page 404 is not
 an OAuth failure; the tests verify and exchange the returned authorization code.
-Production deployment, real ChatGPT connection/plan eligibility, edge accessibility
-from ChatGPT, and live delivery remain unverified pending approval.
+Production deployment and public discovery are now verified above. Real ChatGPT
+connection/plan eligibility, edge accessibility from ChatGPT and live delivery remain
+unverified; a live send still requires the exact approved recipient and content.
 
 From `apps/mail`:
 
@@ -172,9 +197,11 @@ The root `npm run lint` does not cover `apps/mail`; it is not a substitute for M
 
 This is the **Cloudflare Mail Worker**, not the Render website. The user approved
 committing and pushing this update on October 30, 2026, then requested deployment and
-enabled production sending on October 31. Cloudflare CLI authentication is unavailable
-on this computer. Creating a persistent connection and the live send test still require
-separate approval. Do not copy local fixture accounts/tokens.
+enabled production sending on October 31. Jeffrey's authenticated Cloudflare account
+completed deployment on November 1. The procedure below is retained for recovery;
+do not rerun migration SQL manually. Austin must personally consent to his connection,
+and a live send requires approval of its exact recipient/content. Do not copy local
+fixture accounts/tokens.
 
 1. Review the diff and local results. Production sending is authorized with a configured
    starting cap of 25 per user per UTC day. Commit/push to `main` is authorized.

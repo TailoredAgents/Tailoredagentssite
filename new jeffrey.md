@@ -1,3 +1,25 @@
+# Production closeout — November 1, 2026
+
+**Deployment work is complete; account acceptance, Meta review and SEO pilot approval are still open.** This section supersedes dated deployment/setup blockers below. Historical instructions and evidence remain for recovery; do not repeat completed setup.
+
+| Area | Verified November 1 | Remaining acceptance |
+| --- | --- | --- |
+| Mail MCP | Backed up production D1 privately; applied 0038; deployed main `c9bb7ca` as Worker `1a5cc2d4-babc-45db-81a2-8719609c7e4f` at **1:02:13 PM EST**. Three discovery endpoints return 200; unauthenticated MCP GET/POST return 401. Production sending enabled with 25/user/UTC-day cap. Fresh 424/424 tests, 2/2 MCP browser tests, build and zero-warning type check passed. | Austin must consent in his actual ChatGPT/Mail accounts and attach the custom connector here. Its tools and existing scheduled-email runtime are unavailable in this conversation. No actual sends, destructive actions or production refresh/revocation test performed. |
+| Team accounts / Sales | Austin's Mail admin/dashboard access and Devon's active regular account verified; neither needs recreating. All three teammates retain Sales read/send grants. Jeffrey opened Sales in the CRM; the existing Gmail logo attachment returned 200, 9,186 bytes and decoded as 120×120. | Austin/Devon must verify their own sign-ins. Full live team workflow and Hotmail delivery remain untested. |
+| Copied-team-email fix | Deployed to Mail and website. Read-only production matching found the existing Devon **Website** copy in Austin's mailbox with a matching registered sender and sent Message-ID. | Austin's actual CRM screen/reply-target acceptance remains pending; no message sent to the real lead. |
+| Free SEO | Nine complete monitor runs; latest **November 1 at 04:00:42 UTC (12:00:42 AM EDT)**, all 14 pages scanned. Google connection remains active; regular worker succeeds. Jeffrey confirmed the business facts and the review was saved through his signed-in admin session. | Paid model comparison, safety cases, named review and eventual scheduled paid operation remain separate. |
+| SEO account | Jeffrey authorized the **Stonegatejunkremoval** OpenAI organization for a dedicated **Tailored Agents SEO** project. Its $10/month hard spend limit is saved. Dedicated `SEO_OPENAI_API_KEY` installed only on the CRM web service; configuration deploy `dep-dbjo70142hec73dkai1g` went live **1:25:05 PM EST** on `c9bb7ca`. Call-analysis key unchanged. | Both models and all five safety cases passed; 14 settled receipts total $0.697127. [Named pilot review](docs/SEO_PILOT_REVIEW_2026-11-01.md) and paid weekly activation await Jeffrey's approval. No credits purchased or auto-reload enabled. |
+| Meta imports | 15 imported receipts, zero pending/failed and zero duplicate receipt groups at the read-only audit. Latest import October 31 at 21:58:37 UTC. App/Page connection remains active. | App Review is incomplete: screencasts, processor-location disclosures, reviewer access and several API prerequisites remain. Jeffrey's controller/country/no-disclosure answers are saved in the draft; existing-procedure answer is None based on documented evidence. Two concurrent production receipt replays passed without invoking outreach. The successful 500-call batch still does not prove Meta credited its prerequisite. No repeated batch or review submission made. |
+| Website Builder | Existing Cosmo v9 was already built from Austin-approved plan v8. Current desktop/mobile Home and Contact render with no broken images or horizontal overflow. Private ZIP's 14 manifest entries/hashes passed, and `node build.mjs` reproduced the expected output hashes. | Preview revocation/renewal and broader independent quality/teammate acceptance remain untested. Do not request or pay for a duplicate first build. |
+
+Cosmo v9 became ready October 27 at **8:29:14 PM EDT**, about 64 seconds after that revision's creation. Its approved plan and revisions have eight settled build charges totaling **$1.093219**. All October builder charges total **$4.788882** across 41 settled rows; no reserved/uncertain build charges were present at the audit. These are application receipts, not an independently reconciled provider invoice. Research remains enabled/automatic at $25/month; builder retains $50/month and $5/site ceilings. Existing five-minute jobs and Render preview/storage service remain in place.
+
+Migration 0038 revoked historical assistant grants: **existing assistant connections must reconnect**. Normal Mail login sessions and CRM mailbox-sharing grants were preserved. The backup is on private FileVault storage outside Git/shared folders; no contents or credentials belong here. Full release detail: [Mail MCP verification](apps/mail/MCP_SETUP.md#production-verification--november-1-2026).
+
+The ordinary Mail deployment does not finish Austin's personal consent, and Jeffrey's successful Sales session does not establish Austin/Devon's own acceptance. Shared Sales is still outside Austin's ownership-only MCP scope. Weekly/28-day SEO observations require real elapsed reporting time.
+
+---
+
 # Tonight: finish Austin's Mail MCP connection — October 31, 2026
 
 **Owner: Jeffrey (Cloudflare/deployment), Austin (his ChatGPT and Mail consent), assistant (verification in this conversation and existing business-email checks). Target: usable tomorrow morning, November 1. Status: NOT COMPLETE.** All older handoff content follows unchanged below this section. For this MCP release, the migration-before-deployment procedure here takes precedence over older deploy-only Mail commands below.
@@ -9,8 +31,8 @@ The goal is to connect **Austin's actual ChatGPT Pro account** to **Austin's Tai
 - [x] Pushed to `main`: [`ae4389f`](https://github.com/TailoredAgents/Tailoredagentssite/commit/ae4389ff255d819372a4e0e5781e04bf673e0d59) — restored existing authenticated MCP/OAuth; separate Read/Send/Manage scopes, safe reads, full implemented mailbox tools, durable sending and deletion confirmation.
 - [x] Pushed to `main`: [`2240caa`](https://github.com/TailoredAgents/Tailoredagentssite/commit/2240caa02d6944ffa760075e07acd8a4264417d1) — production `API_SEND_ENABLED="true"`, `API_DAILY_SEND_LIMIT="25"`. Local/staging remain disabled. Remote `main` was verified at this commit when preparing this handoff.
 - [x] Local implementation checks previously passed: **424/424 unit/integration tests, 2/2 MCP browser tests, production Worker build, Svelte/TypeScript check (zero errors/warnings)**. Targeted lint passed with two pre-existing unused-parameter warnings in `receive.ts`; `git diff --check` passed. After the configuration change, **28/28 send-policy/outbox tests** and environment-value checks passed. These are recorded local results, not production verification. No real emails were sent.
-- [ ] **Deployment is unverified and the public fix is not active:** a fresh unauthenticated check at **October 31, 10:45 AM EDT** returned `404 application/json` with `{"error":"Not found"}` for both `/mcp` and `/.well-known/oauth-authorization-server`. Expected after deployment: 401 and 200 respectively. Cloudflare CLI on Austin's computer is signed out. A Git push/Render website release does not establish a Cloudflare Mail deployment.
-- [ ] Still unverified: production migration/release, ChatGPT-edge accessibility, actual Austin OAuth consent/tool availability, production refresh/revocation, inbox/sent/R2 content access through his connection, live sending/delivery and management actions. Tool permission inspection is not a live-send test.
+- [x] **November 1 deployment verified:** Worker `1a5cc2d4-babc-45db-81a2-8719609c7e4f` from `c9bb7ca` is active. Discovery now returns 200 and unauthenticated MCP returns 401; the October 31 404 finding is resolved. See the production closeout above.
+- [ ] Still unverified: ChatGPT-edge accessibility, actual Austin OAuth consent/tool availability, production refresh/revocation, inbox/sent/R2 content access through his connection, live sending/delivery and management actions. Tool permission inspection is not a live-send test.
 
 **Authorization/status:** Austin requested deployment and enabled production sending, and now requests Jeffrey finish his connection. Austin still needs to personally sign in/consent in his accounts; do not copy his credentials or substitute Jeffrey's login. The **25/user/UTC-day cap is already committed**, chosen as a starting cap by Codex; Austin approved sending but did not separately choose this number. Keep the existing value for this release, make it visible to Austin, and ask before changing it. It applies to assistant/token sends, not normal Mail browser sending. No approval has been given for a real test recipient/content or destructive test actions.
 
@@ -32,9 +54,9 @@ npx wrangler login
 npx wrangler whoami
 ```
 
-- [ ] Confirm the login has access to the **existing production account**, not a temporary preview/staging account. Match `wrangler.jsonc`: account ID `78ed83c6e3947c93763acef3a48a5561`, Worker `tailored-mail-production`, domain `mail.tailoredagents.com`, D1 `tailored-mail-production` / `897cefdc-6c85-437c-a93e-7fcf0dbda1e9`, R2 `tailored-mail-production-files` and production job queues. IDs are configuration identifiers, not secrets. Do not deploy with `--temporary`.
-- [ ] Inspect the production bindings/vars and existing Resend secret binding without printing secret values. Reuse existing credentials. If missing credentials or privileges require creating/changing access, report the exact blocker to Austin first.
-- [ ] Make a **private D1 backup outside the repo and OneDrive/shared folders**. Choose an encrypted/local directory with filesystem permissions limited to the authorized operator. Example path below is a placeholder to prepare first. Verify the export succeeds and the nonempty file is readable by you; do not open/paste its mailbox contents into this handoff. Record only success/time, not the backup contents.
+- [x] Confirm the login has access to the **existing production account**, not a temporary preview/staging account. Match `wrangler.jsonc`: account ID `78ed83c6e3947c93763acef3a48a5561`, Worker `tailored-mail-production`, domain `mail.tailoredagents.com`, D1 `tailored-mail-production` / `897cefdc-6c85-437c-a93e-7fcf0dbda1e9`, R2 `tailored-mail-production-files` and production job queues. IDs are configuration identifiers, not secrets. Do not deploy with `--temporary`.
+- [x] Inspect the production bindings/vars and existing Resend secret binding without printing secret values. Reuse existing credentials. If missing credentials or privileges require creating/changing access, report the exact blocker to Austin first.
+- [x] Make a **private D1 backup outside the repo and OneDrive/shared folders**. Choose an encrypted/local directory with filesystem permissions limited to the authorized operator. Example path below is a placeholder to prepare first. Verify the export succeeds and the nonempty file is readable by you; do not open/paste its mailbox contents into this handoff. Record only success/time, not the backup contents.
 
 ```powershell
 # Prepare this private directory and verify its permissions first.
@@ -42,7 +64,7 @@ npx wrangler d1 export DB --env production --remote --output C:/private-backups/
 npx wrangler d1 migrations list DB --env production --remote
 ```
 
-- [ ] Review all pending migrations. **0038_mcp_authorization.sql revokes existing OAuth grants, clears authorization codes, and adds the new authorization/confirmation tables. All existing assistant connections must reconnect.** It does not revoke normal Mail sessions or CRM mailbox-sharing grants. Do not run the SQL manually a second time, remove its migration record, or restore old OAuth tokens. If unexpected newer migrations exist, review them before applying the full pending list.
+- [x] Review all pending migrations. **0038_mcp_authorization.sql revokes existing OAuth grants, clears authorization codes, and adds the new authorization/confirmation tables. All existing assistant connections must reconnect.** It does not revoke normal Mail sessions or CRM mailbox-sharing grants. Do not run the SQL manually a second time, remove its migration record, or restore old OAuth tokens. If unexpected newer migrations exist, review them before applying the full pending list.
 
 ```powershell
 npx wrangler d1 migrations apply DB --env production --remote
@@ -51,8 +73,8 @@ npm run deploy:production
 npx wrangler deployments list --env production
 ```
 
-- [ ] Confirm 0038 is applied, deployment succeeds, and the active production Worker version corresponds to the intended Git SHA. Record SHA, deployment/version ID and time below. Use the package script: it builds and wraps the Worker for OAuth form handling, queue jobs and scheduled recovery; do not upload an unwrapped Svelte bundle or deploy the Render website instead.
-- [ ] In Cloudflare's **production** Worker settings verify `APP_URL=https://mail.tailoredagents.com`, `API_SEND_ENABLED=true`, `API_DAILY_SEND_LIMIT=25`. These are non-secret vars. Later confirm the effective values with Austin's MCP `whoami` (`sending.enabled=true`, `sending.daily_limit=25`). A send flag alone does not grant a token `mail:send`.
+- [x] Confirm 0038 is applied, deployment succeeds, and the active production Worker version corresponds to the intended Git SHA. Record SHA, deployment/version ID and time below. Use the package script: it builds and wraps the Worker for OAuth form handling, queue jobs and scheduled recovery; do not upload an unwrapped Svelte bundle or deploy the Render website instead.
+- [x] In Cloudflare's **production** Worker settings verify `APP_URL=https://mail.tailoredagents.com`, `API_SEND_ENABLED=true`, `API_DAILY_SEND_LIMIT=25`. These are non-secret vars. Later confirm the effective values with Austin's MCP `whoami` (`sending.enabled=true`, `sending.daily_limit=25`). A send flag alone does not grant a token `mail:send`.
 
 If a fresh local verification is needed, run `npm test` and `npm run check` from `apps/mail`. The isolated MCP browser test procedure is in MCP_SETUP.md; it uses disposable local data. Never point the broader browser suite at live accounts because it exercises send buttons.
 
@@ -68,9 +90,9 @@ curl.exe -sS --max-time 30 -i https://mail.tailoredagents.com/mcp
 curl.exe -sS --max-time 30 -i -X POST -H 'Content-Type: application/json' --data '{}' https://mail.tailoredagents.com/mcp
 ```
 
-- [ ] All three metadata endpoints return **200 JSON**, not login redirects, HTML challenges or 404. Authorization issuer is `https://mail.tailoredagents.com`; resource is exactly `https://mail.tailoredagents.com/mcp`. Metadata contains `/oauth/authorize`, `/oauth/token`, `/oauth/register`, `/oauth/revoke`, PKCE S256 and `mail:read`, `mail:send`, `mail:manage`.
-- [ ] Unauthenticated GET and POST `/mcp` return **401**, with `WWW-Authenticate` referencing the protected-resource metadata, and **no mailbox data**. Authenticated MCP uses POST; an authenticated GET returning 405 is expected for this stateless transport.
-- [ ] Confirm ordinary Mail pages still require their normal login. Do not expose mailbox data or remove authentication to make discovery pass.
+- [x] All three metadata endpoints return **200 JSON**, not login redirects, HTML challenges or 404. Authorization issuer is `https://mail.tailoredagents.com`; resource is exactly `https://mail.tailoredagents.com/mcp`. Metadata contains `/oauth/authorize`, `/oauth/token`, `/oauth/register`, `/oauth/revoke`, PKCE S256 and `mail:read`, `mail:send`, `mail:manage`.
+- [x] Unauthenticated GET and POST `/mcp` return **401**, with `WWW-Authenticate` referencing the protected-resource metadata, and **no mailbox data**. Authenticated MCP uses POST; an authenticated GET returning 405 is expected for this stateless transport.
+- [x] Confirm ordinary Mail pages still require their normal login. Do not expose mailbox data or remove authentication to make discovery pass.
 
 ## 4. Austin + Jeffrey: connect the correct accounts
 
@@ -130,17 +152,17 @@ Emergency sending rollback: set **production** `API_SEND_ENABLED=false`, redeplo
 
 ## 7. Required closeout — Jeffrey updates this section and this conversation
 
-**Current blocker/owners:** Jeffrey must authenticate, back up, migrate and deploy Mail; Austin must complete his ChatGPT/Mail sign-in and three-scope consent; the assistant must verify the resulting tools/read access in this conversation and update/check the existing business-email monitoring. Live send testing awaits Austin's exact recipient/content approval. No promise of tomorrow-morning readiness until those dependencies are satisfied.
+**Current blocker/owners (November 1):** Jeffrey's backup, migration and Mail deployment passed; Austin must complete his ChatGPT/Mail sign-in and three-scope consent; the assistant must verify the resulting tools/read access in this conversation and update/check the existing business-email monitoring. Live send testing awaits Austin's exact recipient/content approval. No promise of tomorrow-morning readiness until those dependencies are satisfied.
 
 Fill out this table tonight, then commit/push the sanitized documentation update on `main`. Keep all earlier handoff sections. Mark only checks actually observed; use **PASS / FAIL / UNTESTED / BLOCKED**, with timestamp (America/New_York), evidence and responsible person. Do not put secrets or mail contents in evidence.
 
 | Check | Final status / sanitized evidence / owner if incomplete |
 | --- | --- |
-| Git SHA deployed, Worker version and time | PENDING — Jeffrey |
-| Correct Cloudflare account/bindings, private backup verified | PENDING — Jeffrey |
-| Migration 0038 applied; historical reconnect requirement communicated | PENDING — Jeffrey |
-| Production send enabled / effective 25-per-user-UTC-day cap | Config pushed; live policy PENDING |
-| Discovery 200; unauthenticated MCP GET/POST 401 + challenge | FAIL at 10:45 AM EDT Oct 31 (404); retest after deployment |
+| Git SHA deployed, Worker version and time | PASS — `c9bb7ca`, `1a5cc2d4-babc-45db-81a2-8719609c7e4f`, Nov 1 1:02:13 PM EST |
+| Correct Cloudflare account/bindings, private backup verified | PASS — Nov 1 12:59:48 PM EST private export; bindings verified |
+| Migration 0038 applied; historical reconnect requirement communicated | PASS — Nov 1 1:01:49 PM EST; reconnect requirement recorded above |
+| Production send enabled / effective 25-per-user-UTC-day cap | PASS deployed vars; Austin token `whoami` still PENDING |
+| Discovery 200; unauthenticated MCP GET/POST 401 + challenge | PASS — Nov 1 after deployment; three metadata 200s, GET/POST 401 with challenge |
 | ChatGPT-edge access, login/PKCE consent and DCR | PENDING — Jeffrey + Austin |
 | Austin's actual ChatGPT account and Mail identity; Read/Send/Manage | PENDING — Austin |
 | Plugin installed and tools available in this existing conversation | PENDING — Austin + assistant |
@@ -185,7 +207,7 @@ Remaining work:
 - [x] **Codex, October 27:** recover the real Facebook submission Austin reported from October 26 at 10:50 PM EDT. Retrieval succeeded, the missing optional email answer is now accepted, and the original receipt produced exactly one CRM lead. [Recovery evidence](docs/META_SETUP.md#missing-answer-recovery--october-27-2026). This does not establish access to every placement or complete App Review.
 - [ ] **Austin and Devon:** use their own accounts to open the received lead and confirm the details are useful for follow-up.
 - [ ] **Together:** check Instagram placement delivery if used. A real Facebook lead with a phone and no email imported successfully on October 27.
-- [ ] **Codex:** complete deliberate production webhook replay and interrupted-worker checks. Exhausted-receipt recovery and a single resulting lead were verified October 27; replay/overlapping-worker protection also passed automated database tests.
+- [ ] **Codex:** production receipt replay passed November 1: two concurrent calls accepted zero duplicates and preserved the existing imported record; no outreach worker ran. HTTP-boundary replay and deliberate interrupted-worker checks remain untested. Exhausted-receipt recovery passed October 27; replay/overlapping-worker protection also has automated database coverage.
 - [ ] **Jeffrey with Austin:** decide who assigns new leads. New-lead SMS alerts are enabled for Austin, Jeffrey and Devon; all three recovered-lead alerts showed delivered after the October 27 scheduled worker run. These alerts do **not** contact the customer. Imported leads remain unassigned. Older form submissions are not imported automatically.
 
 Technical steps and alert operation: [Meta setup](docs/META_SETUP.md). New-lead SMS uses the existing Twilio setup. Website inquiry emails remain a separate Resend feature.
@@ -198,7 +220,7 @@ Austin reported Devon's email to a Facebook lead, with Austin on CC, appearing a
 
 The fix on `main` projects a confirmed team send as outgoing activity in the CRM. It shows **Team outreach · Copied to this mailbox**, shows visible To/Cc recipients, and replies to the external customer recipients rather than copied teammates. Genuine later customer replies still become **Needs reply**. It uses an existing matching sent Message-ID and registered sender; a teammate-looking From header alone is insufficient. Original Mail messages, grants and private BCCs are unchanged. Existing copies are reclassified when the CRM reloads history or completes its next metadata sweep; no database migration or lead reimport is needed.
 
-**Deployment needed:** the Cloudflare CLI on Austin's computer is signed out. Deploy the Mail service from an authenticated machine after pulling `main` (and verify the website's Render deployment includes this update):
+**Deployed November 1:** both Mail and website are live on `c9bb7ca`, including this fix. Commands below are retained for later releases; deployment is no longer a blocker:
 
 ```powershell
 git pull --ff-only origin main
@@ -210,7 +232,7 @@ No new environment variables, mailbox grants or credentials are needed. Deployin
 
 After deployment, refresh Austin's CRM Inbox and open Devon's **Website** email from October 30. Verify **Team outreach**, **Waiting** (unless someone explicitly changed its work status), visible lead recipient/Austin CC, and **Reply details → To** pointing to the lead. Do not send a test message to that real lead. With an authorized test recipient, verify a subsequent customer reply becomes incoming/Needs reply. Ordinary Mail still shows Devon's message as received, because Austin was CC'd.
 
-Local verification: 409 Mail tests, 20 PostgreSQL Inbox integration tests, 14 Inbox unit tests, and the new desktop/phone workflow checks passed; Mail check/build and website lint/typecheck/production build passed. All sends in these tests used synthetic providers. Production Mail activation remains pending the Cloudflare deployment above.
+Local verification: 409 Mail tests, 20 PostgreSQL Inbox integration tests, 14 Inbox unit tests, and the new desktop/phone workflow checks passed; Mail check/build and website lint/typecheck/production build passed. All sends in these tests used synthetic providers. Production Mail activation passed November 1; Austin's own screen acceptance remains pending.
 
 The setup is complete: **sales@tailoredagents.com** belongs to Jeffrey's existing Mail account, with explicit **read and send** permission for **jeffrey@tailoredagents.com**, **austin@tailoredagents.com** and **devon@tailoredagents.com**. Personal inboxes are outside that shared permission. Austin now has Mail management access; Jeffrey retains ownership. Devon has dashboard approval and remains a regular teammate. Passwords were not changed.
 
@@ -218,7 +240,7 @@ Remaining work:
 
 - [ ] **Austin:** sign in with his own account, open Sales and confirm Mail's **Manage team** screen works.
 - [ ] **Devon:** sign in with his own account and open Sales as a regular teammate.
-- [ ] **Jeffrey:** open the Gmail reply in [Team Inbox](https://www.tailoredagents.com/dashboard/inbox) and confirm its logo attachment opens there. The saved file has already been downloaded and visually verified from private mail storage.
+- [x] **Jeffrey, November 1:** opened the Gmail reply in [Team Inbox](https://www.tailoredagents.com/dashboard/inbox) and verified its logo attachment through the CRM download endpoint: 200, 9,186 bytes, decoded 120×120. Earlier private-storage visual verification is also retained.
 - [ ] **Jeffrey with Codex:** complete the authorized Hotmail send/reply check using the previously supplied test address.
 - [ ] **Team with Codex:** finish the production checks for private drafts, internal notes, assignments, personal read states, denied/revoked access and safe retry behavior. These have automated coverage; the full live team workflow is still unconfirmed. Follow [email acceptance and recovery](docs/COMMUNICATIONS_SETUP.md#email-acceptance-and-recovery).
 
@@ -232,14 +254,14 @@ This release focuses on Tailored Agents' own website. The maximum is **$10 per U
 
 Remaining work, in order:
 
-1. [ ] **Jeffrey:** create/select the separate **Tailored Agents SEO** OpenAI project and enter its key privately. **Codex:** install it as `SEO_OPENAI_API_KEY` and verify the project spending control. Keep call-analysis credentials unchanged.
-2. [ ] **Jeffrey:** review the services, prices, service areas and instructions in [SEO manager settings](https://www.tailoredagents.com/dashboard/seo#controls), then confirm the business facts are correct.
-3. [ ] **Codex with owner/admin review:** compare Sol and Astra using the same real website evidence, run the five controlled safety cases and reconcile actual charges within the $5 pilot allowance. Sol is the proposed regular model; it has not yet passed the live pilot. Critical failures block activation.
+1. [x] **Jeffrey/Codex, November 1:** created **Tailored Agents SEO** in the expressly selected Stonegatejunkremoval organization, verified its enforced $10/month limit and installed `SEO_OPENAI_API_KEY` only on the web service. Call-analysis credentials unchanged.
+2. [x] **Jeffrey, November 1:** confirmed services, prices, service areas and instructions are correct. The business-facts review was saved in his signed-in admin [SEO settings](https://www.tailoredagents.com/dashboard/seo#controls); five Georgia areas remain service areas, not offices.
+3. [ ] **Owner/admin review pending:** both Sol/Astra comparison runs and five safety cases succeeded November 1. Fourteen settled response-usage receipts reconcile to $0.697127; zero critical failures found in assistant review. [Review the exact evidence and recommendation](docs/SEO_PILOT_REVIEW_2026-11-01.md) before named approval/activation. Do not rerun the paid tests.
 4. [ ] **After approval:** enable weekly paid recommendations and observe genuine scheduled daily/weekly operation. The first weekly check can take up to seven days to observe.
 5. [ ] **Owner/admin:** review the first justified title/description change. **Codex:** publish the approved wording and verify the actual public page. A valid “no change needed” result is acceptable, but does not prove live publishing.
 6. [ ] **After publication:** wait for 28 complete Google reporting days, then review the result against the earlier period. Record limited evidence or no improvement honestly; a comparison alone does not prove the change caused the outcome.
 
-The next complete daily scan also needs observation while paid AI remains paused. The [SEO setup and recovery guide](docs/SEO_MANAGER_SETUP.md) contains the commands, budget behavior, model-review requirements and rollback procedure.
+The next complete daily scan requirement passed: nine complete runs were present November 1, including the latest 14-page run ending at 04:00:42 UTC. Paid AI remains paused pending pilot approval. The [SEO setup and recovery guide](docs/SEO_MANAGER_SETUP.md) contains the commands, budget behavior, model-review requirements and rollback procedure.
 
 ## Release evidence
 
@@ -291,7 +313,7 @@ The research milestone requires no new storage or builder service. The website-b
 
 ## Website Factory — approved website builds (October 26, 2026)
 
-**Current setup — ready for Austin's first plan approval:** the CRM, preview/storage service and reused builder are live from `e3acba848a7d77e81310aab96864ab976da0ef12`. Production storage/authentication/persistence, sandboxed Chromium and the resumed idle cron passed. Building is enabled and its $50/$5 settings verified after reload. **Jeffrey has no remaining Factory infrastructure task.** The first real-client plan still needs Austin's approval; no paid site has been generated. Unrelated Mail, Meta and SEO tasks above remain unchanged.
+**Historical October 26 setup — superseded by the November 1 build/export verification above:** the CRM, preview/storage service and reused builder are live from `e3acba848a7d77e81310aab96864ab976da0ef12`. Production storage/authentication/persistence, sandboxed Chromium and the resumed idle cron passed. Building is enabled and its $50/$5 settings verified after reload. **Jeffrey has no remaining Factory infrastructure task.** The first real-client plan still needs Austin's approval; no paid site has been generated. Unrelated Mail, Meta and SEO tasks above remain unchanged.
 
 This extends working research/planning chat; **do not redo or disable the existing research setup**. Austin approved a separate **$50/month website-build/image allowance and $5/site ceiling**. Under $1 per initial preview is an unmeasured target, not a charge or guarantee. Hosting/storage remain separate. The builder is resumed and building enabled. Final CRM readback shows one plan ready for review, zero previews and $0.00 estimated/reserved builder usage; no real-client plan was approved by deployment checks. Actual site editing through chat remains the next milestone.
 
@@ -305,7 +327,7 @@ This extends working research/planning chat; **do not redo or disable the existi
 - [x] **Austin/Codex — Render:** installed matching storage and preview configuration on all three services. Both client URLs use the actual preview-service origin; the two independent 32+ character secrets are private. CRM deployment `dep-dbfu0tajnfac73elruhg` started at 7:21:25 PM EDT and succeeded in 1 minute 59 seconds. Private synthetic upload/read, anonymous storage 401, bounded read 413 (`maxBytes=1` for a 64-byte artifact) and direct public artifact 404 passed. Bytes survived the 7:22 PM service restart, and exact-prefix cleanup then returned 404. Unknown public preview and authenticated CRM resolver both returned 404, confirming the resolver connection without creating a published site.
 - [x] **Austin/Codex — Render:** updated and resumed existing builder `crn-dbfth6uk1f9s73amh7ig`; deployment `dep-dbfu1gifngtc7382tve0` succeeded in 35.4 seconds on `e3acba8`. The old builder R2 bucket variable was removed. No duplicate service was created; reporting/research remain separate.
 - [x] **Austin/Codex — runtime/activation:** actual Render builder Chromium passed as UID 1001 with `chromiumSandbox:true`, sanitized environment and blocked network, producing an 8,957-byte screenshot from synthetic HTML. The resumed 7:25:06–7:25:53 PM EDT cron run succeeded and logged `status:'idle',more:false` at 7:25:37 PM. Building is enabled and verified after reload at $50/month and $5/site, with $0.00 estimated/reserved usage, zero previews and one plan ready for review. No real-client plan was approved. Docker runs `--drain`, exiting idle or stopping before another claim after 30 stages / 30 minutes.
-- [ ] **Austin — next:** choose and approve the exact real-client plan in the CRM. Building is already enabled; that approval lets the worker generate the selected version. Hosting or budget authorization does not approve an unapproved plan. No repeated allowance approval is needed.
+- [x] **Austin:** Cosmo plan v8 was approved October 27 at 6:32:53 PM EDT; v9 became ready at 8:29:14 PM EDT. Approval was verified in production November 1. Future builds still require their own exact-plan approval.
 - [ ] **Austin/Codex:** verify one deliberate live build, desktop/mobile appearance, screenshots/source access, preview revocation/renewal and a clean ZIP export via `node build.mjs`. Record actual cost and runtime before broadening the pilot.
 
 All three Render services are connected, the existing builder is resumed and building is enabled. A real website still requires Austin to approve its exact plan. Next we inspect that first paid output, its actual cost and the source export. No Cloudflare account or Jeffrey handoff is required.
