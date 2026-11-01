@@ -43,7 +43,7 @@ async function findActiveMembership(userId: string) {
      WHERE membership.user_id = $1
        AND membership.status = 'active'
        AND workspace.status = 'active'
-     ORDER BY membership.created_at ASC
+     ORDER BY membership.created_at ASC, membership.id ASC
      LIMIT 1`,
     [userId],
   );

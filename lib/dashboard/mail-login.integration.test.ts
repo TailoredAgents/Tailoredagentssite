@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import type { Pool } from "pg";
 vi.mock("server-only", () => ({}));
@@ -7,7 +7,7 @@ const browser = vi.hoisted(() => ({ headers: new Headers() }));
 vi.mock("next/headers", () => ({ headers: async () => browser.headers }));
 import { getDatabasePool } from "./db";
 import { getDashboardAuth } from "./auth";
-import { getOptionalDashboardContext } from "./data";
+import { getDashboardOverview, getOptionalDashboardContext } from "./data";
 import { resolveDashboardConfiguration } from "./config";
 import { verifyMailDashboardSession } from "./mail-identity";
 import { POST as signIn } from "@/app/api/dashboard/sign-in/route";
@@ -100,6 +100,33 @@ describe.skipIf(!databaseUrl)("Shared mail login with a separate PostgreSQL test
     expect(await getOptionalDashboardContext()).toBeNull();
     expect((await signIn(request("owner@example.test"))).status).toBe(403);
     expect((await pool.query("SELECT status FROM workspace_memberships")).rows[0].status).toBe("suspended");
+  });
+  it("keeps an explicitly provisioned reviewer in its own workspace across logins", async () => {
+    const workspace = randomUUID(), user = randomUUID();
+    await pool.query("INSERT INTO workspaces(id,slug,name,kind) VALUES($1,$2,'Review sandbox','internal')", [workspace, workspace]);
+    await pool.query('INSERT INTO "user"(id,name,email) VALUES($1,\'Reviewer\',\'reviewer@example.test\')', [user]);
+    await pool.query("INSERT INTO workspace_memberships(id,workspace_id,user_id,role,status) VALUES(gen_random_uuid(),$1,$2,'member','active')", [workspace,user]);
+    await pool.query("INSERT INTO leads(id,workspace_id,name,organization,email) VALUES(gen_random_uuid(),$1,'Synthetic review','Review','review@example.test'),(gen_random_uuid(),'00000000-0000-4000-8000-000000000001','Private team lead','Team','private@example.test')", [workspace]);
+    for (let attempt=0; attempt<2; attempt++) {
+      await loggedIn("reviewer@example.test");
+      const context = await getOptionalDashboardContext();
+      expect(context?.workspace.id).toBe(workspace);
+      expect(context?.role).toBe("member");
+      expect((await getDashboardOverview(context!)).counts.leads).toBe(1);
+      expect((await pool.query("SELECT workspace_id FROM workspace_memberships WHERE user_id=$1",[user])).rows).toEqual([{ workspace_id: workspace }]);
+    }
+    await pool.query("UPDATE workspace_memberships SET status='suspended' WHERE user_id=$1", [user]);
+    expect(await getOptionalDashboardContext()).toBeNull();
+    expect((await signIn(request("reviewer@example.test"))).status).toBe(403);
+    expect((await pool.query("SELECT count(*)::int AS n FROM workspace_memberships WHERE user_id=$1",[user])).rows[0].n).toBe(1);
+  });
+  it("does not move users from archived workspaces into the internal team", async () => {
+    const workspace = randomUUID(), user = randomUUID();
+    await pool.query("INSERT INTO workspaces(id,slug,name,kind,status) VALUES($1,$2,'Archived review','internal','archived')", [workspace,workspace]);
+    await pool.query('INSERT INTO "user"(id,name,email) VALUES($1,\'Reviewer\',\'archived@example.test\')', [user]);
+    await pool.query("INSERT INTO workspace_memberships(id,workspace_id,user_id,role,status) VALUES(gen_random_uuid(),$1,$2,'member','active')", [workspace,user]);
+    expect((await signIn(request("archived@example.test"))).status).toBe(403);
+    expect((await pool.query("SELECT workspace_id FROM workspace_memberships WHERE user_id=$1",[user])).rows).toEqual([{ workspace_id: workspace }]);
   });
   it("revoked mail grants stop existing dashboard sessions and cannot be substituted between users", async () => {
     const first = await loggedIn();

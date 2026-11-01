@@ -64,8 +64,8 @@ export async function revokeMailGrant(token: string) {
   await identityRequest({ action: "revoke", token });
 }
 
-/** Only an approved mail identity reaches this function. Existing roles and
- * suspended memberships are preserved; new teammates receive member access. */
+/** Only an approved mail identity reaches this function. Explicit workspace
+ * assignments are preserved; only users without any membership join the team. */
 export async function resolveMailDashboardUser(identity: MailIdentity["user"]) {
   const client = await getDatabasePool().connect();
   try {
@@ -80,8 +80,12 @@ export async function resolveMailDashboardUser(identity: MailIdentity["user"]) {
     const other = await client.query("SELECT 1 FROM mail_dashboard_identities WHERE user_id=$1 AND mail_user_id<>$2", [userId, identity.id]);
     if (other.rowCount) throw new MailIdentityError("dashboard_not_approved", 403);
     if (!found.rowCount) await client.query('INSERT INTO "user"(id,name,email,"emailVerified") VALUES($1,$2,$3,true)', [userId, identity.name, identity.email.toLowerCase()]);
-    const membership = await client.query<{ status: string }>("SELECT status FROM workspace_memberships WHERE user_id=$1 AND workspace_id=$2", [userId, workspaceId]);
-    if (membership.rowCount && membership.rows[0].status !== "active") throw new MailIdentityError("dashboard_not_approved", 403);
+    const membership = await client.query<{ status: string; workspace_status: string }>(
+      `SELECT m.status,w.status AS workspace_status FROM workspace_memberships m
+       JOIN workspaces w ON w.id=m.workspace_id WHERE m.user_id=$1
+       ORDER BY m.created_at ASC,m.id ASC LIMIT 1 FOR SHARE OF m,w`, [userId],
+    );
+    if (membership.rowCount && (membership.rows[0].status !== "active" || membership.rows[0].workspace_status !== "active")) throw new MailIdentityError("dashboard_not_approved", 403);
     if (!membership.rowCount) {
       const role = identity.isAdmin ? "admin" : "member";
       await client.query("INSERT INTO workspace_memberships(id,workspace_id,user_id,role,status) VALUES($1,$2,$3,$4,'active')", [randomUUID(), workspaceId, userId, role]);
