@@ -1,3 +1,4 @@
+import { easternInputCandidates } from "@/lib/time";
 export type ImportRow = {
   rowNumber: number;
   businessName: string;
@@ -14,13 +15,15 @@ export type ImportRow = {
   externalId?: string;
   outcome?: string;
   occurredAt?: string;
+  /** Original date-only value preserves pre-Eastern import deduplication keys. */
+  occurredOn?: string;
   city?: string;
   facebookUrl?: string;
   sourceList?: string;
 };
 
 type ImportField =
-  | Exclude<keyof ImportRow, "rowNumber">
+  | Exclude<keyof ImportRow, "rowNumber" | "occurredOn">
   | "firstName"
   | "lastName";
 export type ImportMapping = { header: string; field: ImportField };
@@ -427,7 +430,7 @@ function normalizedDate(value: string): string | null {
     )
       return null;
   }
-  return parsed.toISOString();
+  return dateOnly ? easternInputCandidates(`${value}T00:00`)[0] ?? null : parsed.toISOString();
 }
 
 export function parseProspectCsv(
@@ -600,7 +603,10 @@ export function parseProspectCsv(
         errors.push(
           "Call date must be YYYY-MM-DD or an ISO timestamp with timezone (for example 2026-10-21T14:30:00-04:00).",
         );
-      else row.occurredAt = occurredAt;
+      else {
+        row.occurredAt = occurredAt;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(values.occurredAt)) row.occurredOn = values.occurredAt;
+      }
     }
     if (mode === "dialer") {
       if (!row.phone && !row.email)

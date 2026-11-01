@@ -1,3 +1,4 @@
+import { businessDateKey } from '../time';
 import { requireMcpAuthorization, type McpAuthorization } from './mcp-authorization';
 import { indexFullText } from './search';
 import { cleanComposedHtml, saveContent } from './content';
@@ -31,7 +32,6 @@ import {
 	claimDailySend,
 	refundDailySend,
 	SendPolicyError,
-	utcDay,
 	type ApiSendPolicy
 } from './send-policy';
 import { parseRecipients, sendOutboundEmail, validateSubject } from './send-mail';
@@ -307,7 +307,7 @@ export async function sendAndStore(
   const messageId = `${emailId}@${from.domain_name}`;
   let providerCalled = false;
   let budgetClaimed = false;
-  const budgetDay = utcDay();
+  const budgetDay = businessDateKey();
   try {
     if(input.oauthAuthorization) {
       await requireMcpAuthorization(env.DB,user.id,input.oauthAuthorization,'mail:send');

@@ -1,4 +1,5 @@
-export const REPORT_TIME_ZONE = "America/Los_Angeles";
+import { BUSINESS_TIME_ZONE, businessDateKey } from "@/lib/time";
+export const REPORT_TIME_ZONE = BUSINESS_TIME_ZONE;
 export type DateRange = { start: string; end: string; days: number };
 export type ReportSelection = {
   range: "7d" | "30d" | "90d" | "custom";
@@ -7,12 +8,7 @@ export type ReportSelection = {
 };
 
 export function reportToday(now = new Date()) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: REPORT_TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(now);
+  return businessDateKey(now);
 }
 export function shiftDate(date: string, days: number) {
   const value = new Date(`${date}T12:00:00Z`);

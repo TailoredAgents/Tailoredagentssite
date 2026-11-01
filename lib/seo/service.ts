@@ -75,7 +75,7 @@ export async function getSeoDashboard(context: DashboardContext) {
         scope,
       ),
       pool.query(
-        "SELECT id,provider,operation,status,reserved_micros,actual_micros,provider_id,created_at FROM seo_costs WHERE workspace_id=$1 AND site_id=$2 AND period=date_trunc('month',now() AT TIME ZONE 'UTC')::date ORDER BY created_at DESC LIMIT 100",
+        "SELECT id,provider,operation,status,reserved_micros,actual_micros,provider_id,created_at FROM seo_costs WHERE workspace_id=$1 AND site_id=$2 AND period=business_month() ORDER BY created_at DESC LIMIT 100",
         scope,
       ),
       pool.query(
@@ -91,7 +91,7 @@ export async function getSeoDashboard(context: DashboardContext) {
     throw new SeoInputError("Apply the SEO manager database migration first.");
   const spent = (
     await pool.query(
-      "SELECT COALESCE(sum(CASE WHEN status='settled' THEN actual_micros WHEN status IN ('reserved','uncertain') THEN reserved_micros ELSE 0 END),0)::text used FROM seo_costs WHERE workspace_id=$1 AND site_id=$2 AND period=date_trunc('month',now() AT TIME ZONE 'UTC')::date",
+      "SELECT COALESCE(sum(CASE WHEN status='settled' THEN actual_micros WHEN status IN ('reserved','uncertain') THEN reserved_micros ELSE 0 END),0)::text used FROM seo_costs WHERE workspace_id=$1 AND site_id=$2 AND period=business_month()",
       scope,
     )
   ).rows[0].used;
@@ -110,7 +110,7 @@ export async function getSeoDashboard(context: DashboardContext) {
     EXISTS(SELECT 1 FROM seo_runs WHERE workspace_id=$1 AND site_id=$2 AND status IN ('queued','running')) AS working,
     COALESCE(sum(actual_micros) FILTER(WHERE status='settled'),0)::text AS settled,
     COALESCE(sum(reserved_micros) FILTER(WHERE status IN ('reserved','uncertain')),0)::text AS reserved
-    FROM seo_costs WHERE workspace_id=$1 AND site_id=$2 AND period=date_trunc('month',now() AT TIME ZONE 'UTC')::date`,scope)).rows[0];
+    FROM seo_costs WHERE workspace_id=$1 AND site_id=$2 AND period=business_month()`,scope)).rows[0];
   const stale = !manager.last_worker_success_at || Date.now()-manager.last_worker_success_at.getTime()>20*60_000;
   const remaining = Math.max(0,Math.min(Number(manager.monthly_limit_micros),SEO_MONTHLY_MAX)-Number(spent));
   const status = health.uncertain ? "Needs attention" : stale && (manager.enabled || manager.ai_enabled) ? "Needs attention" :

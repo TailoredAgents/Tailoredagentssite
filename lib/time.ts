@@ -10,8 +10,29 @@ function parts(date: Date) {
   return Object.fromEntries(partsFormatter.formatToParts(date).map(p => [p.type, p.value]));
 }
 
+/** D1's zone-less datetime values are UTC, never the device's local zone. */
+export function timestampIso(value: string): string | null {
+  const trimmed = value.trim();
+  const normalized = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(trimmed)
+    ? `${trimmed.replace(" ", "T")}Z` : trimmed;
+  const date = new Date(normalized);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+
+export function businessDateKey(now = new Date()): string {
+  const p = parts(now);
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
+/** Calendar arithmetic: an Eastern day can have 23, 24 or 25 hours. */
+export function nextBusinessMidnight(now = new Date()): string {
+  const nextDay = new Date(`${businessDateKey(now)}T12:00:00Z`);
+  nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+  return easternInputCandidates(`${nextDay.toISOString().slice(0, 10)}T00:00`)[0];
+}
+
 export function easternInputValue(value: string) {
-  const date = new Date(value);
+  const date = new Date(timestampIso(value) ?? NaN);
   if (!Number.isFinite(date.getTime())) return "";
   const p = parts(date);
   return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
@@ -34,7 +55,7 @@ export function easternInputCandidates(value: string): string[] {
 
 /** Build punctuation ourselves so SSR and browsers render the same label. */
 export function formatEasternTime(value: string, options?: { dateOnly?: boolean; year?: boolean }) {
-  const date = new Date(value);
+  const date = new Date(timestampIso(value) ?? NaN);
   if (!Number.isFinite(date.getTime())) return "Date unavailable";
   // A calendar date (project deadline, etc.) is not an instant to shift west of UTC.
   const dateOnlyValue = /^\d{4}-\d{2}-\d{2}$/.test(value);

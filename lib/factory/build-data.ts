@@ -24,7 +24,7 @@ export async function readFactoryBuildSettings(db:Pick<PoolClient,"query">,works
 }
 async function buildInfo(db:PoolClient,context:DashboardContext){
   const role=await authorizeFactory(db,context);
-  const cost=(await db.query(`SELECT COALESCE(sum(CASE WHEN status='settled' THEN actual_micros WHEN status IN ('reserved','uncertain') THEN reserved_micros ELSE 0 END),0)::text micros FROM factory_build_costs WHERE workspace_id=$1 AND period=date_trunc('month',now() AT TIME ZONE 'UTC')::date`,[context.workspace.id])).rows[0];
+  const cost=(await db.query(`SELECT COALESCE(sum(CASE WHEN status='settled' THEN actual_micros WHEN status IN ('reserved','uncertain') THEN reserved_micros ELSE 0 END),0)::text micros FROM factory_build_costs WHERE workspace_id=$1 AND period=business_month()`,[context.workspace.id])).rows[0];
   const config=factoryBuildConfiguration();
   return {settings:await readFactoryBuildSettings(db,context.workspace.id),monthSpentMicros:Number(cost?.micros??0),canManage:["owner","admin"].includes(role),canEdit:role!=="viewer",config:{configured:config.configured,reason:config.reason??undefined}};
 }

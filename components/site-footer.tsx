@@ -1,3 +1,4 @@
+import { businessDateKey } from "@/lib/time";
 import Link from "next/link";
 import { siteConfig } from "@/lib/site";
 import { BrandLogo } from "@/components/brand-logo";
@@ -29,7 +30,7 @@ export function SiteFooter() {
           </div>
         </div>
         <div className="footer-bottom">
-          <span>© {new Date().getFullYear()} Tailored Agents. All rights reserved.</span>
+          <span>© {businessDateKey().slice(0, 4)} Tailored Agents. All rights reserved.</span>
           <span>Websites · Growth · AI agents · Software engineering</span>
         </div>
       </div>

@@ -36,7 +36,7 @@ function projectDto(row: ProjectRow): FactoryProjectSummary {
 }
 async function workspaceInfo(db: PoolClient, context: DashboardContext, role: string) {
   const settings = await readFactorySettings(db,context.workspace.id);
-  const costs = (await db.query<{micros:string}>(`SELECT COALESCE(sum(CASE WHEN status='released' THEN 0 ELSE COALESCE(actual_micros,reserved_micros) END),0)::text AS micros FROM factory_costs WHERE workspace_id=$1 AND period=date_trunc('month',now() AT TIME ZONE 'UTC')::date`,[context.workspace.id])).rows[0];
+  const costs = (await db.query<{micros:string}>(`SELECT COALESCE(sum(CASE WHEN status='released' THEN 0 ELSE COALESCE(actual_micros,reserved_micros) END),0)::text AS micros FROM factory_costs WHERE workspace_id=$1 AND period=business_month()`,[context.workspace.id])).rows[0];
   const { getFactoryConfiguration } = await import("./config");
   const config = getFactoryConfiguration();
   return {settings,canManage:["owner","admin"].includes(role),canEdit:role!=="viewer",monthSpentMicros:Number(costs?.micros??0),config:{configured:config.configured,reason:config.configured?undefined:"Add FACTORY_OPENAI_API_KEY or the existing OPENAI_API_KEY to enable research."}};

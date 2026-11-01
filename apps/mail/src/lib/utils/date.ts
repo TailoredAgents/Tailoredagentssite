@@ -1,8 +1,10 @@
+import { BUSINESS_TIME_ZONE, businessDateKey, timestampIso } from '../time';
 import { DEFAULT_LOCALE, intlLocale } from '$lib/i18n/locales';
 import { translate } from '$lib/i18n/translate';
 
 export function formatRelativeDate(value: string, locale: string = DEFAULT_LOCALE): string {
-	const date = new Date(value);
+	const date = new Date(timestampIso(value) ?? NaN);
+	if (!Number.isFinite(date.getTime())) return '';
 	const now = new Date();
 	const tag = intlLocale(locale);
 	const diffMs = now.getTime() - date.getTime();
@@ -12,17 +14,19 @@ export function formatRelativeDate(value: string, locale: string = DEFAULT_LOCAL
 
 	if (diffMins < 1) return translate(locale, 'date.now');
 	if (diffMins < 60) return `${diffMins}m`;
-	if (diffHours < 24 && date.getDate() === now.getDate()) {
-		return date.toLocaleTimeString(tag, { hour: 'numeric', minute: '2-digit' });
+	if (diffHours < 24 && isSameCalendarDay(date, now)) {
+		return date.toLocaleTimeString(tag, { timeZone: BUSINESS_TIME_ZONE, hour: 'numeric', minute: '2-digit' });
 	}
 	if (diffDays < 7) {
-		return date.toLocaleDateString(tag, { weekday: 'short' });
+		return date.toLocaleDateString(tag, { timeZone: BUSINESS_TIME_ZONE, weekday: 'short' });
 	}
-	return date.toLocaleDateString(tag, { month: 'short', day: 'numeric' });
+	return date.toLocaleDateString(tag, { timeZone: BUSINESS_TIME_ZONE, month: 'short', day: 'numeric' });
 }
 
 export function formatFullDate(value: string, locale: string = DEFAULT_LOCALE): string {
-	return new Date(value).toLocaleString(intlLocale(locale), {
+	return new Date(timestampIso(value) ?? NaN).toLocaleString(intlLocale(locale), {
+		timeZone: BUSINESS_TIME_ZONE,
+		timeZoneName: 'short',
 		weekday: 'short',
 		month: 'short',
 		day: 'numeric',
@@ -32,16 +36,12 @@ export function formatFullDate(value: string, locale: string = DEFAULT_LOCALE): 
 }
 
 function validDate(value: string): Date | null {
-	const date = new Date(value);
+	const date = new Date(timestampIso(value) ?? NaN);
 	return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function isSameCalendarDay(a: Date, b: Date): boolean {
-	return (
-		a.getFullYear() === b.getFullYear() &&
-		a.getMonth() === b.getMonth() &&
-		a.getDate() === b.getDate()
-	);
+	return businessDateKey(a) === businessDateKey(b);
 }
 
 /** Zero mail timestamps: time for recent mail, `MMM dd` this month, else a short date. */
@@ -53,12 +53,14 @@ export function formatMailDate(value: string, locale: string = DEFAULT_LOCALE): 
 	if (isSameCalendarDay(date, now) || hoursDifference <= 12) {
 		return formatMailTime(value, locale);
 	}
-	const monthsApart =
-		(now.getFullYear() - date.getFullYear()) * 12 + (now.getMonth() - date.getMonth());
+	const [year, month] = businessDateKey(date).split('-').map(Number);
+	const [nowYear, nowMonth] = businessDateKey(now).split('-').map(Number);
+	const monthsApart = (nowYear - year) * 12 + nowMonth - month;
 	if (monthsApart === 0 || monthsApart === 1) {
-		return date.toLocaleDateString(intlLocale(locale), { month: 'short', day: '2-digit' });
+		return date.toLocaleDateString(intlLocale(locale), { timeZone: BUSINESS_TIME_ZONE, month: 'short', day: '2-digit' });
 	}
 	return date.toLocaleDateString(intlLocale(locale), {
+		timeZone: BUSINESS_TIME_ZONE,
 		month: '2-digit',
 		day: '2-digit',
 		year: '2-digit'
@@ -68,7 +70,7 @@ export function formatMailDate(value: string, locale: string = DEFAULT_LOCALE): 
 export function formatMailTime(value: string, locale: string = DEFAULT_LOCALE): string {
 	const date = validDate(value);
 	if (!date) return '';
-	return date.toLocaleTimeString(intlLocale(locale), { hour: 'numeric', minute: '2-digit' });
+	return date.toLocaleTimeString(intlLocale(locale), { timeZone: BUSINESS_TIME_ZONE, hour: 'numeric', minute: '2-digit' });
 }
 
 /** Stack a second time line when the primary stamp is a calendar date. */

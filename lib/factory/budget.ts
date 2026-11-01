@@ -26,7 +26,7 @@ export async function reserveFactoryCost(input: FactoryCostRequest) {
       WHERE j.id=$1 AND j.workspace_id=$2 AND j.project_id=$3 AND j.status='running' AND j.lease_token=$4
         AND j.lease_until>now() AND l.anonymized_at IS NULL`, [input.jobId,input.workspaceId,input.projectId,input.leaseToken]);
     if (!job.rowCount) throw new FactoryBudgetError("The planning job was cancelled, removed, or lost its worker lease.");
-    const used = Number((await db.query(`SELECT ${spentSql} used FROM factory_costs WHERE workspace_id=$1 AND period=date_trunc('month',now() AT TIME ZONE 'UTC')::date`,[input.workspaceId])).rows[0].used);
+    const used = Number((await db.query(`SELECT ${spentSql} used FROM factory_costs WHERE workspace_id=$1 AND period=business_month()`,[input.workspaceId])).rows[0].used);
     if (used + input.micros > Number(settings.monthly_budget_micros))
       throw new FactoryBudgetError("This planning step would exceed the monthly Factory allowance. Increase the allowance or retry next month.");
     const id = randomUUID();
@@ -49,7 +49,7 @@ export async function attemptFactoryCost(id: string, leaseToken: string) {
         AND j.status='running' AND j.lease_token=$2 AND j.lease_until>now() AND s.workspace_id=c.workspace_id
         AND s.research_enabled AND s.budget_approved_at IS NOT NULL AND w.id=s.workspace_id AND w.status='active'
         AND p.id=j.project_id AND p.workspace_id=j.workspace_id AND l.id=p.lead_id AND l.workspace_id=p.workspace_id AND l.anonymized_at IS NULL
-        AND c.period=date_trunc('month',now() AT TIME ZONE 'UTC')::date
+        AND c.period=business_month()
         AND (SELECT ${spentSql} FROM factory_costs x WHERE x.workspace_id=c.workspace_id AND x.period=c.period)<=s.monthly_budget_micros RETURNING c.id`,[id,leaseToken]);
     if (!result.rowCount || !factoryConfiguration().configured) throw new FactoryBudgetError("The request was already attempted, paused, or no longer has an active allowance and lease.");
     await db.query("COMMIT");

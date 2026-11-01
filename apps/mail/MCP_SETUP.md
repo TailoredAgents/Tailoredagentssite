@@ -3,13 +3,28 @@
 Updated November 1, 2026, **6:24 PM EST. Austin's own ChatGPT/Mail connection is
 installed and read-tested; his existing business-email monitor includes Mail and
 passed a manual run.** Production configuration
-enables OAuth sending with Jeffrey's approved cap of **100 messages per user per UTC day**.
+enables OAuth sending with Jeffrey's approved cap of **100 messages per user per Eastern calendar day (EST/EDT)**.
 No production assistant clients, access tokens, or mailbox grants were created during deployment.
 No real messages were sent through MCP. Unit tests use a mocked provider; browser
 tests use disposable local accounts, drafts and OAuth credentials. Separately,
 Jeffrey approved one CRM Sales test on November 1: delivery and the Hotmail reply
 were verified, with the original landing in Junk. That test does not establish
 Austin's MCP sending or inbox placement. See the [Sales acceptance record](../../new%20jeffrey.md#november-1-hotmail-round-trip-and-timestamp-correction).
+
+## Eastern calendar — November 1, 2026
+
+Jeffrey chose Georgia time, **America/New_York (EST/EDT)**. The 100/day assistant
+allowance now uses midnight Eastern, including 23/25-hour DST days. The count is
+still atomic per user; a failed-send refund credits its original reservation day.
+Existing counters, credentials, consent and approval requirements are preserved.
+Mail display, date searches and draft-save times share the CRM calendar. MCP
+`whoami` exposes `time_zone`, `sending.reset_time_zone` and `next_reset_at` (a UTC
+instant); message dates are explicitly zoned UTC instants for clients to display
+in Eastern. See [the system time policy](../../docs/BUSINESS_TIME.md).
+
+Verification before release: 429 Mail tests passed with `TZ=Asia/Tokyo`, plus two
+built-Worker OAuth/MCP browser tests running with a Tokyo browser timezone, Svelte
+check and production build. Live deployment evidence is recorded below after rollout.
 
 ## Daily send limit increased — November 1, 2026
 
@@ -19,8 +34,8 @@ Main `5ea47a9` sets production `API_DAILY_SEND_LIMIT="100"`; Worker
 At **6:24 PM EST**, Austin's connected ChatGPT `whoami` returned
 `austin@tailoredagents.com`, `sending.enabled:true`, and `sending.daily_limit:100`.
 The 28 existing sending-policy/outbox checks and production build passed; binding
-types regenerated successfully. No email was sent. The limit is per user per UTC
-day for assistant/API sends; normal Mail sending is unaffected. OAuth scopes,
+types regenerated successfully. No email was sent. At that release the limit was per user per UTC
+day; the Eastern-calendar release above supersedes that reset boundary. It covers assistant/API sends; normal Mail sending is unaffected. OAuth scopes,
 approval-before-change permissions and monitoring were preserved. The 25/day
 observations below are historical evidence from the initial connection.
 
@@ -170,7 +185,7 @@ Reply-To is respected, and replies reject changed recipients or newer conversati
 messages. Recovery preserves provider idempotency and rechecks the OAuth family,
 send scope, account, public resource, enabled policy and sender ownership. A disconnected
 assistant cannot initiate a recovery resend. Already accepted messages cannot be recalled.
-The default external-send allowance is 100 messages per user per UTC day; choose a
+The default external-send allowance is 100 messages per user per Eastern calendar day; choose a
 smaller production cap if desired. A retry of an accepted send does not consume another
 slot. Ambiguous provider results retain their allowance and original recovery key.
 
@@ -269,7 +284,7 @@ and a live send requires approval of its exact recipient/content. Do not copy lo
 fixture accounts/tokens.
 
 1. Review the diff and local results. Production sending is authorized with the
-   approved cap of 100 per user per UTC day. Commit/push to `main` is authorized.
+   approved cap of 100 per user per Eastern calendar day. Commit/push to `main` is authorized.
    Do not force-push or overwrite collaborator changes.
 2. Use the Cloudflare account already authorized for Mail. Do not create new secrets
    without approval. Existing Resend/D1/R2/queue bindings are reused.

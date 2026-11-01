@@ -1,3 +1,4 @@
+import { searchConsoleToday } from "./dates";
 import "server-only";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import type { DashboardContext } from "@/lib/dashboard/data";
@@ -10,7 +11,7 @@ import {
 } from "./config";
 import type { GoogleTokens, SearchConsoleProperty } from "./google";
 import { requireReportingSite } from "@/lib/dashboard/site-access";
-import { reportToday, shiftDate } from "@/lib/reporting/dates";
+import { shiftDate } from "@/lib/reporting/dates";
 import { SEARCH_CONSOLE_SCOPE } from "./config";
 
 const OAUTH_STATE_MINUTES = 10;
@@ -152,7 +153,7 @@ export async function saveSearchConsoleConnection(input: {
         input.tokens.scope,
         input.context.user.id,
         error,
-        shiftDate(reportToday(), -92),
+        shiftDate(searchConsoleToday(), -92),
       ],
     );
     await client.query(

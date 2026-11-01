@@ -1,3 +1,5 @@
+import { BUSINESS_TIME_ZONE, formatEasternTime } from "@/lib/time";
+import { SEARCH_CONSOLE_TIME_ZONE } from "@/lib/search-console/dates";
 import { reportAccess, privateJson } from "@/lib/reporting/http";
 import {
   getReportingOverview,
@@ -25,9 +27,11 @@ export async function GET(request: Request) {
     yield csvLine([
       "Tailored Agents website report",
       "Generated",
-      report.generatedAt,
-      "Report days",
-      "America/Los_Angeles",
+      formatEasternTime(report.generatedAt),
+      "Website report days",
+      BUSINESS_TIME_ZONE,
+      "Google report days",
+      SEARCH_CONSOLE_TIME_ZONE,
     ]);
     yield csvLine([
       "Source",

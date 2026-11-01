@@ -1,3 +1,4 @@
+import { easternInputCandidates } from '../time';
 import type { D1Database } from '@cloudflare/workers-types';
 const like = (s: string) => '%' + s.replaceAll('\\','\\\\').replaceAll('%','\\%').replaceAll('_','\\_') + '%';
 /** All clauses are used inside the mailbox's mandatory owner filter. */
@@ -9,7 +10,9 @@ export function searchClauses(query: string): {filters: string[]; bindings: stri
       const columns = key==='from' ? ['e.from_addr','e.from_name'] : key==='to' ? ['e.to_addr','e.cc_addr','e.bcc_addr'] : ['e.subject'];
       filters.push('(' + columns.map(c => `${c} LIKE ? ESCAPE '\\'`).join(' OR ') + ')');bindings.push(...columns.map(() => like(value)));
     } else if (['before','after'].includes(key) && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      filters.push(`date(e.created_at) ${key==='before'?'<':'>='} date(?)`);bindings.push(value);
+      const midnight = easternInputCandidates(`${value}T00:00`)[0];
+      if (midnight) { filters.push(`datetime(e.created_at) ${key==='before'?'<':'>='} datetime(?)`); bindings.push(midnight); }
+      else filters.push('0=1');
     } else if (key==='has' && value==='attachment') {
       filters.push('(EXISTS(SELECT 1 FROM email_attachments a WHERE a.email_id=e.id) OR EXISTS(SELECT 1 FROM draft_files f WHERE f.draft_id=e.id AND f.user_id=e.user_id))');
     } else {

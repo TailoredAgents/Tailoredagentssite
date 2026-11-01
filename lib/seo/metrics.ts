@@ -1,3 +1,5 @@
+import { searchConsoleToday, SEARCH_CONSOLE_TIME_ZONE } from "@/lib/search-console/dates";
+import { shiftDate } from "@/lib/reporting/dates";
 import "server-only";
 import { getDatabasePool } from "@/lib/dashboard/db";
 export async function seoMetrics(
@@ -14,12 +16,12 @@ export async function seoMetrics(
     )
   ).rows[0]?.latest as string | null;
   const latest =
-    coverage || new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
+    coverage || shiftDate(searchConsoleToday(), -3);
   // Compare equal 28-day windows. Start after the publication's partial Pacific
   // day, matching Search Console's date convention and first-party boundaries.
   const publishedDay = after
     ? new Intl.DateTimeFormat("en-CA", {
-        timeZone: "America/Los_Angeles",
+        timeZone: SEARCH_CONSOLE_TIME_ZONE,
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
@@ -76,6 +78,7 @@ export async function seoMetrics(
     ...searchTotals,
     ...events.rows[0],
     terms: terms.rows,
-    note: "Search Console and measured website activity are distinct evidence. Untracked inquiries are not invented. Page/query rows are separate aggregates; changes are not proof of causation.",
+    timeZone: SEARCH_CONSOLE_TIME_ZONE,
+    note: "Comparison windows use Google’s Pacific calendar for both sources. Search Console and measured website activity are distinct evidence. Untracked inquiries are not invented. Page/query rows are separate aggregates; changes are not proof of causation.",
   };
 }

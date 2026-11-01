@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatMailTime } from '$lib/utils/date';
 	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
@@ -68,7 +69,7 @@
 				return false;
 			}
 			draftId = body.id;
-			savedAt = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+			savedAt = formatMailTime(new Date().toISOString());
 			return true;
 		} catch {
 			error = t('common.networkError');

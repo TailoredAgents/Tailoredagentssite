@@ -1057,7 +1057,8 @@ async function importDialerRow(
           row.externalId ?? null,
           row.phone ?? null,
           row.email ?? null,
-          row.occurredAt ?? null,
+          // Keep the historical key so reimporting an old date-only file cannot duplicate calls.
+          row.occurredOn ? `${row.occurredOn}T00:00:00.000Z` : row.occurredAt ?? null,
           row.outcome?.toLowerCase(),
         ]),
       )

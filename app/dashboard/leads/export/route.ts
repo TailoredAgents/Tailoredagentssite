@@ -1,3 +1,4 @@
+import { businessDateKey, formatEasternTime } from "@/lib/time";
 import { requireDashboardContext } from "@/lib/dashboard/data";
 import { exportLeads } from "@/lib/operations/data";
 
@@ -13,14 +14,14 @@ function csvCell(value: unknown) {
 export async function GET() {
   const context = await requireDashboardContext();
   const leads = await exportLeads(context);
-  const headers = ["Organization", "Contact", "Email", "Phone", "Inquiry type", "Interest", "Website", "Status", "Owner", "Next action", "Next action date", "Outcome", "Received"];
+  const headers = ["Organization", "Contact", "Email", "Phone", "Inquiry type", "Interest", "Website", "Status", "Owner", "Next action", "Next action date", "Outcome", "Received (Eastern)"];
   const lines = [headers, ...leads.map((lead) => [
     lead.organization, lead.name, lead.email, lead.phone, lead.inquiry_type,
     lead.interest, lead.website_url, lead.status, lead.owner_name,
     lead.next_action, lead.next_action_at?.toISOString(), lead.outcome_summary,
-    lead.created_at.toISOString(),
+    formatEasternTime(lead.created_at.toISOString()),
   ])].map((row) => row.map(csvCell).join(","));
-  const date = new Date().toISOString().slice(0, 10);
+  const date = businessDateKey();
   return new Response(`\uFEFF${lines.join("\r\n")}`, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",

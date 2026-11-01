@@ -14,7 +14,7 @@ export async function runReportingMaintenance() {
       const due =
         await client.query(`UPDATE reporting_maintenance SET last_started_at = now()
         WHERE name = 'retention' AND (last_succeeded_at IS NULL OR
-          (last_succeeded_at AT TIME ZONE 'UTC')::date < (now() AT TIME ZONE 'UTC')::date) RETURNING name`);
+          business_day(last_succeeded_at) < business_day()) RETURNING name`);
       if (due.rowCount) {
         await client.query("SELECT perform_reporting_retention()");
         await client.query(

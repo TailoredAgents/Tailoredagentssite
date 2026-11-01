@@ -96,7 +96,7 @@ export default async function SeoPage() {
           <SalesMetric
             label="This month's usage"
             value={dollars(data.spent)}
-            detail={`${dollars(Number(data.health.settled))} spent · ${dollars(Number(data.health.reserved))} reserved · ${dollars(data.health.remaining)} remaining · UTC month`}
+            detail={`${dollars(Number(data.health.settled))} spent · ${dollars(Number(data.health.reserved))} reserved · ${dollars(data.health.remaining)} remaining · Eastern month`}
             tone="blue"
           />
           <SalesMetric
@@ -613,7 +613,7 @@ export default async function SeoPage() {
         >
           <div className="seo-box">
             <p>
-              {dollars(data.spent)} accounted against {dollars(limit)} this UTC
+              {dollars(data.spent)} accounted against {dollars(limit)} this Eastern
               month. Unconfirmed requests retain their reservation until
               reconciled.
             </p>

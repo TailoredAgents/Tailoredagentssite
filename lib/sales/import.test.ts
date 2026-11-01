@@ -217,7 +217,8 @@ describe("BatchDialer result parsing", () => {
       { mode: "dialer" },
     );
     expect(valid.errors).toEqual([]);
-    expect(valid.rows[0].occurredAt).toBe("2026-10-21T00:00:00.000Z");
+    expect(valid.rows[0].occurredAt).toBe("2026-10-21T04:00:00.000Z");
+    expect(valid.rows[0].occurredOn).toBe("2026-10-21");
     for (const date of [
       "2026-02-30",
       "2026-02-30T12:00:00Z",

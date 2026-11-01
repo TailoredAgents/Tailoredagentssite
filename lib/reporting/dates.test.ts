@@ -7,12 +7,15 @@ import {
   datesDescending,
   validDate,
 } from "./dates";
+import { searchConsoleToday } from "@/lib/search-console/dates";
 import { csvLine } from "./csv";
 import { readMeasurement } from "@/lib/analytics/measurement";
 describe("Reporting dates and exports", () => {
-  it("uses Pacific dates across midnight and daylight-saving changes", () => {
-    expect(reportToday(new Date("2026-03-08T07:59:00Z"))).toBe("2026-03-07");
-    expect(reportToday(new Date("2026-03-09T06:59:00Z"))).toBe("2026-03-08");
+  it("uses Eastern website dates and keeps Google provider dates Pacific", () => {
+    expect(reportToday(new Date("2026-03-08T04:59:00Z"))).toBe("2026-03-07");
+    expect(reportToday(new Date("2026-03-09T03:59:00Z"))).toBe("2026-03-08");
+    expect(reportToday(new Date("2026-03-09T04:00:00Z"))).toBe("2026-03-09");
+    expect(searchConsoleToday(new Date("2026-03-09T04:00:00Z"))).toBe("2026-03-08");
     expect(datesDescending("2026-03-07", "2026-03-09")).toEqual([
       "2026-03-09",
       "2026-03-08",

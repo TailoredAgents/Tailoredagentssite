@@ -792,6 +792,21 @@ describe.skipIf(!databaseUrl)(
       ).not.toContain("Ambiguous fixture");
     });
 
+    it("imports date-only calls at Eastern midnight while recognizing legacy UTC identities", async () => {
+      const id = await createOpportunity(owner, prospect({phone:"+12125550100"}));
+      const header = "Phone,Disposition,Call ID,Call Date,Notes";
+      // Simulate a stored pre-change date-only call with the old UTC identity.
+      const legacy = `${header}\n2125550100,No answer,old-date,2026-10-21T00:00:00Z,Legacy`;
+      expect(await importSalesCsv(member, imported(legacy), "dialer")).toMatchObject({created:1});
+      const repeated = `${header}\n2125550100,No answer,old-date,2026-10-21,Re-exported`;
+      expect(await importSalesCsv(member, imported(repeated), "dialer")).toMatchObject({created:0,matched:1});
+      const fresh = `${header}\n2125550100,No answer,new-date,2026-11-02,New calendar date`;
+      expect(await importSalesCsv(member, imported(fresh), "dialer")).toMatchObject({created:1});
+      const calls = (await record(id)).activities;
+      expect(calls).toHaveLength(2);
+      expect(calls.map(call => call.occurredAt)).toEqual(expect.arrayContaining(["2026-10-21T00:00:00.000Z","2026-11-02T05:00:00.000Z"]));
+    });
+
     it("deduplicates BatchDialer outcomes and preserves channel suppression", async () => {
       const input = prospect({ phone: "+12125550100" }),
         id = await createOpportunity(owner, input);

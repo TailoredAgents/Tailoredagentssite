@@ -37,7 +37,7 @@ export async function reserveCost(input: {
     if ((await db.query("SELECT 1 FROM seo_costs WHERE workspace_id=$1 AND site_id=$2 AND status='uncertain' LIMIT 1",[input.workspace,input.site])).rowCount)
       throw new SeoBudgetError("Review the uncertain provider charge before more paid work.");
     if (pilot) {
-      const used = (await db.query("SELECT COALESCE(sum(CASE WHEN c.status='settled' THEN c.actual_micros WHEN c.status IN ('reserved','uncertain') THEN c.reserved_micros ELSE 0 END),0)::text used FROM seo_costs c JOIN seo_runs r ON r.id=c.run_id WHERE c.site_id=$1 AND c.workspace_id=$2 AND r.context->>'pilot'='true' AND c.period=date_trunc('month',now() AT TIME ZONE 'UTC')::date AND c.request_key<>$3",[input.site,input.workspace,input.key])).rows[0];
+      const used = (await db.query("SELECT COALESCE(sum(CASE WHEN c.status='settled' THEN c.actual_micros WHEN c.status IN ('reserved','uncertain') THEN c.reserved_micros ELSE 0 END),0)::text used FROM seo_costs c JOIN seo_runs r ON r.id=c.run_id WHERE c.site_id=$1 AND c.workspace_id=$2 AND r.context->>'pilot'='true' AND c.period=business_month() AND c.request_key<>$3",[input.site,input.workspace,input.key])).rows[0];
       if(Number(used.used)+input.micros>5_000_000) throw new SeoBudgetError("The $5 model pilot allowance has been reached.");
     }
     const prior = await db.query(
@@ -55,7 +55,7 @@ export async function reserveCost(input: {
     }
     const used = (
       await db.query(
-        "SELECT COALESCE(sum(CASE WHEN status='settled' THEN actual_micros WHEN status IN ('reserved','uncertain') THEN reserved_micros ELSE 0 END),0)::text used FROM seo_costs WHERE workspace_id=$1 AND site_id=$2 AND period=date_trunc('month',now() AT TIME ZONE 'UTC')::date AND ($3::uuid IS NULL OR id<>$3)",
+        "SELECT COALESCE(sum(CASE WHEN status='settled' THEN actual_micros WHEN status IN ('reserved','uncertain') THEN reserved_micros ELSE 0 END),0)::text used FROM seo_costs WHERE workspace_id=$1 AND site_id=$2 AND period=business_month() AND ($3::uuid IS NULL OR id<>$3)",
         [input.workspace, input.site, prior.rows[0]?.id || null],
       )
     ).rows[0];
@@ -69,7 +69,7 @@ export async function reserveCost(input: {
     const id = prior.rows[0]?.id || randomUUID();
     if (prior.rowCount)
       await db.query(
-        "UPDATE seo_costs SET status='reserved',reserved_micros=$2,period=date_trunc('month',now() AT TIME ZONE 'UTC')::date WHERE id=$1",
+        "UPDATE seo_costs SET status='reserved',reserved_micros=$2,period=business_month() WHERE id=$1",
         [id, input.micros],
       );
     else
@@ -114,7 +114,7 @@ export async function attemptCost(id: string) {
     const r = await db.query(
       `UPDATE seo_costs c SET attempted_at=now() FROM seo_managers m,seo_runs r
    WHERE c.id=$1 AND c.status='reserved' AND c.attempted_at IS NULL
-    AND c.period=date_trunc('month',now() AT TIME ZONE 'UTC')::date
+    AND c.period=business_month()
     AND m.workspace_id=c.workspace_id AND m.site_id=c.site_id AND m.profile_reviewed_at IS NOT NULL
     AND ((m.ai_enabled AND m.ai_reviewed_at IS NOT NULL) OR (m.pilot_enabled AND r.kind='strategy' AND r.context->>'pilot'='true'))
     AND NOT EXISTS(SELECT 1 FROM seo_costs u WHERE u.site_id=c.site_id AND u.workspace_id=c.workspace_id AND u.status='uncertain')

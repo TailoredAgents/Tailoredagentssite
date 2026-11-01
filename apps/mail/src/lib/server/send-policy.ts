@@ -1,3 +1,4 @@
+import { businessDateKey } from '../time';
 import type { D1Database } from '@cloudflare/workers-types';
 import type { AuthMethod } from './api-access';
 
@@ -12,7 +13,7 @@ export const DEFAULT_API_DAILY_SEND_LIMIT = 100;
 export type ApiSendPolicy = {
 	/** `API_SEND_ENABLED=false` stops every token-authenticated send at once. */
 	enabled: boolean;
-	/** Sends per user per UTC day; null when `API_DAILY_SEND_LIMIT=0`. */
+	/** Sends per user per Eastern calendar day; null when `API_DAILY_SEND_LIMIT=0`. */
 	dailyLimit: number | null;
 };
 
@@ -50,17 +51,12 @@ export class SendPolicyError extends Error {
 	}
 }
 
-/** The UTC day an allowance is counted against, e.g. 2026-09-29. */
-export function utcDay(now = new Date()): string {
-	return now.toISOString().slice(0, 10);
-}
-
 /** Count one send against the day's allowance; false once it is used up. */
 export async function claimDailySend(
 	db: D1Database,
 	userId: string,
 	limit: number,
-	day = utcDay()
+	day = businessDateKey()
 ): Promise<boolean> {
 	// One statement, so two concurrent sends cannot both take the last slot.
 	const claimed = await db

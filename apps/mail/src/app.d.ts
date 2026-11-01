@@ -46,7 +46,7 @@ declare global {
 				TYPESAFE_API_KEY?: string;
 				/** `false` stops all sending with API keys and MCP tokens. */
 				API_SEND_ENABLED?: string;
-				/** Sends per user per UTC day for API keys and MCP tokens (default 100, 0 = no limit). */
+				/** Sends per user per Eastern calendar day for API keys and MCP tokens (default 100, 0 = no limit). */
 				API_DAILY_SEND_LIMIT?: string;
 				/** Workers AI, for an admin who picks it as the instance drafting provider. */
 				AI?: WorkersAiBinding;

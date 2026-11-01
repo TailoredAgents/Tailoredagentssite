@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { easternInputCandidates, easternInputValue, formatEasternTime } from "./time";
+import { businessDateKey, nextBusinessMidnight, timestampIso, easternInputCandidates, easternInputValue, formatEasternTime } from "./time";
 
 describe("US Eastern CRM time", () => {
   it("uses EST in winter and EDT in summer, independent of the device zone", () => {
@@ -31,5 +31,25 @@ describe("US Eastern CRM time", () => {
     }
     expect(easternInputValue("bad")).toBe("");
     expect(formatEasternTime("bad")).toBe("Date unavailable");
+  });
+});
+
+
+describe("Eastern business boundaries", () => {
+  it.each([
+    ["2026-02-01T04:59:59Z", "2026-01-31", "2026-02-01T05:00:00.000Z"],
+    ["2026-02-01T05:00:00Z", "2026-02-01", "2026-02-02T05:00:00.000Z"],
+    ["2026-07-01T03:59:59Z", "2026-06-30", "2026-07-01T04:00:00.000Z"],
+    ["2026-03-08T05:00:00Z", "2026-03-08", "2026-03-09T04:00:00.000Z"],
+    ["2026-11-01T04:00:00Z", "2026-11-01", "2026-11-02T05:00:00.000Z"],
+  ])("resolves %s without fixed-offset or 24-hour assumptions", (instant, day, next) => {
+    expect(businessDateKey(new Date(instant))).toBe(day);
+    expect(nextBusinessMidnight(new Date(instant))).toBe(next);
+  });
+  it("reads D1 timestamps as UTC and preserves explicit offsets", () => {
+    expect(timestampIso("2026-07-01 03:59:59")).toBe("2026-07-01T03:59:59.000Z");
+    expect(timestampIso("2026-07-01T00:00:00-04:00")).toBe("2026-07-01T04:00:00.000Z");
+    expect(formatEasternTime("2026-07-01 03:59:59")).toBe("Jun 30, 2026, 11:59 PM EDT");
+    expect(timestampIso("bad")).toBeNull();
   });
 });

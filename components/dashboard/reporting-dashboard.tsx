@@ -68,12 +68,14 @@ function Trend({
   data,
   first,
   second,
+  timeZoneLabel = "Eastern Time (EST/EDT)",
 }: {
   title: string;
   range: DateRange;
   data: { day: string; a: number | null; b: number | null }[];
   first: string;
   second: string;
+  timeZoneLabel?: string;
 }) {
   const max = Math.max(1, ...data.flatMap((row) => [row.a ?? 0, row.b ?? 0]));
   const x = (i: number) => 70 + (i * 500) / Math.max(1, data.length - 1),
@@ -98,7 +100,7 @@ function Trend({
       <header>
         <div>
           <h2>{title}</h2>
-          <p>{dates(range)} · Pacific Time</p>
+          <p>{dates(range)} · {timeZoneLabel}</p>
         </div>
         <BarChart3 size={21} aria-hidden="true" />
       </header>
@@ -287,7 +289,7 @@ function DetailTable({
       <header>
         <div>
           <h2>{definition.title}</h2>
-          <p>{dates(range)} · Pacific Time</p>
+          <p>{dates(range)} · {google ? "Pacific Time (Google)" : "Eastern Time (EST/EDT)"}</p>
         </div>
         <span className="report-pill">{google ? "Google" : "Website"}</span>
       </header>
@@ -592,7 +594,7 @@ export function ReportingDashboard({
         </form>
       </section>
       <p className="report-date-note">
-        Report days use Pacific Time. Custom ranges support up to 366 days.
+        Website report days use Eastern Time (EST/EDT). Google report days use Pacific Time. Custom ranges support up to 366 days.
         Google results arrive later than website activity.
       </p>
       {invalidDates && (
@@ -720,6 +722,7 @@ export function ReportingDashboard({
         />
         <Trend
           title="Google search performance"
+          timeZoneLabel="Pacific Time (Google)"
           range={google.range}
           first="Clicks"
           second="Appearances"
@@ -836,7 +839,7 @@ export function ReportingDashboard({
               </p>
               <p>
                 Initial history: 90 completed days. The first scheduled check
-                after 10:17 UTC requests each daily refresh.
+                after 5:17 AM Eastern (EST/EDT) requests each daily refresh.
               </p>
             </div>
             {status.canManage && (

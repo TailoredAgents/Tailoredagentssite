@@ -588,7 +588,7 @@ describe.skipIf(!url)("Internal SEO manager with guarded PostgreSQL", () => {
     await saveSeoSettings(owner, { ...settings, budget: 1 });
     const run = await running();
     await pool.query(
-      "INSERT INTO seo_costs(id,workspace_id,site_id,run_id,request_key,provider,operation,period,reserved_micros,actual_micros,status) VALUES($1,$2,$3,$4,'older','openai','plan',date_trunc('month',now() AT TIME ZONE 'UTC')::date-interval '1 month',2000000,2000000,'settled')",
+      "INSERT INTO seo_costs(id,workspace_id,site_id,run_id,request_key,provider,operation,period,reserved_micros,actual_micros,status) VALUES($1,$2,$3,$4,'older','openai','plan',business_month()-interval '1 month',2000000,2000000,'settled')",
       [randomUUID(), ws, site, run],
     );
     await reserveCost({

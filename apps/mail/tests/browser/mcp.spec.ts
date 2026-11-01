@@ -1,5 +1,6 @@
 import {test,expect} from '@playwright/test';
 import {createHash,randomBytes} from 'node:crypto';
+test.use({timezoneId:'Asia/Tokyo'});
 
 test('built Worker: discovery, login continuation, explicit consent, PKCE, read-only monitoring, refresh and revocation',async({page,request})=>{
  const origin='http://localhost:8787';
@@ -33,11 +34,16 @@ test('built Worker: discovery, login continuation, explicit consent, PKCE, read-
  const exchange=await request.post('/oauth/token',{form:{client_id,redirect_uri:origin+'/callback-test',grant_type:'authorization_code',code_verifier:verifier,code,resource}});
  expect(exchange.status()).toBe(200);const tokens=await exchange.json();expect(tokens.scope).toBe('mail:read');
  const call=async(token:string,method:string,params:any={})=>request.post('/mcp',{headers:{Authorization:'Bearer '+token,Accept:'application/json, text/event-stream'},data:{jsonrpc:'2.0',id:1,method,params}});
+ const whoami=await call(tokens.access_token,'tools/call',{name:'whoami',arguments:{}});
+ const identity=JSON.parse((await whoami.json()).result.content[0].text);
+ expect(identity.time_zone).toBe('America/New_York');expect(identity.sending.reset_time_zone).toBe('America/New_York');
+ expect(identity.sending.next_reset_at).toMatch(/T0[45]:00:00\.000Z$/);
  const listing=await call(tokens.access_token,'tools/list');expect(listing.status()).toBe(200);
  const tools=(await listing.json()).result.tools;expect(tools.some((t:any)=>t.name==='get_thread')).toBe(true);expect(tools.some((t:any)=>t.name==='send_message')).toBe(false);
  const reading=await call(tokens.access_token,'tools/call',{name:'get_thread',arguments:{id:'local-message-1',markRead:false}});expect(reading.status()).toBe(200);
  const threadResult=(await reading.json()).result;expect(threadResult.isError).not.toBe(true);
  const message=JSON.parse(threadResult.content[0].text).messages[0];
+ expect(message.date).toMatch(/Z$/);
  const bodyResponse=await call(tokens.access_token,'tools/call',{name:'get_message_body',arguments:{id:message.id,format:'text',offset:0}});expect(bodyResponse.status()).toBe(200);
  const bodyResult=(await bodyResponse.json()).result;expect(bodyResult.isError).not.toBe(true);
  expect(bodyResult.structuredContent).toEqual(JSON.parse(bodyResult.content[0].text));

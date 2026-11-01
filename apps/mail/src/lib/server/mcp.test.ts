@@ -92,6 +92,17 @@ async function connect(options: { sendEnabled?: boolean; scopes?: string[]; send
 }
 
 describe('hosted MCP tools', () => {
+  test('advertises Eastern resets and returns unambiguous message instants', async () => {
+    const { call } = await connect();
+    const identity = (await call('whoami', {})).json();
+    assert.equal(identity.time_zone, 'America/New_York');
+    assert.equal(identity.sending.reset_time_zone, 'America/New_York');
+    assert.match(identity.sending.next_reset_at, /T0[45]:00:00\.000Z$/);
+    const thread = (await call('get_thread', {id:'m1',markRead:false})).json();
+    assert.equal(thread.messages[0].date, '2026-09-01T10:00:00.000Z');
+    const list = (await call('list_threads', {view:'inbox'})).json();
+    assert.equal(list.threads[0].last_message.created_at, '2026-09-01T10:00:00.000Z');
+  });
 	test('marks read tools read-only and send tools as irreversible', async () => {
 		const { client } = await connect();
 		const { tools } = await client.listTools();

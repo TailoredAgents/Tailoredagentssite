@@ -1,11 +1,11 @@
+import { businessDateKey, nextBusinessMidnight } from '../time';
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import {
 	apiSendPolicy,
 	claimDailySend,
 	DEFAULT_API_DAILY_SEND_LIMIT,
-	refundDailySend,
-	utcDay
+	refundDailySend
 } from './send-policy';
 import { createTestDb, insertTestUser } from './test-db';
 
@@ -53,7 +53,7 @@ describe('claimDailySend', () => {
 	test('a refunded slot can be used again', async () => {
 		const { db, sqlite } = createTestDb();
 		insertTestUser(sqlite, 'user-1');
-		const day = utcDay();
+		const day = businessDateKey();
 
 		assert.equal(await claimDailySend(db, 'user-1', 1, day), true);
 		await refundDailySend(db, 'user-1', day);
@@ -70,4 +70,21 @@ describe('claimDailySend', () => {
 		assert.equal(await claimDailySend(db, 'user-1', 1), false);
 		assert.equal(await claimDailySend(db, 'user-2', 1), true);
 	});
+});
+
+
+test('Eastern allowance crosses midnight once, including the repeated fall hour', async () => {
+  const { db, sqlite } = createTestDb(); insertTestUser(sqlite, 'user-1');
+  const day = (at: string) => businessDateKey(new Date(at));
+  assert.equal(await claimDailySend(db, 'user-1', 1, day('2026-11-01T03:59:59Z')), true);
+  assert.equal(await claimDailySend(db, 'user-1', 1, day('2026-11-01T04:00:00Z')), true);
+  for (const at of ['2026-11-01T05:30:00Z','2026-11-01T06:30:00Z','2026-11-02T04:59:59Z']) {
+    assert.equal(await claimDailySend(db, 'user-1', 1, day(at)), false);
+  }
+  assert.equal(nextBusinessMidnight(new Date('2026-11-01T04:00:00Z')), '2026-11-02T05:00:00.000Z');
+  assert.equal(await claimDailySend(db, 'user-1', 1, day('2026-11-02T05:00:00Z')), true);
+  // A late refund must credit the original day's reservation, never today's.
+  await refundDailySend(db, 'user-1', '2026-11-01');
+  assert.equal(await claimDailySend(db, 'user-1', 1, '2026-11-02'), false);
+  assert.equal(await claimDailySend(db, 'user-1', 1, '2026-11-01'), true);
 });

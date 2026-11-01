@@ -45,7 +45,9 @@ import { requireReportingSite } from "@/lib/dashboard/site-access";
 import { storePublicInquiry } from "@/lib/operations/public-inquiries";
 import { recordPendingInquiryMeasurements } from "@/lib/analytics/verified-inquiries";
 import { runReportingMaintenance } from "./maintenance";
-import { reportToday, shiftDate } from "./dates";
+import { BUSINESS_TIME_ZONE } from "@/lib/time";
+import { searchConsoleToday } from "@/lib/search-console/dates";
+import { shiftDate } from "./dates";
 import { POST as contact } from "@/app/api/contact/route";
 import { POST as analytics } from "@/app/api/analytics/events/route";
 import { POST as manual } from "@/app/api/integrations/search-console/sync/route";
@@ -66,7 +68,7 @@ const context = {
   },
   role: "owner" as const,
 };
-const end = shiftDate(reportToday(), -3),
+const end = shiftDate(searchConsoleToday(), -3),
   start = shiftDate(end, -89),
   secret = "local-test-secret-for-reporting-only-1234567890";
 let pool: pg.Pool;
@@ -893,13 +895,32 @@ describe.skipIf(!databaseUrl)(
           .rows[0].n,
       ).toBe(1);
     });
-    it("uses Pacific midnight around DST and excludes current-day activity from presets", async () => {
+    it("shares the Eastern business calendar across database budgets and DST boundaries", async () => {
+      const result = (await pool.query(`SELECT business_time_zone() zone,
+        business_day('2026-07-01T03:59:59Z')::text AS day,
+        business_month('2026-07-01T03:59:59Z')::text previous_month,
+        business_month('2026-07-01T04:00:00Z')::text next_month,
+        business_month('2026-02-01T04:59:59Z')::text winter_month,
+        extract(epoch FROM (('2026-03-09'::date::timestamp AT TIME ZONE business_time_zone()) - ('2026-03-08'::date::timestamp AT TIME ZONE business_time_zone())))/3600 spring_hours,
+        extract(epoch FROM (('2026-11-02'::date::timestamp AT TIME ZONE business_time_zone()) - ('2026-11-01'::date::timestamp AT TIME ZONE business_time_zone())))/3600 fall_hours`)).rows[0];
+      expect(result.zone).toBe(BUSINESS_TIME_ZONE);
+      expect(result.day).toBe("2026-06-30");
+      expect(result.previous_month).toBe("2026-06-01");
+      expect(result.next_month).toBe("2026-07-01");
+      expect(result.winter_month).toBe("2026-01-01");
+      expect(Number(result.spring_hours)).toBe(23);
+      expect(Number(result.fall_hours)).toBe(25);
+      const defaults = await pool.query(`SELECT column_default FROM information_schema.columns WHERE table_schema='public' AND table_name IN ('seo_costs','factory_costs','factory_build_costs') AND column_name='period'`);
+      expect(defaults.rows).toHaveLength(3);
+      expect(defaults.rows.every(r => r.column_default === 'business_month()')).toBe(true);
+    });
+    it("uses Eastern midnight around DST and excludes current-day activity from presets", async () => {
       const visitor = randomUUID();
       for (const timestamp of [
-        "2026-03-08T07:59:59Z",
-        "2026-03-08T08:00:00Z",
-        "2026-03-09T06:59:59Z",
-        "2026-03-09T07:00:00Z",
+        "2026-03-08T04:59:59Z",
+        "2026-03-08T05:00:00Z",
+        "2026-03-09T03:59:59Z",
+        "2026-03-09T04:00:00Z",
       ])
         await pool.query(
           `INSERT INTO analytics_events(id,workspace_id,site_id,session_id,event_name,path,landing_path,occurred_at) VALUES($1,$2,$3,$4,'page_view','/','/',$5)`,

@@ -1,3 +1,4 @@
+import { searchConsoleToday } from "@/lib/search-console/dates";
 import "server-only";
 import type { DashboardContext } from "@/lib/dashboard/data";
 import { getDatabasePool } from "@/lib/dashboard/db";
@@ -13,7 +14,7 @@ import {
 } from "./dates";
 
 const timeBounds =
-  "occurred_at >= ($3::date::timestamp AT TIME ZONE 'America/Los_Angeles') AND occurred_at < (($4::date + 1)::timestamp AT TIME ZONE 'America/Los_Angeles')";
+  "occurred_at >= ($3::date::timestamp AT TIME ZONE business_time_zone()) AND occurred_at < (($4::date + 1)::timestamp AT TIME ZONE business_time_zone())";
 const leadBounds = timeBounds.replaceAll("occurred_at", "created_at");
 async function websiteTotals(
   workspace: string,
@@ -84,7 +85,7 @@ export async function getReportingOverview(
       `SELECT max(occurred_at) AS latest FROM analytics_events WHERE workspace_id = $1 AND site_id = $2`,
       scope,
     ),
-    pool.query(`SELECT filename, ((applied_at AT TIME ZONE 'America/Los_Angeles')::date + 1)::text AS day
+    pool.query(`SELECT filename, ((applied_at AT TIME ZONE business_time_zone())::date + 1)::text AS day
       FROM schema_migrations WHERE filename IN ('0003_first_party_analytics.sql','0002_internal_operations.sql')`),
   ]);
   const covered = new Set<string>(coverageResult.rows.map((row) => row.day));
@@ -92,7 +93,7 @@ export async function getReportingOverview(
   const websiteRange = resolveReportRange(selection),
     googleRange = resolveReportRange(
       selection,
-      latest ?? shiftDate(reportToday(), -3),
+      latest ?? shiftDate(searchConsoleToday(), -3),
     );
   const websitePrevious = previousRange(websiteRange),
     googlePrevious = previousRange(googleRange);
@@ -118,13 +119,13 @@ export async function getReportingOverview(
     googleTotals(scope[0], scope[1], googleRange),
     googleTotals(scope[0], scope[1], googlePrevious),
     pool.query(
-      `SELECT (occurred_at AT TIME ZONE 'America/Los_Angeles')::date::text AS day,
+      `SELECT (occurred_at AT TIME ZONE business_time_zone())::date::text AS day,
       count(DISTINCT session_id) FILTER (WHERE event_name = 'page_view')::int AS visits
       FROM analytics_events WHERE workspace_id = $1 AND site_id = $2 AND ${timeBounds} GROUP BY day`,
       values,
     ),
     pool.query(
-      `SELECT (created_at AT TIME ZONE 'America/Los_Angeles')::date::text AS day, count(*)::int AS inquiries
+      `SELECT (created_at AT TIME ZONE business_time_zone())::date::text AS day, count(*)::int AS inquiries
       FROM leads WHERE workspace_id = $1 AND source = 'website' AND ${leadBounds.replaceAll("$3", "$2").replaceAll("$4", "$3")} GROUP BY day`,
       [scope[0], websiteRange.start, websiteRange.end],
     ),
@@ -287,7 +288,7 @@ export async function getReportTable(
   const range = resolveReportRange(
     selection,
     isGoogle
-      ? (latest?.rows[0].day ?? shiftDate(reportToday(), -3))
+      ? (latest?.rows[0].day ?? shiftDate(searchConsoleToday(), -3))
       : undefined,
   );
   const size = Math.max(1, Math.min(1000, options.size ?? 10)),

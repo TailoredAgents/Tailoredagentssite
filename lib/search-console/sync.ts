@@ -1,10 +1,11 @@
+import { searchConsoleToday } from "./dates";
 import "server-only";
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { resolveDashboardConfiguration } from "@/lib/dashboard/config";
 import { PRODUCTION_SITE_ID } from "@/lib/dashboard/site-access";
 import { getDatabasePool } from "@/lib/dashboard/db";
-import { datesDescending, reportToday, shiftDate } from "@/lib/reporting/dates";
+import { datesDescending, shiftDate } from "@/lib/reporting/dates";
 import { decryptCredential, encryptCredential } from "./crypto";
 import {
   SEARCH_CONSOLE_PROVIDER,
@@ -65,9 +66,9 @@ export function plannedDates(
   coverage: Set<string>,
   now = new Date(),
 ) {
-  const end = shiftDate(reportToday(now), -3);
+  const end = shiftDate(searchConsoleToday(now), -3);
   const requestedStart = historyStart ?? shiftDate(end, -89);
-  const earliest = new Date(`${reportToday(now)}T12:00:00Z`);
+  const earliest = new Date(`${searchConsoleToday(now)}T12:00:00Z`);
   const dayOfMonth = earliest.getUTCDate();
   earliest.setUTCDate(1);
   earliest.setUTCMonth(earliest.getUTCMonth() - 16);
@@ -146,7 +147,7 @@ export async function syncSearchConsoleConnection(
       ],
     );
     await client.query(
-      "UPDATE integration_connections SET last_synced_at=now(), history_start=coalesce(history_start,$2::date), last_daily_request=(now() AT TIME ZONE 'UTC')::date WHERE id=$1",
+      "UPDATE integration_connections SET last_synced_at=now(), history_start=coalesce(history_start,$2::date), last_daily_request=business_day() WHERE id=$1",
       [integrationId, plan.dates.at(-1)],
     );
     await client.query("COMMIT");
@@ -463,8 +464,8 @@ export async function syncAllSearchConsoleConnections() {
   const due = await pool.query<{ id: string }>(
     `SELECT id FROM integration_connections WHERE provider=$1 AND status IN ('active','error')
     AND refresh_token_encrypted IS NOT NULL AND (last_error IS NULL OR last_error<>ALL($2::text[]))
-    AND (last_daily_request IS NULL OR last_daily_request<(now() AT TIME ZONE 'UTC')::date)
-    AND (now() AT TIME ZONE 'UTC')::time >= time '10:17'`,
+    AND (last_daily_request IS NULL OR last_daily_request<business_day())
+    AND (now() AT TIME ZONE business_time_zone())::time >= time '05:17'`,
     [SEARCH_CONSOLE_PROVIDER, RECONNECT_ERRORS],
   );
   for (const row of due.rows)
