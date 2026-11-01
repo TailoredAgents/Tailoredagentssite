@@ -1,7 +1,8 @@
 # Tailored Agents Mail MCP — deployment and connection handoff
 
-Updated November 1, 2026. **Production deployment and public protocol checks passed;
-Austin's personal ChatGPT/Mail connection remains incomplete.** Production configuration
+Updated November 1, 2026, **6:16 PM EST. Austin's own ChatGPT/Mail connection is
+installed and read-tested; his existing business-email monitor includes Mail and
+passed a manual run.** Production configuration
 enables OAuth sending with a starting cap of 25 messages per user per UTC day.
 No production assistant clients, access tokens, or mailbox grants were created during deployment.
 No real messages were sent through MCP. Unit tests use a mocked provider; browser
@@ -26,13 +27,61 @@ Austin's MCP sending or inbox placement. See the [Sales acceptance record](../..
   returned 200 and anonymous `/` redirected to login. This is curl evidence, not
   proof of access from Austin's ChatGPT client.
 - Deployed vars are `APP_URL=https://mail.tailoredagents.com`,
-  `API_SEND_ENABLED=true`, `API_DAILY_SEND_LIMIT=25`. Austin's effective token policy
-  still needs his actual `whoami` check after consent.
+  `API_SEND_ENABLED=true`, `API_DAILY_SEND_LIMIT=25`. Austin's later `whoami` check
+  confirmed the effective enabled policy and 25-per-user-UTC-day cap.
 - Fresh local verification passed **424/424 tests**, **2/2 MCP browser tests**,
   Worker build, and Svelte/TypeScript check with zero errors or warnings.
-- Actual Austin OAuth consent, tools in this conversation, live read/send/manage,
-  token refresh and existing scheduled-email integration remain unverified. Follow
-  the account-specific acceptance checklist in [new jeffrey.md](../../new%20jeffrey.md).
+- The later connection and body-tool correction are recorded below. Live sends,
+  mailbox mutations and production refresh/revocation remain untested. The custom
+  tools are available in Austin's ChatGPT, not this separate Codex conversation.
+
+## Austin connection verification — November 1, 2026
+
+Austin signed in himself. Jeffrey, with Austin present, relayed his consent and
+confirmed the intended ChatGPT account. The assistant completed DCR/OAuth in that
+session for **`austin@tailoredagents.com`**, explicitly selecting Read, Send and Manage.
+Mail's Connected assistants page confirms all three scopes. ChatGPT's plugin
+permission is **Allow read-only tools** (`ask_before_writes`): reads may run without
+asking, while every change requires approval. This does not remove the send/manage
+OAuth scopes.
+
+- `whoami` returned only Austin's owned address, all three scopes,
+  `sending.enabled:true` and `daily_limit:25`. All **23 tools** are available:
+  11 read, 5 send and 7 manage.
+- Three Inbox and three Sent threads were sampled. Both folder searches returned
+  known conversations. Repeated reads with `markRead:false` preserved message IDs
+  and read flags; latest-response direction/time were inspected. No mailbox records
+  were changed and no messages were sent.
+- An actual client failure was found: `get_message_body` returned `{}` to ChatGPT
+  even with the correct message ID, while `get_thread` worked. Main **`2e1b3ed`**
+  adds explicit output schemas and `structuredContent` to body/attachment chunk
+  tools, retaining the JSON text representation for existing clients. This follows
+  the [OpenAI MCP result guidance](https://developers.openai.com/api/docs/mcp).
+  Worker **`0c669d63-88d1-4389-bfa1-0a85893ed27e`** was uploaded at **6:14:40 PM EST**
+  and deployed successfully. After refreshing tools, the same ChatGPT read returned
+  **16,491 characters**, the correct metadata and `next_offset:null`, matching
+  `get_thread`. The empty-result failure is resolved.
+- Verification: **425/425 Mail tests**, **18/18 targeted MCP checks**, **2/2 built
+  Worker browser tests** (including structured body output over HTTP), production
+  build, zero-error/zero-warning type check and clean targeted lint. After deploy,
+  the three discovery endpoints returned 200 with curl; anonymous MCP GET/POST
+  returned 401 with challenges. Python urllib requests encountered an edge 403;
+  curl and the actual authenticated ChatGPT client passed. No edge policy changed.
+- Austin's existing **Business email updates** monitor was edited, saved and read
+  back. iCloud, prior context, task name and Custom/Eastern Time/same-chat/Medium
+  settings were preserved. Mail uses `markRead:false`, owned-mail scope, deduplication,
+  quiet unchanged checks and explicit access-failure reporting. **Run now** completed
+  with both mailboxes accessible and established Austin's Mail baseline. No duplicate
+  monitor or automatic replies were created. A future unattended run is not yet observed.
+
+**Remaining limits:** The six sampled threads had no attachments and no further
+thread pages; the full body fit in one chunk. Production attachment retrieval,
+continuation pages, token refresh/revocation, actual sends and management actions
+remain **UNTESTED**. Local chunk/attachment/refresh/revocation coverage passed.
+Shared Sales remains outside Austin's ownership-only MCP scope. Installing the
+plugin in his ChatGPT account did not expose its tools in this Codex conversation.
+Private configuration backups and sanitized verification reports are outside Git in
+the operator's `TailoredAgents/operations/austin-mail-connection-2026-11-01` folder.
 
 ## What changed
 
