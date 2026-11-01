@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import Image from 'next/image';
-import austinHeadshot from '@/public/team/austin-dugger.png';
+import {cardPortraits} from '@/lib/smart-cards/portraits';
 import {useEffect,useRef,useState} from 'react';
 import {ArrowDownToLine,ArrowRight,ArrowUpRight,Check,Code2,Globe,Layers3,Mail,MessageCircle,Phone,Send,Sparkles,Workflow} from 'lucide-react';
 import {BrandLogo} from '@/components/brand-logo';
@@ -13,7 +13,7 @@ function track(source:Source,event:string){if(navigator.doNotTrack==='1'||(navig
 export function SmartCardProfile({profile,card,channel}:{profile:CardProfile;card?:string;channel:CardChannel}){
  const source:Source={profile:profile.slug,card,channel};const seen=useRef(false);
  const [interest,setInterest]=useState('Let’s talk');const first=profile.display_name.split(' ')[0];
- const headshot=profile.slug==='austin'?austinHeadshot:null;
+ const headshot=cardPortraits[profile.slug]?.image;
  useEffect(()=>{if(!seen.current){seen.current=true;track({profile:profile.slug,card,channel},'visit');}},[profile.slug,card,channel]);
  function inquiry(value='Let’s talk'){setInterest(value);track(source,'inquiry_open');document.getElementById('card-connect')?.scrollIntoView({behavior:'smooth',block:'start'});}
  return <div className="smart-card-page"><div className="smart-card-shell">

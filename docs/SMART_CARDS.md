@@ -16,6 +16,14 @@ The mobile introduction keeps Save contact, Talk to our AI, Call and Email near 
 
 Profiles include vCard contact downloads, call/email links, public work and service links, a short consultation form, interest in Smart Cards, and the Tailored Agents AI assistant. Without a supplied booking link, the form requests a conversation; it does not promise or reserve a meeting time.
 
+## Shared-link previews
+
+Each published `/c/name` page supplies its own Open Graph and large-image Twitter metadata, with a 1200 × 630 PNG at `/c/name/share-image`. Austin uses his supplied portrait; Jeffrey and Devon use their initials until their photos are provided. The marketing site's preview remains separate. `lib/smart-cards/portraits.ts` is the shared portrait registry for the profile and preview image.
+
+Preview titles, descriptions and images use current published profile details. An image URL version changes when the displayed name, role or portrait changes. Messaging apps may still cache previews of previously shared links, and recipients' apps/settings determine whether a preview is shown. Permanent `/go/` card links retain their normal temporary redirect to the profile; clients that follow redirects receive that profile's metadata. Use the direct `/c/name` link for ordinary message sharing. No messages are sent by generating or verifying these previews.
+
+November 1 preview verification: all three PNGs rendered at 1200 × 630 and were visually inspected; crawler-style requests returned personalized Open Graph and Twitter metadata in the HTML head without JavaScript. Applebot, Twitterbot and WhatsApp user agents were checked, as were the permanent redirect, unchanged homepage metadata and an unknown-profile 404. These are server/image checks, not a guarantee that every recipient’s messaging app displays or refreshes a preview.
+
 ## Print and program
 
 Open **Dashboard → Smart Cards** (`/dashboard/smart-cards`). Copy the permanent NFC URL and download the QR SVG/PNG and front/back artwork for the same card or batch.
