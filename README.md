@@ -29,6 +29,7 @@ Operational today:
 - Durable project-inquiry and free website-review capture in PostgreSQL, with live Resend notifications to Jeffrey and Austin. One labeled test inquiry reached both inboxes exactly once on October 21.
 - Privacy-conscious first-party measurement for public page views, acquisition, next-step clicks, and inquiry conversions.
 - Conceptual Growth Hub and analytics visuals labeled as illustrative.
+- Personalized NFC/QR Smart Cards for Austin, Jeffrey and Devon, with contact downloads, the Tailored Agents AI assistant, and consultation requests. See [Smart Cards setup and programming](docs/SMART_CARDS.md).
 
 ### Private dashboard
 

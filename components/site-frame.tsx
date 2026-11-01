@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 
-const applicationRoutes = ["/dashboard", "/sign-in"];
+const applicationRoutes = ["/dashboard", "/sign-in", "/c"];
 
 export function SiteFrame({
   children,

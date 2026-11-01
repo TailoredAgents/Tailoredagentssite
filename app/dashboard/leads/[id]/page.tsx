@@ -76,7 +76,7 @@ export default async function LeadPage({
         <section className="dashboard-page-heading dashboard-page-heading-compact dashboard-record-heading">
           <div>
             <span>
-              {meta ? "Facebook / Instagram lead" : manual
+              {lead.source === "smart_card" ? "Smart Card inquiry" : meta ? "Facebook / Instagram lead" : manual
                 ? "Manually added lead"
                 : lead.inquiryType === "website-review"
                   ? "Website review"

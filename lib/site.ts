@@ -4,8 +4,8 @@ export const siteConfig = {
   description:
     "Premium website development, local SEO and analytics, and tailored AI agents and automation for growing companies.",
   url: process.env.NEXT_PUBLIC_SITE_URL || "https://www.tailoredagents.com",
-  phone: "(561) 701-5127",
-  phoneHref: "tel:+15617015127",
+  phone: "(678) 541-7725",
+  phoneHref: "tel:+16785417725",
   nav: [
     { href: "/websites", label: "Websites" },
     { href: "/seo", label: "SEO & Analytics" },

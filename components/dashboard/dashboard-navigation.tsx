@@ -24,6 +24,7 @@ import {
   Sparkles,
   UsersRound,
   PanelsTopLeft,
+  ContactRound,
 } from "lucide-react";
 import { dashboardAuthClient } from "@/lib/dashboard/auth-client";
 import type { DashboardContext } from "@/lib/dashboard/data";
@@ -45,6 +46,7 @@ const navigationGroups = [
       { label: "Leads", href: "/dashboard/leads", icon: UsersRound },
       { label: "Sales", href: "/dashboard/sales", icon: Columns3 },
       { label: "Website Builder", href: "/dashboard/sales/factory", icon: PanelsTopLeft },
+      { label: "Smart Cards", href: "/dashboard/smart-cards", icon: ContactRound },
       { label: "Calling lists", href: "/dashboard/sales/imports", icon: ListFilter },
     ],
   },

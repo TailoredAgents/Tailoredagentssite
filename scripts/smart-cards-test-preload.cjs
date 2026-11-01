@@ -1,0 +1,3 @@
+if(process.env.SMART_CARDS_BROWSER_FIXTURE!=='true'||process.env.NODE_ENV==='production')throw new Error('Smart Cards fixtures are local-development only.');
+const original=globalThis.fetch;
+globalThis.fetch=async function(input,init){if(String(input)==='https://api.openai.com/v1/responses'){const request=JSON.parse(init.body);if(request.input.some(m=>m.content.includes('fixture outage')))return new Response('{}',{status:503});return Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'Tailored Agents builds websites, custom software, and AI assistants. What would you like to explore?'}]}],usage:{input_tokens:1000,output_tokens:100}});}return original(input,init);};

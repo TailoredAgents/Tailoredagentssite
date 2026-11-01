@@ -90,7 +90,7 @@ export default async function LeadsPage({
               ))}
             </select>
           </label>
-          <label><Filter size={15} /><select aria-label="Filter leads by source" name="source" defaultValue={leads.source}><option value="all">All sources</option><option value="facebook">Facebook / Instagram</option><option value="website">Website</option><option value="manual">Added manually</option></select></label>
+          <label><Filter size={15} /><select aria-label="Filter leads by source" name="source" defaultValue={leads.source}><option value="all">All sources</option><option value="facebook">Facebook / Instagram</option><option value="website">Website</option><option value="manual">Added manually</option><option value="smart_card">Smart Cards</option></select></label>
           <button type="submit">Apply filters</button>
           {leads.q || leads.status !== "all" || leads.source !== "all" ? (
             <Link href="/dashboard/leads">Clear</Link>
@@ -134,7 +134,7 @@ export default async function LeadsPage({
                         ? "Website review"
                         : lead.interest || "Project inquiry"}
                     </strong>
-                    {lead.source === "facebook" ? <small>Facebook / Instagram</small> : lead.source === "manual" ? (
+                    {lead.source === "smart_card" ? <small>Smart Card inquiry</small> : lead.source === "facebook" ? <small>Facebook / Instagram</small> : lead.source === "manual" ? (
                       <small>Added manually</small>
                     ) : (
                       <small className={`delivery-${lead.deliveryStatus}`}>

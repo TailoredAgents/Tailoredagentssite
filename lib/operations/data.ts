@@ -47,7 +47,7 @@ export async function listLeads(
 ) {
   const q = searchTerm(input.q);
   const requestedSource = Array.isArray(input.source) ? input.source[0] : input.source;
-  const source = ["facebook", "website", "manual"].includes(requestedSource || "") ? requestedSource! : "all";
+  const source = ["facebook", "website", "manual", "smart_card"].includes(requestedSource || "") ? requestedSource! : "all";
   const requestedStatus = Array.isArray(input.status) ? input.status[0] : input.status;
   const status = leadStatuses.includes(requestedStatus as (typeof leadStatuses)[number]) ? requestedStatus! : "all";
   const page = pageNumber(input.page);
