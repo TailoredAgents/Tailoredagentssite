@@ -101,6 +101,29 @@ Reviewer access must also use isolated synthetic data; no real customer records 
 teammate credentials were exposed to reviewers. A complete demonstration and the
 final requested-permission list remain open.
 
+### Recorded demonstration — November 1, 2026
+
+The completed **3:10 captioned 1080p recording**, read-aloud script and requirement
+map are documented in [the recording handoff](META_REVIEW_RECORDING_2026-11-01.md).
+The MP4 remains in Jeffrey's private Movies folder, outside Git. It shows actual
+CRM sign-in, the existing owner permission grant, Page selection, the `leadgen`
+subscription, one synthetic test creation, returned fields and the CRM walkthrough.
+Tokens are permanently redacted; unrelated customer records are excluded.
+
+Jeffrey approved the synthetic test and its three team alerts, then explicitly
+approved revised synthetic contact fields after Meta rejected the no-phone attempt.
+Meta test `1366418305411614` imported on its first attempt at **19:44:54.950 UTC**
+into CRM record `5b07661b-9626-40ee-a92d-49d960f999b5`. The bounded read-only audit
+confirmed the linked record and **delivered** alerts to Austin, Devon and Jeffrey.
+Lead introductions remained disabled. Only this synthetic record received the
+demonstration note, Jeffrey assignment and internal next action.
+
+The video shows an existing grant, not a first-time consent dialog. Reviewer access,
+processor countries, attachment upload and final submission/approval remain open.
+Meta's requirements tool still blocks submission because a previous submission is
+in review; its screencast and API-precheck flags remain incomplete. Do not mark all
+App Review requirements complete merely because this local recording is ready.
+
 ### App Review preparation
 
 These are draft explanations, not a submitted or approved application. Confirm which permissions Meta requires for this own-business app before submitting. Becoming a Tech Provider for other businesses is outside this release.
