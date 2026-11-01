@@ -1,6 +1,6 @@
 # Tailored Agents Mail MCP — deployment and connection handoff
 
-Updated November 1, 2026, **6:24 PM EST. Austin's own ChatGPT/Mail connection is
+Updated November 1, 2026, **6:45 PM EST. Austin's own ChatGPT/Mail connection is
 installed and read-tested; his existing business-email monitor includes Mail and
 passed a manual run.** Production configuration
 enables OAuth sending with Jeffrey's approved cap of **100 messages per user per Eastern calendar day (EST/EDT)**.
@@ -24,7 +24,12 @@ in Eastern. See [the system time policy](../../docs/BUSINESS_TIME.md).
 
 Verification before release: 429 Mail tests passed with `TZ=Asia/Tokyo`, plus two
 built-Worker OAuth/MCP browser tests running with a Tokyo browser timezone, Svelte
-check and production build. Live deployment evidence is recorded below after rollout.
+check and production build. Code `3fcd00b` is deployed as Worker
+`c18a7f3b-817c-49f6-b89c-bba31df1cd09` (uploaded **6:41:54 PM EST**).
+Austin's actual connected ChatGPT verified enabled sending, `daily_limit:100`,
+both timezone fields `America/New_York`, and `next_reset_at:2026-11-02T05:00:00.000Z`
+(**November 2 at midnight EST**). The live settings panel matches. No mail was
+accessed or sent during this read-only policy check.
 
 ## Daily send limit increased — November 1, 2026
 

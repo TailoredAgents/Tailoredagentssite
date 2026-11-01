@@ -3,6 +3,9 @@
 System calendar: **Georgia time (EST/EDT)**. Mail's 100/day assistant limit resets
 at midnight Eastern; monthly application budgets and website reports use Eastern
 boundaries. Google daily aggregates retain explicitly labelled Pacific dates.
+**Live and verified November 1 at 6:45 PM EST** on Mail, CRM and Builder from
+`3fcd00b`. Austin's connected ChatGPT confirms 100/day and midnight Eastern;
+all 91 existing cost receipts were preserved.
 [Scope, compatibility and release evidence](docs/BUSINESS_TIME.md).
 
 # Production closeout — November 1, 2026
