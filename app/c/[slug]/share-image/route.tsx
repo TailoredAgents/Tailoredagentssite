@@ -33,7 +33,7 @@ export async function GET(_request: Request, {params}: {params: Promise<{slug: s
         </div>
       </div>
       <div style={{display: 'flex', position: 'relative', flex: 1, height: 522, borderRadius: 26, overflow: 'hidden', background: 'linear-gradient(145deg, #142d47, #315fa5)', alignItems: 'center', justifyContent: 'center'}}>
-        {photo ? <img src={`data:image/png;base64,${photo.toString('base64')}`} width={434} height={522} style={{width: '100%', height: '100%', objectFit: 'cover', objectPosition: '45% center'}} alt=""/> :
+        {photo && portrait ? <img src={`data:${portrait.mimeType};base64,${photo.toString('base64')}`} width={434} height={522} style={{width: '100%', height: '100%', objectFit: 'cover', objectPosition: '45% center'}} alt=""/> :
           <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 34, color: '#f4f7ff'}}>
             <div style={{display: 'flex', width: 212, height: 212, border: '1px solid #87aae0', borderRadius: 106, alignItems: 'center', justifyContent: 'center', fontSize: 91, letterSpacing: -6}}>{initials}</div>
             <div style={{display: 'flex', fontSize: 16, letterSpacing: 2}}>PEOPLE. IDEAS. POSSIBILITIES.</div>
