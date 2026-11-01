@@ -12,6 +12,8 @@ Implemented November 1, 2026 in the existing Next.js/Render application. Migrati
 
 All three use **(678) 541-7725**. `lib/site.ts` also supplies this number to the marketing site. Updating a card's public details later does not automatically update the marketing site's global configuration.
 
+The mobile introduction keeps Save contact, Talk to our AI, Call and Email near the top. The assistant follows the short introduction. Inquiry forms initially show name, email and an optional message; business, phone and service interest are available under optional details. Headshots are pending; the approved titles and initials remain in use.
+
 Profiles include vCard contact downloads, call/email links, public work and service links, a short consultation form, interest in Smart Cards, and the Tailored Agents AI assistant. Without a supplied booking link, the form requests a conversation; it does not promise or reserve a meeting time.
 
 ## Print and program
@@ -68,5 +70,7 @@ npm run build
 ```
 
 The database test resets that database's public schema. Never point it at production or a shared development database. Without the variable, integration tests skip. The 19 focused checks cover contact/vCard validation, permanent redirects, permissions, origin/body limits, source attribution, duplicate inquiries, shared AI spending races, provider uncertainty, session limits and retention. Existing renderer tests also require installed Playwright Chromium binaries and local networking permission.
+
+The November 1 mobile polish pass was checked at 320px, 390px and 1440px: contact actions fit without horizontal overflow, the AI shortcut moves focus to the assistant, the shorter form saves a synthetic inquiry, and collapsed optional fields preserve Smart Cards interest, business details and QR attribution. Type checking, linting and the production build passed.
 
 `seed-smart-cards-preview.mjs` and `smart-cards-test-preload.cjs` are local-only synthetic preview helpers; never enable `SMART_CARDS_BROWSER_FIXTURE` in production.
