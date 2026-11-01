@@ -4,7 +4,7 @@
 
 | Area | Verified November 1 | Remaining acceptance |
 | --- | --- | --- |
-| Mail MCP | Austin's own ChatGPT is connected to `austin@tailoredagents.com` with Read/Send/Manage, all 23 tools and the effective 25/user/UTC-day cap. Approval is required before changes. Inbox/Sent reads/searches and unchanged read flags passed. His existing business-email monitor includes Mail and passed Run now alongside iCloud. A client body-result issue was fixed in `2e1b3ed`, deployed as Worker `0c669d63-88d1-4389-bfa1-0a85893ed27e` after upload at **6:14:40 PM EST**; the 16,491-character live retest passed. 425/425 tests, 2/2 browser tests, build, type check and targeted lint passed. [Connection evidence](apps/mail/MCP_SETUP.md#austin-connection-verification--november-1-2026). | Custom tools remain unavailable in this separate Codex conversation. Actual sends/mutations, production token refresh/revocation, attachment/continuation cases and a future unattended monitor run remain untested. Shared Sales is outside Austin's MCP ownership scope. |
+| Mail MCP | Austin's own ChatGPT is connected to `austin@tailoredagents.com` with Read/Send/Manage, all 23 tools and the effective 100/user/UTC-day cap (increased at Jeffrey’s request). Approval is required before changes. Inbox/Sent reads/searches and unchanged read flags passed. His existing business-email monitor includes Mail and passed Run now alongside iCloud. A client body-result issue was fixed in `2e1b3ed`, deployed as Worker `0c669d63-88d1-4389-bfa1-0a85893ed27e` after upload at **6:14:40 PM EST**; the 16,491-character live retest passed. 425/425 tests, 2/2 browser tests, build, type check and targeted lint passed. [Connection evidence](apps/mail/MCP_SETUP.md#austin-connection-verification--november-1-2026). | Custom tools remain unavailable in this separate Codex conversation. Actual sends/mutations, production token refresh/revocation, attachment/continuation cases and a future unattended monitor run remain untested. Shared Sales is outside Austin's MCP ownership scope. |
 | Team accounts / Sales | Austin's Mail admin/dashboard access and Devon's active regular account verified; neither needs recreating. Austin's own Mail sign-in is now verified. All three teammates retain Sales read/send grants. Jeffrey opened Sales in the CRM; the existing Gmail logo attachment returned 200, 9,186 bytes and decoded as 120×120. | Austin/Devon's own CRM/Sales acceptance remains pending. Hotmail round trip passed: one approved send delivered, with its reply in the same CRM thread. Jeffrey reported Junk placement. Full live team workflow remains untested. |
 | Copied-team-email fix | Deployed to Mail and website. Read-only production matching found the existing Devon **Website** copy in Austin's mailbox with a matching registered sender and sent Message-ID. | Austin's actual CRM screen/reply-target acceptance remains pending; no message sent to the real lead. |
 | Free SEO | Nine complete monitor runs; latest **November 1 at 04:00:42 UTC (12:00:42 AM EDT)**, all 14 pages scanned. Google connection remains active; regular worker succeeds. Jeffrey confirmed the business facts and the review was saved through his signed-in admin session. | Pilot comparison, five safety cases and named review passed; weekly paid recommendations are enabled. A genuine scheduled weekly paid cycle remains to be observed. |
@@ -35,7 +35,9 @@ The goal is to connect **Austin's actual ChatGPT Pro account** to **Austin's Tai
 - [x] **November 1, 6:16 PM EST:** Austin's actual OAuth connection, 23 tools, effective scopes/cap, Inbox/Sent reads/searches and full-message retrieval verified in his ChatGPT. Existing business-email monitor updated and Run now passed. Body-tool correction `2e1b3ed` is live; see the closeout table.
 - [ ] Still unverified: tools in this separate Codex conversation, production refresh/revocation, attachment/continuation cases, live sending/delivery and management actions, and a future unattended monitor run. Tool permission inspection is not a live-send test.
 
-**Authorization/status:** Austin personally signed in. With Austin present, Jeffrey relayed his consent and confirmed the intended ChatGPT identity; the assistant completed the three-scope OAuth connection in those sessions. No credentials were copied or Jeffrey identity substituted. The **25/user/UTC-day cap remains unchanged and was verified by `whoami`**. It applies to assistant/token sends, not normal Mail browser sending. Ask before changing it. No approval has been given for an Austin live-test recipient/content or destructive test actions.
+**Authorization/status:** Austin personally signed in. With Austin present, Jeffrey relayed his consent and confirmed the intended ChatGPT identity; the assistant completed the three-scope OAuth connection in those sessions. No credentials were copied or Jeffrey identity substituted. Jeffrey subsequently approved increasing the cap to **100/user/UTC-day**. It was deployed and verified through Austin’s `whoami` at **6:24 PM EST**. It applies to assistant/token sends, not normal Mail browser sending. Ask before changing it. No approval has been given for an Austin live-test recipient/content or destructive test actions.
+
+**November 1, 6:24 PM EST — approved limit increase:** `5ea47a9` and Worker `53819be1-c88c-4d30-97ae-3c852ada1fcf` are live with 100 assistant/API sends per user per UTC day. Austin’s actual `whoami` confirms enabled/100. All 28 sending-policy/outbox checks and the production build passed. No email was sent; approval-before-change and read-only monitoring remain in place. Earlier 25/day records below describe the initial deployment.
 
 ## 2. Jeffrey: sign in, back up, migrate, deploy
 
@@ -75,7 +77,7 @@ npx wrangler deployments list --env production
 ```
 
 - [x] Confirm 0038 is applied, deployment succeeds, and the active production Worker version corresponds to the intended Git SHA. Record SHA, deployment/version ID and time below. Use the package script: it builds and wraps the Worker for OAuth form handling, queue jobs and scheduled recovery; do not upload an unwrapped Svelte bundle or deploy the Render website instead.
-- [x] In Cloudflare's **production** Worker settings verify `APP_URL=https://mail.tailoredagents.com`, `API_SEND_ENABLED=true`, `API_DAILY_SEND_LIMIT=25`. These are non-secret vars. Later confirm the effective values with Austin's MCP `whoami` (`sending.enabled=true`, `sending.daily_limit=25`). A send flag alone does not grant a token `mail:send`.
+- [x] In Cloudflare's **production** Worker settings verify `APP_URL=https://mail.tailoredagents.com`, `API_SEND_ENABLED=true`, `API_DAILY_SEND_LIMIT=100`. These are non-secret vars. Later confirm the effective values with Austin's MCP `whoami` (`sending.enabled=true`, `sending.daily_limit=100`). A send flag alone does not grant a token `mail:send`.
 
 If a fresh local verification is needed, run `npm test` and `npm run check` from `apps/mail`. The isolated MCP browser test procedure is in MCP_SETUP.md; it uses disposable local data. Never point the broader browser suite at live accounts because it exercises send buttons.
 
@@ -123,7 +125,7 @@ Once installed, Jeffrey should ask Austin to invoke the plugin here (or guide hi
 > Use Tailored Agents Mail only to verify my connected account and granted scopes. List inbox and sent conversations, read one of each with markRead:false, and tell me who responded last. Confirm read/send/manage tools and the effective sending policy are available. Do not send, draft, mark read, archive, label, trash, delete or change any mailbox records. Then inspect my existing business-email checks so this mailbox can be added without replacing the other sources.
 
 - [ ] **Host boundary:** custom Mail tools are available in Austin's ChatGPT verification chat, but unavailable in this separate Codex conversation. Existing Gmail/iCloud tools do not prove this custom integration exists here.
-- [x] **`whoami {}` in Austin's ChatGPT:** `austin@tailoredagents.com` is the only owned address; all three scopes, `sending.enabled:true`, `daily_limit:25` verified.
+- [x] **`whoami {}` in Austin's ChatGPT:** `austin@tailoredagents.com` is the only owned address; all three scopes, `sending.enabled:true`, `daily_limit:100` verified after Jeffrey’s approved increase.
 - [x] **Tool inventory in Austin's ChatGPT:** all 23 tools present (11 read, 5 send, 7 manage). No write tool invoked for setup.
 - [x] **Inbox/Sent reads:** three threads listed in each; repeated `get_thread` calls with `markRead:false` preserved message IDs/read flags, including an unread incoming message. No unread Mail UI message was opened for this check.
 - [x] **Inbox/Sent searches:** known conversations returned in each folder. Direction, timestamps and latest responses inspected privately.
@@ -148,7 +150,7 @@ Once installed, Jeffrey should ask Austin to invoke the plugin here (or guide hi
 | Invalid redirect/resource/PKCE or registration failure | Preserve DCR's exact redirect and resource; use S256, OAuth public client, correct public URL. Do not use CIMD or fabricate a static secret. Have the client reconnect; no manual token copying into chat. |
 | Token invalid after deployment | Expected for historical grants revoked by 0038. Austin must reconnect and explicitly select all three scopes. Revoked families cannot be revived by refresh. |
 | Send tools missing / `sending.enabled=false` | Compare `whoami.scopes`, deployed production vars and plugin tool toggles. Read-only tokens must reconnect with explicit Send consent; refreshing cannot escalate scope. Refresh the tool list after deployment. |
-| Daily limit reached | The committed limit is 25 per user per UTC day. Do not use another identity or disable the cap to bypass it. Ask Austin before changing the limit. |
+| Daily limit reached | The approved limit is 100 per user per UTC day. Do not use another identity or disable the cap to bypass it. Ask before future limit changes. |
 | Mail/attachments missing | Check owned addresses, folder/search/pagination and R2 binding. Shared CRM grants do not apply. Do not relax ownership checks. |
 | Works in Jeffrey's chat or ChatGPT web, absent here | Austin/assistant: attach/install in Austin's account and this conversation's actual host; verify tools here. Document host restriction if access cannot transfer. |
 | Provider refused/uncertain send | Only after an approved test: inspect sanitized outbox/provider errors and reuse the same idempotency key. Do not blindly send again with a new key; ambiguous outcomes retain budget/recovery state. |
@@ -163,15 +165,15 @@ Fill out this table tonight, then commit/push the sanitized documentation update
 
 | Check | Final status / sanitized evidence / owner if incomplete |
 | --- | --- |
-| Git SHA deployed, Worker version and time | PASS — latest `2e1b3ed`, `0c669d63-88d1-4389-bfa1-0a85893ed27e`, uploaded Nov 1 6:14:40 PM EST and deployed; live body retest passed by 6:16 PM |
+| Git SHA deployed, Worker version and time | PASS — latest `5ea47a9`, `53819be1-c88c-4d30-97ae-3c852ada1fcf`, uploaded Nov 1 6:23:50 PM EST and deployed; 100/day verified through Austin’s `whoami` at 6:24 PM. Prior body fix remains included |
 | Correct Cloudflare account/bindings, private backup verified | PASS — Nov 1 12:59:48 PM EST private export; bindings verified |
 | Migration 0038 applied; historical reconnect requirement communicated | PASS — Nov 1 1:01:49 PM EST; reconnect requirement recorded above |
-| Production send enabled / effective 25-per-user-UTC-day cap | PASS — deployed vars and Austin's actual `whoami` confirm enabled/25 |
+| Production send enabled / effective 100-per-user-UTC-day cap | PASS — Jeffrey requested 100/day; deployed vars and Austin’s actual `whoami` confirm enabled/100 at 6:24 PM EST |
 | Discovery 200; unauthenticated MCP GET/POST 401 + challenge | PASS — Nov 1 after deployment; three metadata 200s, GET/POST 401 with challenge |
 | ChatGPT-edge access, login/PKCE consent and DCR | PASS — installed through actual ChatGPT DCR/OAuth; authenticated reads passed |
 | Austin's actual ChatGPT account and Mail identity; Read/Send/Manage | PASS — identity confirmed by Jeffrey with Austin present; owned Mail account and all scopes verified |
 | Plugin installed and tools available in this existing conversation | PASS in Austin's ChatGPT; BLOCKED in this separate Codex host (custom tools absent) |
-| `whoami` owned addresses/scopes/policy and tool inventory | PASS — Austin only, three scopes, enabled/25, all 23 tools |
+| `whoami` owned addresses/scopes/policy and tool inventory | PASS — Austin only, three scopes, enabled/100, all 23 tools |
 | Inbox/Sent read/search and last responder | PASS — three threads sampled per folder; both searches and latest-response inspection passed |
 | Read-status unchanged; long bodies/attachment access | PASS unchanged flags and full 16,491-character body after fix; attachment/continuation cases UNTESTED (no suitable sampled examples) |
 | Token refresh; revocation/reconnect | Locally passed; production UNTESTED |

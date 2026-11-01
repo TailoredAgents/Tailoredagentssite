@@ -1,15 +1,28 @@
 # Tailored Agents Mail MCP — deployment and connection handoff
 
-Updated November 1, 2026, **6:16 PM EST. Austin's own ChatGPT/Mail connection is
+Updated November 1, 2026, **6:24 PM EST. Austin's own ChatGPT/Mail connection is
 installed and read-tested; his existing business-email monitor includes Mail and
 passed a manual run.** Production configuration
-enables OAuth sending with a starting cap of 25 messages per user per UTC day.
+enables OAuth sending with Jeffrey's approved cap of **100 messages per user per UTC day**.
 No production assistant clients, access tokens, or mailbox grants were created during deployment.
 No real messages were sent through MCP. Unit tests use a mocked provider; browser
 tests use disposable local accounts, drafts and OAuth credentials. Separately,
 Jeffrey approved one CRM Sales test on November 1: delivery and the Hotmail reply
 were verified, with the original landing in Junk. That test does not establish
 Austin's MCP sending or inbox placement. See the [Sales acceptance record](../../new%20jeffrey.md#november-1-hotmail-round-trip-and-timestamp-correction).
+
+## Daily send limit increased — November 1, 2026
+
+Jeffrey explicitly requested **100/day**, replacing the initial 25/day limit.
+Main `5ea47a9` sets production `API_DAILY_SEND_LIMIT="100"`; Worker
+`53819be1-c88c-4d30-97ae-3c852ada1fcf` was uploaded at **6:23:50 PM EST** and deployed.
+At **6:24 PM EST**, Austin's connected ChatGPT `whoami` returned
+`austin@tailoredagents.com`, `sending.enabled:true`, and `sending.daily_limit:100`.
+The 28 existing sending-policy/outbox checks and production build passed; binding
+types regenerated successfully. No email was sent. The limit is per user per UTC
+day for assistant/API sends; normal Mail sending is unaffected. OAuth scopes,
+approval-before-change permissions and monitoring were preserved. The 25/day
+observations below are historical evidence from the initial connection.
 
 ## Production verification — November 1, 2026
 
@@ -26,7 +39,7 @@ Austin's MCP sending or inbox placement. See the [Sales acceptance record](../..
   MCP GET and POST returned **401** with the resource-metadata challenge. `/login`
   returned 200 and anonymous `/` redirected to login. This is curl evidence, not
   proof of access from Austin's ChatGPT client.
-- Deployed vars are `APP_URL=https://mail.tailoredagents.com`,
+- Initial deployment vars were `APP_URL=https://mail.tailoredagents.com`,
   `API_SEND_ENABLED=true`, `API_DAILY_SEND_LIMIT=25`. Austin's later `whoami` check
   confirmed the effective enabled policy and 25-per-user-UTC-day cap.
 - Fresh local verification passed **424/424 tests**, **2/2 MCP browser tests**,
@@ -128,7 +141,7 @@ full implemented capabilities. Refresh can narrow, never widen, a grant.
 
 `whoami` reports the account, owned addresses, effective permissions and send policy.
 Tool discovery follows the token's permissions. A production emergency send switch
-still applies. Production now sets `API_SEND_ENABLED=true` and `API_DAILY_SEND_LIMIT=25`;
+still applies. Production now sets `API_SEND_ENABLED=true` and `API_DAILY_SEND_LIMIT=100`;
 local and staging sending remain disabled. Sending still requires an explicit `mail:send`
 grant, and the client must request approval for each send. Mailbox management does not
 depend on this switch. Normal Mail browser sending is not subject to this assistant cap.
@@ -255,8 +268,8 @@ do not rerun migration SQL manually. Austin must personally consent to his conne
 and a live send requires approval of its exact recipient/content. Do not copy local
 fixture accounts/tokens.
 
-1. Review the diff and local results. Production sending is authorized with a configured
-   starting cap of 25 per user per UTC day. Commit/push to `main` is authorized.
+1. Review the diff and local results. Production sending is authorized with the
+   approved cap of 100 per user per UTC day. Commit/push to `main` is authorized.
    Do not force-push or overwrite collaborator changes.
 2. Use the Cloudflare account already authorized for Mail. Do not create new secrets
    without approval. Existing Resend/D1/R2/queue bindings are reused.
@@ -276,7 +289,7 @@ fixture accounts/tokens.
 
 5. Verify `env.production.vars.APP_URL` is exactly `https://mail.tailoredagents.com`.
    Verify **only production** has `API_SEND_ENABLED` set to `"true"` and
-   `API_DAILY_SEND_LIMIT` set to `"25"`. Keep staging/local choices
+   `API_DAILY_SEND_LIMIT` set to `"100"`. Keep staging/local choices
    separate. Changing this flag alone would not have fixed the old outbox; this code does.
 6. Deploy the wrapped Worker, including queue and scheduled recovery handlers:
 
