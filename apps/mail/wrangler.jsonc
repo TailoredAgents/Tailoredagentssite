@@ -104,7 +104,7 @@
         "MAIL_DOMAIN": "tailoredagents.com",
         "APP_URL": "https://mail.tailoredagents.com",
         "API_SEND_ENABLED": "true",
-        "API_DAILY_SEND_LIMIT": "25"
+        "API_DAILY_SEND_LIMIT": "100"
       },
       "d1_databases": [
         {
