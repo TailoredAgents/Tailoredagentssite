@@ -106,7 +106,12 @@ describe("CRM Mail transport and privacy", () => {
     });
     expect(token).toHaveBeenCalledWith("fixture-session", "fixture-user");
   });
-  it("drops unapproved HTML, storage keys and BCC data from message DTOs", async () => {
+  it.each([
+    ["2026-11-01 18:46:04", "2026-11-01T18:46:04Z"],
+    ["2026-11-01 05:30:00.123", "2026-11-01T05:30:00.123Z"],
+    ["2026-11-01T01:30:00-04:00", "2026-11-01T01:30:00-04:00"],
+    ["2026-10-21T12:00:00Z", "2026-10-21T12:00:00Z"],
+  ])("normalizes Mail UTC timestamps and drops private message fields (%s)", async (createdAt, expected) => {
     fetchMock.mockResolvedValue(
       Response.json({
         threadId: "thread-1",
@@ -127,7 +132,7 @@ describe("CRM Mail transport and privacy", () => {
             status: null,
             status_detail: null,
             is_read: false,
-            created_at: "2026-10-21T12:00:00Z",
+            created_at: createdAt,
             reply_target: ["person@example.test"],
             attachments: [],
           },
@@ -136,6 +141,7 @@ describe("CRM Mail transport and privacy", () => {
     );
     const result = await getMailThread(context, "sales", "thread-1");
     expect(result.messages[0].text).toBe("Visible plain text");
+    expect(result.messages[0].createdAt).toBe(expected);
     expect(JSON.stringify(result)).not.toMatch(
       /private-r2|tracking|secret@example|body_html|bcc_addr/,
     );
@@ -156,7 +162,7 @@ describe("CRM Mail transport and privacy", () => {
             is_read: false,
             has_attachments: false,
             status: "sent",
-            created_at: "2026-10-21T12:00:00Z",
+            created_at: "2026-11-01 02:30:00",
           },
         ],
         total: 26,
@@ -175,7 +181,7 @@ describe("CRM Mail transport and privacy", () => {
       total: 26,
       page: 2,
       pages: 2,
-      items: [{ id: "t", deliveryStatus: "sent", isRead: false }],
+      items: [{ id: "t", deliveryStatus: "sent", isRead: false, updatedAt: "2026-11-01T02:30:00Z" }],
     });
   });
   it("preserves send attempt identity and distinguishes uncertainty from rejection", async () => {

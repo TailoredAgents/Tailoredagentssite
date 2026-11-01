@@ -29,6 +29,14 @@ export class MailProviderError extends Error {
 }
 const identifier = z.string().min(1).max(128);
 const safeText = (maximum: number) => z.string().max(maximum);
+// Mail's SQLite datetime('now') values are UTC, even when no zone is serialized.
+// Make that zone explicit before timestamps reach browser-local Date parsing.
+const mailCreatedAt = safeText(100).transform((value) =>
+  value.replace(
+    /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2}(?:\.\d+)?)$/,
+    "$1T$2Z",
+  ),
+);
 const mailboxSchema = z.object({
   id: identifier,
   name: safeText(300),
@@ -60,7 +68,7 @@ const pageSchema = z.object({
         is_read: z.boolean(),
         has_attachments: z.boolean(),
         status: z.string().max(100).nullable(),
-        created_at: z.string().max(100),
+        created_at: mailCreatedAt,
       }),
     )
     .max(100),
@@ -81,7 +89,7 @@ const messageSchema = z.object({
   status: safeText(100).nullable(),
   status_detail: safeText(2000).nullable(),
   is_read: z.boolean(),
-  created_at: safeText(100),
+  created_at: mailCreatedAt,
   reply_target: z.array(z.string().email().max(254)).max(100),
   attachments: z
     .array(
