@@ -35,7 +35,14 @@ test('built Worker: discovery, login continuation, explicit consent, PKCE, read-
  const call=async(token:string,method:string,params:any={})=>request.post('/mcp',{headers:{Authorization:'Bearer '+token,Accept:'application/json, text/event-stream'},data:{jsonrpc:'2.0',id:1,method,params}});
  const listing=await call(tokens.access_token,'tools/list');expect(listing.status()).toBe(200);
  const tools=(await listing.json()).result.tools;expect(tools.some((t:any)=>t.name==='get_thread')).toBe(true);expect(tools.some((t:any)=>t.name==='send_message')).toBe(false);
- const reading=await call(tokens.access_token,'tools/call',{name:'get_thread',arguments:{id:'local-message-1'}});expect(reading.status()).toBe(200);expect((await reading.json()).result.isError).not.toBe(true);
+ const reading=await call(tokens.access_token,'tools/call',{name:'get_thread',arguments:{id:'local-message-1',markRead:false}});expect(reading.status()).toBe(200);
+ const threadResult=(await reading.json()).result;expect(threadResult.isError).not.toBe(true);
+ const message=JSON.parse(threadResult.content[0].text).messages[0];
+ const bodyResponse=await call(tokens.access_token,'tools/call',{name:'get_message_body',arguments:{id:message.id,format:'text',offset:0}});expect(bodyResponse.status()).toBe(200);
+ const bodyResult=(await bodyResponse.json()).result;expect(bodyResult.isError).not.toBe(true);
+ expect(bodyResult.structuredContent).toEqual(JSON.parse(bodyResult.content[0].text));
+ expect(bodyResult.structuredContent.content).toBe(message.body_text);
+ expect(bodyResult.structuredContent.total_chars).toBeGreaterThan(0);
  const refresh=await request.post('/oauth/token',{form:{client_id,grant_type:'refresh_token',refresh_token:tokens.refresh_token,resource}});expect(refresh.status()).toBe(200);const next=await refresh.json();
  expect((await call(tokens.access_token,'tools/list')).status()).toBe(401);
  expect((await call(next.access_token,'tools/list')).status()).toBe(200);

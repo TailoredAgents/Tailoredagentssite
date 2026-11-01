@@ -7,6 +7,7 @@ import { describe, test } from 'node:test';
 import type { R2Bucket } from '@cloudflare/workers-types';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import type { User } from '$lib/types';
 import type { EmailProvider } from './email-provider';
 import { createMcpServer } from './mcp';
@@ -243,6 +244,40 @@ test('R2 bodies and attachments are paginated, searches show latest response in 
  addOutbound('reply','2026-09-01 12:00:00');
  for(const view of ['inbox','sent']) {const page=(await call('search_mail',{q:'Plans',view})).json();assert.equal(page.threads[0].last_message.direction,'outbound');assert.equal(page.threads[0].last_message.from_addr,'ada@example.com');}
  objects.delete('body.json');assert.equal((await call('get_thread',{id:'m1'})).isError,true);
+});
+
+test('chunk tools expose validated structured payloads alongside legacy JSON text',async()=>{
+ const {client,call,sqlite,objects}=await connect();
+ objects.set('body.json',JSON.stringify({text:'A'.repeat(25000)+'tail',html:'<p>full</p>'}));
+ sqlite.query("UPDATE emails SET body_text='excerpt',content_key='body.json' WHERE id='m1'").run();
+ sqlite.query("INSERT INTO email_attachments(id,email_id,filename,content_type,size_bytes,storage_key,content_base64) VALUES('file','m1','test.txt','text/plain',4,'attachment','')").run();
+ objects.set('attachment',new Uint8Array([65,66,67,68]));
+ await call('save_draft',{id:'draft-chunk',text:'Local fixture',attachments:[{filename:'test.txt',type:'text/plain',content:'QUJDRA=='}]});
+ const draft=(await call('get_draft',{id:'draft-chunk'})).json();
+ const before=sqlite.query('SELECT * FROM emails ORDER BY id').all();
+ const tools=(await client.listTools()).tools;
+ const cases=[
+  {name:'get_message_body',args:{id:'m1',offset:20000},content:'A'.repeat(5000)+'tail',totalKey:'total_chars',total:25004},
+  {name:'get_attachment',args:{email_id:'m1',attachment_id:'file'},content:'QUJDRA==',totalKey:'total_bytes',total:4},
+  {name:'get_draft_attachment',args:{id:'draft-chunk',revision:draft.draft_revision,index:0},content:'QUJDRA==',totalKey:'total_bytes',total:4}
+ ];
+ for(const {name,args,content,totalKey,total} of cases) {
+  const tool=tools.find(t=>t.name===name)!;
+  assert.ok(tool.outputSchema?.required?.includes('content'),name);
+  assert.equal(tool.annotations?.readOnlyHint,true,name);
+  const result=CallToolResultSchema.parse(await client.callTool({name,arguments:args}));
+  assert.equal(result.isError,undefined,name);
+  assert.equal(result.structuredContent?.content,content,name);
+  assert.equal(result.structuredContent?.[totalKey],total,name);
+  assert.equal(result.structuredContent?.next_offset,null,name);
+  const block=result.content[0];
+  assert.ok(block.type==='text',name);
+  assert.deepEqual(JSON.parse(block.text),result.structuredContent,name);
+ }
+ assert.deepEqual(sqlite.query('SELECT * FROM emails ORDER BY id').all(),before);
+ const missing=await client.callTool({name:'get_message_body',arguments:{id:'missing'}});
+ assert.equal(missing.isError,true);
+ assert.equal(missing.structuredContent,undefined);
 });
 
 test('explicit mailbox actions support unread, archive, trash, restoration and labels',async()=>{
