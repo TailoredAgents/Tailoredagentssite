@@ -9,7 +9,7 @@ export async function assistantControl(form:FormData){
  try{
   const operation=z.enum(['approve','reject','revoke','pause','resume','stop']).parse(form.get('operation'));
   if(operation==='stop')await stopAllWrites(context);
-  else {const id=z.uuid().parse(form.get('id'));if(operation==='approve'||operation==='reject'){const r=await reviewAction(context,id,operation);result=r.status;}else await manageConnection(context,id,operation);}
+  else {const id=z.uuid().parse(form.get('id'));if(operation==='approve'||operation==='reject'){const r=await reviewAction(context,id,operation);result=r.status;if(r.status==='succeeded'&&['save_card_profile','create_card_link','update_card_link','set_card_assistant'].includes(r.action))revalidatePath('/c','layout');}else await manageConnection(context,id,operation);}
  }catch{result='unavailable';}
  revalidatePath('/dashboard','layout');
  redirect('/dashboard/assistant?result='+result);

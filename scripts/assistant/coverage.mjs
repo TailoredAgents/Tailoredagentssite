@@ -4,6 +4,7 @@ import path from 'node:path';
 // Generated inventory makes omissions visible when new dashboard actions ship.
 async function walk(dir){const files=[];for(const entry of await readdir(dir,{withFileTypes:true})){if(['node_modules','.next'].includes(entry.name))continue;const name=path.join(dir,entry.name);if(entry.isDirectory())files.push(...await walk(name));else if(/\.tsx?$/.test(name)&&!name.endsWith('.test.ts'))files.push(name);}return files;}
 const implementations={
+ 'lib/smart-cards/actions.ts#saveCardSettings':['prepare_save_card_profile','prepare_create_card_link','prepare_update_card_link','prepare_set_card_assistant'],
  'lib/voice/follow-up-actions.ts#loadCallFollowUpOptionsAction':['get_call_follow_up_options'],
  'lib/voice/follow-up-actions.ts#createCallFollowUpTaskAction':['prepare_create_call_follow_up'],
  'lib/voice/follow-up-actions.ts#updateCallFollowUpTaskAction':['prepare_update_call_follow_up'],

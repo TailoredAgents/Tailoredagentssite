@@ -27,7 +27,9 @@ Communication increment adds separately consented, human-reviewed SMS with provi
 
 Call-task increment adds read/create/edit/complete proposals for transcript-backed follow-ups, preserving line access, eligible assignees and revision checks.
 
-Still pending: remaining settings and task coverage; reviewed shared Mail; call controls; full Builder/SEO/card mutations; personal preferences/commitments; durable routines; complete exports/reports and parity checks. Existing Mail sends, channel grants, build approvals and spend limits remain unchanged. See the coverage inventory and phases below.
+Smart Card increment adds current-record reads and reviewed public profile edits, permanent link creation/reassignment/pause, and public-agent pause/resume without changing its allowance.
+
+Still pending: remaining settings and task coverage; reviewed shared Mail; call controls; full Builder/SEO mutations and portrait-upload tooling; personal preferences/commitments; durable routines; complete exports/reports and parity checks. Existing Mail sends, channel grants, build approvals and spend limits remain unchanged. See the coverage inventory and phases below.
 
 Verification and live deployment evidence are recorded in [Operations setup](OPERATIONS_ASSISTANT_SETUP.md). This checkpoint does not declare any phase with unmet live acceptance gates complete.
 

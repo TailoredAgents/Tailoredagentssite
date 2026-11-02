@@ -8,11 +8,29 @@ import {AssistantError} from './config';
 import {getCalendarEntry} from '@/lib/booking/staff';
 import {smsReview} from './sms';
 import {getCallFollowUpOptions,getCallFollowUpTask} from '@/lib/voice/follow-up-tasks';
+import {getManagedProfile,getManagedCard,getCardAiSettings} from '@/lib/smart-cards/settings';
 import type {Principal} from './oauth';
 // Save human-readable target identity alongside the exact proposed input. Never
 // accept these labels from the assistant. Re-resolve before executing the change.
 export async function reviewContext(p:Principal,tool:string,input:Record<string,unknown>){
  const context=p.context;const result:Record<string,unknown>={requestedFor:context.user.name,workspace:context.workspace.name};
+ if(['save_card_profile','create_card_link','update_card_link','set_card_assistant'].includes(tool)){
+  await cardAccess(context,true);
+  if(tool==='set_card_assistant'){
+   result.currentPublicAssistant=await getCardAiSettings(context);
+   result.notice='Enabling allows visitor requests within the existing monthly allowance. This does not change the allowance.';
+  }else{
+   const profile=await getManagedProfile(context,String(input.slug??input.profile));
+   if(!profile)throw new AssistantError('not_found','This card profile is unavailable.',404);
+   result.profile=profile;
+   if(tool==='update_card_link'){
+    const card=await getManagedCard(context,String(input.code));
+    if(!card)throw new AssistantError('not_found','This card is unavailable.',404);
+    result.currentCard=card;
+   }
+   result.notice='These settings affect public Smart Card pages and permanent links.';
+  }
+ }
  if(tool==='create_call_follow_up'){
   const r=await getCallFollowUpOptions(context,String(input.recordingId),Number(input.suggestionIndex));
   if(r.taskId)throw new AssistantError('task_exists','This suggestion already has a task. Read and update that task instead.',409);

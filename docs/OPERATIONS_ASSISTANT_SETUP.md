@@ -100,6 +100,16 @@ The assistant can read saved call suggestions and eligible assignees, prepare on
 
 Verification: 78 Operations and voice integration/security tests passed, including the real OAuth/proposal/review path, concurrent approval, stale and competing task edits, transcript evidence changes, existing-task detection, revoked line access and viewer restrictions. The production build, typecheck, lint and coverage check also passed. Providers were simulated; no customer call or paid analysis was used as a test.
 
+Call-task release `5e60f822d545fb434802752116cb7997d457c4ac` is live on Render in deployment `dep-dbki01nlk1mc738rja0g`, November 2 at 6:45 PM Eastern.
+
+## Smart Card management
+
+Public profile edits, creation of a permanent personal/giveaway-batch link, destination changes, pause/resume, and enabling/disabling the public card assistant use the same service as dashboard forms. Read tools return the exact profile revision, card destination/active state, and existing AI allowance. Each proposal binds those saved values and displays the affected public profile/link. Current owner/admin status is required at execution. The permanent URL remains unchanged when reassigning a card; a newly created link returns distinct NFC and QR attribution URLs. A shared batch URL does not identify individual physical cards or anonymous visitors.
+
+AI toggles preserve both the monthly cap and current usage. Resuming can permit new visitor API requests within the existing allowance; that consequence appears in review. Portrait changes still require the repository/media workflow, and this release does not change login identities, create team memberships, print cards or order stock.
+
+Verification: 61 assistant/Smart Card integration and security tests passed, including exact proposal review, stale profile/settings rejection, stable redirects, one link after concurrent approval, disabled links, current admin role, public attribution and the unchanged allowance. The production build, typecheck, lint and coverage checks passed. No live public profile or card was changed during testing.
+
 ## Next work
 
 Follow phases 0–7 in `OPERATIONS_ASSISTANT_PLAN.md`. The code-derived manifest lists outstanding features; the dashboard also describes what is and is not available. Real ChatGPT discovery, consent and account reading are accepted; reviewed writes, renewal and revocation still need real-client acceptance. Then complete the pending service extraction, calendar and communication flows, longer-lived identity delegation and durable routines without bypassing existing approvals or spending limits.

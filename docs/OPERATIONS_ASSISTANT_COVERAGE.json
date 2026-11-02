@@ -875,9 +875,14 @@
     {
       "file": "lib/smart-cards/actions.ts",
       "export": "saveCardSettings",
-      "status": "pending",
-      "tools": [],
-      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+      "status": "implemented",
+      "tools": [
+        "prepare_save_card_profile",
+        "prepare_create_card_link",
+        "prepare_update_card_link",
+        "prepare_set_card_assistant"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/sms/actions.ts",

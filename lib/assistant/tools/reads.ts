@@ -9,6 +9,8 @@ import {getVoiceCall,listVoiceCalls,getVoiceWorkspace} from '@/lib/voice/data';
 import {getBookingCalendar,availableSlots} from '@/lib/booking/calendar';
 import {getCalendarEntry} from '@/lib/booking/staff';
 import {getCardsDashboard,cardAccess} from '@/lib/smart-cards/data';
+import {getManagedProfile,getManagedCard,getCardAiSettings} from '@/lib/smart-cards/settings';
+import {slugSchema,codeSchema} from '@/lib/smart-cards/validation';
 import {getFactoryWorkspace,getFactoryProject} from '@/lib/factory/data';
 import {getFactoryProjectBuilds} from '@/lib/factory/build-data';
 import {getSeoDashboard,getSeoChange} from '@/lib/seo/service';
@@ -59,6 +61,9 @@ read('list_calendar_events','Read team bookings, appointments, blocks and recurr
 read('get_calendar_entry','Read one consultation or calendar block with its exact revision timestamp.',byId,(p,v)=>getCalendarEntry(p.context,v.id));
 read('get_availability','Read public consultation availability for one teammate on an Eastern calendar day.',{profile:z.enum(['austin','devon','jeffrey']),day:z.iso.date()},async(p,v)=>{await cardAccess(p.context);return availableSlots(v.profile,undefined,v.day);},'Public slots only: two-hour notice, next 90 days. Not all internal calendar free time.');
 read('list_cards','Read profiles, permanent card links, engagement and recent inquiries.',{},p=>getCardsDashboard(p.context),'Engagement window and recent inquiry limits are dashboard summaries; anonymous taps do not identify people.');
+read('get_card_profile','Read one published or unpublished Smart Card profile and its current revision.',{slug:slugSchema},(p,v)=>getManagedProfile(p.context,v.slug));
+read('get_card','Read one permanent NFC/QR link and its current destination and active state.',{code:codeSchema},(p,v)=>getManagedCard(p.context,v.code));
+read('get_card_assistant_settings','Read the public card assistant enabled state and existing monthly allowance.',{},p=>getCardAiSettings(p.context),'Does not expose provider credentials or change the allowance.');
 read('list_factory_projects','Read Website Builder planning and job status.',{},p=>getFactoryWorkspace(p.context),'Bounded dashboard project list, not an exhaustive export.');
 read('get_factory_project','Read a Website Builder plan, messages and jobs.',byId,(p,v)=>getFactoryProject(p.context,v.id),'Most recent 30 jobs. This does not approve or start a build.');
 read('get_build_status','Read generated versions, QA findings, uploads and available preview links.',byId,(p,v)=>getFactoryProjectBuilds(p.context,v.id),'Most recent 100 versions. Failed QA is not a completed website.');
