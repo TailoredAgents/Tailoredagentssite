@@ -92,6 +92,14 @@ The bot first reads `get_sms_recipient` and the latest conversation, then suppli
 
 Verification: 112 Operations, SMS and conversation tests passed against isolated local databases and simulated providers. They cover stale work and new replies, viewer/scope restrictions, concurrent approvals with one send, lost number grants, opt-outs, unknown delivery receipts and status checks without resending. Four desktop/phone OAuth browser flows, the production build, typecheck, lint and coverage check also passed. No production message was sent.
 
+Communication release `ede6960080fc12e95dacc60407c828bde8e8c50b` is live on Render in deployment `dep-dbkhu8nlk1mc738rghf0`, November 2 at 6:41 PM Eastern.
+
+## Call follow-up tasks
+
+The assistant can read saved call suggestions and eligible assignees, prepare one follow-up task from exact transcript evidence, edit an open task or complete/cancel it with a factual outcome. It uses existing call-source tasks and My Day; it does not create a duplicate sales opportunity. Creation binds the saved suggestion and quote, rejects an already-created suggestion, and never requests paid transcription or calls anyone. Edits/completion require the current `updatedAt`, lock the task row and preserve live line permissions. Expired recordings cannot produce new suggestions; existing tasks remain accessible only to users with access to the call source.
+
+Verification: 78 Operations and voice integration/security tests passed, including the real OAuth/proposal/review path, concurrent approval, stale and competing task edits, transcript evidence changes, existing-task detection, revoked line access and viewer restrictions. The production build, typecheck, lint and coverage check also passed. Providers were simulated; no customer call or paid analysis was used as a test.
+
 ## Next work
 
 Follow phases 0–7 in `OPERATIONS_ASSISTANT_PLAN.md`. The code-derived manifest lists outstanding features; the dashboard also describes what is and is not available. Real ChatGPT discovery, consent and account reading are accepted; reviewed writes, renewal and revocation still need real-client acceptance. Then complete the pending service extraction, calendar and communication flows, longer-lived identity delegation and durable routines without bypassing existing approvals or spending limits.

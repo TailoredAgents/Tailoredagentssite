@@ -2,6 +2,7 @@ import 'server-only';
 import {z} from 'zod';
 import {operationChanges} from './operation-changes';
 import {communicationChanges} from './communication-changes';
+import {callChanges} from './call-changes';
 import type {Principal} from '../oauth';
 import type {AssistantScope} from '../config';
 import {goalSchema,saveGoal} from '../goals';
@@ -20,6 +21,7 @@ function change<S extends z.ZodObject>(name:string,title:string,description:stri
 export const changeTools:ChangeTool[]=[
  ...operationChanges,
  ...communicationChanges,
+ ...callChanges,
  change('save_goal','Save private goal','Create or update a private goal. Existing goals require their current revision. Progress must reflect facts supplied by the user.',goalSchema,(p,v)=>saveGoal(p.context,v),['personal:write']),
  change('create_opportunity','Create sales opportunity','Create an opportunity with contact identity and owner. Does not contact anyone.',createOpportunitySchema,(p,v)=>createOpportunity(p.context,v)),
  change('update_opportunity','Update sales opportunity','Update a sales opportunity using the exact current opportunity and business revision timestamps.',updateOpportunitySchema,(p,v)=>updateOpportunity(p.context,v)),

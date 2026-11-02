@@ -1077,30 +1077,38 @@
     {
       "file": "lib/voice/follow-up-actions.ts",
       "export": "loadCallFollowUpOptionsAction",
-      "status": "pending",
-      "tools": [],
-      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+      "status": "implemented",
+      "tools": [
+        "get_call_follow_up_options"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/voice/follow-up-actions.ts",
       "export": "createCallFollowUpTaskAction",
-      "status": "pending",
-      "tools": [],
-      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+      "status": "implemented",
+      "tools": [
+        "prepare_create_call_follow_up"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/voice/follow-up-actions.ts",
       "export": "updateCallFollowUpTaskAction",
-      "status": "pending",
-      "tools": [],
-      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+      "status": "implemented",
+      "tools": [
+        "prepare_update_call_follow_up"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/voice/follow-up-actions.ts",
       "export": "completeCallFollowUpTaskAction",
-      "status": "pending",
-      "tools": [],
-      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+      "status": "implemented",
+      "tools": [
+        "prepare_complete_call_follow_up"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     }
   ]
 }

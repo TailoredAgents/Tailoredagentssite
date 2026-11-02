@@ -7,11 +7,21 @@ import {getDatabasePool} from '@/lib/dashboard/db';
 import {AssistantError} from './config';
 import {getCalendarEntry} from '@/lib/booking/staff';
 import {smsReview} from './sms';
+import {getCallFollowUpOptions,getCallFollowUpTask} from '@/lib/voice/follow-up-tasks';
 import type {Principal} from './oauth';
 // Save human-readable target identity alongside the exact proposed input. Never
 // accept these labels from the assistant. Re-resolve before executing the change.
 export async function reviewContext(p:Principal,tool:string,input:Record<string,unknown>){
  const context=p.context;const result:Record<string,unknown>={requestedFor:context.user.name,workspace:context.workspace.name};
+ if(tool==='create_call_follow_up'){
+  const r=await getCallFollowUpOptions(context,String(input.recordingId),Number(input.suggestionIndex));
+  if(r.taskId)throw new AssistantError('task_exists','This suggestion already has a task. Read and update that task instead.',409);
+  result.callFollowUp={customer:r.customer,conversationId:r.conversationId,suggestion:r.suggestion};
+ }
+ if(tool==='update_call_follow_up'||tool==='complete_call_follow_up'){
+  const r=await getCallFollowUpTask(context,String(input.taskId));
+  result.callTask={id:r.id,title:r.title,customer:r.customer,owner:r.ownerName,dueAt:r.dueAt,status:r.status,updatedAt:r.updatedAt};
+ }
  if(tool==='send_sms'){
   result.message=await smsReview(p,input);
   result.sendingNotice='Approval sends this exact text. Standard messaging charges apply. Sent texts cannot be recalled.';

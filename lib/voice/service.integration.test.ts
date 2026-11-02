@@ -1,7 +1,7 @@
 import { savePhoneNumber } from "@/lib/conversations/phone-numbers";
 import { deleteLead } from "@/lib/operations/delete-lead";
 import { captureCallMemory, loadClientMemory } from "@/lib/conversations/memory";
-import { randomUUID, createHash } from "node:crypto";
+import { randomUUID, randomBytes, createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import type { Pool } from "pg";
 import {
@@ -42,6 +42,8 @@ import { runVoiceMaintenance } from "./maintenance";
 import { receiveCallRecording, saveRecordingPreferences, getCallRecordingDownload, requestCallAnalysis, deleteCallRecording } from "./recordings";
 import { runCallRecordingWorker } from "./recording-worker";
 import { createCallFollowUpTask, getCallFollowUpOptions, getCallFollowUpTask, updateCallFollowUpTask, completeCallFollowUpTask } from "./follow-up-tasks";
+import {registerClient,validateAuthorization,createConsent,finishConsent,exchange,authenticate} from '@/lib/assistant/oauth';
+import {prepareAction,reviewAction} from '@/lib/assistant/actions';
 import { getSalesToday } from "@/lib/sales/data";
 import {
   listConversationWorkspace,
@@ -109,6 +111,16 @@ const owner = actor(),
   member = actor("voice-member", ws, "member"),
   reader = actor("voice-reader", ws, "member"),
   viewer = actor("voice-viewer", ws, "owner");
+async function assistantConnection(){
+ vi.stubEnv('BETTER_AUTH_URL','https://www.tailoredagents.com');vi.stubEnv('BETTER_AUTH_SECRET','synthetic-assistant-call-only-secret-123456789');vi.stubEnv('DASHBOARD_AUTH_MODE','password');vi.stubEnv('DASHBOARD_ALLOWED_EMAILS',owner.user.email);vi.stubEnv('OPERATIONS_ASSISTANT_ENABLED','true');vi.stubEnv('OPERATIONS_ASSISTANT_WRITES_ENABLED','true');
+ const sessionId=randomUUID();await pool.query('INSERT INTO "session"(id,"userId",token,"expiresAt") VALUES($1,$2,$1,now()+interval \'1 day\')',[sessionId,owner.user.id]);
+ const callback='https://chatgpt.com/connector_platform/oauth/callback',resource='https://www.tailoredagents.com/api/mcp/operations',scopes=['conversations:read','operations:write'];
+ const client=await registerClient({client_name:'Synthetic call assistant',redirect_uris:[callback]}),verifier=randomBytes(32).toString('base64url');
+ const authorization=await validateAuthorization({client_id:client.client_id,redirect_uri:callback,response_type:'code',scope:scopes.join(' '),resource,state:'call-test',code_challenge:createHash('sha256').update(verifier).digest('base64url'),code_challenge_method:'S256'});
+ const nonce=await createConsent(authorization,owner,sessionId),location=new URL(await finishConsent(nonce,owner,sessionId,scopes,true));
+ const token=await exchange({grant_type:'authorization_code',client_id:client.client_id,code:location.searchParams.get('code')!,redirect_uri:callback,code_verifier:verifier,resource});
+ return authenticate(new Request(resource,{headers:{authorization:'Bearer '+token.access_token}}));
+}
 function identity(user = "voice-owner") {
   return (
     "ta_" +
@@ -466,6 +478,32 @@ describe.skipIf(!url)(
       expect(provider.deleteRecording).toHaveBeenCalledTimes(1);
       expect((await pool.query("SELECT status FROM voice_call_recordings WHERE id=$1",[r.id])).rows[0].status).toBe('deleted');
       await captureCallMemory();expect((await pool.query("SELECT id FROM crm_client_memory")).rowCount).toBe(0);
+    });
+    it("executes call task proposals once and rejects stale revisions and changed evidence",async()=>{
+      await grant(member.user.id);const r=await suggestedCall(),p=await assistantConnection();
+      const options=await getCallFollowUpOptions(owner,r.id,0),input={...r.input,expectedSuggestion:options.suggestion};
+      await expect(createCallFollowUpTask(owner,{...input,expectedSuggestion:{...options.suggestion,text:'Changed evidence'}})).rejects.toThrow('suggestion changed');
+      const proposal=await prepareAction(p,'create_call_follow_up',input,'call-task-create');
+      expect((await pool.query('SELECT id FROM crm_tasks')).rowCount).toBe(0);
+      const receipts=await Promise.all([reviewAction(owner,proposal.id,'approve'),reviewAction(owner,proposal.id,'approve')]);
+      const taskId=receipts.find(r=>r.status==='succeeded')!.result as string;
+      expect((await pool.query('SELECT id FROM crm_tasks')).rowCount).toBe(1);
+      await expect(createCallFollowUpTask(owner,input)).rejects.toThrow('already has a task');
+      const original=await getCallFollowUpTask(owner,taskId);
+      const edit=await prepareAction(p,'update_call_follow_up',{...r.input,taskId,expectedUpdatedAt:original.updatedAt,title:'Review scope with Jeffrey'},'call-task-edit');
+      expect((await reviewAction(owner,edit.id,'approve')).status).toBe('succeeded');
+      await expect(completeCallFollowUpTask(owner,{taskId,expectedUpdatedAt:original.updatedAt,status:'completed',outcome:'Stale completion'})).rejects.toThrow('task changed');
+      const current=await getCallFollowUpTask(owner,taskId);
+      const completion=await prepareAction(p,'complete_call_follow_up',{taskId,expectedUpdatedAt:current.updatedAt,status:'completed',outcome:'User confirmed the scope was reviewed.'},'call-task-complete');
+      expect((await reviewAction(owner,completion.id,'approve')).status).toBe('succeeded');
+      expect((await getCallFollowUpTask(owner,taskId)).status).toBe('completed');
+      expect(provider.transcribe).not.toHaveBeenCalled();expect(provider.summarize).not.toHaveBeenCalled();
+    });
+    it("rejects competing call-task edits using the same reviewed revision",async()=>{
+      await grant(member.user.id);const r=await suggestedCall(),id=await createCallFollowUpTask(owner,r.input),task=await getCallFollowUpTask(owner,id);
+      const input={...r.input,taskId:id,expectedUpdatedAt:task.updatedAt};
+      const results=await Promise.allSettled([updateCallFollowUpTask(owner,{...input,title:'First edit'}),updateCallFollowUpTask(owner,{...input,title:'Second edit'})]);
+      expect(results.filter(r=>r.status==='fulfilled')).toHaveLength(1);expect(results.filter(r=>r.status==='rejected')).toHaveLength(1);
     });
     it("creates only reviewed tasks, saves edited details and schedules them in the assignee's My Day",async()=>{
       await grant(member.user.id);const r=await suggestedCall();

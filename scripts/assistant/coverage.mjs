@@ -4,6 +4,10 @@ import path from 'node:path';
 // Generated inventory makes omissions visible when new dashboard actions ship.
 async function walk(dir){const files=[];for(const entry of await readdir(dir,{withFileTypes:true})){if(['node_modules','.next'].includes(entry.name))continue;const name=path.join(dir,entry.name);if(entry.isDirectory())files.push(...await walk(name));else if(/\.tsx?$/.test(name)&&!name.endsWith('.test.ts'))files.push(name);}return files;}
 const implementations={
+ 'lib/voice/follow-up-actions.ts#loadCallFollowUpOptionsAction':['get_call_follow_up_options'],
+ 'lib/voice/follow-up-actions.ts#createCallFollowUpTaskAction':['prepare_create_call_follow_up'],
+ 'lib/voice/follow-up-actions.ts#updateCallFollowUpTaskAction':['prepare_update_call_follow_up'],
+ 'lib/voice/follow-up-actions.ts#completeCallFollowUpTaskAction':['prepare_complete_call_follow_up'],
  'lib/sms/actions.ts#sendSmsMessageAction':['prepare_send_sms'],
  'lib/sms/actions.ts#checkSmsSendAction':['get_sms_send_status'],
  'lib/conversations/actions.ts#saveConversationWorkAction':['prepare_save_conversation_work'],

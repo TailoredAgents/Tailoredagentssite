@@ -9,11 +9,11 @@ import { callSummarySchema } from "./analysis-provider";
 
 const uuid=z.uuid();
 const fields=z.object({title:z.string().trim().min(2).max(300),ownerUserId:z.string().trim().min(1).max(200),dueAt:z.string().datetime({offset:true}).refine(value=>Number.isFinite(Date.parse(value)),"Choose a valid due date."),notes:z.string().trim().max(4000).default("")});
-const createSchema=fields.extend({recordingId:uuid,suggestionIndex:z.coerce.number().int().min(0).max(4)});
-const updateSchema=fields.extend({taskId:uuid});
-const completeSchema=z.object({taskId:uuid,status:z.enum(["completed","cancelled"]),outcome:z.string().trim().min(2).max(2000)});
+export const callFollowUpCreateSchema=fields.extend({recordingId:uuid,suggestionIndex:z.coerce.number().int().min(0).max(4),expectedSuggestion:callSummarySchema.shape.followUps.element.optional()});
+export const callFollowUpUpdateSchema=fields.extend({taskId:uuid,expectedUpdatedAt:z.iso.datetime({offset:true}).optional()});
+export const callFollowUpCompleteSchema=z.object({taskId:uuid,expectedUpdatedAt:z.iso.datetime({offset:true}).optional(),status:z.enum(["completed","cancelled"]),outcome:z.string().trim().min(2).max(2000)});
 type CallContext={source_id:string;conversation_id:string;line_id:string;customer:string};
-export type CallFollowUpTask={id:string;title:string;ownerId:string;ownerName:string;dueAt:string;notes:string;status:string;outcome:string|null;conversationId:string;customer:string;members:{id:string;name:string}[];canEdit:boolean};
+export type CallFollowUpTask={id:string;updatedAt:string;title:string;ownerId:string;ownerName:string;dueAt:string;notes:string;status:string;outcome:string|null;conversationId:string;customer:string;members:{id:string;name:string}[];canEdit:boolean};
 async function transaction<T>(context:DashboardContext,work:(db:PoolClient)=>Promise<T>) {
   const db=await getDatabasePool().connect();
   try {
@@ -49,16 +49,17 @@ export async function getCallFollowUpOptions(context:DashboardContext,recordingI
   const {r,call,summary}=await recording(getDatabasePool(),context,uuid.parse(recordingId));
   if(!Number.isInteger(suggestionIndex) || !summary.followUps[suggestionIndex])throw new VoiceInputError("Choose an available call follow-up.");
   const existing=(await getDatabasePool().query<{taskId:string}>("SELECT task_id AS \"taskId\" FROM voice_follow_up_tasks WHERE workspace_id=$1 AND recording_id=$2 AND suggestion_index=$3",[context.workspace.id,r.id,suggestionIndex])).rows[0];
-  return {members:await members(getDatabasePool(),context.workspace.id,call.line_id),defaultOwnerId:context.user.id,taskId:existing?.taskId??null};
+  return {customer:call.customer,conversationId:call.conversation_id,suggestion:summary.followUps[suggestionIndex],members:await members(getDatabasePool(),context.workspace.id,call.line_id),defaultOwnerId:context.user.id,taskId:existing?.taskId??null};
 }
 export async function createCallFollowUpTask(context:DashboardContext,input:unknown) {
-  const p=createSchema.parse(input);
+  const p=callFollowUpCreateSchema.parse(input);
   return transaction(context,async db=>{
     const {r,call,summary}=await recording(db,context,p.recordingId);
     const suggestion=summary.followUps[p.suggestionIndex];
     if(!suggestion || !r.transcript!.includes(suggestion.quote))throw new VoiceInputError("This suggested follow-up is no longer available.");
     const existing=(await db.query<{task_id:string}>("SELECT task_id FROM voice_follow_up_tasks WHERE workspace_id=$1 AND recording_id=$2 AND suggestion_index=$3",[context.workspace.id,r.id,p.suggestionIndex])).rows[0];
-    if(existing)return existing.task_id;
+    if(p.expectedSuggestion&&(suggestion.text!==p.expectedSuggestion.text||suggestion.quote!==p.expectedSuggestion.quote))throw new VoiceInputError("The call suggestion changed. Read it again before creating a task.");
+    if(existing){if(p.expectedSuggestion)throw new VoiceInputError("This suggestion already has a task. Read and update the existing task instead.");return existing.task_id;}
     await assignee(db,context,call.line_id,p.ownerUserId);
     const id=randomUUID();
     await db.query("INSERT INTO crm_tasks(id,workspace_id,conversation_source_id,owner_user_id,kind,title,due_at,notes) VALUES($1,$2,$3,$4,'follow_up',$5,$6,$7)",[id,context.workspace.id,call.source_id,p.ownerUserId,p.title,p.dueAt,p.notes||null]);
@@ -67,22 +68,23 @@ export async function createCallFollowUpTask(context:DashboardContext,input:unkn
     return id;
   });
 }
-type TaskRow={id:string;conversation_source_id:string;title:string;owner_user_id:string|null;owner_name:string|null;due_at:Date;notes:string|null;status:string;completion_outcome:string|null};
+type TaskRow={id:string;updated_at:Date;conversation_source_id:string;title:string;owner_user_id:string|null;owner_name:string|null;due_at:Date;notes:string|null;status:string;completion_outcome:string|null};
 async function taskRow(db:Pick<PoolClient,"query">,context:DashboardContext,id:string,mutate=false) {
   if(!uuid.safeParse(id).success)throw new VoiceInputError("This follow-up task is unavailable.");
-  const row=(await db.query<TaskRow>(`SELECT t.*,u.name owner_name FROM crm_tasks t LEFT JOIN "user" u ON u.id=t.owner_user_id WHERE t.workspace_id=$1 AND t.id=$2 AND t.conversation_source_id IS NOT NULL`,[context.workspace.id,uuid.parse(id)])).rows[0];
+  const row=(await db.query<TaskRow>(`SELECT t.*,u.name owner_name FROM crm_tasks t LEFT JOIN "user" u ON u.id=t.owner_user_id WHERE t.workspace_id=$1 AND t.id=$2 AND t.conversation_source_id IS NOT NULL ${mutate?"FOR UPDATE OF t":""}`,[context.workspace.id,uuid.parse(id)])).rows[0];
   if(!row)throw new VoiceInputError("This follow-up task is unavailable.");
   const call=await access(db,context,row.conversation_source_id,mutate);
   return {row,call};
 }
 export async function getCallFollowUpTask(context:DashboardContext,id:string):Promise<CallFollowUpTask> {
   const {row,call}=await taskRow(getDatabasePool(),context,id);
-  return {id:row.id,title:row.title,ownerId:row.owner_user_id||"",ownerName:row.owner_name||"Unassigned",dueAt:row.due_at.toISOString(),notes:row.notes||"",status:row.status,outcome:row.completion_outcome,conversationId:call.conversation_id,customer:call.customer,members:await members(getDatabasePool(),context.workspace.id,call.line_id),canEdit:call.role!=='viewer'};
+  return {id:row.id,updatedAt:row.updated_at.toISOString(),title:row.title,ownerId:row.owner_user_id||"",ownerName:row.owner_name||"Unassigned",dueAt:row.due_at.toISOString(),notes:row.notes||"",status:row.status,outcome:row.completion_outcome,conversationId:call.conversation_id,customer:call.customer,members:await members(getDatabasePool(),context.workspace.id,call.line_id),canEdit:call.role!=='viewer'};
 }
 export async function updateCallFollowUpTask(context:DashboardContext,input:unknown) {
-  const p=updateSchema.parse(input);
+  const p=callFollowUpUpdateSchema.parse(input);
   await transaction(context,async db=>{
     const {row,call}=await taskRow(db,context,p.taskId,true);
+    if(p.expectedUpdatedAt&&row.updated_at.getTime()!==Date.parse(p.expectedUpdatedAt))throw new VoiceInputError("This task changed. Read its latest version before editing.");
     if(row.status!=='open')throw new VoiceInputError("This task has already been completed or cancelled.");
     await assignee(db,context,call.line_id,p.ownerUserId);
     await db.query("UPDATE crm_tasks SET title=$3,owner_user_id=$4,due_at=$5,notes=$6,updated_at=now() WHERE workspace_id=$1 AND id=$2",[context.workspace.id,row.id,p.title,p.ownerUserId,p.dueAt,p.notes||null]);
@@ -90,9 +92,10 @@ export async function updateCallFollowUpTask(context:DashboardContext,input:unkn
   });
 }
 export async function completeCallFollowUpTask(context:DashboardContext,input:unknown) {
-  const p=completeSchema.parse(input);
+  const p=callFollowUpCompleteSchema.parse(input);
   await transaction(context,async db=>{
     const {row}=await taskRow(db,context,p.taskId,true);
+    if(p.expectedUpdatedAt&&row.updated_at.getTime()!==Date.parse(p.expectedUpdatedAt))throw new VoiceInputError("This task changed. Read its latest version before editing.");
     if(row.status!=='open')throw new VoiceInputError("This task has already been completed or cancelled.");
     await db.query("UPDATE crm_tasks SET status=$3,completion_outcome=$4,completed_at=CASE WHEN $3='completed' THEN now() ELSE NULL END,updated_at=now() WHERE workspace_id=$1 AND id=$2",[context.workspace.id,row.id,p.status,p.outcome]);
     await insertAuditLog(db,{workspaceId:context.workspace.id,actorUserId:context.user.id,action:`voice.follow_up_task.${p.status}`,targetType:"crm_task",targetId:row.id,metadata:{}});
