@@ -370,11 +370,14 @@
     {
       "file": "lib/booking/actions.ts",
       "export": "saveCalendar",
-      "status": "partial",
+      "status": "implemented",
       "tools": [
-        "prepare_block_time"
+        "prepare_block_time",
+        "prepare_publish_consultation_time",
+        "prepare_close_calendar_entry",
+        "prepare_cancel_consultation"
       ],
-      "reason": "Time blocks only; booking, moving, cancelling and removing blocks are pending."
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/conversations/actions.ts",
@@ -752,18 +755,20 @@
     {
       "file": "lib/sales/actions.ts",
       "export": "saveTaskAction",
-      "status": "partial",
+      "status": "implemented",
       "tools": [
-        "prepare_create_follow_up"
+        "prepare_save_sales_task"
       ],
-      "reason": "New follow-ups only; edits and appointments are pending."
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/sales/actions.ts",
       "export": "completeTaskAction",
-      "status": "pending",
-      "tools": [],
-      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+      "status": "implemented",
+      "tools": [
+        "prepare_complete_sales_task"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/sales/actions.ts",

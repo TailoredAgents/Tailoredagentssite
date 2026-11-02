@@ -113,6 +113,7 @@ export const taskSchema = z
   .object({
     opportunityId: id,
     taskId: optionalId,
+    expectedUpdatedAt: z.iso.datetime({offset:true}).optional(),
     title: z.string().trim().min(2).max(300),
     kind: z.enum(["follow_up", "appointment"]),
     ownerUserId: optionalText(200),
@@ -128,6 +129,7 @@ export const taskSchema = z
 export const completeTaskSchema = z.object({
   opportunityId: id,
   taskId: id,
+  expectedUpdatedAt: z.iso.datetime({offset:true}).optional(),
   status: z.enum(["completed", "cancelled"]),
   outcome: z.string().trim().min(2).max(2000),
 });

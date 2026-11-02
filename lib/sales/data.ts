@@ -60,14 +60,16 @@ function opportunity(row: OpportunityRow): SalesOpportunity {
     closedAt: row.closedAt?.toISOString() ?? null,
   };
 }
-const taskSelect = `SELECT t.id,t.opportunity_id AS "opportunityId",COALESCE(b.name,cb.name,p.name,s.external_addresses[1],'Customer') AS "businessName",COALESCE(o.title,'Call follow-up') AS "opportunityTitle",t.owner_user_id AS "ownerId",u.name AS "ownerName",t.kind,t.title,t.due_at AS "dueAt",t.end_at AS "endAt",t.location,t.notes,t.status FROM crm_tasks t LEFT JOIN crm_opportunities o ON o.id=t.opportunity_id AND o.workspace_id=t.workspace_id LEFT JOIN crm_businesses b ON b.id=o.business_id AND b.workspace_id=t.workspace_id LEFT JOIN crm_conversation_sources s ON s.id=t.conversation_source_id AND s.workspace_id=t.workspace_id LEFT JOIN crm_conversations c ON c.id=s.conversation_id AND c.workspace_id=s.workspace_id LEFT JOIN contacts p ON p.id=c.contact_id AND p.workspace_id=c.workspace_id LEFT JOIN crm_businesses cb ON cb.id=COALESCE(c.business_id,p.business_id) AND cb.workspace_id=c.workspace_id LEFT JOIN "user" u ON u.id=t.owner_user_id`;
-type TaskRow = Omit<SalesTask, "dueAt" | "endAt"> & {
+const taskSelect = `SELECT t.id,t.opportunity_id AS "opportunityId",COALESCE(b.name,cb.name,p.name,s.external_addresses[1],'Customer') AS "businessName",COALESCE(o.title,'Call follow-up') AS "opportunityTitle",t.owner_user_id AS "ownerId",u.name AS "ownerName",t.kind,t.title,t.due_at AS "dueAt",t.end_at AS "endAt",t.location,t.notes,t.status,t.updated_at AS "updatedAt" FROM crm_tasks t LEFT JOIN crm_opportunities o ON o.id=t.opportunity_id AND o.workspace_id=t.workspace_id LEFT JOIN crm_businesses b ON b.id=o.business_id AND b.workspace_id=t.workspace_id LEFT JOIN crm_conversation_sources s ON s.id=t.conversation_source_id AND s.workspace_id=t.workspace_id LEFT JOIN crm_conversations c ON c.id=s.conversation_id AND c.workspace_id=s.workspace_id LEFT JOIN contacts p ON p.id=c.contact_id AND p.workspace_id=c.workspace_id LEFT JOIN crm_businesses cb ON cb.id=COALESCE(c.business_id,p.business_id) AND cb.workspace_id=c.workspace_id LEFT JOIN "user" u ON u.id=t.owner_user_id`;
+type TaskRow = Omit<SalesTask, "dueAt" | "endAt" | "updatedAt"> & {
   dueAt: Date;
   endAt: Date | null;
+  updatedAt: Date;
 };
 function task(row: TaskRow): SalesTask {
   return {
     ...row,
+    updatedAt: row.updatedAt.toISOString(),
     dueAt: row.dueAt.toISOString(),
     endAt: row.endAt?.toISOString() ?? null,
   };

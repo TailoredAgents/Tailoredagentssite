@@ -4,6 +4,9 @@ import path from 'node:path';
 // Generated inventory makes omissions visible when new dashboard actions ship.
 async function walk(dir){const files=[];for(const entry of await readdir(dir,{withFileTypes:true})){if(['node_modules','.next'].includes(entry.name))continue;const name=path.join(dir,entry.name);if(entry.isDirectory())files.push(...await walk(name));else if(/\.tsx?$/.test(name)&&!name.endsWith('.test.ts'))files.push(name);}return files;}
 const implementations={
+ 'lib/sales/actions.ts#saveTaskAction':['prepare_save_sales_task'],
+ 'lib/sales/actions.ts#completeTaskAction':['prepare_complete_sales_task'],
+ 'lib/booking/actions.ts#saveCalendar':['prepare_block_time','prepare_publish_consultation_time','prepare_close_calendar_entry','prepare_cancel_consultation'],
  'lib/operations/actions.ts#updateLeadAction':['prepare_update_lead'],
  'lib/operations/actions.ts#updateLeadStatusAction':['prepare_update_lead_status'],
  'lib/operations/actions.ts#addLeadNoteAction':['prepare_add_lead_note'],
@@ -24,8 +27,6 @@ const implementations={
 };
 const partial={
  'lib/sales/actions.ts#logActivityAction':['prepare_log_activity','Internal notes only; imported communications and outcomes remain in dashboard.'],
- 'lib/sales/actions.ts#saveTaskAction':['prepare_create_follow_up','New follow-ups only; edits and appointments are pending.'],
- 'lib/booking/actions.ts#saveCalendar':['prepare_block_time','Time blocks only; booking, moving, cancelling and removing blocks are pending.'],
 };
 const handoffs=/connectSmsNumber|saveSmsGrant|connectVoiceLine|saveVoiceGrant|saveCallingPhone|issueVoiceToken|updateVoicePresence|acceptVoiceCall|createVoiceIntent|startPhoneCall|saveVoiceRouting|saveVoiceForwarding|saveRecordingPreferences|deleteCallRecording|deleteVoicemail|deleteLead/;
 const inventory=[];

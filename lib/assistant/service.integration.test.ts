@@ -12,6 +12,9 @@ import {GET as metadata} from '@/app/.well-known/oauth-protected-resource/api/mc
 import {readTools} from './tools/reads';
 import {getClient,getContact,getSite,getProject} from '@/lib/operations/data';
 import {saveClient} from '@/lib/operations/service';
+import {availableSlots} from '@/lib/booking/calendar';
+import {getCalendarEntry} from '@/lib/booking/staff';
+import {getSalesRecord} from '@/lib/sales/data';
 const url=process.env.ASSISTANT_TEST_DATABASE_URL;
 const workspace='00000000-0000-4000-8000-000000000001';
 const owner={user:{id:'assistant-owner',name:'Owner',email:'owner@example.test'},workspace:{id:workspace,name:'Tailored Agents',slug:'tailored-agents'},role:'owner' as const};
@@ -159,6 +162,47 @@ describe.skipIf(!url)('Operations OAuth and execution integration',()=>{
   await pool.query("UPDATE workspace_memberships SET role='viewer' WHERE user_id=$1",[owner.user.id]);
   expect((await saveClient(owner,form)).status).toBe('error');
   expect((await pool.query("SELECT id FROM clients WHERE name='Denied customer'")).rowCount).toBe(0);
+ });
+ it('reviews appointment edits, rejects concurrent overlaps and completes with a real outcome',async()=>{
+  const c=await connection();
+  const proposal=await prepareAction(c.p,'create_opportunity',{businessName:'Calendar customer',title:'Discovery',email:'calendar@example.test'},'calendar-opportunity');
+  const opportunityId=(await reviewAction(owner,proposal.id,'approve')).result as string;
+  const dueAt=new Date(Date.now()+10*86400000).toISOString();
+  const input={opportunityId,ownerUserId:owner.user.id,title:'Discovery appointment',kind:'appointment',dueAt};
+  const first=await prepareAction(c.p,'save_sales_task',input,'appointment-first');
+  const second=await prepareAction(c.p,'save_sales_task',input,'appointment-second');
+  const results=await Promise.all([reviewAction(owner,first.id,'approve'),reviewAction(owner,second.id,'approve')]);
+  expect(results.filter(r=>r.status==='succeeded')).toHaveLength(1);expect(results.filter(r=>r.status==='failed')).toHaveLength(1);
+  let task=(await getSalesRecord(owner,opportunityId))!.tasks[0];
+  // Updating its own notes must not conflict with the appointment itself.
+  const edit=await prepareAction(c.p,'save_sales_task',{...input,taskId:task.id,expectedUpdatedAt:task.updatedAt,notes:'Customer requested a website discussion.'},'appointment-edit');
+  expect((await reviewAction(owner,edit.id,'approve')).status).toBe('succeeded');
+  const stale=await prepareAction(c.p,'complete_sales_task',{opportunityId,taskId:task.id,expectedUpdatedAt:task.updatedAt,status:'completed',outcome:'Discussion finished.'},'appointment-stale');
+  expect((await reviewAction(owner,stale.id,'approve')).status).toBe('failed');
+  task=(await getSalesRecord(owner,opportunityId))!.tasks[0];
+  const done=await prepareAction(c.p,'complete_sales_task',{opportunityId,taskId:task.id,expectedUpdatedAt:task.updatedAt,status:'completed',outcome:'User confirmed the discussion finished.'},'appointment-complete');
+  expect((await reviewAction(owner,done.id,'approve')).status).toBe('succeeded');
+  expect((await getSalesRecord(owner,opportunityId))!.tasks[0].status).toBe('completed');
+ });
+ it('books and moves a lead through shared availability, rejects stale cancellation and sends nothing',async()=>{
+  const c=await connection(),leadId=randomUUID();
+  await pool.query("INSERT INTO leads(id,workspace_id,submission_id,fingerprint,source,status,name,organization,email,phone,description) VALUES($1,$2,$3,'fixture','manual','new','Booking visitor','Example','booking@example.test','+16785550123','User requested a consultation.')",[leadId,workspace,leadId]);
+  const revision=(await pool.query('SELECT updated_at FROM leads WHERE id=$1',[leadId])).rows[0].updated_at.toISOString();
+  const day=new Date(Date.now()+21*86400000).toISOString().slice(0,10),slots=await availableSlots('austin',undefined,day);
+  const book=await prepareAction(c.p,'book_consultation',{leadId,expectedLeadUpdatedAt:revision,profile:'austin',slotId:slots[0].id},'consultation-book');
+  const result=await reviewAction(owner,book.id,'approve');expect(result.status).toBe('succeeded');expect(result.result).toMatchObject({notificationSent:false,id:slots[0].id});
+  const original=(await getCalendarEntry(owner,slots[0].id))!;
+  const move=await prepareAction(c.p,'reschedule_consultation',{bookingId:original.id,expectedUpdatedAt:original.updatedAt,profile:'austin',slotId:slots[2].id},'consultation-move');
+  expect((await reviewAction(owner,move.id,'approve')).status).toBe('succeeded');
+  expect((await getCalendarEntry(owner,original.id))?.status).toBe('open');
+  expect((await getCalendarEntry(owner,slots[2].id))?.leadId).toBe(leadId);
+  await expect(prepareAction(c.p,'cancel_consultation',{id:slots[2].id,expectedUpdatedAt:original.updatedAt,visitorAlreadyContacted:false},'consultation-denied')).rejects.toThrow();
+  const stale=await prepareAction(c.p,'cancel_consultation',{id:slots[2].id,expectedUpdatedAt:original.updatedAt,visitorAlreadyContacted:true},'consultation-stale');
+  expect((await reviewAction(owner,stale.id,'approve')).status).toBe('failed');
+  const moved=(await getCalendarEntry(owner,slots[2].id))!;
+  const cancel=await prepareAction(c.p,'cancel_consultation',{id:moved.id,expectedUpdatedAt:moved.updatedAt,visitorAlreadyContacted:true},'consultation-cancel');
+  expect((await reviewAction(owner,cancel.id,'approve')).status).toBe('succeeded');
+  expect((await getCalendarEntry(owner,moved.id))?.status).toBe('cancelled');
  });
  it('keeps client search and record lookup isolated across workspaces',async()=>{
   const c=await connection(),workspaceId=randomUUID(),clientId=randomUUID();

@@ -66,6 +66,7 @@ export type SalesContact = {
   title: string | null;
 };
 export type SalesTask = {
+  updatedAt: string;
   id: string;
   opportunityId: string | null;
   businessName: string;

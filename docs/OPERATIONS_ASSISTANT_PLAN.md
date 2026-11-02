@@ -1,6 +1,6 @@
 # Tailored Agents Operations assistant — full implementation plan
 
-Status: **Implementation in progress. Connection, read tools, reviewed internal proposals and private goals implemented; full phases 0–7 and real ChatGPT acceptance are not complete. No new routine or autonomous sending enabled.**
+Status: **Implementation in progress. Connection, read tools, reviewed internal proposals and private goals implemented; full phases 0–7 are not complete. Real ChatGPT connection and account reading are accepted; reviewed writes and renewal still need acceptance. No new routine or autonomous sending enabled.**
 Owner: Austin. Prepared November 2, 2026, America/New_York.
 Baseline reviewed: main `19daac8`, including the November 1 Mail and Eastern-time releases.
 
@@ -17,11 +17,13 @@ Implemented in this increment:
 - Code-derived action/transport inventory in [OPERATIONS_ASSISTANT_COVERAGE.json](OPERATIONS_ASSISTANT_COVERAGE.json). Pending and partial rows remain real work, not completed handoffs. Run `node scripts/assistant/coverage.mjs --check` to detect inventory drift.
 - Audit metadata and retention. Customer content is removed from old action receipts after 90 days; receipt metadata remains for one year. Used refresh hashes remain until expiration to detect replay.
 
-Temporary connection constraint: Operations deliberately binds to the real dashboard sign-in used at consent and expires with it (currently up to 14 days). Sign-out, lost Mail identity access or suspended membership stops access. A separate long-lived identity delegation requires a reviewed Mail-side addition; no service credential may be used to impersonate a user. That work is still outstanding, as are actual ChatGPT connection and renewal acceptance. The Assistant UI states this limitation.
+Temporary connection constraint: Operations deliberately binds to the real dashboard sign-in used at consent and expires with it (currently up to 14 days). Sign-out, lost Mail identity access or suspended membership stops access. A separate long-lived identity delegation requires a reviewed Mail-side addition; no service credential may be used to impersonate a user. That work is still outstanding, and renewal acceptance remains outstanding. Austin confirmed the actual ChatGPT connection and account check worked after the consent fix. The Assistant UI states this limitation.
 
 The next increment extracts ten CRM/project mutations into shared services with live membership checks, revision-locked edits and human-readable review targets. Both dashboard forms and assistant tools use those services. Lead conversion/deletion remain separate.
 
-Still pending: remaining sales task and settings coverage; staff booking/rescheduling/cancellation; reviewed SMS/shared Mail; call controls; full Builder/SEO/card mutations; personal preferences/commitments; durable routines; complete exports/reports and parity checks. Existing Mail sends, channel grants, build approvals and spend limits remain unchanged. See the coverage inventory and phases below.
+Calendar/task increment adds revision-checked task edits/completion, staff booking/rescheduling/cancellation, extra openings and block removal; public/staff races and sales appointment overlaps are tested.
+
+Still pending: remaining settings and source-linked task coverage; reviewed SMS/shared Mail; call controls; full Builder/SEO/card mutations; personal preferences/commitments; durable routines; complete exports/reports and parity checks. Existing Mail sends, channel grants, build approvals and spend limits remain unchanged. See the coverage inventory and phases below.
 
 Verification and live deployment evidence are recorded in [Operations setup](OPERATIONS_ASSISTANT_SETUP.md). This checkpoint does not declare any phase with unmet live acceptance gates complete.
 

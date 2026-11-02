@@ -5,6 +5,7 @@ import {listConversationWorkspace} from '@/lib/conversations/data';
 import {cardAccess} from '@/lib/smart-cards/data';
 import {getDatabasePool} from '@/lib/dashboard/db';
 import {AssistantError} from './config';
+import {getCalendarEntry} from '@/lib/booking/staff';
 import type {Principal} from './oauth';
 // Save human-readable target identity alongside the exact proposed input. Never
 // accept these labels from the assistant. Re-resolve before executing the change.
@@ -46,6 +47,11 @@ export async function reviewContext(p:Principal,tool:string,input:Record<string,
   if(!record)throw new AssistantError('not_found','This sales record is unavailable.',404);
   result.customer=record.business.name;result.opportunity=record.title;
   result.currentStage=record.stage;
+  if(typeof input.taskId==='string'){
+   const task=record.tasks.find(t=>t.id===input.taskId);
+   if(!task)throw new AssistantError('not_found','This task is unavailable.',404);
+   result.task=task.title;result.currentTaskOwner=task.ownerName;result.currentStart=task.dueAt;result.currentEnd=task.endAt;
+  }
  }
  if(typeof input.ownerUserId==='string'&&input.ownerUserId){
   const member=(await getWorkspaceMembers(context)).find(m=>m.id===input.ownerUserId&&m.role!=='viewer');
@@ -63,11 +69,21 @@ export async function reviewContext(p:Principal,tool:string,input:Record<string,
   if(!source)throw new AssistantError('not_found','This conversation or note audience is unavailable.',404);
   result.customer=r.selected!.conversation.personName;result.source=source.label;result.channel=source.channel;result.addresses=source.externalAddresses;
  }
- if(tool==='block_time'){
+ if(tool==='block_time'||tool==='publish_consultation_time'){
   await cardAccess(context,true);
   const profile=(await getDatabasePool().query('SELECT display_name,login_email FROM smart_card_profiles WHERE workspace_id=$1 AND slug=$2',[context.workspace.id,input.profile])).rows[0];
   if(!profile)throw new AssistantError('not_found','This calendar profile is unavailable.',404);
   result.calendar=profile.display_name;result.calendarOwner=profile.login_email;result.timezone='America/New_York';
+ }
+ if(['book_consultation','reschedule_consultation','close_calendar_entry','cancel_consultation'].includes(tool)){
+  await cardAccess(context,true);
+  for(const [label,id] of [['currentBooking',input.bookingId??input.id],['selectedTime',input.slotId]]){
+   if(typeof id!=='string')continue;
+   const entry=await getCalendarEntry(context,id);
+   if(!entry)throw new AssistantError('not_found','This calendar entry is unavailable.',404);
+   result[String(label)]=entry;
+  }
+  result.timezone='America/New_York';result.visitorNotification='This action sends no message.';
  }
  return result;
 }

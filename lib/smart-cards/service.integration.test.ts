@@ -7,6 +7,7 @@ import {getDatabasePool} from '@/lib/dashboard/db';
 import {ensureRecurringSlots} from '@/lib/booking/recurring';
 import {easternInputValue} from '@/lib/time';
 import {changeCalendar,availableSlots,getBookingCalendar,guardSalesAppointment} from '@/lib/booking/calendar';
+import {bookConsultation} from '@/lib/booking/staff';
 import {askCardAssistant,CARD_AI_RESERVATION} from './assistant';
 import {saveCardInquiry} from './inquiries';
 import {cardAccess,getCardProfile,resolveCard,validateCardSource} from './data';
@@ -68,6 +69,19 @@ describe.skipIf(!databaseUrl)('Smart Cards database and public boundaries',()=>{
   const row=(await getBookingCalendar(owner)).slots[0];expect(row.status).toBe('booked');expect(row.phone).toBe('+16785550123');
   const db=await pool.connect();try{await db.query('BEGIN');await expect(guardSalesAppointment(db,CARD_WORKSPACE,'card-owner',slot.startsAt,slot.endsAt)).rejects.toThrow('booking');await db.query('ROLLBACK');}finally{db.release();}
   await expect(changeCalendar(owner,{operation:'cancel',id:slot.id})).rejects.toThrow('Contact');await changeCalendar(owner,{operation:'cancel',id:slot.id,contacted:'on'});expect((await saveCardInquiry(winner)).booking?.status).toBe('cancelled');expect(await availableSlots('austin')).toEqual([]);
+ });
+ it('serializes public booking against a staff booking of the same time',async()=>{
+  const slot=await publish();
+  await saveCardInquiry({...inquiry(),email:'staff-existing@example.test',phone:'+16785550123'});
+  const lead=(await pool.query("SELECT id,updated_at FROM leads WHERE email='staff-existing@example.test'")).rows[0];
+  const results=await Promise.allSettled([
+   bookConsultation(owner,{leadId:lead.id,expectedLeadUpdatedAt:lead.updated_at.toISOString(),profile:'austin',slotId:slot.id}),
+   saveCardInquiry({...inquiry(),requestKind:'appointment',phone:'+16785550124',slotId:slot.id}),
+  ]);
+  expect(results.filter(r=>r.status==='fulfilled')).toHaveLength(1);
+  expect(results.filter(r=>r.status==='rejected')).toHaveLength(1);
+  expect((await pool.query("SELECT id FROM booking_slots WHERE status='booked'")).rowCount).toBe(1);
+  expect(await availableSlots('austin')).toEqual([]);
  });
  it('refuses booking without consent or phone, and refuses mismatched or stale slots',async()=>{
   const slot=await publish(),v={...inquiry(),requestKind:'appointment',slotId:slot.id};

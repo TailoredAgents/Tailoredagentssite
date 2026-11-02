@@ -114,9 +114,11 @@ test("reviewed prospect import, scheduled sales and mockup handoff convert into 
   await dateInput.fill("2030-11-03T01:30");
   await appointment.getByLabel("Daylight saving time occurrence").selectOption("2030-11-03T06:30:00.000Z");
   await expect(appointment.locator('input[name="dueAt"]')).toHaveValue("2030-11-03T06:30:00.000Z");
-  const localDate = "2030-04-08T14:30";
+  // The two device runs share a test workspace; give each a separate time now
+  // that internal appointments correctly prevent double booking.
+  const localDate = info.project.name === "phone" ? "2030-04-09T14:30" : "2030-04-08T14:30";
   await dateInput.fill(localDate);
-  const expectedIso = "2030-04-08T18:30:00.000Z"; // 2:30 PM Eastern, regardless of browser zone.
+  const expectedIso = info.project.name === "phone" ? "2030-04-09T18:30:00.000Z" : "2030-04-08T18:30:00.000Z"; // 2:30 PM Eastern, regardless of browser zone.
   await expect(appointment.locator('input[name="dueAt"]')).toHaveValue(expectedIso);
   await expect(appointment).toContainText("Time zone: US Eastern (America/New_York)");
   await appointment.getByLabel("Location / meeting link", { exact: true }).fill("https://example.test/meet/website-preview");

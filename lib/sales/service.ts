@@ -449,9 +449,11 @@ export async function logActivity(context: DashboardContext, input: unknown) {
 export async function saveTask(context: DashboardContext, input: unknown) {
   const data = taskSchema.parse(input);
   return transaction(context, async (db) => {
-    if(data.kind==='appointment'){try{await guardSalesAppointment(db,context.workspace.id,data.ownerUserId,data.dueAt,data.endAt);}catch(e){throw new SalesInputError(e instanceof Error?e.message:'The appointment conflicts with the shared calendar.');}}
+    if(data.kind==='appointment'){try{await guardSalesAppointment(db,context.workspace.id,data.ownerUserId,data.dueAt,data.endAt,data.taskId);}catch(e){throw new SalesInputError(e instanceof Error?e.message:'The appointment conflicts with the shared calendar.');}}
     const o = await opportunity(db, context, data.opportunityId);
     await owner(db, context, data.ownerUserId);
+    await taskRevision(db,context,data.taskId,data.expectedUpdatedAt);
+    const taskId=data.taskId??randomUUID();
     if (data.taskId) {
       const result = await db.query(
         `UPDATE crm_tasks SET title=$1,kind=$2,owner_user_id=$3,due_at=$4,end_at=$5,location=$6,notes=$7,updated_at=now() WHERE id=$8 AND opportunity_id=$9 AND workspace_id=$10 AND status='open'`,
@@ -473,7 +475,7 @@ export async function saveTask(context: DashboardContext, input: unknown) {
       await db.query(
         `INSERT INTO crm_tasks(id,workspace_id,opportunity_id,owner_user_id,kind,title,due_at,end_at,location,notes) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
         [
-          randomUUID(),
+          taskId,
           context.workspace.id,
           o.id,
           data.ownerUserId ?? null,
@@ -486,11 +488,13 @@ export async function saveTask(context: DashboardContext, input: unknown) {
         ],
       );
     await audit(db, context, "sales_task.saved", o.id);
+    return {taskId,notificationSent:false};
   });
 }
 export async function completeTask(context: DashboardContext, input: unknown) {
   const data = completeTaskSchema.parse(input);
   return transaction(context, async (db) => {
+    await taskRevision(db,context,data.taskId,data.expectedUpdatedAt);
     const o = await opportunity(db, context, data.opportunityId),
       r = await db.query(
         "UPDATE crm_tasks SET status=$1,completed_at=CASE WHEN $1='completed' THEN now() ELSE NULL END,updated_at=now() WHERE id=$2 AND opportunity_id=$3 AND workspace_id=$4 AND status='open' RETURNING title",
@@ -509,6 +513,11 @@ export async function completeTask(context: DashboardContext, input: unknown) {
       "sales_task",
     );
   });
+}
+async function taskRevision(db:PoolClient,context:DashboardContext,id:string|undefined,expected:string|undefined){
+ if(!id||!expected)return;
+ const row=(await db.query<{updated_at:Date}>('SELECT updated_at FROM crm_tasks WHERE id=$1 AND workspace_id=$2 FOR UPDATE',[id,context.workspace.id])).rows[0];
+ if(!row||row.updated_at.getTime()!==Date.parse(expected))throw new SalesInputError('This task changed. Read it again before editing.');
 }
 export async function requestMockup(context: DashboardContext, input: unknown) {
   const data = requestMockupSchema.parse(input);

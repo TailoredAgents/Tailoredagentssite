@@ -7,6 +7,7 @@ import * as sales from '@/lib/sales/data';
 import {listConversationWorkspace,loadConversationSourceHistory} from '@/lib/conversations/data';
 import {getVoiceCall,listVoiceCalls,getVoiceWorkspace} from '@/lib/voice/data';
 import {getBookingCalendar,availableSlots} from '@/lib/booking/calendar';
+import {getCalendarEntry} from '@/lib/booking/staff';
 import {getCardsDashboard,cardAccess} from '@/lib/smart-cards/data';
 import {getFactoryWorkspace,getFactoryProject} from '@/lib/factory/data';
 import {getFactoryProjectBuilds} from '@/lib/factory/build-data';
@@ -46,6 +47,7 @@ read('get_call','Read one permitted call and available transcript/analysis.',byI
 read('list_calls','Read a page of calls for an allowed voice conversation.',{conversationId:id},(p,v)=>listVoiceCalls(p.context,v.conversationId),'Most recent 100 calls; if hasOlder use get_source_history with the conversation source cursor.',['conversations:read']);
 read('get_voice_status','Read your permitted phone lines and calling readiness.',{},async p=>{const r=await getVoiceWorkspace(p.context);return {state:r.state,message:r.message,lines:r.lines};},'New calls still require the dashboard and an actual staff device.',['conversations:read']);
 read('list_calendar_events','Read team bookings, appointments, blocks and recurring schedules.',{},p=>getBookingCalendar(p.context),'Up to 1,000 booking entries and 1,000 appointments; past 30 days, appointments next 90 days. Time zone America/New_York.');
+read('get_calendar_entry','Read one consultation or calendar block with its exact revision timestamp.',byId,(p,v)=>getCalendarEntry(p.context,v.id));
 read('get_availability','Read public consultation availability for one teammate on an Eastern calendar day.',{profile:z.enum(['austin','devon','jeffrey']),day:z.iso.date()},async(p,v)=>{await cardAccess(p.context);return availableSlots(v.profile,undefined,v.day);},'Public slots only: two-hour notice, next 90 days. Not all internal calendar free time.');
 read('list_cards','Read profiles, permanent card links, engagement and recent inquiries.',{},p=>getCardsDashboard(p.context),'Engagement window and recent inquiry limits are dashboard summaries; anonymous taps do not identify people.');
 read('list_factory_projects','Read Website Builder planning and job status.',{},p=>getFactoryWorkspace(p.context),'Bounded dashboard project list, not an exhaustive export.');
