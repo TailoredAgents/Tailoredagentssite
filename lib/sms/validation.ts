@@ -1,4 +1,5 @@
 import { z } from "zod";
+import {draftRevisionSchema} from '@/lib/conversations/draft-revision';
 import { normalizePhone } from "@/lib/sales/import";
 export type { SmsActionState } from "./types";
 const identifier = z.string().uuid("Choose a valid record.");
@@ -46,6 +47,7 @@ export const conversationSchema = threadSchema.extend({
   leadId: optionalId,
 });
 export const draftSchema = z.object({
+  expectedDraft:draftRevisionSchema.nullable().optional(),
   composeKey: z.string().regex(/^(contact|lead):[0-9a-f-]{36}(:\+[1-9][0-9]{7,14})?$/i).optional(),
   numberId: identifier,
   conversationId: optionalId,

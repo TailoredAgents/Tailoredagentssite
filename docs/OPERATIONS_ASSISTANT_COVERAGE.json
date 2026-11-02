@@ -549,9 +549,11 @@
     {
       "file": "lib/inbox/actions.ts",
       "export": "saveDraftAction",
-      "status": "pending",
-      "tools": [],
-      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+      "status": "implemented",
+      "tools": [
+        "prepare_save_mail_draft"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/inbox/actions.ts",
@@ -915,9 +917,11 @@
     {
       "file": "lib/sms/actions.ts",
       "export": "saveSmsDraftAction",
-      "status": "pending",
-      "tools": [],
-      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+      "status": "implemented",
+      "tools": [
+        "prepare_save_sms_draft"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/sms/actions.ts",

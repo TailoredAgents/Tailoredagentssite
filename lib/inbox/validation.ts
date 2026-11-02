@@ -1,4 +1,5 @@
 import { z } from "zod";
+import {draftRevisionSchema} from '@/lib/conversations/draft-revision';
 
 export type InboxActionState = {
   crmConversationId?: string;
@@ -29,6 +30,7 @@ export const conversationSchema = threadSchema.extend({
   leadId: optionalId,
 });
 export const draftSchema = z.object({
+  expectedDraft:draftRevisionSchema.nullable().optional(),
   composeKey: z.string().regex(/^(contact|lead):[0-9a-f-]{36}$/i).optional(),
   mailboxId: providerId,
   threadId: optionalProviderId,

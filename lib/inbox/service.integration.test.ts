@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomUUID,randomBytes,createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import type { Pool } from "pg";
 import {
@@ -21,6 +21,9 @@ import {
   saveDraft,
   sendInboxMessage,
 } from "./service";
+import {registerClient,validateAuthorization,createConsent,finishConsent,exchange,authenticate} from '@/lib/assistant/oauth';
+import {prepareAction,reviewAction} from '@/lib/assistant/actions';
+import {readMailDraft} from '@/lib/assistant/drafts';
 import type { MailThreadRecord } from "./types";
 import { MailProviderError } from "./mail-provider";
 
@@ -96,6 +99,16 @@ const thread: MailThreadRecord = {
   ],
 };
 const envelope = { mailboxId: mailbox.id, threadId: thread.threadId };
+async function assistantConnection(){
+ vi.stubEnv('BETTER_AUTH_URL','https://www.tailoredagents.com');vi.stubEnv('BETTER_AUTH_SECRET','synthetic-assistant-draft-only-secret-123456789');vi.stubEnv('DASHBOARD_AUTH_MODE','password');vi.stubEnv('DASHBOARD_ALLOWED_EMAILS',owner.user.email);vi.stubEnv('OPERATIONS_ASSISTANT_ENABLED','true');vi.stubEnv('OPERATIONS_ASSISTANT_WRITES_ENABLED','true');
+ const sessionId=randomUUID();await pool.query('INSERT INTO "session"(id,"userId",token,"expiresAt") VALUES($1,$2,$1,now()+interval \'1 day\')',[sessionId,owner.user.id]);
+ const callback='https://chatgpt.com/connector_platform/oauth/callback',resource='https://www.tailoredagents.com/api/mcp/operations',scopes=['conversations:read','operations:write'];
+ const client=await registerClient({client_name:'Synthetic draft assistant',redirect_uris:[callback]}),verifier=randomBytes(32).toString('base64url');
+ const authorization=await validateAuthorization({client_id:client.client_id,redirect_uri:callback,response_type:'code',scope:scopes.join(' '),resource,state:'draft-test',code_challenge:createHash('sha256').update(verifier).digest('base64url'),code_challenge_method:'S256'});
+ const nonce=await createConsent(authorization,owner,sessionId),location=new URL(await finishConsent(nonce,owner,sessionId,scopes,true));
+ const token=await exchange({grant_type:'authorization_code',client_id:client.client_id,code:location.searchParams.get('code')!,redirect_uri:callback,code_verifier:verifier,resource});
+ return authenticate(new Request(resource,{headers:{authorization:'Bearer '+token.access_token}}));
+}
 function compose(overrides: Record<string, unknown> = {}) {
   return {
     mailboxId: mailbox.id,
@@ -301,6 +314,23 @@ describe.skipIf(!databaseUrl)(
       });
       expect(result.selected).toBeNull();
       expect(result.connection.state).toBe("grant_required");
+    });
+    it("reviews private email drafts and rejects stale or competing saves without sending", async () => {
+      const p=await assistantConnection();
+      expect((await readMailDraft(p,envelope)).draft).toBeNull();
+      const proposal=await prepareAction(p,'save_mail_draft',{...envelope,to:'prospect@example.test',subject:'Next steps',text:'A reviewed draft.',expectedDraft:null},'mail-draft-create');
+      expect((await reviewAction(owner,proposal.id,'approve')).status).toBe('succeeded');
+      const draft=(await readMailDraft(p,envelope)).draft!;
+      await saveDraft(member,{...envelope,text:'Another person’s private draft.'});
+      const edit=await prepareAction(p,'save_mail_draft',{...envelope,text:'Proposed edit',expectedDraft:draft},'mail-draft-edit');
+      await saveDraft(owner,{...envelope,text:'Newer human edit'});
+      expect((await reviewAction(owner,edit.id,'approve')).status).toBe('failed');
+      expect((await readMailDraft(p,envelope)).draft?.text).toBe('Newer human edit');
+      const current=(await readMailDraft(p,envelope)).draft!;
+      const results=await Promise.allSettled([saveDraft(owner,{...envelope,text:'First',expectedDraft:current}),saveDraft(owner,{...envelope,text:'Second',expectedDraft:current})]);
+      expect(results.filter(r=>r.status==='fulfilled')).toHaveLength(1);
+      expect((await listInboxWorkspace(member,{thread:thread.threadId})).selected?.draft?.text).toBe('Another person’s private draft.');
+      expect(gateway.send).not.toHaveBeenCalled();
     });
     it("shares internal notes but isolates draft ownership and never sends on draft save", async () => {
       await addInboxNote(owner, { ...envelope, body: "For the sales team" });

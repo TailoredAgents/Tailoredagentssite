@@ -110,6 +110,14 @@ AI toggles preserve both the monthly cap and current usage. Resuming can permit 
 
 Verification: 61 assistant/Smart Card integration and security tests passed, including exact proposal review, stale profile/settings rejection, stable redirects, one link after concurrent approval, disabled links, current admin role, public attribution and the unchanged allowance. The production build, typecheck, lint and coverage checks passed. No live public profile or card was changed during testing.
 
+## Private drafts
+
+The assistant can list permitted mailboxes, read its connected owner's CRM email/text draft, and prepare a reviewed save. Email drafts here belong to the dashboard Inbox; the separate Tailored Agents Mail app has its own draft tools. Saving a draft never sends a message and does not grant permission to send it later.
+
+A save requires the exact draft ID/revision, or an explicit null only when none is present. The shared service rechecks that state under its existing transaction lock. Newer edits from another device or a competing approval are preserved; drafts remain author/workspace/channel-scoped, and current Mail/number permissions still apply. Drafts older than the existing 90-day retention window are unavailable and can be replaced by a new draft. To save a reply, retain its original thread and reply-to message rather than inventing a new recipient.
+
+Verification: 82 Operations, email Inbox and SMS tests passed with simulated providers, including real proposal approval, private ownership, stale edits, competing saves, expired drafts and zero provider sends from draft saves. Production build, typecheck, lint and coverage checks passed.
+
 ## Next work
 
 Follow phases 0–7 in `OPERATIONS_ASSISTANT_PLAN.md`. The code-derived manifest lists outstanding features; the dashboard also describes what is and is not available. Real ChatGPT discovery, consent and account reading are accepted; reviewed writes, renewal and revocation still need real-client acceptance. Then complete the pending service extraction, calendar and communication flows, longer-lived identity delegation and durable routines without bypassing existing approvals or spending limits.

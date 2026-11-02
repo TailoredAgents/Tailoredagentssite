@@ -4,6 +4,10 @@ Status: **Implementation in progress. Connection, read tools, reviewed internal 
 Owner: Austin. Prepared November 2, 2026, America/New_York.
 Baseline reviewed: main `19daac8`, including the November 1 Mail and Eastern-time releases.
 
+## Updated owner direction — November 2
+
+Austin explicitly requested that the bot perform work without per-action approval. Build an opt-in direct execution mode, enabled once by the signed-in owner for a particular connection and its selected scopes. This supersedes this document’s default requirement to visit the dashboard for every supported mutation. Keep reviewed proposals available as an option, and keep scope/role/channel checks, stale-state checks, spending limits, idempotency, receipts and pause/revoke. Existing grants were consented for proposals and must not be silently upgraded. Direct mode does not waive approval requirements imposed by the external ChatGPT host or the separate Mail connection.
+
 ## November 2 implementation checkpoint
 
 The first implementation adds `/api/mcp/operations` and `/dashboard/assistant`. Austin selected the existing ChatGPT bot connected to Tailored Agents Mail as the first client. Operations is a separate OAuth connection; it does not replace Mail or expand Mail permissions.
@@ -28,6 +32,8 @@ Communication increment adds separately consented, human-reviewed SMS with provi
 Call-task increment adds read/create/edit/complete proposals for transcript-backed follow-ups, preserving line access, eligible assignees and revision checks.
 
 Smart Card increment adds current-record reads and reviewed public profile edits, permanent link creation/reassignment/pause, and public-agent pause/resume without changing its allowance.
+
+Draft increment adds owned CRM email/text draft reads and reviewed saves, protecting newer edits from another device. Separate Mail app drafts remain in the Mail connection.
 
 Still pending: remaining settings and task coverage; reviewed shared Mail; call controls; full Builder/SEO mutations and portrait-upload tooling; personal preferences/commitments; durable routines; complete exports/reports and parity checks. Existing Mail sends, channel grants, build approvals and spend limits remain unchanged. See the coverage inventory and phases below.
 

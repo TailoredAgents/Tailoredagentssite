@@ -9,11 +9,14 @@ import {getCalendarEntry} from '@/lib/booking/staff';
 import {smsReview} from './sms';
 import {getCallFollowUpOptions,getCallFollowUpTask} from '@/lib/voice/follow-up-tasks';
 import {getManagedProfile,getManagedCard,getCardAiSettings} from '@/lib/smart-cards/settings';
+import {readMailDraft,readSmsDraft} from './drafts';
 import type {Principal} from './oauth';
 // Save human-readable target identity alongside the exact proposed input. Never
 // accept these labels from the assistant. Re-resolve before executing the change.
 export async function reviewContext(p:Principal,tool:string,input:Record<string,unknown>){
  const context=p.context;const result:Record<string,unknown>={requestedFor:context.user.name,workspace:context.workspace.name};
+ if(tool==='save_mail_draft')result.currentPrivateDraft=await readMailDraft(p,input);
+ if(tool==='save_sms_draft')result.currentPrivateDraft=await readSmsDraft(p,input);
  if(['save_card_profile','create_card_link','update_card_link','set_card_assistant'].includes(tool)){
   await cardAccess(context,true);
   if(tool==='set_card_assistant'){

@@ -1,4 +1,5 @@
 import "server-only";
+import {draftRevisionMatches} from '@/lib/conversations/draft-revision';
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import type { PoolClient } from "pg";
@@ -168,9 +169,13 @@ export async function saveDraft(context: DashboardContext, raw: unknown) {
   await requireInboxMailbox(context, input.mailboxId);
   if (input.threadId)
     await getMailThread(context, input.mailboxId, input.threadId);
-  await transaction(context, async (db) => {
-    await db.query(
-      `INSERT INTO inbox_drafts(id,workspace_id,mailbox_id,thread_key,author_user_id,recipient,subject,body,reply_to_message_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(workspace_id,mailbox_id,thread_key,author_user_id) DO UPDATE SET recipient=EXCLUDED.recipient,subject=EXCLUDED.subject,body=EXCLUDED.body,reply_to_message_id=EXCLUDED.reply_to_message_id,updated_at=now()`,
+  return transaction(context, async (db) => {
+    if(input.expectedDraft!==undefined){
+      const current=(await db.query<{id:string;updated_at:Date}>("SELECT id,updated_at FROM inbox_drafts WHERE workspace_id=$1 AND mailbox_id=$2 AND thread_key=$3 AND author_user_id=$4 AND updated_at>now()-interval '90 days' FOR UPDATE",[context.workspace.id,input.mailboxId,input.threadId||input.composeKey||'',context.user.id])).rows[0];
+      if(!draftRevisionMatches(current,input.expectedDraft))throw new InboxInputError('Your private draft changed. Read it again before saving.');
+    }
+    const saved=await db.query<{id:string;updated_at:Date}>(
+      `INSERT INTO inbox_drafts(id,workspace_id,mailbox_id,thread_key,author_user_id,recipient,subject,body,reply_to_message_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(workspace_id,mailbox_id,thread_key,author_user_id) DO UPDATE SET recipient=EXCLUDED.recipient,subject=EXCLUDED.subject,body=EXCLUDED.body,reply_to_message_id=EXCLUDED.reply_to_message_id,updated_at=now() RETURNING id,updated_at`,
       [
         randomUUID(),
         context.workspace.id,
@@ -183,6 +188,7 @@ export async function saveDraft(context: DashboardContext, raw: unknown) {
         input.replyToMessageId || null,
       ],
     );
+    return {id:saved.rows[0].id,updatedAt:saved.rows[0].updated_at.toISOString(),sent:false};
   });
 }
 export async function markInboxRead(context: DashboardContext, raw: unknown) {

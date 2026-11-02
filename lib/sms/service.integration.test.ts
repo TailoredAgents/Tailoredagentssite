@@ -32,6 +32,7 @@ import {
 import { TwilioProviderError } from "@/lib/twilio/provider";
 import {registerClient,validateAuthorization,createConsent,finishConsent,exchange,authenticate} from '@/lib/assistant/oauth';
 import {prepareAction,reviewAction,readAction} from '@/lib/assistant/actions';
+import {readSmsDraft} from '@/lib/assistant/drafts';
 import {getSmsRecipient,executeSms} from '@/lib/assistant/sms';
 
 vi.mock("server-only", () => ({}));
@@ -138,7 +139,7 @@ async function count(table: string) {
 async function assistantConnection(send=true){
  vi.stubEnv('BETTER_AUTH_URL','https://www.tailoredagents.com');vi.stubEnv('BETTER_AUTH_SECRET','synthetic-assistant-sms-only-secret-123456789');vi.stubEnv('DASHBOARD_AUTH_MODE','password');vi.stubEnv('DASHBOARD_ALLOWED_EMAILS',owner.user.email);vi.stubEnv('OPERATIONS_ASSISTANT_ENABLED','true');vi.stubEnv('OPERATIONS_ASSISTANT_WRITES_ENABLED','true');
  const sessionId=randomUUID();await pool.query('INSERT INTO "session"(id,"userId",token,"expiresAt") VALUES($1,$2,$1,now()+interval \'1 day\')',[sessionId,ownerId]);
- const callback='https://chatgpt.com/connector_platform/oauth/callback',resource='https://www.tailoredagents.com/api/mcp/operations',scopes=send?['conversations:read','conversations:send']:['conversations:read'];
+ const callback='https://chatgpt.com/connector_platform/oauth/callback',resource='https://www.tailoredagents.com/api/mcp/operations',scopes=send?['conversations:read','conversations:send','operations:write']:['conversations:read'];
  const client=await registerClient({client_name:'Synthetic text assistant',redirect_uris:[callback]}),verifier=randomBytes(32).toString('base64url');
  const authorization=await validateAuthorization({client_id:client.client_id,redirect_uri:callback,response_type:'code',scope:scopes.join(' '),resource,state:'sms-test',code_challenge:createHash('sha256').update(verifier).digest('base64url'),code_challenge_method:'S256'});
  const nonce=await createConsent(authorization,owner,sessionId),location=new URL(await finishConsent(nonce,owner,sessionId,scopes,true));
@@ -778,6 +779,21 @@ describe.skipIf(!databaseUrl)(
           )
         ).rows[0].status,
       ).toBe("blocked");
+    });
+    it("reviews private text drafts and protects newer edits across devices",async()=>{
+      const p=await assistantConnection(),target={numberId};
+      const proposal=await prepareAction(p,'save_sms_draft',{...target,to:remote,text:'Reviewed draft',expectedDraft:null},'sms-draft-create');
+      expect((await reviewAction(owner,proposal.id,'approve')).status).toBe('succeeded');
+      const draft=(await readSmsDraft(p,target)).draft!;
+      await saveSmsDraft(owner,{...target,to:remote,text:'Saved on another device'});
+      await expect(saveSmsDraft(owner,{...target,to:remote,text:'Stale',expectedDraft:draft})).rejects.toThrow('draft changed');
+      const current=(await readSmsDraft(p,target)).draft!;
+      const results=await Promise.allSettled([saveSmsDraft(owner,{...target,to:remote,text:'First',expectedDraft:current}),saveSmsDraft(owner,{...target,to:remote,text:'Second',expectedDraft:current})]);
+      expect(results.filter(r=>r.status==='fulfilled')).toHaveLength(1);
+      expect(gateway.create).not.toHaveBeenCalled();
+      await pool.query("UPDATE sms_drafts SET updated_at=now()-interval '91 days' WHERE author_user_id=$1",[owner.user.id]);
+      expect((await readSmsDraft(p,target)).draft).toBeNull();
+      expect(await saveSmsDraft(owner,{...target,text:'A fresh draft',expectedDraft:null})).toMatchObject({sent:false});
     });
     it("shares notes but isolates drafts and personal read receipts", async () => {
       const inbound = await receiveSmsWebhook(incoming()),

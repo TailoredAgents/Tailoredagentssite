@@ -1,4 +1,5 @@
 import "server-only";
+import {draftRevisionMatches} from '@/lib/conversations/draft-revision';
 import { enqueueIncomingSmsAlert } from "./alerts";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
@@ -333,12 +334,16 @@ export async function saveSmsConversation(
 export async function saveSmsDraft(context: DashboardContext, raw: unknown) {
   const input = draftSchema.parse(raw);
   await authorizeSms(context, true);
-  await tx(context.workspace.id, context, async (db) => {
+  return tx(context.workspace.id, context, async (db) => {
     await numberAccess(db, context, input.numberId);
     if (input.conversationId)
       await conversationRow(db, context, input.numberId, input.conversationId);
-    await db.query(
-      "INSERT INTO sms_drafts(id,workspace_id,number_id,author_user_id,thread_key,recipient,body) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(workspace_id,number_id,author_user_id,thread_key) DO UPDATE SET recipient=EXCLUDED.recipient,body=EXCLUDED.body,updated_at=now()",
+    if(input.expectedDraft!==undefined){
+      const current=(await db.query<{id:string;updated_at:Date}>("SELECT id,updated_at FROM sms_drafts WHERE workspace_id=$1 AND number_id=$2 AND author_user_id=$3 AND thread_key=$4 AND updated_at>now()-interval '90 days' FOR UPDATE",[context.workspace.id,input.numberId,context.user.id,input.conversationId||input.composeKey||''])).rows[0];
+      if(!draftRevisionMatches(current,input.expectedDraft))throw new SmsInputError('Your private draft changed. Read it again before saving.');
+    }
+    const saved=await db.query<{id:string;updated_at:Date}>(
+      "INSERT INTO sms_drafts(id,workspace_id,number_id,author_user_id,thread_key,recipient,body) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(workspace_id,number_id,author_user_id,thread_key) DO UPDATE SET recipient=EXCLUDED.recipient,body=EXCLUDED.body,updated_at=now() RETURNING id,updated_at",
       [
         randomUUID(),
         context.workspace.id,
@@ -349,6 +354,7 @@ export async function saveSmsDraft(context: DashboardContext, raw: unknown) {
         input.text,
       ],
     );
+    return {id:saved.rows[0].id,updatedAt:saved.rows[0].updated_at.toISOString(),sent:false};
   });
 }
 export async function addSmsNote(context: DashboardContext, raw: unknown) {
