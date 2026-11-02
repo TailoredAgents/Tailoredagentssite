@@ -16,7 +16,7 @@ export async function runReportingMaintenance() {
         WHERE name = 'retention' AND (last_succeeded_at IS NULL OR
           business_day(last_succeeded_at) < business_day()) RETURNING name`);
       if (due.rowCount) {
-        await client.query("SELECT perform_reporting_retention()");
+        await client.query("SELECT perform_reporting_retention(), perform_assistant_retention()");
         await client.query(
           "UPDATE reporting_maintenance SET last_succeeded_at = now() WHERE name = 'retention'",
         );

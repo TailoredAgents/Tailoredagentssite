@@ -103,8 +103,8 @@ export async function saveMailDashboardSession(sessionId: string, identity: Mail
   await getDatabasePool().query("INSERT INTO mail_dashboard_sessions(session_id,mail_user_id,grant_encrypted) VALUES($1,$2,$3)", [sessionId, identity.user.id, encryptCredential(identity.token, grantKey())]);
 }
 
-export async function verifyMailDashboardSession(sessionId: string, userId: string, email: string) {
-  const result = await getDatabasePool().query<{ mail_user_id: string; grant_encrypted: string }>(`SELECT s.mail_user_id,s.grant_encrypted FROM mail_dashboard_sessions s
+export async function verifyMailDashboardSession(sessionId: string, userId: string, email: string, db: Pick<ReturnType<typeof getDatabasePool>, "query"> = getDatabasePool()) {
+  const result = await db.query<{ mail_user_id: string; grant_encrypted: string }>(`SELECT s.mail_user_id,s.grant_encrypted FROM mail_dashboard_sessions s
     JOIN mail_dashboard_identities i ON i.mail_user_id=s.mail_user_id WHERE s.session_id=$1 AND i.user_id=$2`, [sessionId, userId]);
   const linked = result.rows[0];
   if (!linked) return false;

@@ -25,7 +25,7 @@ export function pixelId() {
     : null;
 }
 export function publicPixelPath(path: string) {
-  return !/^\/(dashboard|sign-in|api)(\/|$)/.test(path);
+  return !/^\/(dashboard|sign-in|oauth|api)(\/|$)/.test(path);
 }
 export function privacySignal() {
   return (

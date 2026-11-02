@@ -4,7 +4,7 @@ import type { AnalyticsEventName } from "./validation";
 
 const SESSION_KEY = "ta_analytics_session";
 const ATTRIBUTION_KEY = "ta_analytics_attribution";
-const APPLICATION_PATHS = ["/dashboard", "/sign-in"];
+const APPLICATION_PATHS = ["/dashboard", "/sign-in", "/oauth"];
 const UTM_KEYS = ["source", "medium", "campaign", "content", "term"] as const;
 
 type Attribution = {

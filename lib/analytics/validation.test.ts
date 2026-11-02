@@ -27,6 +27,11 @@ describe("analytics validation", () => {
     expect(analyticsEventSchema.safeParse({ ...validEvent, email: "visitor@example.com" }).success).toBe(false);
   });
 
+  it("never measures OAuth consent paths or landing paths", () => {
+    expect(analyticsEventSchema.safeParse({...validEvent,path:"/oauth/operations/authorize"}).success).toBe(false);
+    expect(analyticsEventSchema.safeParse({...validEvent,landingPath:"/oauth/operations/authorize"}).success).toBe(false);
+  });
+
   it("uses a bounded reporting range", () => {
     expect(parseAnalyticsRange("7d")).toBe("7d");
     expect(parseAnalyticsRange("all-time")).toBe("30d");

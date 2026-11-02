@@ -1,4 +1,5 @@
 import "server-only";
+import {assistantExecution} from '@/lib/assistant/execution-context';
 import { getDatabasePool } from "@/lib/dashboard/db";
 import { headers } from "next/headers";
 import { z } from "zod";
@@ -193,10 +194,16 @@ async function request(
   }
   const config = inboxConfiguration();
   if (!config.ready) throw new MailProviderError("setup", config.message);
-  const auth = getDashboardAuth();
-  const session = auth
+  const delegated = assistantExecution.getStore();
+  const auth = delegated ? null : getDashboardAuth();
+  const session = delegated && delegated.userId === context.user.id
+    ? {user: {id: delegated.userId}, session: {id: delegated.sessionId}}
+    : auth
     ? await auth.api.getSession({ headers: await headers() })
     : null;
+  // Assistant mail sending must use the reviewed sender/allowance path, never
+  // silently inherit the dashboard's unrestricted interactive send transport.
+  if (delegated && body.action === 'send') throw new MailProviderError('grant_required','Send through the connected Mail tools after review.');
   if (!session || session.user.id !== context.user.id)
     throw new MailProviderError(
       "grant_required",

@@ -1,0 +1,1075 @@
+{
+  "version": 1,
+  "generatedBy": "node scripts/assistant/coverage.mjs",
+  "meaning": "Implemented is source coverage, not a live client acceptance claim. Pending and partial rows must not be reported as complete.",
+  "entries": [
+    {
+      "file": "app/api/analytics/events/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/auth/[...all]/route.ts",
+      "export": "GET",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/auth/[...all]/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/contact/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/cron/factory/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/cron/search-console/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/cron/seo/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/dashboard/factory/builds/[id]/diagnostic/route.ts",
+      "export": "GET",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/dashboard/factory/builds/[id]/draft/route.ts",
+      "export": "GET",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/dashboard/factory/builds/[id]/screenshot/route.ts",
+      "export": "GET",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/dashboard/factory/builds/[id]/source/route.ts",
+      "export": "GET",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/dashboard/factory/projects/[id]/uploads/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/dashboard/inbox/attachments/route.ts",
+      "export": "GET",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/dashboard/reports/export/route.ts",
+      "export": "GET",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/dashboard/reports/table/route.ts",
+      "export": "GET",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/dashboard/sign-in/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/dashboard/voice/recordings/[id]/route.ts",
+      "export": "GET",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/dashboard/voice/voicemails/[id]/route.ts",
+      "export": "GET",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/health/route.ts",
+      "export": "GET",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/factory/preview/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/meta/leads/route.ts",
+      "export": "GET",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/meta/leads/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/search-console/callback/route.ts",
+      "export": "GET",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/search-console/connect/route.ts",
+      "export": "GET",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/search-console/disconnect/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/search-console/status/route.ts",
+      "export": "GET",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/search-console/sync/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/twilio/sms/incoming/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/twilio/sms/status/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/twilio/voice/callback-accept/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/twilio/voice/callback-answer/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/twilio/voice/customer-answer/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/twilio/voice/dial-result/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/twilio/voice/forward-accept/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/twilio/voice/forward-answer/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/twilio/voice/incoming/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/twilio/voice/outbound/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/twilio/voice/recordings/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/twilio/voice/staff-answer/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/twilio/voice/status/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/twilio/voice/voicemail-complete/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/twilio/voice/voicemail/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/mcp/operations/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/mcp/operations/route.ts",
+      "export": "GET",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/mcp/operations/route.ts",
+      "export": "DELETE",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/smart-cards/artwork/[code]/route.ts",
+      "export": "GET",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/smart-cards/availability/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/smart-cards/chat/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/smart-cards/events/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/smart-cards/inquiry/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/smart-cards/qr/[code]/route.ts",
+      "export": "GET",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/dashboard/assistant/actions.ts",
+      "export": "assistantControl",
+      "status": "control",
+      "tools": [],
+      "reason": "Authenticated owner control or MCP transport; deliberately not callable as an approval tool."
+    },
+    {
+      "file": "lib/booking/actions.ts",
+      "export": "saveCalendar",
+      "status": "partial",
+      "tools": [
+        "prepare_block_time"
+      ],
+      "reason": "Time blocks only; booking, moving, cancelling and removing blocks are pending."
+    },
+    {
+      "file": "lib/conversations/actions.ts",
+      "export": "saveConversationWorkAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/conversations/actions.ts",
+      "export": "markConversationReadAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/conversations/actions.ts",
+      "export": "addConversationNoteAction",
+      "status": "implemented",
+      "tools": [
+        "prepare_add_conversation_note"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+    },
+    {
+      "file": "lib/conversations/actions.ts",
+      "export": "linkConversationContextAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/conversations/actions.ts",
+      "export": "mergeConversationsAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/conversations/actions.ts",
+      "export": "linkConversationSourceAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/conversations/actions.ts",
+      "export": "loadConversationSourceHistoryAction",
+      "status": "implemented",
+      "tools": [
+        "get_source_history"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+    },
+    {
+      "file": "lib/conversations/draft-actions.ts",
+      "export": "suggestClientMessageAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/conversations/memory-actions.ts",
+      "export": "saveClientMemoryAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/conversations/phone-actions.ts",
+      "export": "savePhoneNumberAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/factory/actions.ts",
+      "export": "startFactoryAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/factory/actions.ts",
+      "export": "sendFactoryMessageAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/factory/actions.ts",
+      "export": "approveFactoryPlanAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/factory/actions.ts",
+      "export": "retryFactoryJobAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/factory/actions.ts",
+      "export": "saveFactorySettingsAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/factory/build-actions.ts",
+      "export": "saveFactoryBuildSettingsAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/factory/build-actions.ts",
+      "export": "retryFactoryBuildAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/factory/build-actions.ts",
+      "export": "revokeFactoryPreviewAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/factory/build-actions.ts",
+      "export": "restoreFactoryPreviewAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/factory/build-actions.ts",
+      "export": "deleteFactoryUploadAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/factory/draft-actions.ts",
+      "export": "reviseFactoryDraftAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/factory/work-notice-actions.ts",
+      "export": "markFactoryWorkNoticeSeenAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/inbox/actions.ts",
+      "export": "saveConversationAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/inbox/actions.ts",
+      "export": "saveDraftAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/inbox/actions.ts",
+      "export": "addInboxNoteAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/inbox/actions.ts",
+      "export": "markInboxReadAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/inbox/actions.ts",
+      "export": "sendInboxMessageAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/lead-intro/actions.ts",
+      "export": "saveIntroductionsAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/lead-intro/actions.ts",
+      "export": "pauseIntroductionAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/lead-intro/actions.ts",
+      "export": "completeIntroductionAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/meta/actions.ts",
+      "export": "retryMetaConversionsAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/meta/actions.ts",
+      "export": "retryMetaImportsAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/meta/lead-alert-actions.ts",
+      "export": "saveLeadAlertsAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/operations/actions.ts",
+      "export": "createLeadAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/operations/actions.ts",
+      "export": "deleteLeadAction",
+      "status": "human_handoff",
+      "tools": [],
+      "reason": "Identity, security, deletion or physical-device operation remains in the trusted dashboard."
+    },
+    {
+      "file": "lib/operations/actions.ts",
+      "export": "updateLeadAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/operations/actions.ts",
+      "export": "updateLeadStatusAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/operations/actions.ts",
+      "export": "addLeadNoteAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/operations/actions.ts",
+      "export": "convertLeadAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/operations/actions.ts",
+      "export": "saveClientAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/operations/actions.ts",
+      "export": "saveContactAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/operations/actions.ts",
+      "export": "saveSiteAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/operations/actions.ts",
+      "export": "saveProjectAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/operations/actions.ts",
+      "export": "addMilestoneAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/operations/actions.ts",
+      "export": "updateMilestoneStatusAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/operations/actions.ts",
+      "export": "addProjectRecordAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/sales/actions.ts",
+      "export": "createOpportunityAction",
+      "status": "implemented",
+      "tools": [
+        "prepare_create_opportunity"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+    },
+    {
+      "file": "lib/sales/actions.ts",
+      "export": "updateOpportunityAction",
+      "status": "implemented",
+      "tools": [
+        "prepare_update_opportunity"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+    },
+    {
+      "file": "lib/sales/actions.ts",
+      "export": "logActivityAction",
+      "status": "partial",
+      "tools": [
+        "prepare_log_activity"
+      ],
+      "reason": "Internal notes only; imported communications and outcomes remain in dashboard."
+    },
+    {
+      "file": "lib/sales/actions.ts",
+      "export": "saveTaskAction",
+      "status": "partial",
+      "tools": [
+        "prepare_create_follow_up"
+      ],
+      "reason": "New follow-ups only; edits and appointments are pending."
+    },
+    {
+      "file": "lib/sales/actions.ts",
+      "export": "completeTaskAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/sales/actions.ts",
+      "export": "requestMockupAction",
+      "status": "implemented",
+      "tools": [
+        "prepare_request_mockup"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+    },
+    {
+      "file": "lib/sales/actions.ts",
+      "export": "saveMockupAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/sales/actions.ts",
+      "export": "setChannelPreferenceAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/sales/actions.ts",
+      "export": "convertOpportunityAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/sales/actions.ts",
+      "export": "linkInquiryAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/sales/actions.ts",
+      "export": "importProspectsAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/sales/actions.ts",
+      "export": "importDialerResultsAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/seo/actions.ts",
+      "export": "saveSeoSettingsAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/seo/actions.ts",
+      "export": "pauseSeoAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/seo/actions.ts",
+      "export": "queueSeoAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/seo/actions.ts",
+      "export": "publishSeoAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/seo/actions.ts",
+      "export": "rollbackSeoAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/seo/actions.ts",
+      "export": "rejectSeoAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/seo/actions.ts",
+      "export": "reconcileSeoAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/smart-cards/actions.ts",
+      "export": "saveCardSettings",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/sms/actions.ts",
+      "export": "connectSmsNumberAction",
+      "status": "human_handoff",
+      "tools": [],
+      "reason": "Identity, security, deletion or physical-device operation remains in the trusted dashboard."
+    },
+    {
+      "file": "lib/sms/actions.ts",
+      "export": "saveSmsGrantAction",
+      "status": "human_handoff",
+      "tools": [],
+      "reason": "Identity, security, deletion or physical-device operation remains in the trusted dashboard."
+    },
+    {
+      "file": "lib/sms/actions.ts",
+      "export": "setSmsNumberStatusAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/sms/actions.ts",
+      "export": "saveSmsConversationAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/sms/actions.ts",
+      "export": "saveSmsDraftAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/sms/actions.ts",
+      "export": "addSmsNoteAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/sms/actions.ts",
+      "export": "markSmsReadAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/sms/actions.ts",
+      "export": "sendSmsMessageAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/sms/actions.ts",
+      "export": "checkSmsSendAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/sms/alert-actions.ts",
+      "export": "saveSmsAlertsAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/voice/actions.ts",
+      "export": "connectVoiceLineAction",
+      "status": "human_handoff",
+      "tools": [],
+      "reason": "Identity, security, deletion or physical-device operation remains in the trusted dashboard."
+    },
+    {
+      "file": "lib/voice/actions.ts",
+      "export": "saveVoiceGrantAction",
+      "status": "human_handoff",
+      "tools": [],
+      "reason": "Identity, security, deletion or physical-device operation remains in the trusted dashboard."
+    },
+    {
+      "file": "lib/voice/actions.ts",
+      "export": "saveCallingPhoneAction",
+      "status": "human_handoff",
+      "tools": [],
+      "reason": "Identity, security, deletion or physical-device operation remains in the trusted dashboard."
+    },
+    {
+      "file": "lib/voice/actions.ts",
+      "export": "saveVoiceRoutingAction",
+      "status": "human_handoff",
+      "tools": [],
+      "reason": "Identity, security, deletion or physical-device operation remains in the trusted dashboard."
+    },
+    {
+      "file": "lib/voice/actions.ts",
+      "export": "saveRecordingPreferencesAction",
+      "status": "human_handoff",
+      "tools": [],
+      "reason": "Identity, security, deletion or physical-device operation remains in the trusted dashboard."
+    },
+    {
+      "file": "lib/voice/actions.ts",
+      "export": "requestCallAnalysisAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/voice/actions.ts",
+      "export": "deleteCallRecordingAction",
+      "status": "human_handoff",
+      "tools": [],
+      "reason": "Identity, security, deletion or physical-device operation remains in the trusted dashboard."
+    },
+    {
+      "file": "lib/voice/actions.ts",
+      "export": "deleteVoicemailAction",
+      "status": "human_handoff",
+      "tools": [],
+      "reason": "Identity, security, deletion or physical-device operation remains in the trusted dashboard."
+    },
+    {
+      "file": "lib/voice/actions.ts",
+      "export": "issueVoiceTokenAction",
+      "status": "human_handoff",
+      "tools": [],
+      "reason": "Identity, security, deletion or physical-device operation remains in the trusted dashboard."
+    },
+    {
+      "file": "lib/voice/actions.ts",
+      "export": "updateVoicePresenceAction",
+      "status": "human_handoff",
+      "tools": [],
+      "reason": "Identity, security, deletion or physical-device operation remains in the trusted dashboard."
+    },
+    {
+      "file": "lib/voice/actions.ts",
+      "export": "getOwnPhoneCallAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/voice/actions.ts",
+      "export": "startPhoneCallAction",
+      "status": "human_handoff",
+      "tools": [],
+      "reason": "Identity, security, deletion or physical-device operation remains in the trusted dashboard."
+    },
+    {
+      "file": "lib/voice/actions.ts",
+      "export": "createVoiceIntentAction",
+      "status": "human_handoff",
+      "tools": [],
+      "reason": "Identity, security, deletion or physical-device operation remains in the trusted dashboard."
+    },
+    {
+      "file": "lib/voice/actions.ts",
+      "export": "getVoiceCallAction",
+      "status": "implemented",
+      "tools": [
+        "get_call"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+    },
+    {
+      "file": "lib/voice/actions.ts",
+      "export": "acceptVoiceCallAction",
+      "status": "human_handoff",
+      "tools": [],
+      "reason": "Identity, security, deletion or physical-device operation remains in the trusted dashboard."
+    },
+    {
+      "file": "lib/voice/actions.ts",
+      "export": "endVoiceCallAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/voice/actions.ts",
+      "export": "saveVoiceForwardingAction",
+      "status": "human_handoff",
+      "tools": [],
+      "reason": "Identity, security, deletion or physical-device operation remains in the trusted dashboard."
+    },
+    {
+      "file": "lib/voice/follow-up-actions.ts",
+      "export": "loadCallFollowUpOptionsAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/voice/follow-up-actions.ts",
+      "export": "createCallFollowUpTaskAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/voice/follow-up-actions.ts",
+      "export": "updateCallFollowUpTaskAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    },
+    {
+      "file": "lib/voice/follow-up-actions.ts",
+      "export": "completeCallFollowUpTaskAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+    }
+  ]
+}

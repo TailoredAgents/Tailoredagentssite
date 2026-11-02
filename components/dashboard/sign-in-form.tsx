@@ -2,10 +2,11 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { ArrowRight, KeyRound, LoaderCircle, Mail } from "lucide-react";
+import {safeReturnTo} from '@/lib/assistant/return-to';
 
 type FormStatus = "idle" | "submitting" | "error";
 
-export function SignInForm({ enabled, mailLogin = false }: { enabled: boolean; mailLogin?: boolean }) {
+export function SignInForm({ enabled, mailLogin = false, returnTo }: { enabled: boolean; mailLogin?: boolean; returnTo?:string }) {
   const [interactive, setInteractive] = useState(false);
   useEffect(() => setInteractive(true), []);
   const [status, setStatus] = useState<FormStatus>("idle");
@@ -41,7 +42,7 @@ export function SignInForm({ enabled, mailLogin = false }: { enabled: boolean; m
         return;
       }
 
-      window.location.assign(mailLogin ? "/dashboard/analytics" : "/dashboard");
+      window.location.assign(safeReturnTo(returnTo) ?? (mailLogin ? "/dashboard/analytics" : "/dashboard"));
     } catch {
       setErrorMessage("We could not connect. Please check your connection and try again.");
       setStatus("error");

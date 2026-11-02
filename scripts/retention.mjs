@@ -8,7 +8,7 @@ if (!databaseUrl) {
 }
 const pool = new pg.Pool({ connectionString: databaseUrl, max: 1 });
 try {
-  await pool.query("SELECT perform_reporting_retention()");
+  await pool.query("SELECT perform_reporting_retention(), perform_assistant_retention()");
   console.log("Retention maintenance completed.");
 } finally {
   await pool.end();

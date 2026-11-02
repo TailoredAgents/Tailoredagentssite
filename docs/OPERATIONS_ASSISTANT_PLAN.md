@@ -1,8 +1,27 @@
 # Tailored Agents Operations assistant — full implementation plan
 
-Status: **Planned; no Operations MCP tools or new automation enabled.**
+Status: **Implementation in progress. Connection, read tools, reviewed internal proposals and private goals implemented; full phases 0–7 and real ChatGPT acceptance are not complete. No new routine or autonomous sending enabled.**
 Owner: Austin. Prepared November 2, 2026, America/New_York.
 Baseline reviewed: main `19daac8`, including the November 1 Mail and Eastern-time releases.
+
+## November 2 implementation checkpoint
+
+The first implementation adds `/api/mcp/operations` and `/dashboard/assistant`. Austin selected the existing ChatGPT bot connected to Tailored Agents Mail as the first client. Operations is a separate OAuth connection; it does not replace Mail or expand Mail permissions.
+
+Implemented in this increment:
+
+- Resource-bound OAuth authorization-code flow, S256 PKCE, dynamic client registration, rotating hashed refresh tokens, replay-family revocation, explicit scopes and live membership/account checks.
+- Business read tools across leads, clients, contacts, sites, projects, sales, permitted Inbox/call history, calendar, Smart Cards, Builder, sanitized SEO and integration/reporting data. Responses expose collection limits and source availability; oversized records fail explicitly instead of silently truncating.
+- Eight reviewed proposal types: private goals, create/update opportunities, internal sales notes, new follow-ups, mockup requests, conversation notes and time blocks. The bot cannot approve its own proposal. Exact content hashing, idempotency keys, owner-only review, expiry and receipts prevent duplicate execution; uncertain attempts are never automatically retried.
+- Private goals with owner/workspace isolation and revision checks; a phone-friendly Assistant page for connections, pause/revoke, review, receipts, read activity and goals.
+- Code-derived action/transport inventory in [OPERATIONS_ASSISTANT_COVERAGE.json](OPERATIONS_ASSISTANT_COVERAGE.json). Pending and partial rows remain real work, not completed handoffs. Run `node scripts/assistant/coverage.mjs --check` to detect inventory drift.
+- Audit metadata and retention. Customer content is removed from old action receipts after 90 days; receipt metadata remains for one year. Used refresh hashes remain until expiration to detect replay.
+
+Temporary connection constraint: Operations deliberately binds to the real dashboard sign-in used at consent and expires with it (currently up to 14 days). Sign-out, lost Mail identity access or suspended membership stops access. A separate long-lived identity delegation requires a reviewed Mail-side addition; no service credential may be used to impersonate a user. That work is still outstanding, as are actual ChatGPT connection and renewal acceptance. The Assistant UI states this limitation.
+
+Still pending: full CRM/project service extraction and revisions; staff booking/rescheduling/cancellation; reviewed SMS/shared Mail; call controls; full Builder/SEO/card mutations; personal preferences/commitments; durable routines; complete exports/reports and parity checks. Existing Mail sends, channel grants, build approvals and spend limits remain unchanged. See the coverage inventory and phases below.
+
+Verification and live deployment evidence are recorded in [Operations setup](OPERATIONS_ASSISTANT_SETUP.md). This checkpoint does not declare any phase with unmet live acceptance gates complete.
 
 ## Product mandate
 

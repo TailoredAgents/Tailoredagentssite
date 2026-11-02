@@ -37,6 +37,7 @@ describe("Optional website Pixel", () => {
     expect(pixelId()).toBeNull();
     for (const path of [
       "/sign-in",
+      "/oauth/operations/authorize",
       "/dashboard",
       "/dashboard/leads/123",
       "/api/contact",

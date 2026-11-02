@@ -6,6 +6,7 @@ import { SignInForm } from "@/components/dashboard/sign-in-form";
 import { resolveDashboardConfiguration } from "@/lib/dashboard/config";
 import { getOptionalDashboardContext } from "@/lib/dashboard/data";
 import { redirect } from "next/navigation";
+import {safeReturnTo} from '@/lib/assistant/return-to';
 import "./sign-in.css";
 
 export const metadata: Metadata = {
@@ -17,12 +18,13 @@ export const metadata: Metadata = {
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; next?:string }>;
 }) {
   const configuration = resolveDashboardConfiguration();
-  const status = (await searchParams).status;
+  const {status,next} = await searchParams;
+  const returnTo=safeReturnTo(next);
 
-  if (configuration.ready && await getOptionalDashboardContext()) redirect("/dashboard");
+  if (configuration.ready && await getOptionalDashboardContext()) redirect(returnTo??"/dashboard");
 
   return (
     <div className="signin-page">
@@ -53,7 +55,7 @@ export default async function SignInPage({
               <p>The public website is available, but private access will remain closed until its database and security configuration are connected.</p>
             </div>
           ) : (
-            <SignInForm enabled mailLogin={configuration.authMode === "mail"} />
+            <SignInForm enabled mailLogin={configuration.authMode === "mail"} returnTo={returnTo} />
           )}
 
           {status === "unauthorized" ? <p className="signin-notice">A new sign-in is required, or this account does not currently have workspace access.</p> : null}

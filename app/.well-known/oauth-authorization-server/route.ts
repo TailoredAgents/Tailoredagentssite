@@ -1,0 +1,3 @@
+import {assistantOrigin,scopes,json} from '@/lib/assistant/config';
+export const dynamic='force-dynamic';
+export async function GET(){const origin=assistantOrigin();return json({issuer:origin,authorization_endpoint:origin+'/oauth/operations/authorize',token_endpoint:origin+'/oauth/operations/token',registration_endpoint:origin+'/oauth/operations/register',revocation_endpoint:origin+'/oauth/operations/revoke',scopes_supported:scopes,response_types_supported:['code'],grant_types_supported:['authorization_code','refresh_token'],token_endpoint_auth_methods_supported:['none'],revocation_endpoint_auth_methods_supported:['none'],code_challenge_methods_supported:['S256'],client_id_metadata_document_supported:false,authorization_response_iss_parameter_supported:true});}

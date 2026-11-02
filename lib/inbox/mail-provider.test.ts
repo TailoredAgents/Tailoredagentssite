@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {assistantExecution} from '@/lib/assistant/execution-context';
 import type { DashboardContext } from "@/lib/dashboard/data";
 vi.mock("server-only", () => ({}));
 const deletedThread = vi.hoisted(() => ({ query: vi.fn(async () => ({rowCount:0,rows:[]})) }));
@@ -56,6 +57,24 @@ describe("CRM Mail transport and privacy", () => {
     fetchMock.mockReset();
     token.mockReset().mockResolvedValue("fixture-grant-token");
     session.user.id = context.user.id;
+  });
+  it("binds delegated reads to the grant owner and forbids the dashboard send bypass", async () => {
+    fetchMock.mockResolvedValue(Response.json({ mailboxes: [] }));
+    const delegated={userId:context.user.id,sessionId:"delegated-session",grantId:"test-grant"};
+    await assistantExecution.run(delegated,async()=>{
+      expect(await listMailboxes(context)).toEqual([]);
+      expect(token).toHaveBeenCalledWith("delegated-session",context.user.id);
+      await expect(sendMail(context,input)).rejects.toMatchObject({state:"grant_required"});
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    token.mockClear();
+    await assistantExecution.run({...delegated,userId:"someone-else"},async()=>{
+      await expect(listMailboxes(context)).rejects.toMatchObject({state:"grant_required"});
+    });
+    expect(token).not.toHaveBeenCalled();
+    fetchMock.mockResolvedValueOnce(Response.json({ mailboxes: [] }));
+    await listMailboxes(context);
+    expect(token).toHaveBeenCalledWith("fixture-session",context.user.id);
   });
   it("blocks direct access to a deleted CRM email thread before fetching Mail", async () => {
     deletedThread.query.mockResolvedValue({rowCount:1,rows:[]});
