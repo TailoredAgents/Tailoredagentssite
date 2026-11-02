@@ -4,6 +4,17 @@ import path from 'node:path';
 // Generated inventory makes omissions visible when new dashboard actions ship.
 async function walk(dir){const files=[];for(const entry of await readdir(dir,{withFileTypes:true})){if(['node_modules','.next'].includes(entry.name))continue;const name=path.join(dir,entry.name);if(entry.isDirectory())files.push(...await walk(name));else if(/\.tsx?$/.test(name)&&!name.endsWith('.test.ts'))files.push(name);}return files;}
 const implementations={
+ 'lib/operations/actions.ts#updateLeadAction':['prepare_update_lead'],
+ 'lib/operations/actions.ts#updateLeadStatusAction':['prepare_update_lead_status'],
+ 'lib/operations/actions.ts#addLeadNoteAction':['prepare_add_lead_note'],
+ 'lib/operations/actions.ts#saveClientAction':['prepare_save_client'],
+ 'lib/operations/actions.ts#saveContactAction':['prepare_save_contact'],
+ 'lib/operations/actions.ts#saveSiteAction':['prepare_save_site'],
+ 'lib/operations/actions.ts#saveProjectAction':['prepare_save_project'],
+ 'lib/operations/actions.ts#addMilestoneAction':['prepare_add_milestone'],
+ 'lib/operations/actions.ts#updateMilestoneStatusAction':['prepare_update_milestone_status'],
+ 'lib/operations/actions.ts#addProjectRecordAction':['prepare_add_project_record'],
+
  'lib/sales/actions.ts#createOpportunityAction':['prepare_create_opportunity'],
  'lib/sales/actions.ts#updateOpportunityAction':['prepare_update_opportunity'],
  'lib/sales/actions.ts#requestMockupAction':['prepare_request_mockup'],

@@ -19,7 +19,9 @@ Implemented in this increment:
 
 Temporary connection constraint: Operations deliberately binds to the real dashboard sign-in used at consent and expires with it (currently up to 14 days). Sign-out, lost Mail identity access or suspended membership stops access. A separate long-lived identity delegation requires a reviewed Mail-side addition; no service credential may be used to impersonate a user. That work is still outstanding, as are actual ChatGPT connection and renewal acceptance. The Assistant UI states this limitation.
 
-Still pending: full CRM/project service extraction and revisions; staff booking/rescheduling/cancellation; reviewed SMS/shared Mail; call controls; full Builder/SEO/card mutations; personal preferences/commitments; durable routines; complete exports/reports and parity checks. Existing Mail sends, channel grants, build approvals and spend limits remain unchanged. See the coverage inventory and phases below.
+The next increment extracts ten CRM/project mutations into shared services with live membership checks, revision-locked edits and human-readable review targets. Both dashboard forms and assistant tools use those services. Lead conversion/deletion remain separate.
+
+Still pending: remaining sales task and settings coverage; staff booking/rescheduling/cancellation; reviewed SMS/shared Mail; call controls; full Builder/SEO/card mutations; personal preferences/commitments; durable routines; complete exports/reports and parity checks. Existing Mail sends, channel grants, build approvals and spend limits remain unchanged. See the coverage inventory and phases below.
 
 Verification and live deployment evidence are recorded in [Operations setup](OPERATIONS_ASSISTANT_SETUP.md). This checkpoint does not declare any phase with unmet live acceptance gates complete.
 

@@ -356,9 +356,10 @@ export async function getContact(context: DashboardContext, clientId: string, co
     phone: string | null;
     title: string | null;
     is_primary: boolean;
+    updated_at: Date;
   }>(
     `SELECT contact.id, contact.client_id, client.name AS client_name, contact.name,
-            contact.email, contact.phone, contact.title, contact.is_primary
+            contact.email, contact.phone, contact.title, contact.is_primary, contact.updated_at
      FROM contacts contact
      INNER JOIN clients client ON client.id = contact.client_id
      WHERE contact.id = $1 AND contact.client_id = $2
@@ -366,7 +367,8 @@ export async function getContact(context: DashboardContext, clientId: string, co
      LIMIT 1`,
     [contactId, clientId, context.workspace.id],
   );
-  return result.rows[0] ?? null;
+  const row=result.rows[0];
+  return row ? {...row,updatedAt:row.updated_at.toISOString()} : null;
 }
 
 export async function clientOptions(context: DashboardContext) {
@@ -431,15 +433,16 @@ export async function listSites(context: DashboardContext, input: { q?: string |
 export async function getSite(context: DashboardContext, siteId: string) {
   if (!validIdentifier(siteId)) return null;
   const result = await getDatabasePool().query<{
-    id: string; name: string; url: string; environment: string; status: string; notes: string | null; client_id: string | null; client_name: string | null;
+    id: string; name: string; url: string; environment: string; status: string; notes: string | null; client_id: string | null; client_name: string | null; updated_at: Date;
   }>(
     `SELECT site.id, site.name, site.url, site.environment, site.status, site.notes,
-            site.client_id, client.name AS client_name
+            site.client_id, client.name AS client_name, site.updated_at
      FROM sites site LEFT JOIN clients client ON client.id = site.client_id
      WHERE site.id = $1 AND site.workspace_id = $2 LIMIT 1`,
     [siteId, context.workspace.id],
   );
-  return result.rows[0] ?? null;
+  const row=result.rows[0];
+  return row ? {...row,updatedAt:row.updated_at.toISOString()} : null;
 }
 
 export async function listProjects(
@@ -501,12 +504,12 @@ export async function getProject(context: DashboardContext, projectId: string) {
   if (!validIdentifier(projectId)) return null;
   const pool = getDatabasePool();
   const project = await pool.query<{
-    id: string; name: string; status: string; summary: string | null; client_id: string; client_name: string; site_id: string | null; site_name: string | null; owner_user_id: string | null; owner_name: string | null; started_at: Date | null; due_at: Date | null; completed_at: Date | null; created_at: Date;
+    id: string; name: string; status: string; summary: string | null; client_id: string; client_name: string; site_id: string | null; site_name: string | null; owner_user_id: string | null; owner_name: string | null; started_at: Date | null; due_at: Date | null; completed_at: Date | null; created_at: Date; updated_at: Date;
   }>(
     `SELECT project.id, project.name, project.status, project.summary, project.client_id,
             client.name AS client_name, project.site_id, site.name AS site_name,
             project.owner_user_id, owner.name AS owner_name, project.started_at,
-            project.due_at, project.completed_at, project.created_at
+            project.due_at, project.completed_at, project.created_at, project.updated_at
      FROM projects project
      INNER JOIN clients client ON client.id = project.client_id
      LEFT JOIN sites site ON site.id = project.site_id
@@ -517,8 +520,8 @@ export async function getProject(context: DashboardContext, projectId: string) {
   const row = project.rows[0];
   if (!row) return null;
   const [milestones, records] = await Promise.all([
-    pool.query<{ id: string; title: string; status: string; due_at: Date | null; completed_at: Date | null }>(
-      "SELECT id, title, status, due_at, completed_at FROM project_milestones WHERE project_id = $1 ORDER BY sort_order, due_at NULLS LAST, created_at",
+    pool.query<{ id: string; title: string; status: string; due_at: Date | null; completed_at: Date | null; updated_at: Date }>(
+      "SELECT id, title, status, due_at, completed_at, updated_at FROM project_milestones WHERE project_id = $1 ORDER BY sort_order, due_at NULLS LAST, created_at",
       [projectId],
     ),
     pool.query<{ id: string; kind: string; title: string; body: string | null; author_name: string | null; created_at: Date }>(
@@ -534,7 +537,8 @@ export async function getProject(context: DashboardContext, projectId: string) {
     dueAt: dateValue(row.due_at),
     completedAt: dateValue(row.completed_at),
     createdAt: row.created_at.toISOString(),
-    milestones: milestones.rows.map((milestone) => ({ ...milestone, dueAt: dateValue(milestone.due_at), completedAt: dateValue(milestone.completed_at) })),
+    updatedAt: row.updated_at.toISOString(),
+    milestones: milestones.rows.map((milestone) => ({ ...milestone, updatedAt:milestone.updated_at.toISOString(), dueAt: dateValue(milestone.due_at), completedAt: dateValue(milestone.completed_at) })),
     records: records.rows.map((record) => ({ ...record, authorName: record.author_name ?? "System", createdAt: record.created_at.toISOString() })),
   };
 }

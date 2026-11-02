@@ -1,32 +1,29 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
 import { linkInquiry, convertOpportunity, SalesInputError } from "@/lib/sales/service";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import type { PoolClient } from "pg";
+
 import { requireDashboardContext } from "@/lib/dashboard/data";
-import { getDatabasePool, insertAuditLog } from "@/lib/dashboard/db";
+import { getDatabasePool } from "@/lib/dashboard/db";
 import { ZodError } from "zod";
 import { SalesAccessError } from "@/lib/sales/data";
 import { createManualLead } from "./manual-leads";
 import { deleteLead } from "./delete-lead";
 import {
-  asDatabaseDate,
-  clientSchema,
-  contactSchema,
   convertLeadSchema,
   formValues,
-  leadNoteSchema,
-  milestoneSchema,
-  milestoneStatusSchema,
-  projectRecordSchema,
-  projectSchema,
-  siteSchema,
-  updateLeadSchema,
   validationState,
   type OperationActionState,
 } from "./validation";
+
+import * as operationService from './service';
+import type {DashboardContext} from '@/lib/dashboard/data';
+async function runOperation(service:(context:DashboardContext,form:FormData)=>Promise<operationService.OperationServiceResult>,form:FormData):Promise<OperationActionState>{
+ const context=await requireDashboardContext();const result=await service(context,form);
+ if(result.status==='success'){revalidatePath('/dashboard','layout');if(result.redirectTo)redirect(result.redirectTo);}
+ return {status:result.status,message:result.message,fieldErrors:result.fieldErrors};
+}
 
 const genericFailure: OperationActionState = {
   status: "error",
@@ -43,42 +40,12 @@ async function mutationContext() {
   return context;
 }
 
-async function withTransaction<T>(work: (client: PoolClient) => Promise<T>) {
-  const client = await getDatabasePool().connect();
-  try {
-    await client.query("BEGIN");
-    const result = await work(client);
-    await client.query("COMMIT");
-    return result;
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
-}
-
 function denied(): OperationActionState {
   return { status: "error", message: "Your workspace role does not allow this change." };
 }
 
 function missing(): OperationActionState {
   return { status: "error", message: "That record is no longer available in this workspace." };
-}
-
-function success(message: string): OperationActionState {
-  return { status: "success", message };
-}
-
-async function linkClientBusiness(client: PoolClient, workspaceId: string, clientId: string) {
-  const result = await client.query<{id:string}>(`INSERT INTO crm_businesses(id,workspace_id,name,client_id)
-    SELECT COALESCE(business_id,id),workspace_id,name,id FROM clients WHERE id=$1 AND workspace_id=$2
-    ON CONFLICT(id) DO UPDATE SET name=EXCLUDED.name,updated_at=now() RETURNING id`,[clientId,workspaceId]);
-  const businessId=result.rows[0]?.id;
-  if (!businessId) throw new Error("client_unavailable");
-  await client.query("UPDATE clients SET business_id=$1 WHERE id=$2 AND workspace_id=$3",[businessId,clientId,workspaceId]);
-  await client.query("UPDATE contacts SET business_id=$1 WHERE client_id=$2 AND workspace_id=$3 AND business_id IS NULL",[businessId,clientId,workspaceId]);
-  return businessId;
 }
 
 export async function createLeadAction(
@@ -117,128 +84,16 @@ export async function deleteLeadAction(_previous: OperationActionState, formData
   redirect("/dashboard/leads");
 }
 
-export async function updateLeadAction(
-  _previous: OperationActionState,
-  formData: FormData,
-): Promise<OperationActionState> {
-  const context = await mutationContext();
-  if (!context) return denied();
-  const parsed = updateLeadSchema.safeParse(formValues(formData, [
-    "leadId", "status", "ownerUserId", "nextAction", "nextActionAt", "outcomeSummary",
-  ]));
-  if (!parsed.success) return validationState(parsed.error);
-  const input = parsed.data;
-
-  try {
-    const changed = await withTransaction(async (client) => {
-      if (input.ownerUserId) {
-        const membership = await client.query(
-          "SELECT 1 FROM workspace_memberships WHERE workspace_id = $1 AND user_id = $2 AND status = 'active'",
-          [context.workspace.id, input.ownerUserId],
-        );
-        if (!membership.rowCount) return false;
-      }
-      const result = await client.query(
-        `UPDATE leads
-         SET status = $1, owner_user_id = $2, next_action = $3, next_action_at = $4,
-             outcome_summary = $5, updated_at = now()
-         WHERE id = $6 AND workspace_id = $7`,
-        [input.status, input.ownerUserId ?? null, input.nextAction ?? null,
-          asDatabaseDate(input.nextActionAt), input.outcomeSummary ?? null,
-          input.leadId, context.workspace.id],
-      );
-      if (!result.rowCount) return false;
-      await insertAuditLog(client, {
-        workspaceId: context.workspace.id,
-        actorUserId: context.user.id,
-        action: "lead.updated",
-        targetType: "lead",
-        targetId: input.leadId,
-        metadata: { status: input.status },
-      });
-      return true;
-    });
-    if (!changed) return missing();
-    revalidatePath("/dashboard");
-    revalidatePath("/dashboard/leads");
-    revalidatePath(`/dashboard/leads/${input.leadId}`);
-    return success("Lead updated.");
-  } catch {
-    return genericFailure;
-  }
+export async function updateLeadAction(_previous:OperationActionState,formData:FormData):Promise<OperationActionState>{
+  return runOperation(operationService.updateLead,formData);
 }
 
-export async function updateLeadStatusAction(
-  _previous: OperationActionState,
-  formData: FormData,
-): Promise<OperationActionState> {
-  const context = await mutationContext();
-  if (!context) return denied();
-  const parsed = updateLeadSchema.pick({ leadId: true, status: true })
-    .safeParse(formValues(formData, ["leadId", "status"]));
-  if (!parsed.success) return validationState(parsed.error);
-  const { leadId, status } = parsed.data;
-
-  try {
-    const changed = await withTransaction(async (client) => {
-      const result = await client.query(
-        "UPDATE leads SET status = $1, updated_at = now() WHERE id = $2 AND workspace_id = $3",
-        [status, leadId, context.workspace.id],
-      );
-      if (!result.rowCount) return false;
-      await insertAuditLog(client, {
-        workspaceId: context.workspace.id,
-        actorUserId: context.user.id,
-        action: "lead.updated",
-        targetType: "lead",
-        targetId: leadId,
-        metadata: { status },
-      });
-      return true;
-    });
-    if (!changed) return missing();
-    revalidatePath("/dashboard");
-    revalidatePath("/dashboard/leads");
-    revalidatePath(`/dashboard/leads/${leadId}`);
-    return success("Status saved.");
-  } catch {
-    return genericFailure;
-  }
+export async function updateLeadStatusAction(_previous:OperationActionState,formData:FormData):Promise<OperationActionState>{
+  return runOperation(operationService.updateLeadStatus,formData);
 }
 
-export async function addLeadNoteAction(
-  _previous: OperationActionState,
-  formData: FormData,
-): Promise<OperationActionState> {
-  const context = await mutationContext();
-  if (!context) return denied();
-  const parsed = leadNoteSchema.safeParse(formValues(formData, ["leadId", "body"]));
-  if (!parsed.success) return validationState(parsed.error);
-  const input = parsed.data;
-  try {
-    const created = await withTransaction(async (client) => {
-      const lead = await client.query("SELECT 1 FROM leads WHERE id = $1 AND workspace_id = $2", [input.leadId, context.workspace.id]);
-      if (!lead.rowCount) return false;
-      const noteId = randomUUID();
-      await client.query(
-        "INSERT INTO lead_notes (id, workspace_id, lead_id, author_user_id, body) VALUES ($1, $2, $3, $4, $5)",
-        [noteId, context.workspace.id, input.leadId, context.user.id, input.body],
-      );
-      await insertAuditLog(client, {
-        workspaceId: context.workspace.id,
-        actorUserId: context.user.id,
-        action: "lead.note_added",
-        targetType: "lead",
-        targetId: input.leadId,
-      });
-      return true;
-    });
-    if (!created) return missing();
-    revalidatePath(`/dashboard/leads/${input.leadId}`);
-    return success("Note added.");
-  } catch {
-    return genericFailure;
-  }
+export async function addLeadNoteAction(_previous:OperationActionState,formData:FormData):Promise<OperationActionState>{
+  return runOperation(operationService.addLeadNote,formData);
 }
 
 export async function convertLeadAction(
@@ -267,390 +122,30 @@ export async function convertLeadAction(
   redirect(`/dashboard/clients/${clientId}`);
 }
 
-export async function saveClientAction(
-  _previous: OperationActionState,
-  formData: FormData,
-): Promise<OperationActionState> {
-  const context = await mutationContext();
-  if (!context) return denied();
-  const parsed = clientSchema.safeParse(formValues(formData, ["clientId", "name", "status", "notes"]));
-  if (!parsed.success) return validationState(parsed.error);
-  const input = parsed.data;
-  const clientId = input.clientId ?? randomUUID();
-  try {
-    const saved = await withTransaction(async (client) => {
-      if (input.clientId) {
-        const result = await client.query(
-          "UPDATE clients SET name = $1, status = $2, notes = $3, updated_at = now() WHERE id = $4 AND workspace_id = $5",
-          [input.name, input.status, input.notes ?? null, clientId, context.workspace.id],
-        );
-        if (!result.rowCount) return false;
-      } else {
-        await client.query(
-          "INSERT INTO clients (id, workspace_id, name, status, notes) VALUES ($1, $2, $3, $4, $5)",
-          [clientId, context.workspace.id, input.name, input.status, input.notes ?? null],
-        );
-      }
-      await linkClientBusiness(client, context.workspace.id, clientId);
-      await insertAuditLog(client, {
-        workspaceId: context.workspace.id,
-        actorUserId: context.user.id,
-        action: input.clientId ? "client.updated" : "client.created",
-        targetType: "client",
-        targetId: clientId,
-        metadata: { status: input.status },
-      });
-      return true;
-    });
-    if (!saved) return missing();
-  } catch {
-    return genericFailure;
-  }
-  revalidatePath("/dashboard/clients");
-  if (input.clientId) {
-    revalidatePath(`/dashboard/clients/${clientId}`);
-    return success("Client updated.");
-  }
-  redirect(`/dashboard/clients/${clientId}`);
+export async function saveClientAction(_previous:OperationActionState,formData:FormData):Promise<OperationActionState>{
+  return runOperation(operationService.saveClient,formData);
 }
 
-export async function saveContactAction(
-  _previous: OperationActionState,
-  formData: FormData,
-): Promise<OperationActionState> {
-  const context = await mutationContext();
-  if (!context) return denied();
-  const parsed = contactSchema.safeParse({
-    ...formValues(formData, ["contactId", "clientId", "name", "email", "phone", "title", "isPrimary"]),
-    isPrimary: formData.get("isPrimary"),
-  });
-  if (!parsed.success) return validationState(parsed.error);
-  const input = parsed.data;
-  try {
-    const created = await withTransaction(async (client) => {
-      const owner = await client.query("SELECT 1 FROM clients WHERE id = $1 AND workspace_id = $2", [input.clientId, context.workspace.id]);
-      if (!owner.rowCount) return false;
-      const businessId = await linkClientBusiness(client, context.workspace.id, input.clientId);
-      const contactId = input.contactId ?? randomUUID();
-      if (input.contactId) {
-        const existing = await client.query(
-          "SELECT 1 FROM contacts WHERE id = $1 AND client_id = $2 AND workspace_id = $3 FOR UPDATE",
-          [contactId, input.clientId, context.workspace.id],
-        );
-        if (!existing.rowCount) return false;
-      }
-      if (input.isPrimary) await client.query("UPDATE contacts SET is_primary = false, updated_at = now() WHERE client_id = $1", [input.clientId]);
-      if (input.contactId) {
-        const updated = await client.query(
-          `UPDATE contacts
-           SET name = $1, email = $2, phone = $3, title = $4, is_primary = $5, updated_at = now()
-           WHERE id = $6 AND client_id = $7 AND workspace_id = $8`,
-          [input.name, input.email ?? null, input.phone ?? null, input.title ?? null,
-            input.isPrimary, contactId, input.clientId, context.workspace.id],
-        );
-        if (!updated.rowCount) return false;
-      } else {
-        await client.query(
-          `INSERT INTO contacts (id, workspace_id, client_id, business_id, name, email, phone, title, is_primary)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-          [contactId, context.workspace.id, input.clientId, businessId, input.name, input.email ?? null, input.phone ?? null, input.title ?? null, input.isPrimary],
-        );
-      }
-      await insertAuditLog(client, {
-        workspaceId: context.workspace.id,
-        actorUserId: context.user.id,
-        action: input.contactId ? "contact.updated" : "contact.created",
-        targetType: "contact",
-        targetId: contactId,
-        metadata: { clientId: input.clientId },
-      });
-      return true;
-    });
-    if (!created) return missing();
-    revalidatePath(`/dashboard/clients/${input.clientId}`);
-    return success(input.contactId ? "Contact updated." : "Contact added.");
-  } catch (error) {
-    if ((error as { code?: string }).code === "23505") return { status: "error", message: "That email is already attached to this client." };
-    return genericFailure;
-  }
+export async function saveContactAction(_previous:OperationActionState,formData:FormData):Promise<OperationActionState>{
+  return runOperation(operationService.saveContact,formData);
 }
 
-export async function saveSiteAction(
-  _previous: OperationActionState,
-  formData: FormData,
-): Promise<OperationActionState> {
-  const context = await mutationContext();
-  if (!context) return denied();
-  const parsed = siteSchema.safeParse(formValues(formData, ["siteId", "clientId", "name", "url", "environment", "status", "notes"]));
-  if (!parsed.success) return validationState(parsed.error);
-  const input = parsed.data;
-  const siteId = input.siteId ?? randomUUID();
-  try {
-    const saved = await withTransaction(async (client) => {
-      if (input.clientId) {
-        const clientRecord = await client.query("SELECT 1 FROM clients WHERE id = $1 AND workspace_id = $2", [input.clientId, context.workspace.id]);
-        if (!clientRecord.rowCount) return false;
-      }
-      if (input.siteId) {
-        const projectConflict = await client.query(
-          `SELECT 1 FROM projects
-           WHERE site_id = $1 AND workspace_id = $2
-             AND client_id IS DISTINCT FROM $3
-           LIMIT 1`,
-          [siteId, context.workspace.id, input.clientId ?? null],
-        );
-        if (projectConflict.rowCount) return "project_conflict" as const;
-        const result = await client.query(
-          `UPDATE sites SET client_id = $1, name = $2, url = $3, environment = $4,
-                  status = $5, notes = $6, updated_at = now()
-           WHERE id = $7 AND workspace_id = $8`,
-          [input.clientId ?? null, input.name, input.url, input.environment, input.status, input.notes ?? null, siteId, context.workspace.id],
-        );
-        if (!result.rowCount) return "missing" as const;
-      } else {
-        await client.query(
-          `INSERT INTO sites (id, workspace_id, client_id, name, url, environment, status, notes)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [siteId, context.workspace.id, input.clientId ?? null, input.name, input.url, input.environment, input.status, input.notes ?? null],
-        );
-      }
-      await insertAuditLog(client, {
-        workspaceId: context.workspace.id,
-        actorUserId: context.user.id,
-        action: input.siteId ? "site.updated" : "site.created",
-        targetType: "site",
-        targetId: siteId,
-        metadata: { status: input.status },
-      });
-      return "saved" as const;
-    });
-    if (saved === "project_conflict") {
-      return { status: "error", message: "This site's client cannot change while a project for another client uses it." };
-    }
-    if (saved !== "saved") return missing();
-  } catch (error) {
-    if ((error as { code?: string }).code === "23505") return { status: "error", message: "That URL already exists in this workspace." };
-    return genericFailure;
-  }
-  revalidatePath("/dashboard");
-  revalidatePath("/dashboard/sites");
-  if (input.siteId) {
-    revalidatePath(`/dashboard/sites/${siteId}`);
-    return success("Site updated.");
-  }
-  redirect(`/dashboard/sites/${siteId}`);
+export async function saveSiteAction(_previous:OperationActionState,formData:FormData):Promise<OperationActionState>{
+  return runOperation(operationService.saveSite,formData);
 }
 
-export async function saveProjectAction(
-  _previous: OperationActionState,
-  formData: FormData,
-): Promise<OperationActionState> {
-  const context = await mutationContext();
-  if (!context) return denied();
-  const parsed = projectSchema.safeParse(formValues(formData, [
-    "projectId", "clientId", "siteId", "ownerUserId", "name", "status", "summary", "startedAt", "dueAt",
-  ]));
-  if (!parsed.success) return validationState(parsed.error);
-  const input = parsed.data;
-  const projectId = input.projectId ?? randomUUID();
-  try {
-    const saved = await withTransaction(async (client) => {
-      const clientRecord = await client.query("SELECT 1 FROM clients WHERE id = $1 AND workspace_id = $2", [input.clientId, context.workspace.id]);
-      if (!clientRecord.rowCount) return false;
-      if (input.projectId) {
-        const existingProject = await client.query(
-          "SELECT 1 FROM projects WHERE id = $1 AND workspace_id = $2 FOR UPDATE",
-          [projectId, context.workspace.id],
-        );
-        if (!existingProject.rowCount) return false;
-        const completedSale = await client.query(
-          `SELECT 1 FROM crm_opportunities
-           WHERE project_id = $1 AND workspace_id = $2 AND stage = 'won'
-             AND client_id IS DISTINCT FROM $3
-           LIMIT 1`,
-          [projectId, context.workspace.id, input.clientId],
-        );
-        if (completedSale.rowCount) return "sales_client_conflict" as const;
-      }
-      if (input.ownerUserId) {
-        const owner = await client.query("SELECT 1 FROM workspace_memberships WHERE user_id = $1 AND workspace_id = $2 AND status = 'active'", [input.ownerUserId, context.workspace.id]);
-        if (!owner.rowCount) return false;
-      }
-      let linkedSite = false;
-      if (input.siteId) {
-        const site = await client.query<{ client_id: string | null }>(
-          "SELECT client_id FROM sites WHERE id = $1 AND workspace_id = $2 FOR UPDATE",
-          [input.siteId, context.workspace.id],
-        );
-        if (!site.rowCount || (site.rows[0].client_id && site.rows[0].client_id !== input.clientId)) return false;
-        if (!site.rows[0].client_id) {
-          await client.query(
-            "UPDATE sites SET client_id = $1, updated_at = now() WHERE id = $2 AND workspace_id = $3",
-            [input.clientId, input.siteId, context.workspace.id],
-          );
-          linkedSite = true;
-        }
-      }
-      const completedAt = input.status === "completed" ? new Date() : null;
-      if (input.projectId) {
-        const result = await client.query(
-          `UPDATE projects SET client_id = $1, site_id = $2, owner_user_id = $3,
-                  name = $4, status = $5, summary = $6, started_at = $7, due_at = $8,
-                  completed_at = $9, updated_at = now()
-           WHERE id = $10 AND workspace_id = $11`,
-          [input.clientId, input.siteId ?? null, input.ownerUserId ?? null, input.name,
-            input.status, input.summary ?? null, asDatabaseDate(input.startedAt),
-            asDatabaseDate(input.dueAt), completedAt, projectId, context.workspace.id],
-        );
-        if (!result.rowCount) return false;
-      } else {
-        await client.query(
-          `INSERT INTO projects
-            (id, workspace_id, client_id, site_id, owner_user_id, name, status, summary, started_at, due_at, completed_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-          [projectId, context.workspace.id, input.clientId, input.siteId ?? null,
-            input.ownerUserId ?? null, input.name, input.status, input.summary ?? null,
-            asDatabaseDate(input.startedAt), asDatabaseDate(input.dueAt), completedAt],
-        );
-      }
-      await insertAuditLog(client, {
-        workspaceId: context.workspace.id,
-        actorUserId: context.user.id,
-        action: input.projectId ? "project.updated" : "project.created",
-        targetType: "project",
-        targetId: projectId,
-        metadata: { status: input.status },
-      });
-      if (linkedSite && input.siteId) {
-        await insertAuditLog(client, {
-          workspaceId: context.workspace.id,
-          actorUserId: context.user.id,
-          action: "site.client_linked",
-          targetType: "site",
-          targetId: input.siteId,
-          metadata: { clientId: input.clientId, projectId },
-        });
-      }
-      return true;
-    });
-    if (saved === "sales_client_conflict") return {
-      status: "error",
-      message: "This project is linked to a completed sale. Keep it with that client to preserve the sales history.",
-    };
-    if (!saved) return missing();
-  } catch {
-    return genericFailure;
-  }
-  revalidatePath("/dashboard/projects");
-  if (input.projectId) {
-    revalidatePath(`/dashboard/projects/${projectId}`);
-    return success("Project updated.");
-  }
-  redirect(`/dashboard/projects/${projectId}`);
+export async function saveProjectAction(_previous:OperationActionState,formData:FormData):Promise<OperationActionState>{
+  return runOperation(operationService.saveProject,formData);
 }
 
-export async function addMilestoneAction(
-  _previous: OperationActionState,
-  formData: FormData,
-): Promise<OperationActionState> {
-  const context = await mutationContext();
-  if (!context) return denied();
-  const parsed = milestoneSchema.safeParse(formValues(formData, ["projectId", "title", "status", "dueAt"]));
-  if (!parsed.success) return validationState(parsed.error);
-  const input = parsed.data;
-  try {
-    const created = await withTransaction(async (client) => {
-      const project = await client.query("SELECT 1 FROM projects WHERE id = $1 AND workspace_id = $2", [input.projectId, context.workspace.id]);
-      if (!project.rowCount) return false;
-      const milestoneId = randomUUID();
-      await client.query(
-        `INSERT INTO project_milestones (id, project_id, title, status, due_at, completed_at)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [milestoneId, input.projectId, input.title, input.status, asDatabaseDate(input.dueAt), input.status === "completed" ? new Date() : null],
-      );
-      await insertAuditLog(client, {
-        workspaceId: context.workspace.id,
-        actorUserId: context.user.id,
-        action: "project.milestone_created",
-        targetType: "project_milestone",
-        targetId: milestoneId,
-        metadata: { projectId: input.projectId },
-      });
-      return true;
-    });
-    if (!created) return missing();
-    revalidatePath(`/dashboard/projects/${input.projectId}`);
-    return success("Milestone added.");
-  } catch {
-    return genericFailure;
-  }
+export async function addMilestoneAction(_previous:OperationActionState,formData:FormData):Promise<OperationActionState>{
+  return runOperation(operationService.addMilestone,formData);
 }
 
-export async function updateMilestoneStatusAction(_previous: OperationActionState, formData: FormData): Promise<OperationActionState> {
-  const context = await mutationContext();
-  if (!context) return denied();
-  const parsed = milestoneStatusSchema.safeParse(formValues(formData, ["projectId", "milestoneId", "status"]));
-  if (!parsed.success) return validationState(parsed.error);
-  const input = parsed.data;
-  try {
-    const changed = await withTransaction(async (client) => {
-      const result = await client.query(
-        `UPDATE project_milestones milestone
-         SET status = $1, completed_at = CASE WHEN $1 = 'completed' THEN now() ELSE NULL END, updated_at = now()
-         FROM projects project
-         WHERE milestone.id = $2 AND milestone.project_id = project.id
-           AND project.id = $3 AND project.workspace_id = $4`,
-        [input.status, input.milestoneId, input.projectId, context.workspace.id],
-      );
-      if (!result.rowCount) return false;
-      await insertAuditLog(client, {
-        workspaceId: context.workspace.id,
-        actorUserId: context.user.id,
-        action: "project.milestone_updated",
-        targetType: "project_milestone",
-        targetId: input.milestoneId,
-        metadata: { projectId: input.projectId, status: input.status },
-      });
-      return true;
-    });
-    if (!changed) return missing();
-    revalidatePath(`/dashboard/projects/${input.projectId}`);
-    return success("Milestone updated.");
-  } catch { return genericFailure; }
+export async function updateMilestoneStatusAction(_previous:OperationActionState,formData:FormData):Promise<OperationActionState>{
+  return runOperation(operationService.updateMilestoneStatus,formData);
 }
 
-export async function addProjectRecordAction(
-  _previous: OperationActionState,
-  formData: FormData,
-): Promise<OperationActionState> {
-  const context = await mutationContext();
-  if (!context) return denied();
-  const parsed = projectRecordSchema.safeParse(formValues(formData, ["projectId", "kind", "title", "body"]));
-  if (!parsed.success) return validationState(parsed.error);
-  const input = parsed.data;
-  try {
-    const created = await withTransaction(async (client) => {
-      const project = await client.query("SELECT 1 FROM projects WHERE id = $1 AND workspace_id = $2", [input.projectId, context.workspace.id]);
-      if (!project.rowCount) return false;
-      const recordId = randomUUID();
-      await client.query(
-        "INSERT INTO project_records (id, project_id, author_user_id, kind, title, body) VALUES ($1, $2, $3, $4, $5, $6)",
-        [recordId, input.projectId, context.user.id, input.kind, input.title, input.body ?? null],
-      );
-      await insertAuditLog(client, {
-        workspaceId: context.workspace.id,
-        actorUserId: context.user.id,
-        action: `project.${input.kind}_created`,
-        targetType: "project_record",
-        targetId: recordId,
-        metadata: { projectId: input.projectId, kind: input.kind },
-      });
-      return true;
-    });
-    if (!created) return missing();
-    revalidatePath(`/dashboard/projects/${input.projectId}`);
-    return success(`${input.kind.charAt(0).toUpperCase() + input.kind.slice(1)} added.`);
-  } catch {
-    return genericFailure;
-  }
+export async function addProjectRecordAction(_previous:OperationActionState,formData:FormData):Promise<OperationActionState>{
+  return runOperation(operationService.addProjectRecord,formData);
 }

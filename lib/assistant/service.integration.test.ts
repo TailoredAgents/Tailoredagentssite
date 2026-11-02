@@ -10,6 +10,8 @@ import {listGoals} from './goals';
 import {POST} from '@/app/api/mcp/operations/route';
 import {GET as metadata} from '@/app/.well-known/oauth-protected-resource/api/mcp/operations/route';
 import {readTools} from './tools/reads';
+import {getClient,getContact,getSite,getProject} from '@/lib/operations/data';
+import {saveClient} from '@/lib/operations/service';
 const url=process.env.ASSISTANT_TEST_DATABASE_URL;
 const workspace='00000000-0000-4000-8000-000000000001';
 const owner={user:{id:'assistant-owner',name:'Owner',email:'owner@example.test'},workspace:{id:workspace,name:'Tailored Agents',slug:'tailored-agents'},role:'owner' as const};
@@ -114,6 +116,49 @@ describe.skipIf(!url)('Operations OAuth and execution integration',()=>{
  it('creates a reviewed time block without booking or contacting a visitor',async()=>{
   const c=await connection();const a=await prepareAction(c.p,'block_time',{profile:'austin',startsAt:new Date(Date.now()+86400000).toISOString(),minutes:60},'block-calendar');
   expect((await reviewAction(owner,a.id,'approve')).status).toBe('succeeded');expect((await pool.query("SELECT id FROM booking_slots WHERE status='blocked'")).rowCount).toBe(1);expect((await pool.query("SELECT id FROM booking_slots WHERE status='booked'")).rowCount).toBe(0);
+ });
+ it('creates client delivery records through review, returning usable IDs and revisions',async()=>{
+  const c=await connection();
+  const perform=async(tool:string,input:unknown,key:string)=>{
+   const action=await prepareAction(c.p,tool,input,key);
+   const result=await reviewAction(owner,action.id,'approve');expect(result.status).toBe('succeeded');
+   await reviewAction(owner,action.id,'approve');
+   return (result.result as {recordId:string}).recordId;
+  };
+  const clientId=await perform('save_client',{name:'Delivery customer'},'delivery-client');
+  const contactId=await perform('save_contact',{clientId,name:'Customer contact',email:'delivery@example.test',isPrimary:true},'delivery-contact');
+  expect((await getContact(owner,clientId,contactId))?.is_primary).toBe(true);
+  const siteId=await perform('save_site',{name:'Delivery website',url:'https://delivery.example.test'},'delivery-site');
+  const projectId=await perform('save_project',{clientId,siteId,name:'Delivery project',ownerUserId:owner.user.id},'delivery-project');
+  expect((await getSite(owner,siteId))?.client_id).toBe(clientId);
+  const milestoneId=await perform('add_milestone',{projectId,title:'Review first draft',dueAt:'2026-12-01'},'delivery-milestone');
+  const recordId=await perform('add_project_record',{projectId,kind:'decision',title:'Approved color direction',body:'Customer supplied blue.'},'delivery-decision');
+  const project=await getProject(owner,projectId);expect(project?.records.map(r=>r.id)).toContain(recordId);expect(project?.milestones).toHaveLength(1);
+  const milestone=project!.milestones.find(m=>m.id===milestoneId)!;
+  await perform('update_milestone_status',{projectId,milestoneId,status:'completed',expectedUpdatedAt:milestone.updatedAt},'delivery-complete');
+  expect((await getProject(owner,projectId))?.milestones[0].status).toBe('completed');
+  expect((await getClient(owner,clientId))?.contacts).toHaveLength(1);
+ });
+ it('rejects stale edits inside the domain transaction and preserves newer changes',async()=>{
+  const c=await connection(),created=await prepareAction(c.p,'save_client',{name:'Revision customer'},'revision-create');
+  const clientId=((await reviewAction(owner,created.id,'approve')).result as {recordId:string}).recordId;
+  const client=(await getClient(owner,clientId))!;
+  await expect(prepareAction(c.p,'save_client',{clientId,name:'Missing revision'},'revision-missing')).rejects.toThrow();
+  const proposal=await prepareAction(c.p,'save_client',{clientId,name:'Stale change',expectedUpdatedAt:client.updatedAt},'revision-stale');
+  // Preserve the reviewed identity to exercise CAS rather than label comparison.
+  await pool.query("UPDATE clients SET notes='A teammate added this',updated_at=updated_at+interval '1 second' WHERE id=$1",[clientId]);
+  expect((await reviewAction(owner,proposal.id,'approve')).status).toBe('failed');
+  expect((await getClient(owner,clientId))?.notes).toBe('A teammate added this');
+  const fresh=(await getClient(owner,clientId))!;
+  const changes=await Promise.all(['First edit','Second edit'].map((name,i)=>prepareAction(c.p,'save_client',{clientId,name,expectedUpdatedAt:fresh.updatedAt},'revision-race-'+i)));
+  const results=await Promise.all(changes.map(a=>reviewAction(owner,a.id,'approve')));
+  expect(results.filter(r=>r.status==='succeeded')).toHaveLength(1);expect(results.filter(r=>r.status==='failed')).toHaveLength(1);
+ });
+ it('authorizes the shared service against current membership rather than a supplied role',async()=>{
+  const form=new FormData();form.set('name','Denied customer');
+  await pool.query("UPDATE workspace_memberships SET role='viewer' WHERE user_id=$1",[owner.user.id]);
+  expect((await saveClient(owner,form)).status).toBe('error');
+  expect((await pool.query("SELECT id FROM clients WHERE name='Denied customer'")).rowCount).toBe(0);
  });
  it('keeps client search and record lookup isolated across workspaces',async()=>{
   const c=await connection(),workspaceId=randomUUID(),clientId=randomUUID();

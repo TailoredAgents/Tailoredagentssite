@@ -628,23 +628,29 @@
     {
       "file": "lib/operations/actions.ts",
       "export": "updateLeadAction",
-      "status": "pending",
-      "tools": [],
-      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+      "status": "implemented",
+      "tools": [
+        "prepare_update_lead"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/operations/actions.ts",
       "export": "updateLeadStatusAction",
-      "status": "pending",
-      "tools": [],
-      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+      "status": "implemented",
+      "tools": [
+        "prepare_update_lead_status"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/operations/actions.ts",
       "export": "addLeadNoteAction",
-      "status": "pending",
-      "tools": [],
-      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+      "status": "implemented",
+      "tools": [
+        "prepare_add_lead_note"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/operations/actions.ts",
@@ -656,51 +662,65 @@
     {
       "file": "lib/operations/actions.ts",
       "export": "saveClientAction",
-      "status": "pending",
-      "tools": [],
-      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+      "status": "implemented",
+      "tools": [
+        "prepare_save_client"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/operations/actions.ts",
       "export": "saveContactAction",
-      "status": "pending",
-      "tools": [],
-      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+      "status": "implemented",
+      "tools": [
+        "prepare_save_contact"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/operations/actions.ts",
       "export": "saveSiteAction",
-      "status": "pending",
-      "tools": [],
-      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+      "status": "implemented",
+      "tools": [
+        "prepare_save_site"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/operations/actions.ts",
       "export": "saveProjectAction",
-      "status": "pending",
-      "tools": [],
-      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+      "status": "implemented",
+      "tools": [
+        "prepare_save_project"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/operations/actions.ts",
       "export": "addMilestoneAction",
-      "status": "pending",
-      "tools": [],
-      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+      "status": "implemented",
+      "tools": [
+        "prepare_add_milestone"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/operations/actions.ts",
       "export": "updateMilestoneStatusAction",
-      "status": "pending",
-      "tools": [],
-      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+      "status": "implemented",
+      "tools": [
+        "prepare_update_milestone_status"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/operations/actions.ts",
       "export": "addProjectRecordAction",
-      "status": "pending",
-      "tools": [],
-      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+      "status": "implemented",
+      "tools": [
+        "prepare_add_project_record"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/sales/actions.ts",

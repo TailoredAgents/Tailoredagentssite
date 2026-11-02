@@ -1,6 +1,6 @@
 import 'server-only';
 import {getSalesRecord} from '@/lib/sales/data';
-import {getWorkspaceMembers} from '@/lib/operations/data';
+import {getWorkspaceMembers,getLead,getClient,getContact,getSite,getProject} from '@/lib/operations/data';
 import {listConversationWorkspace} from '@/lib/conversations/data';
 import {cardAccess} from '@/lib/smart-cards/data';
 import {getDatabasePool} from '@/lib/dashboard/db';
@@ -10,6 +10,37 @@ import type {Principal} from './oauth';
 // accept these labels from the assistant. Re-resolve before executing the change.
 export async function reviewContext(p:Principal,tool:string,input:Record<string,unknown>){
  const context=p.context;const result:Record<string,unknown>={requestedFor:context.user.name,workspace:context.workspace.name};
+ if(typeof input.leadId==='string'){
+  const record=await getLead(context,input.leadId);
+  if(!record)throw new AssistantError('not_found','This lead is unavailable.',404);
+  result.lead=record.organization||record.name;result.leadEmail=record.email;result.leadPhone=record.phone;
+ }
+ if(typeof input.clientId==='string'){
+  const record=await getClient(context,input.clientId);
+  if(!record)throw new AssistantError('not_found','This client is unavailable.',404);
+  result.client=record.name;
+  if(tool==='save_contact'&&input.isPrimary)result.currentPrimaryContacts=record.contacts.filter(c=>c.isPrimary).map(c=>({id:c.id,name:c.name}));
+ }
+ if(typeof input.contactId==='string'){
+  const record=await getContact(context,String(input.clientId),input.contactId);
+  if(!record)throw new AssistantError('not_found','This client contact is unavailable.',404);
+  result.contact=record.name;result.contactEmail=record.email;result.contactPhone=record.phone;
+ }
+ if(typeof input.siteId==='string'){
+  const record=await getSite(context,input.siteId);
+  if(!record)throw new AssistantError('not_found','This site is unavailable.',404);
+  result.site=record.name;result.siteUrl=record.url;result.siteClient=record.client_name;
+ }
+ if(typeof input.projectId==='string'){
+  const record=await getProject(context,input.projectId);
+  if(!record)throw new AssistantError('not_found','This project is unavailable.',404);
+  result.project=record.name;result.projectClient=record.client_name;
+  if(typeof input.milestoneId==='string'){
+   const milestone=record.milestones.find(m=>m.id===input.milestoneId);
+   if(!milestone)throw new AssistantError('not_found','This milestone is unavailable.',404);
+   result.milestone=milestone.title;
+  }
+ }
  if(typeof input.opportunityId==='string'){
   const record=await getSalesRecord(context,input.opportunityId);
   if(!record)throw new AssistantError('not_found','This sales record is unavailable.',404);
