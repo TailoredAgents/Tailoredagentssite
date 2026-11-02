@@ -382,9 +382,11 @@
     {
       "file": "lib/conversations/actions.ts",
       "export": "saveConversationWorkAction",
-      "status": "pending",
-      "tools": [],
-      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+      "status": "implemented",
+      "tools": [
+        "prepare_save_conversation_work"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/conversations/actions.ts",
@@ -929,16 +931,20 @@
     {
       "file": "lib/sms/actions.ts",
       "export": "sendSmsMessageAction",
-      "status": "pending",
-      "tools": [],
-      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+      "status": "implemented",
+      "tools": [
+        "prepare_send_sms"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/sms/actions.ts",
       "export": "checkSmsSendAction",
-      "status": "pending",
-      "tools": [],
-      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+      "status": "implemented",
+      "tools": [
+        "get_sms_send_status"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/sms/alert-actions.ts",

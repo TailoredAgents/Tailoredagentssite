@@ -6,6 +6,8 @@ const optionalId = z.preprocess(
 );
 export const workSchema = z.object({
   conversationId: id,
+  expectedWorkUpdatedAt: z.iso.datetime({offset:true}).optional(),
+  expectedLastActivityAt: z.iso.datetime({offset:true}).optional(),
   ownerId: z.string().max(200).optional(),
   status: z.enum(["needs_reply", "waiting", "done", "archived"]),
   remindAt: z.preprocess(

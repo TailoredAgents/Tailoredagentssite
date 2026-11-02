@@ -4,7 +4,7 @@ import {z} from 'zod';
 import {getDatabasePool} from '@/lib/dashboard/db';
 import type {DashboardContext} from '@/lib/dashboard/data';
 import {hash,principal,type Principal} from './oauth';
-import {AssistantError,assistantOrigin} from './config';
+import {AssistantError,AssistantOutcomeError,assistantOrigin} from './config';
 import {asAssistant,requireScopes} from './access';
 import {reviewContext} from './review-context';
 import {findChange} from './tools/changes';
@@ -73,9 +73,10 @@ export async function reviewAction(context:DashboardContext,id:string,decision:'
   // Only our pre-execution authorization/CAS errors are known failures. Other
   // domain/provider errors are conservatively uncertain; never auto-retry.
   const known=e instanceof AssistantError||e instanceof z.ZodError;
-  const status=known?'failed':'outcome_unknown';const code=e instanceof AssistantError?e.code:known?'invalid_input':'check_record_before_retry';
-  await getDatabasePool().query('UPDATE assistant_actions SET status=$2,error_code=$3,updated_at=now() WHERE id=$1 AND status=\'running\'',[id,status,code]);
-  return receipt({...row,status,error_code:code});
+  const status=e instanceof AssistantOutcomeError?e.outcome:known?'failed':'outcome_unknown';const code=e instanceof AssistantError?e.code:e instanceof AssistantOutcomeError?'check_message_status':known?'invalid_input':'check_record_before_retry';
+  const result=e instanceof AssistantOutcomeError?e.result:e instanceof AssistantError?{message:e.message}:null;
+  await getDatabasePool().query('UPDATE assistant_actions SET status=$2,error_code=$3,result=$4::jsonb,updated_at=now() WHERE id=$1 AND status=\'running\'',[id,status,code,JSON.stringify(result)]);
+  return receipt({...row,status,error_code:code,result});
  }
 }
 export async function manageConnection(context:DashboardContext,id:string,operation:'revoke'|'pause'|'resume'){

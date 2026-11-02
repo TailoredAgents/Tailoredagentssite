@@ -122,6 +122,7 @@ export async function listConversationWorkspace(
         return [
           {
             id: c.id,
+            workUpdatedAt: c.work_updated_at.toISOString(),
             title: personName,
             personName,
             businessName: c.business_name,

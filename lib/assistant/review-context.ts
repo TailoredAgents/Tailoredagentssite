@@ -6,11 +6,16 @@ import {cardAccess} from '@/lib/smart-cards/data';
 import {getDatabasePool} from '@/lib/dashboard/db';
 import {AssistantError} from './config';
 import {getCalendarEntry} from '@/lib/booking/staff';
+import {smsReview} from './sms';
 import type {Principal} from './oauth';
 // Save human-readable target identity alongside the exact proposed input. Never
 // accept these labels from the assistant. Re-resolve before executing the change.
 export async function reviewContext(p:Principal,tool:string,input:Record<string,unknown>){
  const context=p.context;const result:Record<string,unknown>={requestedFor:context.user.name,workspace:context.workspace.name};
+ if(tool==='send_sms'){
+  result.message=await smsReview(p,input);
+  result.sendingNotice='Approval sends this exact text. Standard messaging charges apply. Sent texts cannot be recalled.';
+ }
  if(typeof input.leadId==='string'){
   const record=await getLead(context,input.leadId);
   if(!record)throw new AssistantError('not_found','This lead is unavailable.',404);
@@ -53,8 +58,9 @@ export async function reviewContext(p:Principal,tool:string,input:Record<string,
    result.task=task.title;result.currentTaskOwner=task.ownerName;result.currentStart=task.dueAt;result.currentEnd=task.endAt;
   }
  }
- if(typeof input.ownerUserId==='string'&&input.ownerUserId){
-  const member=(await getWorkspaceMembers(context)).find(m=>m.id===input.ownerUserId&&m.role!=='viewer');
+ const assignedId=input.ownerUserId??input.ownerId;
+ if(typeof assignedId==='string'&&assignedId){
+  const member=(await getWorkspaceMembers(context)).find(m=>m.id===assignedId&&m.role!=='viewer');
   if(!member)throw new AssistantError('not_found','Choose an active teammate who can edit records.',404);
   result.assignedTo=member.name;result.assignedEmail=member.email;
  }
@@ -68,6 +74,12 @@ export async function reviewContext(p:Principal,tool:string,input:Record<string,
   const source=r.selected&&r.selected.conversation.id===input.conversationId?r.selected.sources.find(s=>s.id===input.audienceSourceId):null;
   if(!source)throw new AssistantError('not_found','This conversation or note audience is unavailable.',404);
   result.customer=r.selected!.conversation.personName;result.source=source.label;result.channel=source.channel;result.addresses=source.externalAddresses;
+ }
+ if(tool==='save_conversation_work'){
+  const r=await listConversationWorkspace(context,{conversation:String(input.conversationId)});
+  const c=r.selected?.conversation;
+  if(!c||c.id!==input.conversationId)throw new AssistantError('not_found','This conversation is unavailable.',404);
+  result.customer=c.personName;result.currentStatus=c.status;result.currentOwner=c.ownerName;result.lastActivityAt=c.lastActivityAt;result.workUpdatedAt=c.workUpdatedAt;
  }
  if(tool==='block_time'||tool==='publish_consultation_time'){
   await cardAccess(context,true);

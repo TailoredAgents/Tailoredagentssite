@@ -768,6 +768,18 @@ describe.skipIf(!databaseUrl)(
           ?.conversation.status,
       ).toBe("waiting");
     });
+    it("rejects reviewed work updates after another edit or new customer activity", async () => {
+      const ids = await identities();
+      const original = (await workspaceView(owner, { conversation: ids.email.id })).selected!.conversation;
+      const change = {conversationId: original.id, status: "done", expectedWorkUpdatedAt: original.workUpdatedAt, expectedLastActivityAt: original.lastActivityAt};
+      await saveConversationWork(owner, change);
+      await expect(saveConversationWork(owner, change)).rejects.toThrow("work status changed");
+      const current = (await workspaceView(owner, { conversation: ids.email.id })).selected!.conversation;
+      mailMessages.push(message("review-new-inbound", "Please follow up", new Date(Date.now() + 1000).toISOString()));
+      await workspaceView(owner, { conversation: ids.email.id });
+      await expect(saveConversationWork(owner, {...change, expectedWorkUpdatedAt: current.workUpdatedAt, expectedLastActivityAt: current.lastActivityAt})).rejects.toThrow("new activity");
+      expect((await workspaceView(owner, { conversation: ids.email.id })).selected!.conversation.status).toBe("needs_reply");
+    });
     it("surfaces only deliberate due reminders and clears them when work is done", async () => {
       const ids = await identities();
       expect((await workspaceView(owner, { view: "due" })).total).toBe(0);

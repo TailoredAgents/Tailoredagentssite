@@ -182,7 +182,12 @@ export async function saveConversationWork(
     );
   await available(context, input.conversationId, true);
   await transaction(context, async (db) => {
-    await available(context, input.conversationId, true);
+    const sources=await available(context, input.conversationId, true);
+    if(input.expectedWorkUpdatedAt){
+      const current=(await db.query<{work_updated_at:Date}>('SELECT work_updated_at FROM crm_conversations WHERE workspace_id=$1 AND id=$2 AND merged_into_id IS NULL AND deleted_at IS NULL FOR UPDATE',[context.workspace.id,input.conversationId])).rows[0];
+      if(!current||current.work_updated_at.getTime()!==Date.parse(input.expectedWorkUpdatedAt))throw new ConversationInputError('This conversation’s work status changed. Read it again before editing.');
+    }
+    if(input.expectedLastActivityAt&&Math.max(0,...sources.map(s=>s.last_activity_at.getTime()))!==Date.parse(input.expectedLastActivityAt))throw new ConversationInputError('This conversation has new activity. Review it before changing its work status.');
     if (
       input.ownerId &&
       !(

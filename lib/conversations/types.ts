@@ -22,6 +22,7 @@ export type ConversationFilters = {
   sourcePage?: string | string[];
 };
 export type ConversationSummary = {
+  workUpdatedAt?: string;
   id: string;
   title: string;
   personName: string;

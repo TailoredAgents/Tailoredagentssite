@@ -1,6 +1,7 @@
 import 'server-only';
 import {z} from 'zod';
 import {operationChanges} from './operation-changes';
+import {communicationChanges} from './communication-changes';
 import type {Principal} from '../oauth';
 import type {AssistantScope} from '../config';
 import {goalSchema,saveGoal} from '../goals';
@@ -12,12 +13,13 @@ import {addConversationNote} from '@/lib/conversations/service';
 import {changeCalendar,CalendarInputError} from '@/lib/booking/calendar';
 import {bookConsultation,bookConsultationSchema,moveConsultationSchema} from '@/lib/booking/staff';
 import {CardError} from '@/lib/smart-cards/http';
-export type ChangeTool={name:string;title:string;description:string;schema:z.ZodObject;scopes:AssistantScope[];run:(p:Principal,input:unknown)=>Promise<unknown>};
+export type ChangeTool={name:string;title:string;description:string;schema:z.ZodObject;scopes:AssistantScope[];external?:boolean;run:(p:Principal,input:unknown)=>Promise<unknown>};
 function change<S extends z.ZodObject>(name:string,title:string,description:string,schema:S,run:(p:Principal,input:z.output<S>)=>Promise<unknown>,scopes:AssistantScope[]=['operations:write']):ChangeTool{
  return {name,title,description,schema,scopes,async run(p,input){try{return await run(p,schema.parse(input));}catch(error){if(error instanceof SalesInputError||error instanceof CalendarInputError||error instanceof CardError)throw new AssistantError('change_rejected',error.message,409);throw error;}}};
 }
 export const changeTools:ChangeTool[]=[
  ...operationChanges,
+ ...communicationChanges,
  change('save_goal','Save private goal','Create or update a private goal. Existing goals require their current revision. Progress must reflect facts supplied by the user.',goalSchema,(p,v)=>saveGoal(p.context,v),['personal:write']),
  change('create_opportunity','Create sales opportunity','Create an opportunity with contact identity and owner. Does not contact anyone.',createOpportunitySchema,(p,v)=>createOpportunity(p.context,v)),
  change('update_opportunity','Update sales opportunity','Update a sales opportunity using the exact current opportunity and business revision timestamps.',updateOpportunitySchema,(p,v)=>updateOpportunity(p.context,v)),

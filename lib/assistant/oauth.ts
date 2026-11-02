@@ -6,7 +6,7 @@ import {getDatabasePool} from '@/lib/dashboard/db';
 import type {DashboardContext} from '@/lib/dashboard/data';
 import {isAllowedDashboardEmail,resolveDashboardConfiguration} from '@/lib/dashboard/config';
 import {verifyMailDashboardSession} from '@/lib/dashboard/mail-identity';
-import {AssistantError,assistantOrigin,parseScopes,resourceUri,validRedirect,type AssistantScope} from './config';
+import {AssistantError,isWriteScope,assistantOrigin,parseScopes,resourceUri,validRedirect,type AssistantScope} from './config';
 
 export const hash=(value:string)=>createHash('sha256').update(value).digest('hex');
 const secret=()=>randomBytes(32).toString('base64url');
@@ -67,13 +67,13 @@ export async function finishConsent(nonce:string,context:DashboardContext,sessio
   if(!allow){callback.searchParams.set('error','access_denied');await db.query('COMMIT');return callback.href;}
   const approved=parseScopes(selected.join(' '));
   if(approved.some(s=>!r.scopes.includes(s)))throw new AssistantError('invalid_scope','Only requested permissions can be granted.');
-  if(context.role==='viewer'&&approved.some(s=>s.endsWith(':write')))throw new AssistantError('access_denied','View-only accounts cannot grant changes.',403);
+  if(context.role==='viewer'&&approved.some(isWriteScope))throw new AssistantError('access_denied','View-only accounts cannot grant changes.',403);
   const id=randomUUID(),code=secret();
   const inserted=await db.query(`INSERT INTO assistant_grants(id,client_id,user_id,workspace_id,session_id,scopes,resource,expires_at)
    SELECT $1,$2,$3,$4,s.id,$6,$7,LEAST(s."expiresAt",now()+interval '30 days') FROM "session" s
    JOIN workspace_memberships m ON m.user_id=s."userId" AND m.workspace_id=$4 AND m.status='active'
    JOIN workspaces w ON w.id=m.workspace_id AND w.status='active'
-   WHERE s.id=$5 AND s."userId"=$3 AND s."expiresAt">now() AND (m.role<>'viewer' OR NOT ($8::boolean)) RETURNING id`,[id,r.client_id,context.user.id,context.workspace.id,sessionId,approved,resourceUri(),approved.some(s=>s.endsWith(':write'))]);
+   WHERE s.id=$5 AND s."userId"=$3 AND s."expiresAt">now() AND (m.role<>'viewer' OR NOT ($8::boolean)) RETURNING id`,[id,r.client_id,context.user.id,context.workspace.id,sessionId,approved,resourceUri(),approved.some(isWriteScope)]);
   if(!inserted.rowCount)throw invalid();
   await db.query("INSERT INTO assistant_codes(code_hash,grant_id,redirect_uri,challenge,expires_at) VALUES($1,$2,$3,$4,now()+interval '2 minutes')",[hash(code),id,r.redirect_uri,r.challenge]);
   callback.searchParams.set('code',code);await db.query('COMMIT');return callback.href;

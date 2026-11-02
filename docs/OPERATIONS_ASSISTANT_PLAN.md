@@ -23,7 +23,9 @@ The next increment extracts ten CRM/project mutations into shared services with 
 
 Calendar/task increment adds revision-checked task edits/completion, staff booking/rescheduling/cancellation, extra openings and block removal; public/staff races and sales appointment overlaps are tested.
 
-Still pending: remaining settings and source-linked task coverage; reviewed SMS/shared Mail; call controls; full Builder/SEO/card mutations; personal preferences/commitments; durable routines; complete exports/reports and parity checks. Existing Mail sends, channel grants, build approvals and spend limits remain unchanged. See the coverage inventory and phases below.
+Communication increment adds separately consented, human-reviewed SMS with provider status receipts and revision-checked shared Inbox follow-up updates. Existing connections do not gain sending permission automatically.
+
+Still pending: remaining settings and source-linked task coverage; reviewed shared Mail; call controls; full Builder/SEO/card mutations; personal preferences/commitments; durable routines; complete exports/reports and parity checks. Existing Mail sends, channel grants, build approvals and spend limits remain unchanged. See the coverage inventory and phases below.
 
 Verification and live deployment evidence are recorded in [Operations setup](OPERATIONS_ASSISTANT_SETUP.md). This checkpoint does not declare any phase with unmet live acceptance gates complete.
 

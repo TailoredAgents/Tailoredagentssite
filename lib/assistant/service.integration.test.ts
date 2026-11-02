@@ -20,7 +20,7 @@ const workspace='00000000-0000-4000-8000-000000000001';
 const owner={user:{id:'assistant-owner',name:'Owner',email:'owner@example.test'},workspace:{id:workspace,name:'Tailored Agents',slug:'tailored-agents'},role:'owner' as const};
 const other={...owner,user:{id:'assistant-other',name:'Other',email:'other@example.test'}};
 const origin='http://localhost:3162',resource=origin+'/api/mcp/operations',callback='https://chatgpt.com/connector_platform/oauth/callback';
-const allScopes=['operations:read','operations:write','conversations:read','personal:read','personal:write'];
+const allScopes=['operations:read','operations:write','conversations:read','conversations:send','personal:read','personal:write'];
 let pool:Pool;
 async function authorization(scopes=allScopes){
  const client=await registerClient({client_name:'Synthetic ChatGPT',redirect_uris:[callback]});
@@ -78,6 +78,7 @@ describe.skipIf(!url)('Operations OAuth and execution integration',()=>{
  it('requires a live editor role and exact granted scopes for proposals',async()=>{
   const c=await connection(['operations:read']);await expect(prepareAction(c.p,'save_goal',{title:'Private'},'request-0001')).rejects.toThrow();
   const full=await connection();await pool.query("UPDATE workspace_memberships SET role='viewer' WHERE user_id=$1",[owner.user.id]);await expect(prepareAction(full.p,'save_goal',{title:'Private'},'request-0001')).rejects.toThrow();await expect(authorization()).rejects.toThrow();
+  await expect(authorization(['conversations:read','conversations:send'])).rejects.toThrow();
  });
  it('prepares without changing data, requires the same human owner, and executes once despite concurrent approvals',async()=>{
   const c=await connection();const requests=await Promise.all([prepareAction(c.p,'save_goal',{title:'Weekly target'},'request-0001'),prepareAction(c.p,'save_goal',{title:'Weekly target'},'request-0001')]);expect(requests[0].id).toBe(requests[1].id);expect((await listGoals(owner)).total).toBe(0);
@@ -99,6 +100,7 @@ describe.skipIf(!url)('Operations OAuth and execution integration',()=>{
   expect((await POST(new Request(resource,{method:'POST',headers:{'content-type':'application/json'},body:'{}'}))).status).toBe(401);
   const init=await rpc(c.tokens.access_token,'initialize',{protocolVersion:'2025-03-26',capabilities:{},clientInfo:{name:'test',version:'1'}});expect(init.status).toBe(200);
   const list=await rpc(c.tokens.access_token,'tools/list');const listed=await list.json();expect(listed.result.tools.length).toBeGreaterThan(30);expect(listed.result.tools.find((t:{name:string})=>t.name==='prepare_save_goal').inputSchema.properties.change).toBeDefined();
+  const sms=listed.result.tools.find((t:{name:string})=>t.name==='prepare_send_sms');expect(sms.inputSchema.properties.change.properties.to).toBeDefined();expect(sms.annotations.openWorldHint).toBe(true);
   const who=await rpc(c.tokens.access_token,'tools/call',{name:'whoami',arguments:{}});const result=await who.json();expect(result.result.structuredContent.data.user.id).toBe(owner.user.id);expect(result.result.isError).not.toBe(true);
   const rejected=await POST(new Request(resource,{method:'POST',headers:{origin:'https://evil.example',authorization:'Bearer '+c.tokens.access_token,'content-type':'application/json'},body:'{}'}));expect(rejected.status).toBe(403);
  });

@@ -1,6 +1,6 @@
 import { saveSmsAlertSettings, runIncomingSmsAlertWorker, receiveIncomingSmsAlertStatus } from "./alerts";
 import { deleteLead } from "@/lib/operations/delete-lead";
-import { randomUUID } from "node:crypto";
+import { randomUUID,randomBytes,createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import type { Pool } from "pg";
 import {
@@ -30,6 +30,9 @@ import {
   SmsInputError,
 } from "./service";
 import { TwilioProviderError } from "@/lib/twilio/provider";
+import {registerClient,validateAuthorization,createConsent,finishConsent,exchange,authenticate} from '@/lib/assistant/oauth';
+import {prepareAction,reviewAction,readAction} from '@/lib/assistant/actions';
+import {getSmsRecipient,executeSms} from '@/lib/assistant/sms';
 
 vi.mock("server-only", () => ({}));
 const gateway = vi.hoisted(() => ({
@@ -131,6 +134,20 @@ async function count(table: string) {
   return Number(
     (await pool.query(`SELECT count(*)::int AS n FROM ${table}`)).rows[0].n,
   );
+}
+async function assistantConnection(send=true){
+ vi.stubEnv('BETTER_AUTH_URL','https://www.tailoredagents.com');vi.stubEnv('BETTER_AUTH_SECRET','synthetic-assistant-sms-only-secret-123456789');vi.stubEnv('DASHBOARD_AUTH_MODE','password');vi.stubEnv('DASHBOARD_ALLOWED_EMAILS',owner.user.email);vi.stubEnv('OPERATIONS_ASSISTANT_ENABLED','true');vi.stubEnv('OPERATIONS_ASSISTANT_WRITES_ENABLED','true');
+ const sessionId=randomUUID();await pool.query('INSERT INTO "session"(id,"userId",token,"expiresAt") VALUES($1,$2,$1,now()+interval \'1 day\')',[sessionId,ownerId]);
+ const callback='https://chatgpt.com/connector_platform/oauth/callback',resource='https://www.tailoredagents.com/api/mcp/operations',scopes=send?['conversations:read','conversations:send']:['conversations:read'];
+ const client=await registerClient({client_name:'Synthetic text assistant',redirect_uris:[callback]}),verifier=randomBytes(32).toString('base64url');
+ const authorization=await validateAuthorization({client_id:client.client_id,redirect_uri:callback,response_type:'code',scope:scopes.join(' '),resource,state:'sms-test',code_challenge:createHash('sha256').update(verifier).digest('base64url'),code_challenge_method:'S256'});
+ const nonce=await createConsent(authorization,owner,sessionId),location=new URL(await finishConsent(nonce,owner,sessionId,scopes,true));
+ const token=await exchange({grant_type:'authorization_code',client_id:client.client_id,code:location.searchParams.get('code')!,redirect_uri:callback,code_verifier:verifier,resource});
+ return authenticate(new Request(resource,{headers:{authorization:'Bearer '+token.access_token}}));
+}
+async function assistantMessage(p:Awaited<ReturnType<typeof assistantConnection>>){
+ const target=await getSmsRecipient(p,{numberId,to:remote});
+ return {numberId,to:remote,requestId:randomUUID(),text:'The user reviewed these next steps.',expectedConversationId:target.conversationId,expectedLastMessageId:target.lastMessageId};
 }
 async function selected(conversationId: string, activeContext = owner) {
   return (
@@ -270,6 +287,40 @@ describe.skipIf(!databaseUrl)(
       delete (globalThis as { tailoredAgentsDatabasePool?: Pool })
         .tailoredAgentsDatabasePool;
       vi.unstubAllEnvs();
+    });
+    it('requires separately consented sending access, review, and exactly one provider attempt',async()=>{
+      const readOnly=await assistantConnection(false),denied=await assistantMessage(readOnly);
+      await expect(prepareAction(readOnly,'send_sms',denied,'text-no-scope')).rejects.toThrow();expect(gateway.create).not.toHaveBeenCalled();
+      const p=await assistantConnection(),input=await assistantMessage(p),proposal=await prepareAction(p,'send_sms',input,'text-reviewed');
+      expect(gateway.create).not.toHaveBeenCalled();
+      const reviews=await Promise.all([reviewAction(owner,proposal.id,'approve'),reviewAction(owner,proposal.id,'approve')]);
+      expect(reviews.some(r=>r.status==='succeeded')).toBe(true);expect(gateway.create).toHaveBeenCalledOnce();
+      expect(gateway.create.mock.calls[0][0]).toMatchObject({to:remote,from:businessPhone,text:input.text});
+      const receipt=await readAction(p,proposal.id);expect(receipt.result).toMatchObject({sendState:'accepted',requestId:input.requestId});
+      expect((await checkSmsSend(owner,{numberId,requestId:input.requestId})).message).toContain('delivered');
+    });
+    it('invalidates a text when an incoming reply, recipient, opt-out or number grant changes',async()=>{
+      const p=await assistantConnection();await receiveSmsWebhook(incoming('Original question'));
+      const input=await assistantMessage(p),proposal=await prepareAction(p,'send_sms',input,'text-stale');
+      await receiveSmsWebhook(incoming('An updated request'));
+      expect((await reviewAction(owner,proposal.id,'approve')).status).toBe('failed');
+      // The reservation service also checks history even without a review lookup.
+      await expect(executeSms(p,input)).rejects.toThrow('changed');expect(gateway.create).not.toHaveBeenCalled();
+      const opted=await prepareAction(p,'send_sms',await assistantMessage(p),'text-opted-out');
+      await pool.query("INSERT INTO crm_channel_preferences(workspace_id,channel,normalized_address,status,evidence) VALUES($1,'sms',$2,'blocked','Fixture opt-out')",[workspace,remote]);
+      expect((await reviewAction(owner,opted.id,'approve')).status).toBe('failed');expect(gateway.create).not.toHaveBeenCalled();
+      await pool.query('DELETE FROM crm_channel_preferences');
+      const revoked=await prepareAction(p,'send_sms',await assistantMessage(p),'text-grant-revoked');
+      await pool.query('DELETE FROM sms_number_grants WHERE number_id=$1 AND user_id=$2',[numberId,ownerId]);
+      expect((await reviewAction(owner,revoked.id,'approve')).status).not.toBe('succeeded');expect(gateway.create).not.toHaveBeenCalled();
+    });
+    it('preserves uncertain SMS receipts and never retries them after repeated approval',async()=>{
+      const p=await assistantConnection(),input=await assistantMessage(p),proposal=await prepareAction(p,'send_sms',input,'text-unknown');
+      gateway.create.mockRejectedValueOnce(new TwilioProviderError('unknown','Transport timed out'));
+      const receipt=await reviewAction(owner,proposal.id,'approve');expect(receipt.status).toBe('outcome_unknown');
+      expect(receipt.result).toMatchObject({requestId:input.requestId,sendState:'unknown'});
+      await reviewAction(owner,proposal.id,'approve');await checkSmsSend(owner,{numberId,requestId:input.requestId});
+      expect(gateway.create).toHaveBeenCalledOnce();
     });
     it("sends one customer-text alert to the selected teammate, suppresses bursts and authenticates receipts",async()=>{
       await saveSmsAlertSettings(owner,{enabled:true,userId:ownerId,phone:"2125550199"});
