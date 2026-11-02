@@ -22,5 +22,13 @@ describe('Assistant request boundaries',()=>{
   await expect(body(req('a=1&a=2','application/x-www-form-urlencoded'))).rejects.toThrow();
   await expect(body(req('[]'))).rejects.toThrow();await expect(body(req('{"text":"too long"}'),8)).rejects.toThrow('large');
  });
+ it('does not weaken consent origin checks for opaque or external origins',()=>{
+  vi.stubEnv('BETTER_AUTH_URL','https://www.tailoredagents.com');
+  try{
+   const request=(origin:string)=>new Request('https://www.tailoredagents.com/oauth/operations/consent',{method:'POST',headers:{origin}});
+   expect(()=>checkOrigin(request('https://www.tailoredagents.com'),true)).not.toThrow();
+   for(const origin of ['null','https://chatgpt.com','https://evil.example','https://www.tailoredagents.com.evil.example'])expect(()=>checkOrigin(request(origin),true)).toThrow();
+  }finally{vi.unstubAllEnvs();}
+ });
  it('hashes the same parsed intent regardless of key order',()=>{expect(canonical({b:2,a:{z:1,y:'2'}})).toBe(canonical({a:{y:'2',z:1},b:2}));expect(canonical({a:1})).not.toBe(canonical({a:'1'}));});
 });

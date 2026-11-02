@@ -62,6 +62,14 @@ CRM/project increment: 26 focused tests passed, including client/contact/site/pr
 
 Reproduce the focused integration suite only against `ASSISTANT_TEST_DATABASE_URL=postgresql://ta_test@127.0.0.1:55433/ta_assistant_test`; it refuses other host/database names and resets that disposable schema. Never use production credentials. The full browser suites use the installed Playwright browser runtime.
 
+## Consent correction — November 2
+
+Austin's first real ChatGPT connection reached the Tailored Agents permission page but returned `access_denied` after Allow. The initial `no-referrer` page policy suppresses the Origin on native form posts, conflicting with the strict consent-origin check. OAuth pages now use `same-origin`, keeping same-site POST identity while omitting the referrer to external callbacks. The check still rejects missing, opaque/null and foreign origins; it was not relaxed.
+
+Interactive consent exchanges the saved decision through same-origin JSON, then navigates to the server-validated registered callback. This avoids browsers blocking an external form redirect under `form-action 'self'`. Without JavaScript, the same form returns an explicit Continue link. The callback remains bound to the original consent, client and PKCE code; no arbitrary redirect was added.
+
+Verification: 24 assistant tests passed. Four real browser flows passed (desktop/phone, interactive/plain form), covering sign-in, selected-scope consent, callback state, absence of a cross-origin referrer, token exchange, and `whoami` with the correct synthetic account. The external callback was intercepted locally; no code was sent to ChatGPT and no production grant was created by the tests. Use `npm run test:assistant:browser` with the isolated reporting-test database. Its development server uses webpack because this machine's Turbopack hot reload repeatedly refreshed sign-in.
+
 ## Next work
 
 Follow phases 0–7 in `OPERATIONS_ASSISTANT_PLAN.md`. The code-derived manifest lists outstanding features; the dashboard also describes what is and is not available. First verify discovery/consent/reading/revocation in the real ChatGPT client. Then complete the pending service extraction, calendar and communication flows, longer-lived identity delegation and durable routines without bypassing existing approvals or spending limits.

@@ -35,7 +35,8 @@ const nextConfig: NextConfig = {
       { source: "/(.*)", headers: securityHeaders },
       { source: "/oauth/:path*", headers: [
         { key: "Cache-Control", value: "private, no-store" },
-        { key: "Referrer-Policy", value: "no-referrer" },
+        // Keep the Origin on same-site form posts; reveal no referrer to the OAuth callback.
+        { key: "Referrer-Policy", value: "same-origin" },
         { key: "Content-Security-Policy", value: `default-src 'self'; script-src ${browserScriptSources()}; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'${browserUpgradeDirective()}` },
       ] },
       { source: "/dashboard/:path*", headers: voiceDashboardHeaders(voiceFixture) },
