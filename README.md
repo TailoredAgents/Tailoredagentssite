@@ -58,6 +58,10 @@ The existing operations and measurement releases are active. The agency sales fo
 
 The Blueprint provisions the persistent database. Production dashboard access uses the existing Mail account and password, with approval controlled by a Mail owner. Resend notifications and the Google Search Console connection are active in production. Shared Sales mail is connected, and free SEO monitoring has completed its first production scan. Paid SEO recommendations remain paused pending the dedicated key, business-facts review and model pilot. GA4, client accounts, broader automated SEO publishing and a generally available standardized-agent catalog remain future work. Recorded acceptance and outstanding daily-refresh/team checks are in [Jeffrey's checklist](new%20jeffrey.md) and [Google activation evidence](docs/CONNECTION_ACTIVATION.md).
 
+### Planned Operations assistant
+
+Austin's November 2 full Operations assistant plan covers delegated access across the dashboard, reviewed communications, calendar management, private goals and durable routines. It includes a capability inventory, shared-service architecture, permissions, rollout phases and live acceptance gates. This is a **plan, not an enabled connection**; see [the implementation plan](docs/OPERATIONS_ASSISTANT_PLAN.md).
+
 ### Tailored Mail
 
 `apps/mail` is a separate Cloudflare Workers application with its own deployment, database, storage, queues, tests, and operational documentation. Pushing the Render website does not deploy the mail application. See [the mail README](apps/mail/README.md) before changing or deploying it.
