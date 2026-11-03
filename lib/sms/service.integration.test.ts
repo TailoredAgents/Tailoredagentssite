@@ -31,7 +31,7 @@ import {
 } from "./service";
 import { TwilioProviderError } from "@/lib/twilio/provider";
 import {registerClient,validateAuthorization,createConsent,finishConsent,exchange,authenticate} from '@/lib/assistant/oauth';
-import {prepareAction,reviewAction,readAction} from '@/lib/assistant/actions';
+import {prepareAction,executeAction,manageConnection,reviewAction,readAction} from '@/lib/assistant/actions';
 import {readSmsDraft} from '@/lib/assistant/drafts';
 import {getSmsRecipient,executeSms} from '@/lib/assistant/sms';
 
@@ -779,6 +779,16 @@ describe.skipIf(!databaseUrl)(
           )
         ).rows[0].status,
       ).toBe("blocked");
+    });
+    it("sends directly only after one-time authorization and preserves the provider receipt on retries",async()=>{
+      const p=await assistantConnection(),input=await assistantMessage(p);
+      await expect(executeAction(p,'send_sms',input,'direct-sms-send')).rejects.toThrow('Enable direct');
+      await manageConnection(owner,p.grantId,'direct');
+      const results=await Promise.all([executeAction(p,'send_sms',input,'direct-sms-send'),executeAction(p,'send_sms',input,'direct-sms-send')]);
+      expect(results.some(r=>r.status==='succeeded'&&r.executionAuthority==='delegated')).toBe(true);
+      expect(gateway.create).toHaveBeenCalledTimes(1);
+      expect((await executeAction(p,'send_sms',input,'direct-sms-send')).status).toBe('succeeded');
+      expect(gateway.create).toHaveBeenCalledTimes(1);
     });
     it("reviews private text drafts and protects newer edits across devices",async()=>{
       const p=await assistantConnection(),target={numberId};

@@ -5,11 +5,12 @@ import type {Pool} from 'pg';
 vi.mock('server-only',()=>({}));
 import {getDatabasePool} from '@/lib/dashboard/db';
 import {registerClient,validateAuthorization,createConsent,finishConsent,exchange,authenticate,hash} from './oauth';
-import {prepareAction,reviewAction,manageConnection,listActions,readAction} from './actions';
+import {prepareAction,executeAction,reviewAction,manageConnection,listActions,readAction} from './actions';
 import {listGoals} from './goals';
 import {POST} from '@/app/api/mcp/operations/route';
 import {GET as metadata} from '@/app/.well-known/oauth-protected-resource/api/mcp/operations/route';
 import {readTools} from './tools/reads';
+import {asAssistant} from './access';
 import {getClient,getContact,getSite,getProject} from '@/lib/operations/data';
 import {saveClient} from '@/lib/operations/service';
 import {availableSlots} from '@/lib/booking/calendar';
@@ -24,16 +25,16 @@ const other={...owner,user:{id:'assistant-other',name:'Other',email:'other@examp
 const origin='http://localhost:3162',resource=origin+'/api/mcp/operations',callback='https://chatgpt.com/connector_platform/oauth/callback';
 const allScopes=['operations:read','operations:write','conversations:read','conversations:send','personal:read','personal:write'];
 let pool:Pool;
-async function authorization(scopes=allScopes){
+async function authorization(scopes=allScopes,direct=false){
  const client=await registerClient({client_name:'Synthetic ChatGPT',redirect_uris:[callback]});
  const verifier=randomBytes(32).toString('base64url');
  const request=await validateAuthorization({client_id:client.client_id,redirect_uri:callback,response_type:'code',resource,scope:scopes.join(' '),state:'test-state',code_challenge:createHash('sha256').update(verifier).digest('base64url'),code_challenge_method:'S256'});
  const nonce=await createConsent(request,owner,'owner-session');
- const location=new URL(await finishConsent(nonce,owner,'owner-session',scopes,true));
+ const location=new URL(await finishConsent(nonce,owner,'owner-session',scopes,true,direct));
  return {client,verifier,code:location.searchParams.get('code')!,location};
 }
-async function connection(scopes=allScopes){
- const c=await authorization(scopes),tokens=await exchange({grant_type:'authorization_code',client_id:c.client.client_id,code:c.code,redirect_uri:callback,code_verifier:c.verifier,resource});
+async function connection(scopes=allScopes,direct=false){
+ const c=await authorization(scopes,direct),tokens=await exchange({grant_type:'authorization_code',client_id:c.client.client_id,code:c.code,redirect_uri:callback,code_verifier:c.verifier,resource});
  const request=new Request(resource,{headers:{authorization:'Bearer '+tokens.access_token}});
  const p=await authenticate(request);return {...c,tokens,p,request};
 }
@@ -58,6 +59,44 @@ describe.skipIf(!url)('Operations OAuth and execution integration',()=>{
   const saved=(await pool.query('SELECT * FROM assistant_tokens')).rows;expect(saved).toHaveLength(2);expect(JSON.stringify(saved)).not.toContain(c.tokens.access_token);expect(saved.some(t=>t.token_hash===hash(c.tokens.access_token))).toBe(true);
   await expect(validateAuthorization({client_id:c.client.client_id,redirect_uri:'https://evil.example',response_type:'code',resource,scope:'operations:read',state:'s',code_challenge:'a'.repeat(43),code_challenge_method:'S256'})).rejects.toThrow();
   await expect(exchange({grant_type:'refresh_token',client_id:c.client.client_id,refresh_token:c.tokens.refresh_token,resource:origin+'/api/mail'})).rejects.toThrow();
+ });
+ it('requires one-time direct authority and executes through the real MCP handler without dashboard approval',async()=>{
+  const c=await connection();expect(c.p.directActions).toBe(false);
+  const args={idempotencyKey:'direct-goal-001',operation:{action:'save_goal',change:{title:'A goal saved directly'}}};
+  const denied=await (await rpc(c.tokens.access_token,'tools/call',{name:'execute_action',arguments:args})).json();expect(denied.result.isError).toBe(true);expect((await listGoals(owner)).total).toBe(0);
+  await expect(manageConnection(other,c.p.grantId,'direct')).rejects.toThrow();
+  await manageConnection(owner,c.p.grantId,'direct');
+  const responses=await Promise.all([rpc(c.tokens.access_token,'tools/call',{name:'execute_action',arguments:args}),rpc(c.tokens.access_token,'tools/call',{name:'execute_action',arguments:args})]);
+  const receipts=await Promise.all(responses.map(async r=>(await r.json()).result.structuredContent.data));
+  expect(receipts.some(r=>r.status==='succeeded'&&r.executionAuthority==='delegated')).toBe(true);expect((await listGoals(owner)).total).toBe(1);
+  const row=(await pool.query('SELECT approved_at,execution_authority FROM assistant_actions WHERE id=$1',[receipts[0].id])).rows[0];expect(row).toEqual({approved_at:null,execution_authority:'delegated'});
+  await manageConnection(owner,c.p.grantId,'reviewed');
+  await expect(executeAction(c.p,'save_goal',{title:'Blocked'},'direct-goal-002')).rejects.toThrow('Enable direct');
+  expect((await listGoals(owner)).total).toBe(1);
+ });
+ it('binds direct consent to selected scopes and still honors pause, revoke and live roles',async()=>{
+  const c=await connection(['personal:write','personal:read'],true);expect(c.p.directActions).toBe(true);
+  await expect(executeAction(c.p,'create_opportunity',{businessName:'Denied',title:'No access'},'direct-no-scope')).rejects.toThrow();
+  await manageConnection(owner,c.p.grantId,'pause');await expect(executeAction(c.p,'save_goal',{title:'Paused'},'direct-paused')).rejects.toThrow();
+  await manageConnection(owner,c.p.grantId,'resume');
+  await pool.query("UPDATE workspace_memberships SET role='viewer' WHERE user_id=$1",[owner.user.id]);
+  await expect(executeAction(c.p,'save_goal',{title:'Read only'},'direct-viewer')).rejects.toThrow();
+  await expect(authorization(['personal:write'],true)).rejects.toThrow();
+  await pool.query("UPDATE workspace_memberships SET role='owner' WHERE user_id=$1",[owner.user.id]);
+  await expect(authorization(['operations:read'],true)).rejects.toThrow('change permission');
+  await manageConnection(owner,c.p.grantId,'revoke');await expect(executeAction(c.p,'save_goal',{title:'Revoked'},'direct-revoked')).rejects.toThrow();
+  expect((await listGoals(owner)).total).toBe(0);
+ });
+ it('rechecks direct authority for nested delivery work and the direct-mode stop switch',async()=>{
+  const c=await connection(allScopes,true);let ran=false;
+  await asAssistant(c.p,['personal:write'],true,async fresh=>{
+   await manageConnection(owner,c.p.grantId,'reviewed');
+   await expect(asAssistant(fresh,['personal:write'],true,async()=>{ran=true;})).rejects.toThrow('Enable direct');
+  },true);
+  expect(ran).toBe(false);
+  await manageConnection(owner,c.p.grantId,'direct');vi.stubEnv('OPERATIONS_ASSISTANT_DIRECT_ENABLED','false');
+  try{await expect(executeAction(c.p,'save_goal',{title:'Stopped'},'direct-switch')).rejects.toThrow('paused by the administrator');}finally{vi.stubEnv('OPERATIONS_ASSISTANT_DIRECT_ENABLED','true');}
+  expect((await listGoals(owner)).total).toBe(0);
  });
  it('rejects wrong PKCE and client without consuming a valid code',async()=>{
   const c=await authorization();const args={grant_type:'authorization_code',client_id:c.client.client_id,code:c.code,redirect_uri:callback,code_verifier:c.verifier,resource};

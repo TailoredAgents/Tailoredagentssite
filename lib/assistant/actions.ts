@@ -4,7 +4,7 @@ import {z} from 'zod';
 import {getDatabasePool} from '@/lib/dashboard/db';
 import type {DashboardContext} from '@/lib/dashboard/data';
 import {hash,principal,type Principal} from './oauth';
-import {AssistantError,AssistantOutcomeError,assistantOrigin} from './config';
+import {AssistantError,AssistantOutcomeError,isWriteScope,assistantOrigin} from './config';
 import {asAssistant,requireScopes} from './access';
 import {reviewContext} from './review-context';
 import {findChange} from './tools/changes';
@@ -16,8 +16,8 @@ export function canonical(value:unknown):string{
  return '{'+Object.entries(value).filter(([,v])=>v!==undefined).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>JSON.stringify(k)+':'+canonical(v)).join(',')+'}';
 }
 export const keySchema=z.string().min(8).max(120).regex(/^[a-zA-Z0-9_-]+$/);
-type ActionRow={id:string;grant_id:string;user_id:string;workspace_id:string;tool:string;input:Record<string,unknown>;input_hash:string;review_context:Record<string,unknown>;status:string;result:unknown;error_code:string|null;created_at:Date;updated_at:Date;expires_at:Date};
-function receipt(r:ActionRow){return {id:r.id,action:r.tool,status:r.status,result:r.result,error:r.error_code,createdAt:r.created_at,updatedAt:r.updated_at,expiresAt:r.expires_at,reviewUrl:`${assistantOrigin()}/dashboard/assistant?action=${r.id}`,message:r.status==='awaiting_approval'?'Prepared only. The account owner must review this exact change in the Assistant dashboard.':r.status==='running'||r.status==='outcome_unknown'?'Check the affected record before taking any further action. Do not retry with a new key.':undefined};}
+type ActionRow={id:string;grant_id:string;user_id:string;workspace_id:string;tool:string;execution_authority:'dashboard'|'delegated';input:Record<string,unknown>;input_hash:string;review_context:Record<string,unknown>;status:string;result:unknown;error_code:string|null;created_at:Date;updated_at:Date;expires_at:Date};
+function receipt(r:ActionRow){return {id:r.id,action:r.tool,executionAuthority:r.execution_authority,status:r.status,result:r.result,error:r.error_code,createdAt:r.created_at,updatedAt:r.updated_at,expiresAt:r.expires_at,reviewUrl:`${assistantOrigin()}/dashboard/assistant?action=${r.id}`,message:r.status==='awaiting_approval'?'Prepared only. The account owner must review this exact change in the Assistant dashboard.':r.status==='running'||r.status==='outcome_unknown'?'Check the affected record before taking any further action. Do not retry with a new key.':undefined};}
 export async function prepareAction(p:Principal,name:string,raw:unknown,key:string){
  const tool=findChange(name);if(!tool)throw new AssistantError('unsupported_action','This action is not available.');
  const input=tool.schema.parse(raw);keySchema.parse(key);const fingerprint=hash(canonical({name,input}));
@@ -42,30 +42,40 @@ export async function listActions(p:Principal,page=1){
  const rows=await getDatabasePool().query<ActionRow>('SELECT * FROM assistant_actions WHERE grant_id=$1 AND user_id=$2 AND workspace_id=$3 ORDER BY created_at DESC,id LIMIT 31 OFFSET $4',[p.grantId,p.context.user.id,p.context.workspace.id,(page-1)*30]);
  return {items:rows.rows.slice(0,30).filter(r=>findChange(r.tool)?.scopes.every(s=>p.scopes.includes(s))).map(receipt),hasMore:rows.rows.length>30,page};
 }
-// This function is called only by the authenticated dashboard, never an MCP tool.
+// Dashboard approval and explicitly delegated execution share one claim/receipt path.
 // Claim first, then execute once. A crash after claim is intentionally not retried:
 // a domain transaction may have committed even if its receipt was not saved.
-export async function reviewAction(context:DashboardContext,id:string,decision:'approve'|'reject'){
+export async function reviewAction(context:DashboardContext,id:string,decision:'approve'|'reject'){return performAction(context,id,decision);}
+export async function executeAction(p:Principal,name:string,raw:unknown,key:string){
+ const tool=findChange(name);if(!tool)throw new AssistantError('unsupported_action','This action is unavailable.');
+ return asAssistant(p,tool.scopes,true,async fresh=>{
+  const proposal=await prepareAction(fresh,name,raw,key);
+  return performAction(fresh.context,proposal.id,'approve',fresh.grantId);
+ },true);
+}
+async function performAction(context:DashboardContext,id:string,decision:'approve'|'reject',delegateGrantId?:string){
  const db=await getDatabasePool().connect();let row:ActionRow;let p:Principal;
  try{
   await db.query('BEGIN');
   const r=(await db.query<ActionRow>('SELECT * FROM assistant_actions WHERE id=$1 AND user_id=$2 AND workspace_id=$3 FOR UPDATE',[z.uuid().parse(id),context.user.id,context.workspace.id])).rows[0];
-  if(!r)throw new AssistantError('not_found','This action is unavailable.',404);row=r;
+  if(!r||(delegateGrantId&&r.grant_id!==delegateGrantId))throw new AssistantError('not_found','This action is unavailable.',404);row=r;
   if(row.status!=='awaiting_approval'){await db.query('COMMIT');return receipt(row);}
   if(decision==='reject'){await db.query("UPDATE assistant_actions SET status='cancelled',updated_at=now() WHERE id=$1",[id]);await db.query('COMMIT');return receipt({...row,status:'cancelled'});}
   if(row.expires_at.getTime()<=Date.now())throw new AssistantError('expired','This proposal expired. Ask your assistant to prepare it again.',409);
   const tool=findChange(row.tool);if(!tool)throw new AssistantError('unsupported_action','This action is no longer available.');
-  const grant=(await db.query('SELECT * FROM assistant_grants WHERE id=$1',[row.grant_id])).rows[0];
+  const grant=(await db.query('SELECT * FROM assistant_grants WHERE id=$1 FOR SHARE',[row.grant_id])).rows[0];
   p=await principal(grant,db);requireScopes(p,tool.scopes,true);
+  if(delegateGrantId&&!p.directActions)throw new AssistantError('direct_actions_disabled','Direct actions are no longer enabled for this connection.',403);
   if(hash(canonical({name:row.tool,input:tool.schema.parse(row.input)}))!==row.input_hash)throw new AssistantError('changed_action','The proposal changed. Prepare a new one.',409);
-  await db.query("UPDATE assistant_actions SET status='running',approved_at=now(),updated_at=now() WHERE id=$1",[id]);await db.query('COMMIT');
+  row.execution_authority=delegateGrantId?'delegated':'dashboard';
+  await db.query("UPDATE assistant_actions SET status='running',approved_at=CASE WHEN $2='dashboard' THEN now() ELSE NULL END,execution_authority=$2,updated_at=now() WHERE id=$1",[id,row.execution_authority]);await db.query('COMMIT');
  }catch(e){await db.query('ROLLBACK');throw e;}finally{db.release();}
  const tool=findChange(row.tool)!;
  try{
   const value=await asAssistant(p!,tool.scopes,true,async fresh=>{
    if(canonical(await reviewContext(fresh,row.tool,row.input))!==canonical(row.review_context))throw new AssistantError('review_changed','The reviewed customer, teammate or record changed. Prepare a new proposal.',409);
    return tool.run(fresh,row.input);
-  });
+  },!!delegateGrantId);
   const result=value??{saved:true};
   await getDatabasePool().query("UPDATE assistant_actions SET status='succeeded',result=$2::jsonb,updated_at=now() WHERE id=$1 AND status='running'",[id,JSON.stringify(result)]);
   return receipt({...row,status:'succeeded',result});
@@ -79,7 +89,20 @@ export async function reviewAction(context:DashboardContext,id:string,decision:'
   return receipt({...row,status,error_code:code,result});
  }
 }
-export async function manageConnection(context:DashboardContext,id:string,operation:'revoke'|'pause'|'resume'){
+export async function manageConnection(context:DashboardContext,id:string,operation:'revoke'|'pause'|'resume'|'direct'|'reviewed'){
+ if(operation==='direct'||operation==='reviewed'){
+  const db=await getDatabasePool().connect();
+  try{
+   await db.query('BEGIN');
+   const grant=(await db.query('SELECT * FROM assistant_grants WHERE id=$1 AND user_id=$2 AND workspace_id=$3 FOR UPDATE',[z.uuid().parse(id),context.user.id,context.workspace.id])).rows[0];
+   if(!grant)throw new AssistantError('not_found','This connection is unavailable.',404);
+   const live=await principal(grant,db);
+   if(operation==='direct'&&(live.context.role==='viewer'||!live.scopes.some(isWriteScope)))throw new AssistantError('insufficient_scope','This connection needs a change permission and an active editor account.',403);
+   await db.query('UPDATE assistant_grants SET direct_actions=$2 WHERE id=$1',[id,operation==='direct']);
+   await db.query("INSERT INTO assistant_activity(id,grant_id,tool,outcome) VALUES($1,$2,$3,'succeeded')",[randomUUID(),id,'control:'+operation]);
+   await db.query('COMMIT');return;
+  }catch(error){await db.query('ROLLBACK');throw error;}finally{db.release();}
+ }
  const sql=operation==='revoke'?'revoked_at=now()':operation==='pause'?'writes_paused=true':'writes_paused=false';
  await getDatabasePool().query(`UPDATE assistant_grants SET ${sql} WHERE id=$1 AND user_id=$2 AND workspace_id=$3`,[z.uuid().parse(id),context.user.id,context.workspace.id]);
 }

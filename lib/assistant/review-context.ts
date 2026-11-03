@@ -45,7 +45,7 @@ export async function reviewContext(p:Principal,tool:string,input:Record<string,
  }
  if(tool==='send_sms'){
   result.message=await smsReview(p,input);
-  result.sendingNotice='Approval sends this exact text. Standard messaging charges apply. Sent texts cannot be recalled.';
+  result.sendingNotice='This action sends this exact text. Standard messaging charges apply. Sent texts cannot be recalled.';
  }
  if(typeof input.leadId==='string'){
   const record=await getLead(context,input.leadId);

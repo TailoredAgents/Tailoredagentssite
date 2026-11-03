@@ -11,8 +11,8 @@ import {AssistantError,isWriteScope,assistantOrigin,parseScopes,resourceUri,vali
 export const hash=(value:string)=>createHash('sha256').update(value).digest('hex');
 const secret=()=>randomBytes(32).toString('base64url');
 const invalid=()=>new AssistantError('invalid_grant','This connection expired or changed. Connect again.',401);
-export type Principal={context:DashboardContext;grantId:string;clientId:string;sessionId:string;scopes:AssistantScope[];writesPaused:boolean;expiresAt:Date};
-type Grant={id:string;client_id:string;user_id:string;workspace_id:string;session_id:string|null;scopes:AssistantScope[];resource:string;expires_at:Date;revoked_at:Date|null;writes_paused:boolean};
+export type Principal={context:DashboardContext;grantId:string;clientId:string;sessionId:string;scopes:AssistantScope[];writesPaused:boolean;directActions:boolean;expiresAt:Date};
+type Grant={id:string;client_id:string;user_id:string;workspace_id:string;session_id:string|null;scopes:AssistantScope[];resource:string;expires_at:Date;revoked_at:Date|null;writes_paused:boolean;direct_actions:boolean};
 export async function principal(grant:Grant,db:Pick<PoolClient,'query'>=getDatabasePool()):Promise<Principal>{
  if(grant.revoked_at||!grant.session_id||grant.expires_at.getTime()<=Date.now()||grant.resource!==resourceUri())throw invalid();
  const r=(await db.query<{name:string;email:string;workspace_name:string;slug:string;role:DashboardContext['role']}>(
@@ -24,7 +24,7 @@ export async function principal(grant:Grant,db:Pick<PoolClient,'query'>=getDatab
  if(resolveDashboardConfiguration().authMode==='mail'){
   if(!await verifyMailDashboardSession(grant.session_id,grant.user_id,r.email,db))throw invalid();
  }else if(!isAllowedDashboardEmail(r.email))throw invalid();
- return {context:{user:{id:grant.user_id,name:r.name,email:r.email},workspace:{id:grant.workspace_id,name:r.workspace_name,slug:r.slug},role:r.role},grantId:grant.id,clientId:grant.client_id,sessionId:grant.session_id,scopes:grant.scopes,writesPaused:grant.writes_paused,expiresAt:grant.expires_at};
+ return {context:{user:{id:grant.user_id,name:r.name,email:r.email},workspace:{id:grant.workspace_id,name:r.workspace_name,slug:r.slug},role:r.role},grantId:grant.id,clientId:grant.client_id,sessionId:grant.session_id,scopes:grant.scopes,writesPaused:grant.writes_paused,directActions:grant.direct_actions===true,expiresAt:grant.expires_at};
 }
 export async function refreshPrincipal(p:Principal){
  const row=(await getDatabasePool().query<Grant>('SELECT * FROM assistant_grants WHERE id=$1',[p.grantId])).rows[0];
@@ -58,7 +58,7 @@ export async function createConsent(v:Awaited<ReturnType<typeof validateAuthoriz
  if(!inserted.rowCount)throw invalid();
  return nonce;
 }
-export async function finishConsent(nonce:string,context:DashboardContext,sessionId:string,selected:string[],allow:boolean){
+export async function finishConsent(nonce:string,context:DashboardContext,sessionId:string,selected:string[],allow:boolean,directActions=false){
  const db=await getDatabasePool().connect();
  try{await db.query('BEGIN');
   const r=(await db.query<{client_id:string;redirect_uri:string;challenge:string;scopes:string[];state:string}>(`DELETE FROM assistant_consents WHERE nonce_hash=$1 AND user_id=$2 AND workspace_id=$3 AND session_id=$4 AND expires_at>now() RETURNING *`,[hash(nonce),context.user.id,context.workspace.id,sessionId])).rows[0];
@@ -68,12 +68,13 @@ export async function finishConsent(nonce:string,context:DashboardContext,sessio
   const approved=parseScopes(selected.join(' '));
   if(approved.some(s=>!r.scopes.includes(s)))throw new AssistantError('invalid_scope','Only requested permissions can be granted.');
   if(context.role==='viewer'&&approved.some(isWriteScope))throw new AssistantError('access_denied','View-only accounts cannot grant changes.',403);
+  if(directActions&&!approved.some(isWriteScope))throw new AssistantError('invalid_scope','Select a change permission before enabling direct actions.');
   const id=randomUUID(),code=secret();
-  const inserted=await db.query(`INSERT INTO assistant_grants(id,client_id,user_id,workspace_id,session_id,scopes,resource,expires_at)
-   SELECT $1,$2,$3,$4,s.id,$6,$7,LEAST(s."expiresAt",now()+interval '30 days') FROM "session" s
+  const inserted=await db.query(`INSERT INTO assistant_grants(id,client_id,user_id,workspace_id,session_id,scopes,resource,expires_at,direct_actions)
+   SELECT $1,$2,$3,$4,s.id,$6,$7,LEAST(s."expiresAt",now()+interval '30 days'),$9 FROM "session" s
    JOIN workspace_memberships m ON m.user_id=s."userId" AND m.workspace_id=$4 AND m.status='active'
    JOIN workspaces w ON w.id=m.workspace_id AND w.status='active'
-   WHERE s.id=$5 AND s."userId"=$3 AND s."expiresAt">now() AND (m.role<>'viewer' OR NOT ($8::boolean)) RETURNING id`,[id,r.client_id,context.user.id,context.workspace.id,sessionId,approved,resourceUri(),approved.some(isWriteScope)]);
+   WHERE s.id=$5 AND s."userId"=$3 AND s."expiresAt">now() AND (m.role<>'viewer' OR NOT ($8::boolean)) RETURNING id`,[id,r.client_id,context.user.id,context.workspace.id,sessionId,approved,resourceUri(),approved.some(isWriteScope),directActions]);
   if(!inserted.rowCount)throw invalid();
   await db.query("INSERT INTO assistant_codes(code_hash,grant_id,redirect_uri,challenge,expires_at) VALUES($1,$2,$3,$4,now()+interval '2 minutes')",[hash(code),id,r.redirect_uri,r.challenge]);
   callback.searchParams.set('code',code);await db.query('COMMIT');return callback.href;

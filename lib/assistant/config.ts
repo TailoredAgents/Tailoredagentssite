@@ -2,11 +2,11 @@ import {resolveDashboardConfiguration} from '@/lib/dashboard/config';
 
 export const scopeLabels = {
  'operations:read': 'Read business records, calendar, reporting and integration status',
- 'operations:write': 'Prepare changes to business records for your review',
+ 'operations:write': 'Change business records, tasks, calendar and supported settings',
  'conversations:read': 'Read permitted customer conversations and call history',
- 'conversations:send': 'Prepare text messages for your approval (standard messaging charges apply)',
+ 'conversations:send': 'Send text messages (standard messaging charges apply)',
  'personal:read': 'Read your private goals',
- 'personal:write': 'Prepare changes to your private goals',
+ 'personal:write': 'Change your private goals',
 } as const;
 export type AssistantScope = keyof typeof scopeLabels;
 export const isWriteScope=(scope:string)=>scope.endsWith(':write')||scope.endsWith(':send');

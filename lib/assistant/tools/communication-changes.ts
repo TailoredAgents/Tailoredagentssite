@@ -7,7 +7,7 @@ import {saveConversationWork,ConversationInputError} from '@/lib/conversations/s
 import {AssistantError} from '../config';
 export const communicationChanges:ChangeTool[]=[{
  name:'send_sms',title:'Send text message',
- description:'Prepare an exact text message for human approval. First call get_sms_recipient and inspect the conversation; supply its conversationId and lastMessageId (null for none). Use a stable requestId. The recipient and newest message are rechecked before sending. The existing number grant, opt-out and hourly limits apply. Standard SMS charges apply; a sent text cannot be recalled. Check get_sms_send_status for delivery; an accepted request is not proof of delivery.',
+ description:'Send an exact text message using the connection’s execution mode. First call get_sms_recipient and inspect the conversation; supply its conversationId and lastMessageId (null for none). Use a stable requestId. The recipient and newest message are rechecked before sending. The existing number grant, opt-out and hourly limits apply. Standard SMS charges apply; a sent text cannot be recalled. Check get_sms_send_status for delivery; an accepted request is not proof of delivery.',
  schema:assistantSmsSchema,scopes:smsSendScopes,external:true,run:executeSms,
 },{
  name:'save_conversation_work',title:'Update conversation follow-up',

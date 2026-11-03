@@ -1,12 +1,12 @@
 # Tailored Agents Operations assistant — full implementation plan
 
-Status: **Implementation in progress. Connection, read tools, reviewed internal proposals and private goals implemented; full phases 0–7 are not complete. Real ChatGPT connection and account reading are accepted; reviewed writes and renewal still need acceptance. No new routine or autonomous sending enabled.**
+Status: **Implementation in progress. Connection, read tools, reviewed proposals, opt-in direct execution and private goals implemented; full phases 0–7 are not complete. Real ChatGPT connection and account reading are accepted; direct writes and renewal still need acceptance. No new routine or autonomous sending enabled.**
 Owner: Austin. Prepared November 2, 2026, America/New_York.
 Baseline reviewed: main `19daac8`, including the November 1 Mail and Eastern-time releases.
 
 ## Updated owner direction — November 2
 
-Austin explicitly requested that the bot perform work without per-action approval. Build an opt-in direct execution mode, enabled once by the signed-in owner for a particular connection and its selected scopes. This supersedes this document’s default requirement to visit the dashboard for every supported mutation. Keep reviewed proposals available as an option, and keep scope/role/channel checks, stale-state checks, spending limits, idempotency, receipts and pause/revoke. Existing grants were consented for proposals and must not be silently upgraded. Direct mode does not waive approval requirements imposed by the external ChatGPT host or the separate Mail connection.
+Austin explicitly requested that the bot perform work without per-action approval. Implemented an opt-in direct execution mode, enabled once by the signed-in owner for a particular connection and its selected scopes. This supersedes this document’s default requirement to visit the dashboard for every supported mutation. Keep reviewed proposals available as an option, and keep scope/role/channel checks, stale-state checks, spending limits, idempotency, receipts and pause/revoke. Existing grants were consented for proposals and must not be silently upgraded. Direct mode does not waive approval requirements imposed by the external ChatGPT host or the separate Mail connection.
 
 ## November 2 implementation checkpoint
 

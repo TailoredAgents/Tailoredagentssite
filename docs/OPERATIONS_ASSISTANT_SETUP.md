@@ -8,9 +8,9 @@ Use a separate OAuth MCP connection named **Tailored Agents Operations** with:
 
 `https://www.tailoredagents.com/api/mcp/operations`
 
-Keep **Tailored Agents Mail** connected. Its sending and approval policies are unchanged. Use the ChatGPT surface that supports custom MCP connections; do not assume every phone/agent mode exposes the same connections. Austin confirmed the real ChatGPT connection and account/permissions check worked after the November 2 consent correction. Renewal, disconnection and a real reviewed write remain to be accepted.
+Keep **Tailored Agents Mail** connected. Its sending and approval policies are unchanged. Use the ChatGPT surface that supports custom MCP connections; do not assume every phone/agent mode exposes the same connections. Austin confirmed the real ChatGPT connection and account/permissions check worked after the November 2 consent correction. Renewal, disconnection and real-client direct execution remain to be accepted.
 
-Sign in with your Tailored Agents account, check the application name, choose desired permissions, and approve the connection yourself. OAuth client names are supplied by the client and are not verified brand identity. Start with reading; choose write permissions to prepare changes. Write scopes allow proposals, not self-approval. Review proposals at `/dashboard/assistant`.
+Sign in with your Tailored Agents account, check the application name, choose desired permissions, and approve the connection yourself. OAuth client names are supplied by the client and are not verified brand identity. Choose the reading and change permissions the bot needs. Enable **Allow direct actions without asking me each time** on consent, or **Enable direct actions** on the existing connection at `/dashboard/assistant`. This is a one-time owner choice: supported changes then run through `execute_action` without per-action dashboard approval. Existing connections stay in review mode until the owner changes that setting. Review mode remains available for optional proposals. The separate Mail connection and ChatGPT may impose their own confirmations.
 
 Example requests:
 
@@ -30,7 +30,7 @@ The public Smart Card agent cannot access these tools. No outgoing messages, cal
 - **Temporary session binding:** connection life cannot exceed the real sign-in used at consent, currently up to 14 days. Signing out or losing that identity stops the connection. Renewal beyond this requires reconnecting; independent long-lived Mail delegation remains pending.
 - `operations:read`, `conversations:read`, `personal:read`, `operations:write`, and `personal:write`, and `conversations:send` are separate choices. Viewers cannot grant writes. Every tool rechecks active authority.
 - Reads retain pagination and source state. Dashboard summaries have explicit bounds and are not complete exports. Responses over 240 KB fail clearly and require a narrower query or dashboard review.
-- Proposals expire after 24 hours and bind exact parsed content, action, account, workspace and connection. Customer, teammate, calendar and existing-goal identities are resolved by the server for review and rechecked before execution. One idempotency key cannot be reused for different content. Only the same human account can approve in the dashboard; no MCP approval endpoint exists.
+- Proposals expire after 24 hours and bind exact parsed content, action, account, workspace and connection. Customer, teammate, calendar and existing-goal identities are resolved by the server for review and rechecked before execution. One idempotency key cannot be reused for different content. In review mode only the same human account can approve in the dashboard. In direct mode `execute_action` uses the connection’s saved authority with the same validation/claim/receipt path. There is no MCP tool to enable direct mode or expand permissions. Receipts distinguish dashboard approval from delegated execution; direct actions do not fabricate a human approval timestamp.
 - Goal, opportunity and CRM/project edits check revisions. Ten additional proposals cover lead status/details/notes, clients, contacts, site records, projects, milestones and project records. Existing records require the latest updatedAt and acquire a row lock in the mutation transaction. Supply all editable fields, preserving optional values you do not intend to clear. Sales tasks now support creation, revision-checked editing, completion and cancellation. Phone consultations support staff booking for an existing lead, rescheduling, cancellation after the user confirms visitor contact, and revision-checked block removal. These actions send no visitor notification.
 - Execution is claimed before calling a domain service. If a process dies or the outcome is ambiguous, no automatic retry occurs. Inspect the target record first. The daily retention worker marks interrupted executions uncertain after 15 minutes.
 - Pausing blocks future writes; revoking blocks future reads and writes. Already-started work may finish. The UI explains this boundary.
@@ -39,9 +39,9 @@ The public Smart Card agent cannot access these tools. No outgoing messages, cal
 
 ## Deployment and rollback
 
-Migration `0042_operations_assistant.sql` is additive. Apply it before this code. Render’s existing web build runs sorted migrations, retention and build. No Mail Worker deployment or environment secret is required for this increment. Existing search/reporting maintenance also performs assistant retention.
+Migrations `0042_operations_assistant.sql` and `0043_assistant_direct_actions.sql` are additive. The latter defaults every existing grant to reviewed execution. Apply it before this code. Render’s existing web build runs sorted migrations, retention and build. No Mail Worker deployment or environment secret is required for this increment. Existing search/reporting maintenance also performs assistant retention.
 
-`OPERATIONS_ASSISTANT_ENABLED=false` disables tool access. `OPERATIONS_ASSISTANT_WRITES_ENABLED=false` disables proposal creation/execution without disabling normal dashboard work. Unset values enable the connection endpoints; explicit OAuth consent is still required. These switches never create user grants. Use the Assistant page for individual revocation/pause. A code rollback can leave these additive tables in place; do not drop stored approvals or credentials during emergency rollback.
+`OPERATIONS_ASSISTANT_ENABLED=false` disables tool access. `OPERATIONS_ASSISTANT_WRITES_ENABLED=false` disables proposal creation/execution without disabling normal dashboard work. Unset values enable the connection endpoints; explicit OAuth consent is still required. `OPERATIONS_ASSISTANT_DIRECT_ENABLED=false` independently disables direct execution while preserving reviewed proposals. These switches never create user grants or turn direct mode on. Use the Assistant page for individual revocation/pause. A code rollback can leave these additive tables in place; do not drop stored approvals or credentials during emergency rollback.
 
 Discovery endpoints:
 
@@ -110,6 +110,8 @@ AI toggles preserve both the monthly cap and current usage. Resuming can permit 
 
 Verification: 61 assistant/Smart Card integration and security tests passed, including exact proposal review, stale profile/settings rejection, stable redirects, one link after concurrent approval, disabled links, current admin role, public attribution and the unchanged allowance. The production build, typecheck, lint and coverage checks passed. No live public profile or card was changed during testing.
 
+Smart Card release `be142ed4e6d4f2c85a8b7eaa16ca529d80a58e91` is live on Render in deployment `dep-dbki26142hec73bvfm60`, November 2 at 6:50 PM Eastern.
+
 ## Private drafts
 
 The assistant can list permitted mailboxes, read its connected owner's CRM email/text draft, and prepare a reviewed save. Email drafts here belong to the dashboard Inbox; the separate Tailored Agents Mail app has its own draft tools. Saving a draft never sends a message and does not grant permission to send it later.
@@ -118,6 +120,16 @@ A save requires the exact draft ID/revision, or an explicit null only when none 
 
 Verification: 82 Operations, email Inbox and SMS tests passed with simulated providers, including real proposal approval, private ownership, stale edits, competing saves, expired drafts and zero provider sends from draft saves. Production build, typecheck, lint and coverage checks passed.
 
+Private-draft release `6521e4df2c8e30eff06b58bae9909af85e988719` is live on Render in deployment `dep-dbki5dqvcj2c73fmgdsg`, November 2 at 6:56 PM Eastern.
+
+## Direct execution — updated owner request
+
+Austin explicitly requested work without per-action approval. Direct mode now exposes a typed `execute_action` catalog, restricted to the connection’s selected scopes and live editor role. The user enables it once in consent or on that connection’s Assistant card. Enabling it does not execute waiting proposals automatically, add permissions, resume paused changes, or create recurring jobs. A read-only connection must first be reconnected with the desired change permissions. Text sending still requires `conversations:send`.
+
+The bot reads `whoami.directActions` and uses `execute_action` instead of preparing a review when direct mode is enabled. Existing `prepare_` tools remain available when the user asks to review first. Each direct call binds canonical inputs and an idempotency key, checks current record identities/revisions and domain permissions, claims execution once, and writes a receipt labeled `delegated`. Repeating the same request returns its receipt; a changed payload cannot reuse its key. Unknown outcomes never automatically resend. Disabling direct mode is checked again on nested delivery work; already accepted provider work may finish.
+
+Verification: 65 Operations/SMS tests passed, including actual MCP direct execution, explicit consent, default reviewed mode, owner isolation, scope/role/pause/revoke checks, mode changes during nested work, the direct kill switch and one simulated SMS send despite concurrent/repeated calls. Eight browser flows also passed across desktop/phone and interactive/plain consent, including direct goal execution and the owner’s mode controls. Production build, typecheck, lint and coverage checks passed. No customer message or production setting was used as a test.
+
 ## Next work
 
-Follow phases 0–7 in `OPERATIONS_ASSISTANT_PLAN.md`. The code-derived manifest lists outstanding features; the dashboard also describes what is and is not available. Real ChatGPT discovery, consent and account reading are accepted; reviewed writes, renewal and revocation still need real-client acceptance. Then complete the pending service extraction, calendar and communication flows, longer-lived identity delegation and durable routines without bypassing existing approvals or spending limits.
+Follow phases 0–7 in `OPERATIONS_ASSISTANT_PLAN.md`. The code-derived manifest lists outstanding features; the dashboard also describes what is and is not available. Real ChatGPT discovery, consent and account reading are accepted; direct writes, renewal and revocation still need real-client acceptance. Austin replaced the proposed per-action write test with a request for direct mode. Then complete the pending service extraction, calendar and communication flows, longer-lived identity delegation and durable routines without bypassing existing approvals or spending limits.

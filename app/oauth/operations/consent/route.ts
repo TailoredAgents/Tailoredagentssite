@@ -11,7 +11,7 @@ export async function POST(request:Request){return endpoint(async()=>{
  if(!context||!session||session.user.id!==context.user.id)throw new AssistantError('access_denied','Sign in again.',401);
  const v=z.object({nonce:z.string().regex(/^[A-Za-z0-9_-]{43}$/),decision:z.enum(['allow','deny']),scopes:z.string().max(1000).optional()}).passthrough().parse(await body(request,8000));
  const selected=Object.entries(v).filter(([k,value])=>k.startsWith('scope:')&&value==='on').map(([k])=>k.slice(6));
- const location=await finishConsent(v.nonce,context,session.session.id,selected,v.decision==='allow');
+ const location=await finishConsent(v.nonce,context,session.session.id,selected,v.decision==='allow',v.directActions==='on');
  if(request.headers.get('accept')?.includes('application/json'))return json({redirectTo:location});
  // Non-JavaScript browsers can finish with a normal link. A form redirect to
  // another origin is blocked by form-action 'self' in Chromium/Safari.
