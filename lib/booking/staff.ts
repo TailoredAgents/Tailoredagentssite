@@ -8,8 +8,8 @@ import {formatEasternTime} from '@/lib/time';
 import {lockCalendar,requireOpenSlot} from './calendar';
 
 const revision=z.iso.datetime({offset:true});
-export const bookConsultationSchema=z.object({leadId:z.uuid(),expectedLeadUpdatedAt:revision,profile:z.enum(['austin','jeffrey','devon']),slotId:z.uuid()});
-export const moveConsultationSchema=z.object({bookingId:z.uuid(),expectedUpdatedAt:revision,profile:z.enum(['austin','jeffrey','devon']),slotId:z.uuid()});
+export const bookConsultationSchema=z.object({leadId:z.uuid(),expectedLeadUpdatedAt:revision,profile:z.enum(['austin','jeffrey','devon','conner']),slotId:z.uuid()});
+export const moveConsultationSchema=z.object({bookingId:z.uuid(),expectedUpdatedAt:revision,profile:z.enum(['austin','jeffrey','devon','conner']),slotId:z.uuid()});
 type Entry={id:string;profile:string;person:string;status:string;starts_at:Date;ends_at:Date;updated_at:Date;leadId:string|null;name:string|null;phone:string|null;email:string|null};
 export async function getCalendarEntry(context:DashboardContext,id:string){
  await cardAccess(context);z.uuid().parse(id);
