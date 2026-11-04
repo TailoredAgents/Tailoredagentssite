@@ -7,7 +7,7 @@ test.beforeEach(async({page})=>{
  // The production server accepts only the canonical website Origin. This harness
  // forwards that header to the isolated loopback server; never to production.
  await page.route('**/api/smart-cards/**',async route=>{
-  if(route.request().url().includes('/chat'))return route.fulfill({json:{answer:'We can discuss submission preparation and assess your current systems during a workflow review.',draft:null}});
+  if(route.request().url().includes('/chat'))return route.fulfill({json:{answer:'We can assess a connected document-to-system workflow, including approved updates and follow-up, during a workflow review.',draft:null}});
   const response=await route.fetch({headers:{...route.request().headers(),origin:'https://www.tailoredagents.com'}});
   await route.fulfill({response});
  });
@@ -29,10 +29,21 @@ for(const person of ['austin','jeffrey'])test(`${person}: example, calculator, A
  await page.getByLabel('Assisted minutes per file, including review').fill('10');
  await page.getByRole('button',{name:'02 Check the details'}).click();
  await expect(page.getByText('Payroll values conflict',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'See the prepared packet'}).click();
  await expect(page.getByText('ILLUSTRATIVE FOLLOW-UP DRAFT · NOT SENT')).toBeVisible();
+ await page.getByRole('button',{name:'04 Update & follow up'}).click();
+ await expect(page.getByRole('button',{name:'Simulate system update',exact:true})).toBeDisabled();
+ await page.getByRole('button',{name:'03 Map & approve'}).click();
+ await expect(page.getByText('Proposed change from $840,000')).toBeVisible();
+ await page.getByRole('button',{name:'Simulate staff approval',exact:true}).click();
+ await page.getByRole('button',{name:'See system updates & follow-up'}).click();
+ await page.getByRole('button',{name:'Simulate system update',exact:true}).click();
+ await expect(page.getByText('SIMULATED AUDIT TRAIL · NOTHING SENT')).toBeVisible();
+ await page.locator('.ins-demo').screenshot({path:`/private/tmp/ta-insurance-updated-demo-${info.project.name}.png`});
+ await page.getByRole('button',{name:'Reset example',exact:true}).click();
+ await page.getByRole('button',{name:'04 Update & follow up'}).click();
+ await expect(page.getByRole('button',{name:'Simulate system update',exact:true})).toBeDisabled();
  await page.getByRole('button',{name:'What happens in the workflow review?'}).click();
- await expect(page.getByText('We can discuss submission preparation and assess your current systems during a workflow review.')).toBeVisible();
+ await expect(page.getByText('We can assess a connected document-to-system workflow, including approved updates and follow-up, during a workflow review.')).toBeVisible();
  await page.getByRole('button',{name:`Meet with ${person==='austin'?'Austin':'Jeffrey'}`,exact:true}).click();
  const date=new Date(Date.now()+2*86400000).toISOString().slice(0,10);
  await page.getByLabel('Appointment date (Eastern time)').fill(date);
