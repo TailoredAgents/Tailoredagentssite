@@ -50,6 +50,22 @@ describe("Optional website Pixel", () => {
     trackMetaLead("a".repeat(64));
     expect(window.fbq?.queue.some((row) => row[2] === "Lead")).toBe(false);
   });
+  it("excludes cards and insurance pages even after accepting Meta elsewhere", () => {
+    saveMetaPreference("accepted");
+    initializePixel("123456789");
+    for (const path of [
+      "/c/austin", "/c/jeffrey", "/c/devon", "/c/conner",
+      "/go/austin-personal", "/go/insurance-jeffrey",
+      "/solutions/commercial-insurance", "/solutions/commercial-insurance/",
+    ]) {
+      expect(publicPixelPath(path)).toBe(false);
+      location.pathname = path;
+      trackMetaLead("b".repeat(64));
+    }
+    expect(window.fbq?.queue.some((row) => row[2] === "Lead")).toBe(false);
+    for (const path of ["/", "/contact", "/websites", "/free-review", "/solutions/commercial-insurance-other"])
+      expect(publicPixelPath(path)).toBe(true);
+  });
   it("initializes once with automatic events disabled and deduplicates success retries", () => {
     saveMetaPreference("accepted");
     initializePixel("123456789");

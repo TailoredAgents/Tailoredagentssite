@@ -27,6 +27,8 @@ The bare page defaults to Austin. Each page has personalized metadata and a camp
 
 ## Attribution and reporting
 
+The insurance landing page and general digital cards exclude the optional Meta Pixel and its consent popup, including for visitors who previously accepted Meta elsewhere. First-party card engagement, inquiries, and calendar booking remain enabled. Other public marketing pages retain their existing Meta consent behavior.
+
 Migration `0045_insurance_campaign.sql` adds an optional constrained `campaign` to card links and event snapshots, then creates the two insurance links. General profiles and links are not rewritten.
 
 Events and inquiries derive campaign identity from the active saved card link, never a visitor's claimed campaign string. Leads keep `source=smart_card` and record profile, card, campaign, entry channel, and booking context in `smart_card_context`; the description and existing staff notification identify commercial insurance. Matching active staff accounts receive lead ownership as before. Repeated submission protection includes campaign/card/channel so a separate campaign request does not silently merge into a general-card request. No automatic introductory SMS or Factory work is started.
