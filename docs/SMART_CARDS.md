@@ -1,6 +1,6 @@
 # Tailored Agents Smart Cards
 
-Implemented November 1, 2026 in the existing Next.js/Render application. Migration `0038_smart_cards.sql` seeded the original three profiles and six permanent links. Migration `0044_conner_smart_card.sql` adds Conner Mooney, his personal/giveaway links, and the same daily booking hours. There are now four profiles and eight permanent links. The feature is for the internal team; customer card accounts, orders, payments, subscriptions and custom domains are not implemented.
+Implemented November 1, 2026 in the existing Next.js/Render application. Migration `0038_smart_cards.sql` seeded the original three profiles and six permanent links. Migration `0044_conner_smart_card.sql` adds Conner Mooney, his personal/giveaway links, and the same daily booking hours. There are four team profiles and eight general-purpose card links, plus the dedicated campaign links documented below. The feature is for the internal team; customer card accounts, orders, payments, subscriptions and custom domains are not implemented.
 
 ## Public profiles and contacts
 
@@ -108,3 +108,7 @@ November 1 recurring-hours update: Devon’s original supplied portrait was adde
 Recurring-hours verification: 37 focused checks passed along with type checking, linting and the production build. The local browser verified Devon’s profile and 1200×630 link image, the mobile date picker with all 22 next-day choices, the automatic team-hours display, and an 8 AM–7 PM time-off block. Only synthetic local time off was created.
 
 November 4: Conner’s profile uses the original supplied portrait in both the card and shared-link preview. Program reusable cards with `https://www.tailoredagents.com/go/conner-personal?via=nfc` and giveaway cards with `https://www.tailoredagents.com/go/conner-giveaway?via=nfc`. Public email is normalized to lowercase. This profile does not create a staff login or grant account access.
+
+## Commercial insurance campaign
+
+The industry landing page reuses staff profiles and calendars while keeping regular NFC destinations intact. Migration `0045_insurance_campaign.sql` adds two dedicated flyer links and campaign attribution. Smart Cards includes their QR downloads and 30-day activity/request/booking counts. See [Commercial insurance campaign](COMMERCIAL_INSURANCE_CAMPAIGN.md) for print URLs, example/calculator limitations, and booking behavior.

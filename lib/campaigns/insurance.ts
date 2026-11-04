@@ -1,0 +1,11 @@
+// Public examples, not customer records or measured performance.
+export const insuranceCampaign='commercial-insurance' as const;
+export const insurancePath='/solutions/commercial-insurance';
+export function capacityEstimate(files:number,manualMinutes:number,assistedMinutes:number,hourlyCost:number) {
+ const values=[files,manualMinutes,assistedMinutes,hourlyCost];
+ if(values.some(v=>!Number.isFinite(v)||v<0))return null;
+ // Keep slower assisted processing visible rather than implying savings.
+ const hours=files*(manualMinutes-assistedMinutes)/60;
+ return {hours,capacityValue:hours*hourlyCost};
+}
+export const insuranceAiContext=`Campaign context: Commercial insurance submission preparation for independent agencies. The proposed custom workflow organizes permitted emails, applications, loss runs and exposure spreadsheets, extracts key fields, flags missing or conflicting details, and prepares a packet and draft follow-ups for staff approval. This is a service offering, not a deployed insurance product. The on-page Northline example uses entirely synthetic, prewritten data; it is not live document extraction, a carrier integration, a quote, or a client result. Do not accept real policy documents or sensitive information here. Integrations, permissions, costs and suitability must be assessed with the agency. Never promise compatibility with a named AMS, CRM or carrier portal, compliance certification, guaranteed accuracy or savings. Staff review and control submissions; do not suggest automated coverage, eligibility, underwriting or binding decisions. The calculator estimates recovered staff capacity using visitor assumptions; it is not guaranteed cash savings. Default example: 60 files/month, 30 manual minutes minus 10 assisted minutes including staff review, at $40/hour = 20 hours and $800 of capacity. Invite visitors to a 20-minute phone workflow review with this page's teammate. Booking uses a 30-minute slot with ten minutes reserved between reviews. Visitors must use the form and explicitly confirm a displayed available slot; chat never makes a booking. Discuss other Tailored Agents services when asked, but keep this campaign focused on the agency's submission bottleneck. Do not claim prior insurance clients or measured insurance results.`;

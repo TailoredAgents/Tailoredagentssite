@@ -16,7 +16,7 @@ export async function getManagedProfile(context:DashboardContext,slug:string){
 }
 export async function getManagedCard(context:DashboardContext,code:string){
  await cardAccess(context);
- const r=(await getDatabasePool().query('SELECT code,profile_slug,label,kind,active FROM smart_cards WHERE workspace_id=$1 AND code=$2',[context.workspace.id,codeSchema.parse(code)])).rows[0];
+ const r=(await getDatabasePool().query('SELECT code,profile_slug,label,kind,active,campaign FROM smart_cards WHERE workspace_id=$1 AND code=$2',[context.workspace.id,codeSchema.parse(code)])).rows[0];
  return r?{...r,nfcUrl:cardUrl(r.code,'nfc'),qrUrl:cardUrl(r.code,'qr')}:null;
 }
 export async function getCardAiSettings(context:DashboardContext){

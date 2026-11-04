@@ -22,11 +22,11 @@ const ownerAllowed=`NOT EXISTS(SELECT 1 FROM "user" u JOIN workspace_memberships
 const freeOfExceptions=`NOT EXISTS(SELECT 1 FROM booking_slots b WHERE b.workspace_id=s.workspace_id AND b.profile_slug=s.profile_slug AND b.id<>s.id AND b.starts_at<s.ends_at AND b.ends_at>s.starts_at AND (b.status IN ('booked','blocked') OR (s.recurring AND NOT b.recurring AND NOT b.is_block AND b.status IN ('open','closed','cancelled'))))`;
 const eligible=`s.status='open' AND p.published AND ${ownerAllowed} AND s.starts_at>=now()+interval '2 hours' AND s.starts_at<=now()+interval '90 days' AND ${freeOfTasks} AND ${freeOfExceptions}`;
 export async function availableSlots(profile:string,card?:string,day?:string){
- await validateCardSource(profile,card);
+ const source=await validateCardSource(profile,card);
  if(day!==undefined)z.iso.date().parse(day);
  await ensureRecurringSlots(CARD_WORKSPACE);
  const rows=await getDatabasePool().query<SlotRow>(`SELECT s.* FROM booking_slots s JOIN smart_card_profiles p ON p.workspace_id=s.workspace_id AND p.slug=s.profile_slug WHERE s.workspace_id=$1 AND s.profile_slug=$2 AND ${eligible} AND ($3::date IS NULL OR (s.starts_at AT TIME ZONE 'America/New_York')::date=$3) ORDER BY s.starts_at LIMIT 80`,[CARD_WORKSPACE,profile,day??null]);
- return rows.rows.map(slotResult);
+ return rows.rows.filter(s=>source.campaign!=='commercial-insurance'||s.ends_at.getTime()-s.starts_at.getTime()===30*60000).map(slotResult);
 }
 export async function requireOpenSlot(db:PoolClient,id:string,profile:string){
  const row=(await db.query<SlotRow>(`SELECT s.* FROM booking_slots s JOIN smart_card_profiles p ON p.workspace_id=s.workspace_id AND p.slug=s.profile_slug WHERE s.workspace_id=$1 AND s.id=$2 AND s.profile_slug=$3 AND ${eligible} FOR UPDATE OF s`,[CARD_WORKSPACE,id,profile])).rows[0];

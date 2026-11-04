@@ -57,6 +57,8 @@ try {
     `INSERT INTO sites(id,workspace_id,name,url,environment,status) VALUES($1,$2,'Tailored Agents','https://www.tailoredagents.com','production','active') ON CONFLICT(id) DO NOTHING`,
     [site, workspace],
   );
+  // The lead fixture reset cascades into booking slots; allow schedules to refill.
+  await pool.query("UPDATE booking_schedules SET generated_through=NULL");
   const hash = await hashPassword("Reporting-test-password-2026");
   for (const role of ["owner", "viewer"]) {
     await pool.query(

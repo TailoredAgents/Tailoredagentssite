@@ -10,7 +10,8 @@ import {changeCalendar,availableSlots,getBookingCalendar,guardSalesAppointment} 
 import {bookConsultation} from '@/lib/booking/staff';
 import {askCardAssistant,CARD_AI_RESERVATION} from './assistant';
 import {saveCardInquiry} from './inquiries';
-import {cardAccess,getCardProfile,resolveCard,validateCardSource} from './data';
+import {getInsurancePage} from '@/lib/campaigns/insurance-data';
+import {cardAccess,getCardsDashboard,getCardProfile,resolveCard,validateCardSource} from './data';
 import {cardRateLimit,readCardRequest} from './http';
 import {CARD_WORKSPACE,CARD_ORIGIN} from './types';
 import {POST as eventPost} from '@/app/api/smart-cards/events/route';
@@ -27,6 +28,42 @@ describe.skipIf(!databaseUrl)('Smart Cards database and public boundaries',()=>{
  afterAll(async()=>{await pool?.end();delete (globalThis as {tailoredAgentsDatabasePool?:pg.Pool}).tailoredAgentsDatabasePool;vi.unstubAllEnvs();vi.unstubAllGlobals();});
  it('publishes all four approved contacts and keeps login identity private',async()=>{for(const slug of ['austin','jeffrey','devon','conner']){const p=await getCardProfile(slug);expect(p?.phone).toBe('+16785417725');expect(p).not.toHaveProperty('login_email');expect(p?.email).toBe(`${slug}@tailoredagents.com`);}expect(await getCardProfile('../settings')).toBeNull();});
  it('resolves eight stable links, honors pause, and redirects without permanent caching',async()=>{for(const slug of ['austin','jeffrey','devon','conner'])for(const kind of ['personal','giveaway'])expect((await resolveCard(`${slug}-${kind}`))?.profile_slug).toBe(slug);const r=await redirectGet(new Request(`${CARD_ORIGIN}/go/austin-personal?via=qr`),{params:Promise.resolve({code:'austin-personal'})});expect(r.status).toBe(307);expect(r.headers.get('location')).toContain('/c/austin?card=austin-personal&via=qr');expect(r.headers.get('cache-control')).toBe('no-store');await pool.query("UPDATE smart_cards SET active=false WHERE code='austin-personal'");expect(await resolveCard('austin-personal')).toBeNull();});
+ it('resolves campaign links separately, including pause and reassignment',async()=>{
+  for(const person of ['austin','jeffrey']){
+   const r=await redirectGet(new Request(`${CARD_ORIGIN}/go/insurance-${person}?via=qr`),{params:Promise.resolve({code:`insurance-${person}`})});
+   expect(r.status).toBe(307);expect(r.headers.get('location')).toContain(`/solutions/commercial-insurance?person=${person}&card=insurance-${person}&via=qr`);
+   expect((await getInsurancePage(person))?.profile.slug).toBe(person);
+  }
+  expect(await getInsurancePage('austin','austin-personal')).toBeNull();expect(await getInsurancePage('../settings')).toBeNull();
+  await pool.query("UPDATE smart_cards SET profile_slug='jeffrey' WHERE code='insurance-austin'");
+  try{expect((await getInsurancePage('austin','insurance-austin'))?.profile.slug).toBe('jeffrey');await expect(validateCardSource('austin','insurance-austin')).rejects.toThrow('changed');}
+  finally{await pool.query("UPDATE smart_cards SET profile_slug='austin',active=false WHERE code='insurance-austin'");}
+  expect(await getInsurancePage('austin')).toBeNull();
+ });
+ it('keeps campaign inquiry identity separate from general cards and derives campaign on the server',async()=>{
+  const v={...inquiry(),card:'insurance-austin',interest:'AI & automation'};
+  await saveCardInquiry(v);await saveCardInquiry(v);
+  const campaign=(await pool.query("SELECT * FROM leads WHERE source='smart_card'")).rows[0];
+  expect(campaign.owner_user_id).toBe(owner.user.id);expect(campaign.description).toContain('Commercial insurance campaign');
+  expect(campaign.smart_card_context).toMatchObject({campaign:'commercial-insurance',card:'insurance-austin',profile:'austin',channel:'qr'});
+  await saveCardInquiry({...v,submissionId:randomUUID(),card:'austin-personal',campaign:'commercial-insurance'});
+  const rows=(await pool.query("SELECT smart_card_context FROM leads WHERE source='smart_card'")).rows;
+  expect(rows).toHaveLength(2);expect(rows.some(r=>r.smart_card_context.campaign===null)).toBe(true);expect(fetch).not.toHaveBeenCalled();
+ });
+ it('records campaign events without accepting client-supplied campaign claims',async()=>{
+  async function send(card:string,dnt=false){return eventPost(new Request(`${CARD_ORIGIN}/api/smart-cards/events`,{method:'POST',headers:{origin:CARD_ORIGIN,'content-type':'application/json',...(dnt?{dnt:'1'}:{})},body:JSON.stringify({profile:'austin',card,channel:'qr',campaign:'forged',id:randomUUID(),sessionId:randomUUID(),event:'demo_open'})}));}
+  expect((await send('insurance-austin',true)).status).toBe(200);expect((await pool.query('SELECT id FROM smart_card_events')).rowCount).toBe(0);
+  expect((await send('insurance-austin')).status).toBe(200);expect((await send('austin-personal')).status).toBe(200);
+  const events=(await pool.query('SELECT card_code,campaign FROM smart_card_events')).rows;
+  expect(events).toContainEqual({card_code:'insurance-austin',campaign:'commercial-insurance'});expect(events).toContainEqual({card_code:'austin-personal',campaign:null});
+  const dashboard=await getCardsDashboard(owner);expect(dashboard.campaigns.find(c=>c.code==='insurance-austin')?.demos).toBe('1');
+ });
+ it('adds insurance-specific AI context only for a verified campaign link',async()=>{
+  await askCardAssistant({...chat(),card:'insurance-austin'},'campaign-test');
+  const campaign=JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string);expect(campaign.instructions).toContain('Campaign context: Commercial insurance');expect(campaign.instructions).toContain('prewritten data');expect(campaign.instructions).toContain('30-minute slot');
+  await askCardAssistant({...chat(),campaign:'commercial-insurance'},'general-test');
+  expect(JSON.parse(vi.mocked(fetch).mock.calls[1][1]!.body as string).instructions).not.toContain('Campaign context: Commercial insurance');
+ });
  it('rejects mismatched or unpublished profile attribution',async()=>{await expect(validateCardSource('austin','devon-personal')).rejects.toThrow();await pool.query("UPDATE smart_card_profiles SET published=false WHERE slug='austin'");await expect(validateCardSource('austin')).rejects.toThrow();});
  it('saves one inquiry under concurrent retries, assigns the introducer, and starts no automation',async()=>{const v=inquiry();await Promise.all([saveCardInquiry(v),saveCardInquiry(v)]);const rows=(await pool.query("SELECT * FROM leads WHERE source='smart_card'")).rows;expect(rows).toHaveLength(1);expect(rows[0].owner_user_id).toBe(owner.user.id);expect(rows[0].smart_card_context).toMatchObject({profile:'austin',channel:'qr',card:'austin-giveaway'});expect((await pool.query('SELECT id FROM factory_projects WHERE lead_id=$1',[rows[0].id])).rowCount).toBe(0);expect((await pool.query('SELECT id FROM lead_intro_jobs WHERE lead_id=$1',[rows[0].id])).rowCount).toBe(0);expect(fetch).not.toHaveBeenCalled();});
  it('rejects an idempotency key reused for different content',async()=>{const v=inquiry();await saveCardInquiry(v);await expect(saveCardInquiry({...v,message:'A different request'})).rejects.toThrow('already submitted');});
@@ -141,6 +178,24 @@ describe.skipIf(!databaseUrl)('Smart Cards database and public boundaries',()=>{
   const results=await Promise.allSettled([saveCardInquiry(request),saveCardInquiry({...request,submissionId:randomUUID(),email:'second@example.test'})]);expect(results.filter(r=>r.status==='fulfilled')).toHaveLength(1);
   expect(await availableSlots('devon',undefined,day)).toHaveLength(21);
   await expect(changeCalendar(owner,{operation:'publish',profile:'devon',startsAt:slot.startsAt,minutes:660,mode:'blocked'})).rejects.toThrow('overlaps');
+ });
+
+ it('uses the existing calendar for campaign bookings and reports confirmed appointments',async()=>{
+  await enableDaily();const day=await tomorrow(),slot=(await availableSlots('austin','insurance-austin',day))[0];
+  const request={...inquiry(),card:'insurance-austin',requestKind:'appointment',phone:'+16785550123',slotId:slot.id};
+  const result=await saveCardInquiry(request);expect(result.booking?.status).toBe('booked');
+  expect((await availableSlots('austin','austin-personal',day)).some(s=>s.id===slot.id)).toBe(false);
+  let metrics=(await getCardsDashboard(owner)).campaigns.find(c=>c.code==='insurance-austin');expect(metrics).toMatchObject({inquiries:'1',bookings:'1'});
+  await changeCalendar(owner,{operation:'cancel',id:slot.id,contacted:'on'});
+  metrics=(await getCardsDashboard(owner)).campaigns.find(c=>c.code==='insurance-austin');expect(metrics).toMatchObject({inquiries:'1',bookings:'0'});
+ });
+ it('rejects short extra openings for the campaign review',async()=>{
+  const start=new Date(Date.now()+3*86400000).toISOString();
+  await changeCalendar(owner,{operation:'publish',profile:'austin',startsAt:start,minutes:15,mode:'open'});
+  const general=await availableSlots('austin');expect(general).toHaveLength(1);
+  expect(await availableSlots('austin','insurance-austin')).toEqual([]);
+  await expect(saveCardInquiry({...inquiry(),card:'insurance-austin',requestKind:'appointment',phone:'+16785550123',slotId:general[0].id})).rejects.toThrow('30-minute');
+  expect((await pool.query("SELECT id FROM leads WHERE source='smart_card'")).rowCount).toBe(0);
  });
 
 });
