@@ -57,6 +57,7 @@ describe("Optional website Pixel", () => {
       "/c/austin", "/c/jeffrey", "/c/devon", "/c/conner",
       "/go/austin-personal", "/go/insurance-jeffrey",
       "/solutions/commercial-insurance", "/solutions/commercial-insurance/",
+      "/solutions/freight-automation", "/solutions/freight-automation/", "/go/freight-devon",
     ]) {
       expect(publicPixelPath(path)).toBe(false);
       location.pathname = path;

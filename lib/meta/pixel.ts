@@ -27,7 +27,7 @@ export function pixelId() {
 export function publicPixelPath(path: string) {
   // Card taps and flyer visits use our own measurement, without Meta consent UI.
   // This also blocks lead events after a visitor accepted Meta on another page.
-  return !/^\/(dashboard|sign-in|oauth|api|c|go|solutions\/commercial-insurance)(\/|$)/.test(path);
+  return !/^\/(dashboard|sign-in|oauth|api|c|go|solutions\/(commercial-insurance|freight-automation))(\/|$)/.test(path);
 }
 export function privacySignal() {
   return (

@@ -1,4 +1,5 @@
 'use client';
+import {campaignDetails} from '@/lib/campaigns/catalog';
 import Link from 'next/link';
 import {useEffect,useRef,useState} from 'react';
 import {ArrowUpRight,Check} from 'lucide-react';
@@ -8,7 +9,7 @@ import type {PublicSlot} from '@/lib/booking/calendar';
 import {formatEasternTime,easternInputValue} from '@/lib/time';
 type Source=CardSource;
 export function CardInquiry({source,initialInterest='Let’s talk',initialKind='inquiry',stepVersion=0,draft}:{source:Source;initialInterest?:string;initialKind?:'inquiry'|'appointment';stepVersion?:number;draft?:HandoffDraft}){
- const insurance=source.campaign==='commercial-insurance';
+ const campaign=campaignDetails(source.campaign);
  const [interest,setInterest]=useState(draft?.interest??initialInterest),[kind,setKind]=useState(draft?.requestKind??initialKind);
  const [pending,setPending]=useState(false),[result,setResult]=useState(''),[error,setError]=useState('');
  const today=easternInputValue(new Date().toISOString()).slice(0,10);const [day,setDay]=useState(today);
@@ -44,7 +45,7 @@ export function CardInquiry({source,initialInterest='Let’s talk',initialKind='
   <fieldset disabled={pending} className="sc-inquiry-fields">
   <label>Next step<select value={kind} onChange={e=>{setKind(e.target.value as typeof kind);setSlotId('');}}><option value="inquiry">Send the team a request</option><option value="appointment">Arrange a phone consultation</option></select></label>
   {kind==='appointment'?<div className="sc-booking-picker">
-   <strong>Choose a time with {source.profile[0].toUpperCase()+source.profile.slice(1)}</strong><p>{insurance?'A 20-minute workflow review in a 30-minute calendar slot, allowing ten minutes between calls. ':''}Times are shown in US Eastern (EST/EDT). We’ll call your number. Bookings need at least two hours’ notice.</p>
+   <strong>Choose a time with {source.profile[0].toUpperCase()+source.profile.slice(1)}</strong><p>{campaign?'A 20-minute workflow review in a 30-minute calendar slot, allowing ten minutes between calls. ':''}Times are shown in US Eastern (EST/EDT). We’ll call your number. Bookings need at least two hours’ notice.</p>
    <label>Appointment date (Eastern time)<input type="date" value={day} min={today} max={maxDay} onChange={e=>{if(/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)){setDay(e.target.value);setSlotId('');}}}/></label>
    <div className="sc-date-navigation"><button type="button" className="sc-text-link" disabled={day<=today} onClick={()=>{setDay(new Date(Date.parse(day+'T12:00:00Z')-86400000).toISOString().slice(0,10));setSlotId('');}}>Previous day</button><button type="button" className="sc-text-link" disabled={day>=maxDay} onClick={()=>{setDay(new Date(Date.parse(day+'T12:00:00Z')+86400000).toISOString().slice(0,10));setSlotId('');}}>Next day</button></div>
    {loading?<p role="status">Checking available times…</p>:null}
@@ -56,7 +57,7 @@ export function CardInquiry({source,initialInterest='Let’s talk',initialKind='
   </div>:null}
   <div className="sc-form-grid"><label>Your name<input name="name" defaultValue={draft?.name??''} autoComplete="name" required minLength={2} maxLength={100}/></label><label>Email<input name="email" defaultValue={draft?.email??''} autoComplete="email" type="email" required maxLength={254}/></label></div>
   <label>Phone {selected?<span>(required for your call)</span>:<span>(optional)</span>}<input name="phone" defaultValue={draft?.phone??''} type="tel" autoComplete="tel" required={Boolean(selected)} maxLength={40}/></label>
-  <label>Your message <span>(optional)</span><textarea name="message" defaultValue={draft?.message??''} rows={3} placeholder={insurance?'Which part of submission prep takes the most time? Please leave out private client or policy information.':'An idea, a question, or what you’d like to discuss…'} maxLength={2000}/></label>
+  <label>Your message <span>(optional)</span><textarea name="message" defaultValue={draft?.message??''} rows={3} placeholder={campaign?campaign.messagePlaceholder:'An idea, a question, or what you’d like to discuss…'} maxLength={2000}/></label>
   <details className="sc-inquiry-details" open={draft?true:undefined}><summary>Business and project details</summary><div className="sc-extra-fields"><label>Business <span>(optional)</span><input name="organization" defaultValue={draft?.organization??''} autoComplete="organization" maxLength={140}/></label><label>I’m interested in<select value={interest} onChange={e=>setInterest(e.target.value)}>{cardInterests.map(v=><option key={v}>{v}</option>)}</select></label></div></details>
   <div className="sc-honeypot" aria-hidden="true"><label>Website<input name="website" tabIndex={-1} autoComplete="off"/></label></div>
   <label className="sc-consent"><input name="consent" type="checkbox" required/><span>Tailored Agents may contact me about this request{selected?' and call me at the selected time':''}.</span></label><Link className="sc-privacy-link" href="/privacy">Privacy notice</Link>

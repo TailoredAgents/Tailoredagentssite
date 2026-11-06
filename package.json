@@ -17,6 +17,7 @@
     "mail:test": "npm --prefix apps/mail test",
     "mail:build": "npm --prefix apps/mail run build",
     "dashboard:provision": "node scripts/provision-dashboard-user.mjs",
+    "test:freight:browser": "playwright test --config playwright.freight.config.ts",
     "test:insurance:browser": "playwright test --config playwright.insurance.config.ts",
     "test:assistant:browser": "playwright test --config playwright.assistant.config.ts",
     "test:browser": "playwright test",

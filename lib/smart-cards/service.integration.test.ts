@@ -11,6 +11,7 @@ import {bookConsultation} from '@/lib/booking/staff';
 import {askCardAssistant,CARD_AI_RESERVATION} from './assistant';
 import {saveCardInquiry} from './inquiries';
 import {getInsurancePage} from '@/lib/campaigns/insurance-data';
+import {getCampaignPage} from '@/lib/campaigns/data';
 import {cardAccess,getCardsDashboard,getCardProfile,resolveCard,validateCardSource} from './data';
 import {cardRateLimit,readCardRequest} from './http';
 import {CARD_WORKSPACE,CARD_ORIGIN} from './types';
@@ -60,9 +61,73 @@ describe.skipIf(!databaseUrl)('Smart Cards database and public boundaries',()=>{
  });
  it('adds insurance-specific AI context only for a verified campaign link',async()=>{
   await askCardAssistant({...chat(),card:'insurance-austin'},'campaign-test');
-  const campaign=JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string);expect(campaign.instructions).toContain('Campaign context: Commercial insurance');expect(campaign.instructions).toContain('prewritten data');expect(campaign.instructions).toContain('30-minute slot');
+  const campaign=JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string);expect(campaign.instructions).toContain('Campaign context: Tailored Agents designs');expect(campaign.instructions).toContain('synthetic and prewritten');expect(campaign.instructions).toContain('30-minute slot');
   await askCardAssistant({...chat(),campaign:'commercial-insurance'},'general-test');
-  expect(JSON.parse(vi.mocked(fetch).mock.calls[1][1]!.body as string).instructions).not.toContain('Campaign context: Commercial insurance');
+  expect(JSON.parse(vi.mocked(fetch).mock.calls[1][1]!.body as string).instructions).not.toContain('Campaign context: Tailored Agents designs');
+ });
+ it('routes all three freight links and rejects cross-campaign, paused and reassigned sources',async()=>{
+  for(const person of ['austin','jeffrey','devon']){
+   const r=await redirectGet(new Request(`${CARD_ORIGIN}/go/freight-${person}?via=qr`),{params:Promise.resolve({code:`freight-${person}`})});
+   expect(r.status).toBe(307);const url=new URL(r.headers.get('location')!);
+   expect(url.pathname).toBe('/solutions/freight-automation');expect(url.searchParams.get('utm_campaign')).toBe('freight-automation');
+   expect(url.searchParams.get('person')).toBe(person);expect((await getCampaignPage('freight-automation',person))?.profile.slug).toBe(person);
+  }
+  expect(await getCampaignPage('freight-automation','austin','insurance-austin')).toBeNull();
+  expect(await getInsurancePage('austin','freight-austin')).toBeNull();
+  expect(await getCampaignPage('freight-automation','unknown')).toBeNull();
+  await pool.query("UPDATE smart_cards SET profile_slug='devon' WHERE code='freight-austin'");
+  try{expect((await getCampaignPage('freight-automation','austin','freight-austin'))?.profile.slug).toBe('devon');await expect(validateCardSource('austin','freight-austin')).rejects.toThrow('changed');}
+  finally{await pool.query("UPDATE smart_cards SET profile_slug='austin',active=false WHERE code='freight-austin'");}
+  expect(await getCampaignPage('freight-automation','austin')).toBeNull();
+ });
+ it('saves separate freight/insurance inquiries with server-derived attribution and no automation',async()=>{
+  const v={...inquiry(),card:'freight-austin',interest:'AI & automation',campaign:'commercial-insurance'};
+  await Promise.all([saveCardInquiry(v),saveCardInquiry(v)]);
+  await saveCardInquiry({...v,card:'insurance-austin',submissionId:randomUUID()});
+  const rows=(await pool.query("SELECT * FROM leads WHERE source='smart_card'")).rows;expect(rows).toHaveLength(2);
+  const freight=rows.find(r=>r.smart_card_context.campaign==='freight-automation');
+  expect(freight.owner_user_id).toBe(owner.user.id);expect(freight.description).toContain('Freight & 3PL campaign');
+  expect(freight.smart_card_context).toMatchObject({card:'freight-austin',profile:'austin',channel:'qr'});
+  expect((await pool.query('SELECT id FROM factory_projects WHERE lead_id=$1',[freight.id])).rowCount).toBe(0);
+  expect((await pool.query('SELECT id FROM lead_intro_jobs WHERE lead_id=$1',[freight.id])).rowCount).toBe(0);
+  expect(fetch).not.toHaveBeenCalled();
+ });
+ it('reports freight independently, respects privacy, and cannot forge campaign events',async()=>{
+  async function send(card:string,gpc=false){return eventPost(new Request(`${CARD_ORIGIN}/api/smart-cards/events`,{method:'POST',headers:{origin:CARD_ORIGIN,'content-type':'application/json',...(gpc?{'sec-gpc':'1'}:{})},body:JSON.stringify({profile:'austin',card,channel:'qr',campaign:'commercial-insurance',id:randomUUID(),sessionId:randomUUID(),event:'calculator_use'})}));}
+  await send('freight-austin',true);expect((await pool.query('SELECT id FROM smart_card_events')).rowCount).toBe(0);
+  await send('freight-austin');await send('insurance-austin');await send('austin-personal');
+  const rows=(await pool.query('SELECT card_code,campaign FROM smart_card_events')).rows;
+  expect(rows).toContainEqual({card_code:'freight-austin',campaign:'freight-automation'});
+  expect(rows).toContainEqual({card_code:'austin-personal',campaign:null});
+  const dashboard=await getCardsDashboard(owner);
+  expect(dashboard.campaigns).toHaveLength(5);
+  expect(dashboard.campaigns.find(c=>c.code==='freight-austin')).toMatchObject({campaign:'freight-automation',calculators:'1'});
+  expect(dashboard.campaigns.find(c=>c.code==='insurance-austin')?.calculators).toBe('1');
+ });
+ it('uses freight AI context only for a verified link and shares the existing allowance',async()=>{
+  await askCardAssistant({...chat(),card:'freight-austin'},'freight-test');
+  const request=JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string);
+  expect(request.instructions).toContain('Campaign context: Freight Document & Operations Automation');
+  expect(request.instructions).toContain('$160 difference');expect(request.instructions).toContain('Do not publish fixed or per-document pricing');
+  expect(request.instructions).not.toContain('Campaign context: Tailored Agents designs');expect(request.tools).toBeUndefined();expect(request.store).toBe(false);
+  await askCardAssistant({...chat(),campaign:'freight-automation'},'general-test');
+  expect(JSON.parse(vi.mocked(fetch).mock.calls[1][1]!.body as string).instructions).not.toContain('Campaign context: Freight');
+  expect(Number((await pool.query('SELECT amount_micros FROM smart_card_ai_usage')).rows[0].amount_micros)).toBe(5600);
+  expect((await pool.query("SELECT id FROM leads WHERE source='smart_card'")).rowCount).toBe(0);
+ });
+ it('enforces freight 30-minute bookings and accounts for cancellation in campaign reporting',async()=>{
+  const start=new Date(Date.now()+3*86400000);start.setUTCMinutes(0,0,0);
+  await changeCalendar(owner,{operation:'publish',profile:'austin',startsAt:start.toISOString(),minutes:15,mode:'open'});
+  await changeCalendar(owner,{operation:'publish',profile:'austin',startsAt:new Date(start.getTime()+3600000).toISOString(),minutes:30,mode:'open'});
+  const all=await availableSlots('austin');const short=all.find(s=>Date.parse(s.endsAt)-Date.parse(s.startsAt)===900000)!;
+  const freight=await availableSlots('austin','freight-austin');expect(freight.every(s=>Date.parse(s.endsAt)-Date.parse(s.startsAt)===1800000)).toBe(true);
+  const input={...inquiry(),card:'freight-austin',requestKind:'appointment',phone:'+16785550123'};
+  await expect(saveCardInquiry({...input,slotId:short.id})).rejects.toThrow('30-minute');
+  expect((await pool.query("SELECT id FROM leads WHERE source='smart_card'")).rowCount).toBe(0);
+  const saved=await saveCardInquiry({...input,slotId:freight[0].id});expect(saved.booking?.status).toBe('booked');
+  expect((await getCardsDashboard(owner)).campaigns.find(c=>c.code==='freight-austin')).toMatchObject({inquiries:'1',bookings:'1'});
+  await pool.query("UPDATE booking_slots SET status='cancelled' WHERE id=$1",[saved.booking!.id]);
+  expect((await getCardsDashboard(owner)).campaigns.find(c=>c.code==='freight-austin')?.bookings).toBe('0');
  });
  it('rejects mismatched or unpublished profile attribution',async()=>{await expect(validateCardSource('austin','devon-personal')).rejects.toThrow();await pool.query("UPDATE smart_card_profiles SET published=false WHERE slug='austin'");await expect(validateCardSource('austin')).rejects.toThrow();});
  it('saves one inquiry under concurrent retries, assigns the introducer, and starts no automation',async()=>{const v=inquiry();await Promise.all([saveCardInquiry(v),saveCardInquiry(v)]);const rows=(await pool.query("SELECT * FROM leads WHERE source='smart_card'")).rows;expect(rows).toHaveLength(1);expect(rows[0].owner_user_id).toBe(owner.user.id);expect(rows[0].smart_card_context).toMatchObject({profile:'austin',channel:'qr',card:'austin-giveaway'});expect((await pool.query('SELECT id FROM factory_projects WHERE lead_id=$1',[rows[0].id])).rowCount).toBe(0);expect((await pool.query('SELECT id FROM lead_intro_jobs WHERE lead_id=$1',[rows[0].id])).rowCount).toBe(0);expect(fetch).not.toHaveBeenCalled();});

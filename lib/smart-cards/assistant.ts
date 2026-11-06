@@ -1,4 +1,5 @@
 import 'server-only';
+import {freightAiContext} from '@/lib/campaigns/freight';
 import {insuranceAiContext} from '@/lib/campaigns/insurance';
 import {createHash} from 'node:crypto';
 import {z} from 'zod';
@@ -18,7 +19,7 @@ export async function askCardAssistant(raw:unknown,key:string){
  const parsed=chatSchema.safeParse(raw);if(!parsed.success)throw new CardError('Please send a shorter message or start a new conversation.');
  const v=parsed.data,profile=await validateCardSource(v.profile,v.card);
  if(process.env.SMART_CARDS_AI_ENABLED==='false'||!process.env.OPENAI_API_KEY)throw new CardError('Our AI assistant is taking a break. You can still call, email, or send us a request below.',503);
- const instructions=CARD_AI_INSTRUCTIONS+(profile.campaign==='commercial-insurance'?'\n'+insuranceAiContext:'')+`\nPublic contact for this page: ${JSON.stringify({name:profile.display_name,title:profile.title,email:profile.email,phone:profile.phone})}`;
+ const instructions=CARD_AI_INSTRUCTIONS+(profile.campaign==='commercial-insurance'?'\n'+insuranceAiContext:profile.campaign==='freight-automation'?'\n'+freightAiContext:'')+`\nPublic contact for this page: ${JSON.stringify({name:profile.display_name,title:profile.title,email:profile.email,phone:profile.phone})}`;
  const input=JSON.stringify(v.messages);
  if(Buffer.byteLength(instructions+input)>30000)throw new CardError('Please start a new conversation to keep chatting.');
  await cardRateLimit('card-chat-minute',key,3,60);await cardRateLimit('card-chat-hour',key,20,3600);

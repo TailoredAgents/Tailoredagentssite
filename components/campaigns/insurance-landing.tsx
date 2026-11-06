@@ -9,7 +9,8 @@ import {CardInquiry} from '@/components/smart-cards/inquiry';
 import {cardPortraits} from '@/lib/smart-cards/portraits';
 import {trackCard} from '@/lib/smart-cards/client';
 import type {CardProfile,CardSource} from '@/lib/smart-cards/types';
-import {capacityEstimate,insurancePath} from '@/lib/campaigns/insurance';
+import {SavingsCalculator} from './savings-calculator';
+import {insurancePath} from '@/lib/campaigns/insurance';
 
 export function InsuranceLanding({profile,source}:{profile:CardProfile;source:CardSource}){
  const first=profile.display_name.split(' ')[0],portrait=cardPortraits[profile.slug]?.image;
@@ -84,12 +85,4 @@ function WorkflowDemo({source}:{source:CardSource}){
    </div>
   </div>
  </section>;
-}
-function SavingsCalculator({source,onBook}:{source:CardSource;onBook:()=>void}){
- const [values,setValues]=useState(['60','30','10','40']);const tracked=useRef(false);
- const limits=[100000,1440,1440,10000];const valid=values.every((v,i)=>v.trim()!==''&&Number.isFinite(Number(v))&&Number(v)>=0&&Number(v)<=limits[i]);
- const estimate=valid?capacityEstimate(...values.map(Number) as [number,number,number,number]):null;
- function change(i:number,value:string){setValues(v=>v.map((old,index)=>index===i?value:old));if(!tracked.current){tracked.current=true;trackCard(source,'calculator_use');}}
- const fmt=(n:number)=>new Intl.NumberFormat('en-US',{maximumFractionDigits:1}).format(n);
- return <section className="ins-calculator ins-section" aria-labelledby="calculator-title"><div><span className="ins-eyebrow">WHAT COULD THE TIME BE WORTH?</span><h2 id="calculator-title">Put your own<br/>numbers to it.</h2><p>Estimate the staff capacity a connected process could free up. Use the same scope for both times: include document handling, system entry, and follow-up work you want to compare, plus checking and correcting the assisted output. Count each task once.</p><div className="ins-calculator-inputs">{['Files handled per month','Manual minutes per file','Assisted minutes per file, including review','Staff cost per hour ($)'].map((label,i)=><label key={label}>{label}<input type="number" min="0" max={limits[i]} step={i===0?'1':'0.5'} inputMode="decimal" value={values[i]} onChange={e=>change(i,e.target.value)}/></label>)}</div></div><div className="ins-estimate" aria-live="polite"><span className="ins-eyebrow">YOUR ILLUSTRATIVE ESTIMATE</span>{estimate?<><div className="ins-estimate-number">{fmt(Math.abs(estimate.hours))}<span>hours / month</span></div><p>{estimate.hours>=0?'Potential staff capacity recovered':'Additional processing time with these assumptions'}</p><div className="ins-estimate-value">{new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(Math.abs(estimate.capacityValue))}<span>{estimate.hours>=0?'equivalent staff capacity':'equivalent additional staff time'}</span></div><p className="ins-estimate-formula">{fmt(Number(values[0]))} files × ({fmt(Number(values[1]))} − {fmt(Number(values[2]))}) minutes ÷ 60</p></>:<p role="status">Enter a number in each field within its allowed range to see an estimate.</p>}<p className="ins-small">Assumptions, not measured results or guaranteed cash savings. Software, implementation, training, and ongoing costs are not included.</p><button className="ins-button" onClick={onBook}>Talk through your workflow<ArrowUpRight size={17}/></button></div></section>;
 }

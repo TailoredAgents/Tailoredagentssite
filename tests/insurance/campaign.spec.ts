@@ -1,14 +1,16 @@
 import {test,expect} from '@playwright/test';
 import {writeFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
 import sharp from 'sharp';
 import AxeBuilder from '@axe-core/playwright';
 const path='/solutions/commercial-insurance';
-test.beforeEach(async({page})=>{
+test.beforeEach(async({page},info)=>{
+ const visitor=createHash('sha256').update(info.testId+info.project.name).digest();
  // The production server accepts only the canonical website Origin. This harness
  // forwards that header to the isolated loopback server; never to production.
  await page.route('**/api/smart-cards/**',async route=>{
   if(route.request().url().includes('/chat'))return route.fulfill({json:{answer:'We can assess a connected document-to-system workflow, including approved updates and follow-up, during a workflow review.',draft:null}});
-  const response=await route.fetch({headers:{...route.request().headers(),origin:'https://www.tailoredagents.com'}});
+  const response=await route.fetch({headers:{...route.request().headers(),origin:'https://www.tailoredagents.com','x-forwarded-for':`198.19.${visitor[0]}.${visitor[1]}`}});
   await route.fulfill({response});
  });
 });
@@ -38,7 +40,7 @@ for(const person of ['austin','jeffrey'])test(`${person}: example, calculator, A
  await page.getByRole('button',{name:'See system updates & follow-up'}).click();
  await page.getByRole('button',{name:'Simulate system update',exact:true}).click();
  await expect(page.getByText('SIMULATED AUDIT TRAIL · NOTHING SENT')).toBeVisible();
- await page.locator('.ins-demo').screenshot({path:`/private/tmp/ta-insurance-updated-demo-${info.project.name}.png`});
+ await page.locator('.ins-demo').screenshot({path:info.outputPath(`ta-insurance-updated-demo-${info.project.name}.png`)});
  await page.getByRole('button',{name:'Reset example',exact:true}).click();
  await page.getByRole('button',{name:'04 Update & follow up'}).click();
  await expect(page.getByRole('button',{name:'Simulate system update',exact:true})).toBeDisabled();
@@ -51,7 +53,7 @@ for(const person of ['austin','jeffrey'])test(`${person}: example, calculator, A
  await expect(async()=>expect(await select.locator('option').count()).toBeGreaterThan(1)).toPass({timeout:15000});
  await expect(select).toBeEnabled();
  await select.selectOption({index:1});
- await page.locator('.ins-booking').screenshot({path:`/private/tmp/ta-insurance-form-${info.project.name}.png`});
+ await page.locator('.ins-booking').screenshot({path:info.outputPath(`ta-insurance-form-${info.project.name}.png`)});
  await page.getByLabel('Your name',{exact:true}).fill(`Synthetic Insurance ${person} ${info.project.name}`);
  await page.getByLabel('Email',{exact:true}).fill(`insurance-${person}-${info.project.name}@example.test`);
  await page.getByRole('textbox',{name:'Phone (required for your call)',exact:true}).fill('+16785550123');
@@ -63,9 +65,9 @@ for(const person of ['austin','jeffrey'])test(`${person}: example, calculator, A
  expect(accessibility.violations.map(v=>({id:v.id,description:v.description,nodes:v.nodes.map(n=>n.target)}))).toEqual([]);
  expect(errors).toEqual([]);
  await page.evaluate(()=>scrollTo(0,0));
- await page.screenshot({path:`/private/tmp/ta-insurance-${person}-${info.project.name}.png`,fullPage:true});
- await page.screenshot({path:`/private/tmp/ta-insurance-hero-${person}-${info.project.name}.png`});
- await page.locator('.ins-demo').screenshot({path:`/private/tmp/ta-insurance-demo-${info.project.name}.png`});
+ await page.screenshot({path:info.outputPath(`ta-insurance-${person}-${info.project.name}.png`),fullPage:true});
+ await page.screenshot({path:info.outputPath(`ta-insurance-hero-${person}-${info.project.name}.png`)});
+ await page.locator('.ins-demo').screenshot({path:info.outputPath(`ta-insurance-demo-${info.project.name}.png`)});
  const other=person==='austin'?'Jeffrey':'Austin';
  await page.getByRole('link',{name:other,exact:true}).click();
  await expect(page.getByRole('heading',{name:`Review your workflow with ${other}`,exact:true})).toBeVisible();
@@ -79,13 +81,13 @@ test('unavailable campaign does not fall back to a different destination',async(
  await expect(page.getByRole('heading',{name:'Jeffrey Hacker',exact:true})).toBeVisible();
 });
 
-test('personalized share images, QR downloads and contact files',async({request})=>{
+test('personalized share images, QR downloads and contact files',async({request},info)=>{
  for(const person of ['austin','jeffrey']){
   const image=await request.get(`${path}/share-image?card=insurance-${person}`);expect(image.status()).toBe(200);
   const bytes=await image.body();const size=await sharp(bytes).metadata();expect([size.width,size.height]).toEqual([1200,630]);
-  await writeFile(`/private/tmp/ta-insurance-share-${person}.png`,bytes);
+  await writeFile(info.outputPath(`ta-insurance-share-${person}.png`),bytes);
   const qr=await request.get(`/api/smart-cards/qr/insurance-${person}?format=png`);expect(qr.status()).toBe(200);expect(qr.headers()['content-type']).toBe('image/png');
-  await writeFile(`/private/tmp/ta-insurance-qr-${person}.png`,await qr.body());
+  await writeFile(info.outputPath(`ta-insurance-qr-${person}.png`),await qr.body());
   expect(await (await request.get(`/c/${person}/contact`)).text()).toContain(`${person}@tailoredagents.com`);
   const redirect=await request.get(`/go/insurance-${person}?via=qr`,{maxRedirects:0});expect(redirect.status()).toBe(307);
   const location=new URL(redirect.headers().location);expect(location.pathname).toBe(path);expect(location.searchParams.get('utm_campaign')).toBe('commercial-insurance');
@@ -99,9 +101,10 @@ test('dashboard exposes campaign reporting and copyable flyer URLs',async({page}
  await page.waitForURL('**/dashboard');
  await page.goto('/dashboard/smart-cards');
  await expect(page.getByRole('heading',{name:'Commercial insurance campaign',exact:true})).toBeVisible();
- await expect(page.getByRole('textbox',{name:'Permanent flyer QR URL'})).toHaveCount(2);
- await expect(page.getByRole('link',{name:'Flyer QR PNG',exact:true})).toHaveCount(2);
+ const insurance=page.locator('section').filter({has:page.getByRole('heading',{name:'Commercial insurance campaign',exact:true})});
+ await expect(insurance.getByRole('textbox',{name:'Permanent flyer QR URL'})).toHaveCount(2);
+ await expect(insurance.getByRole('link',{name:'Flyer QR PNG',exact:true})).toHaveCount(2);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);
  await page.getByRole('heading',{name:'Commercial insurance campaign',exact:true}).scrollIntoViewIfNeeded();
- await page.screenshot({path:`/private/tmp/ta-insurance-dashboard-${info.project.name}.png`});
+ await page.screenshot({path:info.outputPath(`ta-insurance-dashboard-${info.project.name}.png`)});
 });

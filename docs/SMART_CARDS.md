@@ -112,3 +112,7 @@ November 4: Conner’s profile uses the original supplied portrait in both the c
 ## Commercial insurance campaign
 
 The industry landing page reuses staff profiles and calendars while keeping regular NFC destinations intact. Migration `0045_insurance_campaign.sql` adds two dedicated flyer links and campaign attribution. Smart Cards includes their QR downloads and 30-day activity/request/booking counts. See [Commercial insurance campaign](COMMERCIAL_INSURANCE_CAMPAIGN.md) for print URLs, example/calculator limitations, and booking behavior.
+
+## Freight Brokerage & 3PL campaign
+
+Migration `0046_freight_campaign.sql` adds a second campaign with dedicated links for Austin, Jeffrey and Devon. Smart Cards separates insurance and freight links and reporting; the five campaign links reuse the existing profile/calendar/AI infrastructure and shared budget. General NFC destinations remain unchanged. See [Freight automation campaign](FREIGHT_AUTOMATION_CAMPAIGN.md) for outreach URLs, QR downloads, demonstration limits, tests and deployment verification.
