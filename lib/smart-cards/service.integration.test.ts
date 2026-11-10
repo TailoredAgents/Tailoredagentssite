@@ -5,9 +5,9 @@ import pg from 'pg';
 vi.mock('server-only',()=>({}));
 import {getDatabasePool} from '@/lib/dashboard/db';
 import {ensureRecurringSlots} from '@/lib/booking/recurring';
-import {easternInputValue} from '@/lib/time';
+import {easternInputValue,easternInputCandidates} from '@/lib/time';
 import {changeCalendar,availableSlots,getBookingCalendar,guardSalesAppointment} from '@/lib/booking/calendar';
-import {bookConsultation} from '@/lib/booking/staff';
+import {bookConsultation,getCalendarEntry} from '@/lib/booking/staff';
 import {askCardAssistant,CARD_AI_RESERVATION} from './assistant';
 import {saveCardInquiry} from './inquiries';
 import {getInsurancePage} from '@/lib/campaigns/insurance-data';
@@ -209,6 +209,64 @@ describe.skipIf(!databaseUrl)('Smart Cards database and public boundaries',()=>{
 
  const enableDaily=async()=>{await pool.query('INSERT INTO booking_schedules(workspace_id,profile_slug) SELECT workspace_id,slug FROM smart_card_profiles');};
  const tomorrow=async()=>(await pool.query("SELECT ((now() AT TIME ZONE 'America/New_York')::date+1)::text AS date_key")).rows[0].date_key as string;
+ const manual=(startsAt:string,endsAt:string,profile='austin')=>({operation:'create_event',profile,title:'Client workflow review',kind:'appointment',startsAt,endsAt,location:'Office',notes:'Synthetic client discussion'});
+ it('creates, edits and removes named events while restoring only the released availability',async()=>{
+  await enableDaily();const day=await tomorrow(),slots=await availableSlots('austin',undefined,day),first=slots[0],second=slots[1];
+  const created=await changeCalendar(owner,manual(first.startsAt,first.endsAt));
+  expect(await availableSlots('austin',undefined,day)).toHaveLength(21);
+  let row=(await getBookingCalendar(owner,{start:day,end:new Date(Date.parse(day+'T12:00:00Z')+86400000).toISOString().slice(0,10)})).slots.find(s=>s.id===created.id)!;
+  expect(row).toMatchObject({title:'Client workflow review',kind:'appointment',location:'Office',notes:'Synthetic client discussion',isBlock:true});
+  expect(await getCalendarEntry(owner,created.id!)).toMatchObject({title:'Client workflow review',notes:'Synthetic client discussion',allDay:false});
+  await changeCalendar(owner,{...manual(second.startsAt,second.endsAt),operation:'update_event',id:row.id,expectedUpdatedAt:row.updatedAt,title:'Updated client meeting'});
+  expect((await availableSlots('austin',undefined,day)).some(s=>s.id===first.id)).toBe(true);
+  await expect(changeCalendar(owner,{...manual(first.startsAt,first.endsAt),operation:'update_event',id:row.id,expectedUpdatedAt:row.updatedAt})).rejects.toThrow('changed');
+  row=(await getBookingCalendar(owner)).slots.find(s=>s.id===created.id)!;
+  await expect(changeCalendar(owner,{operation:'remove_event',id:row.id,expectedUpdatedAt:row.updatedAt})).rejects.toThrow('Confirm');
+  await changeCalendar(owner,{operation:'remove_event',id:row.id,expectedUpdatedAt:row.updatedAt,confirmed:'on'});
+  expect(await availableSlots('austin',undefined,day)).toHaveLength(22);expect(fetch).not.toHaveBeenCalled();
+ });
+ it('allows members to manage their own events but denies other calendars and viewer writes',async()=>{
+  const start=new Date(Date.now()+3*86400000).toISOString(),end=new Date(Date.parse(start)+3600000).toISOString();
+  await pool.query("UPDATE workspace_memberships SET role='member' WHERE user_id='card-owner'");
+  try{
+   const data=await getBookingCalendar(owner);expect(data.profiles.filter(p=>p.editable).map(p=>p.slug)).toEqual(['austin']);
+   const own=await changeCalendar(owner,manual(start,end));
+   await expect(changeCalendar(owner,manual(start,end,'devon'))).rejects.toThrow('own calendar');
+   const row=(await getBookingCalendar(owner)).slots.find(s=>s.id===own.id)!;
+   await expect(changeCalendar(owner,{...manual(start,end,'devon'),operation:'update_event',id:own.id,expectedUpdatedAt:row.updatedAt})).rejects.toThrow('own calendar');
+   await expect(changeCalendar({...owner,user:{...owner.user,id:'card-viewer'}},manual(start,end,'jeffrey'))).rejects.toThrow('own calendar');
+   await expect(changeCalendar({...owner,user:{...owner.user,id:'card-viewer'}},{operation:'remove_event',id:own.id,expectedUpdatedAt:row.updatedAt,confirmed:'on'})).rejects.toThrow('own calendar');
+  }finally{await pool.query("UPDATE workspace_memberships SET role='owner' WHERE user_id='card-owner'");}
+ });
+ it('serializes overlapping writes, protects confirmed calls, and allows different teammate overlap',async()=>{
+  await enableDaily();const day=await tomorrow(),slot=(await availableSlots('austin',undefined,day))[0];
+  const results=await Promise.allSettled([changeCalendar(owner,manual(slot.startsAt,slot.endsAt)),changeCalendar(owner,manual(slot.startsAt,slot.endsAt))]);expect(results.filter(r=>r.status==='fulfilled')).toHaveLength(1);
+  await changeCalendar(owner,manual(slot.startsAt,slot.endsAt,'devon'));
+  const next=(await availableSlots('austin',undefined,day))[0];await saveCardInquiry({...inquiry(),phone:'+16785550123',requestKind:'appointment',slotId:next.id});
+  await expect(changeCalendar(owner,manual(next.startsAt,next.endsAt))).rejects.toThrow('already has');
+  const booked=(await getBookingCalendar(owner)).slots.find(s=>s.id===next.id)!;
+  await expect(changeCalendar(owner,{...manual(next.startsAt,next.endsAt),operation:'update_event',id:booked.id,expectedUpdatedAt:booked.updatedAt})).rejects.toThrow('no longer editable');
+  await expect(guardWithEvent()).rejects.toThrow('booking or blocked');
+  async function guardWithEvent(){const db=await pool.connect();try{await db.query('BEGIN');await guardSalesAppointment(db,CARD_WORKSPACE,owner.user.id,slot.startsAt,slot.endsAt);}finally{await db.query('ROLLBACK');db.release();}}
+ });
+ it('blocks whole Eastern days and supports future range queries without exposing records outside the window',async()=>{
+  await enableDaily();const day=await tomorrow(),next=new Date(Date.parse(day+'T12:00:00Z')+86400000).toISOString().slice(0,10);
+  await changeCalendar(owner,{...manual(easternInputCandidates(day+'T00:00')[0],easternInputCandidates(next+'T00:00')[0]),allDay:true,kind:'time_off',title:'Day off'});
+  expect(await availableSlots('austin',undefined,day)).toEqual([]);expect(await availableSlots('devon',undefined,day)).toHaveLength(22);
+  expect((await getBookingCalendar(owner,{start:day,end:next})).slots).toHaveLength(1);
+  const after=new Date(Date.parse(next+'T12:00:00Z')+86400000).toISOString().slice(0,10);
+  expect((await getBookingCalendar(owner,{start:next,end:after})).slots).toHaveLength(0);
+  const future=new Date(Date.now()+180*86400000).toISOString(),end=new Date(Date.parse(future)+3600000).toISOString();await changeCalendar(owner,manual(future,end,'jeffrey'));
+  await expect(changeCalendar(owner,{...manual(future,end),allDay:true})).rejects.toThrow('midnight');
+  await expect(getBookingCalendar(owner,{start:day,end:'2029-01-01'})).rejects.toThrow('93 days');
+ });
+ it('refuses an internal event over an existing CRM appointment',async()=>{
+  const start=new Date(Date.now()+3*86400000).toISOString(),end=new Date(Date.parse(start)+3600000).toISOString(),conversation=randomUUID(),source=randomUUID(),task=randomUUID();
+  await pool.query('INSERT INTO crm_conversations(id,workspace_id) VALUES($1,$2)',[conversation,CARD_WORKSPACE]);
+  await pool.query("INSERT INTO crm_conversation_sources(id,workspace_id,conversation_id,channel,mailbox_id,thread_id) VALUES($1,$2,$3,'email','synthetic-calendar-mailbox',$4)",[source,CARD_WORKSPACE,conversation,source]);
+  try{await pool.query("INSERT INTO crm_tasks(id,workspace_id,conversation_source_id,owner_user_id,kind,title,due_at,end_at) VALUES($1,$2,$3,'card-owner','appointment','Existing client meeting',$4,$5)",[task,CARD_WORKSPACE,source,start,end]);await expect(changeCalendar(owner,manual(start,end))).rejects.toThrow('sales appointment');}
+  finally{await pool.query('DELETE FROM crm_tasks WHERE id=$1',[task]);await pool.query('DELETE FROM crm_conversation_sources WHERE id=$1',[source]);await pool.query('DELETE FROM crm_conversations WHERE id=$1',[conversation]);}
+ });
  it('offers daily 8 AM–7 PM Eastern times for all four profiles without requiring a first staff login',async()=>{
   await enableDaily();const day=await tomorrow();
   for(const profile of ['austin','devon','jeffrey','conner']){const slots=await availableSlots(profile,undefined,day);expect(slots).toHaveLength(22);expect(easternInputValue(slots[0].startsAt)).toBe(day+'T08:00');expect(easternInputValue(slots.at(-1)!.endsAt)).toBe(day+'T19:00');}
