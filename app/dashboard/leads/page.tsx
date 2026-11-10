@@ -16,7 +16,7 @@ import { listLeads } from "@/lib/operations/data";
 import { formatOperationalDate, statusLabel } from "@/lib/operations/format";
 import { leadStatuses } from "@/lib/operations/validation";
 
-export const metadata: Metadata = { title: "Leads" };
+export const metadata: Metadata = { title: "Prospects" };
 
 export default async function LeadsPage({
   searchParams,
@@ -36,7 +36,7 @@ export default async function LeadsPage({
       <header className="dashboard-topbar">
         <div>
           <span>Operations</span>
-          <strong>Leads</strong>
+          <strong>Prospects</strong>
         </div>
         <span className="dashboard-secure">
           <ShieldCheck size={15} />
@@ -46,11 +46,12 @@ export default async function LeadsPage({
       <div className="dashboard-content">
         <section className="dashboard-page-heading dashboard-page-heading-compact">
           <div>
-            <span>Lead pipeline</span>
-            <h1>Leads</h1>
+            <span>Prospect pipeline</span>
+            <h1>Prospects</h1>
             <p>
-              Keep website inquiries, Facebook and Instagram leads, and manually added prospects
-              together, ready for your next conversation.
+              Manage connections, referrals, outreach, and incoming inquiries in one place.
+              Move prospects through New, Qualified, and Proposal; convert them to clients
+              when they accept a paid engagement.
             </p>
           </div>
           <a
@@ -58,7 +59,7 @@ export default async function LeadsPage({
             href="/dashboard/leads/export"
           >
             <Download size={15} />
-            Export all leads
+            Export all prospects
           </a>
         </section>
 
@@ -69,7 +70,7 @@ export default async function LeadsPage({
             <Search size={15} />
             <input
               type="search"
-              aria-label="Search leads"
+              aria-label="Search prospects"
               name="q"
               defaultValue={leads.q}
               placeholder="Search name, company, phone, or email"
@@ -78,7 +79,7 @@ export default async function LeadsPage({
           <label>
             <Filter size={15} />
             <select
-              aria-label="Filter leads by status"
+              aria-label="Filter prospects by status"
               name="status"
               defaultValue={leads.status}
             >
@@ -90,7 +91,7 @@ export default async function LeadsPage({
               ))}
             </select>
           </label>
-          <label><Filter size={15} /><select aria-label="Filter leads by source" name="source" defaultValue={leads.source}><option value="all">All sources</option><option value="facebook">Facebook / Instagram</option><option value="website">Website</option><option value="manual">Added manually</option><option value="smart_card">Smart Cards</option></select></label>
+          <label><Filter size={15} /><select aria-label="Filter prospects by source" name="source" defaultValue={leads.source}><option value="all">All sources</option><option value="facebook">Facebook / Instagram</option><option value="website">Website</option><option value="manual">Added manually</option><option value="smart_card">Smart Cards</option></select></label>
           <button type="submit">Apply filters</button>
           {leads.q || leads.status !== "all" || leads.source !== "all" ? (
             <Link href="/dashboard/leads">Clear</Link>
@@ -101,13 +102,13 @@ export default async function LeadsPage({
           <div className="dashboard-table-summary">
             <span>
               <UsersRound size={15} />
-              {leads.total} lead{leads.total === 1 ? "" : "s"}
+              {leads.total} prospect{leads.total === 1 ? "" : "s"}
             </span>
             <small>Newest first</small>
           </div>
           <div className="dashboard-data-table dashboard-leads-table">
             <div className="dashboard-data-head">
-              <span>Lead</span>
+              <span>Prospect</span>
               <span>Interest</span>
               <span>Status</span>
               <span>Owner / next action</span>
@@ -119,7 +120,7 @@ export default async function LeadsPage({
                   className="dashboard-data-row dashboard-lead-row"
                   key={lead.id}
                 >
-                  <span data-label="Lead">
+                  <span data-label="Prospect">
                     <Link className="dashboard-lead-link" href={`/dashboard/leads/${lead.id}`}>
                       <strong>{leadDisplayName(lead)}</strong>
                       {leadCompanyName(lead) && <small>{leadCompanyName(lead)}</small>}
@@ -164,11 +165,11 @@ export default async function LeadsPage({
             ) : (
               <div className="dashboard-empty">
                 <UsersRound size={21} />
-                <strong>No leads match this view</strong>
+                <strong>No prospects match this view</strong>
                 <p>
                   {context.role === "viewer"
-                    ? "New leads and website inquiries will appear here."
-                    : "Add a lead above or wait for your next website inquiry."}
+                    ? "Prospects from referrals, connections, outreach, and inquiries will appear here."
+                    : "Add a prospect above, whether you met them through a connection, referral, or inquiry."}
                 </p>
               </div>
             )}

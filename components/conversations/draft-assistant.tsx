@@ -49,11 +49,11 @@ export function DraftAssistant({ request, disabled, onApply }: {
       <div className="ai-draft-heading"><strong>What would you like to say?</strong><button type="button" className="ai-draft-close" aria-label="Close draft assistant" onClick={() => setOpen(false)}><X size={16} aria-hidden="true" /></button></div>
       <p>Use the client’s saved brief, details and recent history, or add a direction. The draft goes straight into your message box for editing.</p>
       <div className="ai-draft-presets">{[
-        ["Introduce us", "Initial message after the lead came in. Introduce Tailored Agents and ask about what they need."],
+        ["Introduce us", "Initial message to this prospect. Introduce Tailored Agents and ask about what they need."],
         ["Suggest a reply", "Reply to their latest message and suggest a useful next step."],
         ["Set up a meeting", "They seem ready to meet. Ask about a convenient time to discuss their project."],
       ].map(([label, prompt]) => <button type="button" key={label} disabled={busy || disabled} onClick={() => setDirection(prompt)}>{label}</button>)}</div>
-      <label className="inbox-field"><span>Direction <small>(optional)</small></span><textarea aria-label="Message direction" rows={2} maxLength={1000} disabled={busy || disabled} value={direction} onChange={event => setDirection(event.target.value)} placeholder="E.g. First message to a lead looking for their first website…" /></label>
+      <label className="inbox-field"><span>Direction <small>(optional)</small></span><textarea aria-label="Message direction" rows={2} maxLength={1000} disabled={busy || disabled} value={direction} onChange={event => setDirection(event.target.value)} placeholder="E.g. First message to a prospect looking for their first website…" /></label>
       <button type="button" className="inbox-button" disabled={busy || disabled} onClick={generate}>{busy ? <LoaderCircle className="signin-spinner" size={14} aria-hidden="true" /> : <Sparkles size={14} aria-hidden="true" />}{busy ? "Writing draft…" : "Generate draft"}</button>
       {error ? <p className="ai-draft-error" role="alert">{error}</p> : null}
     </div> : null}

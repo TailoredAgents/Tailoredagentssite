@@ -71,7 +71,7 @@ test("changes lead status from the list without losing follow-up details", async
   await page.goto(`${listUrl}&status=qualified`);
   await status.selectOption("proposal");
   await expect(status).toHaveCount(0);
-  await expect(page.getByText("No leads match this view", { exact: true })).toBeVisible();
+  await expect(page.getByText("No prospects match this view", { exact: true })).toBeVisible();
   expect(await rows("SELECT status FROM leads WHERE id=$1", [lead.id])).toEqual([{ status: "proposal" }]);
 });
 
@@ -118,9 +118,9 @@ test("adds a phone-only lead directly from Leads and retains useful sales contex
   page.on("pageerror", (error) => errors.push(error.message));
   await signIn(page);
   await page.goto("/dashboard/leads");
-  const trigger = page.getByRole("button", { name: "Add lead", exact: true });
+  const trigger = page.getByRole("button", { name: "Add prospect", exact: true });
   await trigger.click();
-  const form = page.getByRole("form", { name: "Add lead", exact: true });
+  const form = page.getByRole("form", { name: "Add prospect", exact: true });
   const business = form.getByRole("textbox", {
     name: "Business name (optional)",
     exact: true,
@@ -144,7 +144,7 @@ test("adds a phone-only lead directly from Leads and retains useful sales contex
     path: `test-results/manual-lead-entry-${info.project.name}.png`,
     fullPage: true,
   });
-  await form.getByRole("button", { name: "Save lead", exact: true }).click();
+  await form.getByRole("button", { name: "Save prospect", exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard\/leads\/[a-f0-9-]+$/);
   await expect(
     page.getByRole("heading", { name: organization, exact: true }),
@@ -177,9 +177,9 @@ test("adds a phone-only lead directly from Leads and retains useful sales contex
     measurement_status: null,
     delivery_status: "not_configured",
   });
-  await page.getByRole("link", { name: "Back to leads", exact: true }).click();
+  await page.getByRole("link", { name: "Back to prospects", exact: true }).click();
   await page
-    .getByRole("searchbox", { name: "Search leads", exact: true })
+    .getByRole("searchbox", { name: "Search prospects", exact: true })
     .fill(phone.slice(-7));
   await page
     .getByRole("button", { name: "Apply filters", exact: true })
@@ -196,15 +196,15 @@ test("adds a person without a business and shows their name in Leads", async ({ 
   const name = `Personal referral ${info.project.name} ${run}`;
   await signIn(page);
   await page.goto("/dashboard/leads");
-  await page.getByRole("button", { name: "Add lead", exact: true }).click();
-  const form = page.getByRole("form", { name: "Add lead", exact: true });
+  await page.getByRole("button", { name: "Add prospect", exact: true }).click();
+  const form = page.getByRole("form", { name: "Add prospect", exact: true });
   await expect(form.getByRole("textbox", { name: "Business name (optional)", exact: true })).not.toHaveAttribute("required", "");
   await form.getByRole("textbox", { name: "Contact name (optional)", exact: true }).fill(name);
   await form.getByRole("textbox", { name: "Email", exact: true }).fill(`person-${info.project.name}-${run}@example.test`);
-  await form.getByRole("button", { name: "Save lead", exact: true }).click();
+  await form.getByRole("button", { name: "Save prospect", exact: true }).click();
   await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
   expect(await rows("SELECT organization FROM leads WHERE name=$1", [name])).toEqual([{ organization: "" }]);
-  await page.getByRole("link", { name: "Back to leads", exact: true }).click();
+  await page.getByRole("link", { name: "Back to prospects", exact: true }).click();
   await expect(page.locator("strong").filter({ hasText: name })).toBeVisible();
 });
 
@@ -213,19 +213,19 @@ test("confirms deletion, supports cancel and removes a lead from the list", asyn
   const [lead] = await rows("INSERT INTO leads(id,workspace_id,name,organization,email,source,delivery_status) VALUES(gen_random_uuid(),'00000000-0000-4000-8000-000000000001',$1,'','delete@example.test','manual','not_configured') RETURNING id", [name]);
   await signIn(page);
   await page.goto(`/dashboard/leads/${lead.id}`);
-  await page.getByRole("button", { name: "Delete lead", exact: true }).click();
-  const confirmation = page.getByRole("form", { name: "Confirm lead deletion" });
+  await page.getByRole("button", { name: "Delete prospect", exact: true }).click();
+  const confirmation = page.getByRole("form", { name: "Confirm prospect deletion" });
   await expect(confirmation).toContainText(name);
   await expect(confirmation.getByRole("button", { name: "Cancel", exact: true })).toBeFocused();
   await confirmation.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(confirmation).toHaveCount(0);
   expect(await rows("SELECT id FROM leads WHERE id=$1", [lead.id])).toHaveLength(1);
-  await page.getByRole("button", { name: "Delete lead", exact: true }).click();
-  const axe = await new AxeBuilder({ page }).include('[aria-label="Confirm lead deletion"]').withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+  await page.getByRole("button", { name: "Delete prospect", exact: true }).click();
+  const axe = await new AxeBuilder({ page }).include('[aria-label="Confirm prospect deletion"]').withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
   expect(axe.violations).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   await confirmation.screenshot({ path: `test-results/delete-lead-${info.project.name}.png` });
-  await confirmation.getByRole("button", { name: "Permanently delete lead", exact: true }).click();
+  await confirmation.getByRole("button", { name: "Permanently delete prospect", exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard\/leads$/);
   expect(await rows("SELECT id FROM leads WHERE id=$1", [lead.id])).toHaveLength(0);
   await expect(page.getByText(name, { exact: true })).toHaveCount(0);
@@ -236,9 +236,9 @@ test("retains manual lead fields after server validation and keeps entry accessi
 }, info) => {
   await signIn(page);
   await page.goto("/dashboard/leads");
-  const trigger = page.getByRole("button", { name: "Add lead", exact: true });
+  const trigger = page.getByRole("button", { name: "Add prospect", exact: true });
   await trigger.click();
-  const form = page.getByRole("form", { name: "Add lead", exact: true });
+  const form = page.getByRole("form", { name: "Add prospect", exact: true });
   const organization = `Manual validation ${info.project.name} ${run}`;
   await form
     .getByRole("textbox", { name: "Business name (optional)", exact: true })
@@ -253,7 +253,7 @@ test("retains manual lead fields after server validation and keeps entry accessi
   await form
     .getByRole("textbox", { name: "Website", exact: true })
     .fill("javascript:alert(1)");
-  await form.getByRole("button", { name: "Save lead", exact: true }).click();
+  await form.getByRole("button", { name: "Save prospect", exact: true }).click();
   await expect(form.getByRole("alert")).toBeVisible();
   await expect(
     form.getByRole("textbox", { name: "Business name (optional)", exact: true }),
@@ -308,13 +308,13 @@ test("viewers can read Leads without a manual create control", async ({
   await signIn(page, true);
   await page.goto("/dashboard/leads");
   await expect(
-    page.getByRole("heading", { name: "Leads", exact: true }),
+    page.getByRole("heading", { name: "Prospects", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Add lead", exact: true }),
+    page.getByRole("button", { name: "Add prospect", exact: true }),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("form", { name: "Add lead", exact: true }),
+    page.getByRole("form", { name: "Add prospect", exact: true }),
   ).toHaveCount(0);
   await expect(page.getByRole("combobox", { name: /^Status for / })).toHaveCount(0);
 });

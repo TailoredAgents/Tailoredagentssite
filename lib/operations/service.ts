@@ -104,7 +104,7 @@ export async function updateLead(
       return true;
     });
     if (!changed) return missing();
-    return success("Lead updated.");
+    return success("Prospect updated.");
   } catch (error) {
     return serviceFailure(error);
   }

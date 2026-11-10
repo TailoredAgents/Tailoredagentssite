@@ -111,7 +111,7 @@ export async function convertLeadAction(
   let clientId = "";
   try {
     const existing = await getDatabasePool().query("SELECT client_id FROM leads WHERE id=$1 AND workspace_id=$2", [input.leadId, context.workspace.id]);
-    if (!existing.rows[0] || existing.rows[0].client_id) return { status: "error", message: "This lead is already converted or no longer available." };
+    if (!existing.rows[0] || existing.rows[0].client_id) return { status: "error", message: "This prospect is already converted or no longer available." };
     const opportunityId = await linkInquiry(context, input.leadId);
     const result = await convertOpportunity(context, { opportunityId, clientName:input.clientName, projectName: input.projectName, projectSummary: input.projectSummary, createSite: input.createSite });
     clientId = result.clientId;

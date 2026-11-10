@@ -84,10 +84,10 @@ test("finds the builder from navigation, chooses a sparse lead and reopens the s
   await expect(page.locator('a[href="/dashboard/sales/factory"]').filter({hasText:"Website Builder"}).first()).toBeAttached();
   await page.getByRole("link",{name:"Create website mockup",exact:true}).first().click();
   await expect(page).toHaveURL(/\/factory\/new$/);
-  await page.getByLabel("Find a lead",{exact:true}).fill("no-matching-lead");
+  await page.getByLabel("Find a prospect",{exact:true}).fill("no-matching-lead");
   await page.getByRole("button",{name:"Search",exact:true}).click();
-  await expect(page.getByRole("heading",{name:"No leads found",exact:true})).toBeVisible();
-  await page.getByLabel("Find a lead",{exact:true}).fill("");
+  await expect(page.getByRole("heading",{name:"No prospects found",exact:true})).toBeVisible();
+  await page.getByLabel("Find a prospect",{exact:true}).fill("");
   await page.getByRole("button",{name:"Search",exact:true}).click();
   const start=page.getByRole("button",{name:"Create website mockup",exact:true});
   await expect(start).toHaveCount(1);

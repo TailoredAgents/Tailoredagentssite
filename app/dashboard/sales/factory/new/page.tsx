@@ -10,13 +10,13 @@ export default async function NewWebsitePage({searchParams}:{searchParams:Promis
   const context=await requireDashboardContext(),params=await searchParams;
   const query=(typeof params.q==="string"?params.q:"").trim().slice(0,120);
   const data=await getFactoryLeadChoices(context,query);
-  return <><header className="dashboard-topbar"><div><span>Tailored Agents / Website Builder</span><strong>Choose a lead</strong></div></header><div className="factory-body">
+  return <><header className="dashboard-topbar"><div><span>Tailored Agents / Website Builder</span><strong>Choose a prospect</strong></div></header><div className="factory-body">
     <Link className="factory-back" href="/dashboard/sales/factory"><ArrowLeft size={14}/>Website Builder</Link>
-    <div className="factory-heading"><div><span className="factory-eyebrow">Step 1 of 4</span><h1>Create website mockup</h1><p>Choose a lead who could use a website mockup. Selecting Create website mockup requests research using the details you already have. You approve the plan before anything is built.</p></div></div>
-    <form className="factory-lead-search" action="/dashboard/sales/factory/new" method="get"><label htmlFor="lead-search">Find a lead</label><div><input id="lead-search" name="q" defaultValue={query} maxLength={120} placeholder="Name, company, email or phone"/><button className="factory-button is-primary"><Search size={16}/>Search</button></div></form>
-    <section className="factory-panel" aria-label="Choose a lead"><header className="factory-panel-heading"><div><h2>{query?"Matching leads":"Recent leads"}</h2><p>Missing business details are okay. Existing website projects open where you left off.</p></div></header>
+    <div className="factory-heading"><div><span className="factory-eyebrow">Step 1 of 4</span><h1>Create website mockup</h1><p>Choose a prospect who could use a website mockup. Selecting Create website mockup requests research using the details you already have. You approve the plan before anything is built.</p></div></div>
+    <form className="factory-lead-search" action="/dashboard/sales/factory/new" method="get"><label htmlFor="lead-search">Find a prospect</label><div><input id="lead-search" name="q" defaultValue={query} maxLength={120} placeholder="Name, company, email or phone"/><button className="factory-button is-primary"><Search size={16}/>Search</button></div></form>
+    <section className="factory-panel" aria-label="Choose a prospect"><header className="factory-panel-heading"><div><h2>{query?"Matching prospects":"Recent prospects"}</h2><p>Missing business details are okay. Existing website projects open where you left off.</p></div></header>
       {data.leads.map(lead=><article className="factory-project-row" key={lead.id}><div><strong>{lead.name}</strong>{lead.company?<p>{lead.company}</p>:null}<small>{[lead.email,lead.phone].filter(Boolean).join(" · ") || "Add more details later"}</small></div><div>{lead.projectId?<Link className="factory-button" href={`/dashboard/sales/factory/${lead.projectId}`}>Open website project</Link>:<StartFactoryButton leadId={lead.id} disabled={!data.canEdit}/>}</div></article>)}
-      {!data.leads.length?<div className="factory-empty"><h3>No leads found</h3><p>Try a different name or add the lead first.</p><Link className="factory-button" href="/dashboard/leads">Open leads</Link></div>:null}
-      {data.leads.length===50?<p className="factory-settings-copy">Showing 50 leads. Search to narrow the results.</p>:null}
+      {!data.leads.length?<div className="factory-empty"><h3>No prospects found</h3><p>Try a different name or add the prospect first.</p><Link className="factory-button" href="/dashboard/leads">Open prospects</Link></div>:null}
+      {data.leads.length===50?<p className="factory-settings-copy">Showing 50 prospects. Search to narrow the results.</p>:null}
     </section></div></>;
 }

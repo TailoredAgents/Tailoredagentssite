@@ -44,7 +44,7 @@ const navigationGroups = [
   {
     label: "Sales & prospects",
     items: [
-      { label: "Leads", href: "/dashboard/leads", icon: UsersRound },
+      { label: "Prospects", href: "/dashboard/leads", icon: UsersRound },
       { label: "Sales", href: "/dashboard/sales", icon: Columns3 },
       { label: "Website Builder", href: "/dashboard/sales/factory", icon: PanelsTopLeft },
       { label: "Smart Cards", href: "/dashboard/smart-cards", icon: ContactRound },

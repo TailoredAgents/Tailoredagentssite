@@ -76,7 +76,7 @@ export function ManualLeadForm() {
   }
 
   return (
-    <section className="dashboard-manual-lead" aria-label="Manual lead entry">
+    <section className="dashboard-manual-lead" aria-label="Manual prospect entry">
       <div className="dashboard-manual-lead-toolbar">
         <button
           ref={triggerRef}
@@ -94,7 +94,7 @@ export function ManualLeadForm() {
           }}
         >
           <Plus size={17} aria-hidden="true" />
-          Add lead
+          Add prospect
         </button>
         <p>Quickly add a prospect, referral, or call-in.</p>
       </div>
@@ -104,12 +104,12 @@ export function ManualLeadForm() {
           <div className="dashboard-panel-heading dashboard-manual-lead-heading">
             <div>
               <span>Manual entry</span>
-              <h2>New lead</h2>
+              <h2>New prospect</h2>
             </div>
             <button
               type="button"
               className="dashboard-manual-lead-close"
-              aria-label="Close new lead form"
+              aria-label="Close new prospect form"
               onClick={closeForm}
               disabled={pending}
             >
@@ -120,7 +120,7 @@ export function ManualLeadForm() {
             ref={formRef}
             action={formAction}
             className="dashboard-operation-form"
-            aria-label="Add lead"
+            aria-label="Add prospect"
             aria-busy={pending}
           >
             <input type="hidden" name="submissionId" value={submissionId} />
@@ -236,7 +236,7 @@ export function ManualLeadForm() {
                 className={`dashboard-form-message is-${state.status}`}
                 role={state.status === "error" ? "alert" : "status"}
               >
-                {state.message || "Starts as a new lead, assigned to you."}
+                {state.message || "Starts as a new prospect, assigned to you."}
               </p>
               <div className="dashboard-manual-lead-actions">
                 <button
@@ -257,7 +257,7 @@ export function ManualLeadForm() {
                   ) : (
                     <Plus size={16} aria-hidden="true" />
                   )}
-                  {pending ? "Adding lead…" : "Save lead"}
+                  {pending ? "Adding prospect…" : "Save prospect"}
                 </button>
               </div>
             </div>

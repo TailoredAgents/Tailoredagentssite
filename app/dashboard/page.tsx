@@ -9,7 +9,7 @@ export default async function DashboardPage() {
   const overview = await getDashboardOverview(context);
   const mutable = context.role !== "viewer";
   const metrics = [
-    { label: "Open leads", count: overview.counts.leads, detail: "Website inquiries and manually added prospects", href: "/dashboard/leads", icon: Inbox },
+    { label: "Open prospects", count: overview.counts.leads, detail: "Connections, referrals, outreach, and inquiries", href: "/dashboard/leads", icon: Inbox },
     { label: "Clients", count: overview.counts.clients, detail: "Your client relationships", href: "/dashboard/clients", icon: Building2 },
     { label: "Open projects", count: overview.counts.projects, detail: "Planned, active, and on hold", href: "/dashboard/projects", icon: FolderKanban },
     { label: "Active sites", count: overview.counts.sites, detail: "Websites your team manages", href: "/dashboard/sites", icon: Globe2 },
@@ -38,7 +38,7 @@ export default async function DashboardPage() {
         </article>)}
       </section>
       <nav className="dashboard-quick-actions" aria-label="Quick actions">
-        <Link href="/dashboard/leads?status=new" className="dashboard-secondary-button">Review new leads</Link>
+        <Link href="/dashboard/leads?status=new" className="dashboard-secondary-button">Review new prospects</Link>
         {mutable ? <><Link href="/dashboard/clients#create-client" className="dashboard-secondary-button">Add a client</Link><Link href="/dashboard/projects#create-project" className="dashboard-secondary-button">Start a project</Link></> : null}
       </nav>
 
@@ -52,12 +52,12 @@ export default async function DashboardPage() {
 
       <div className="dashboard-overview-grid">
         <section className="dashboard-panel">
-          <div className="dashboard-panel-heading"><div><span>New relationships</span><h2>Recent open leads</h2></div><Link href="/dashboard/leads">All leads<ArrowRight size={16} aria-hidden="true" /></Link></div>
-          {overview.recentLeads.length ? <ul className="dashboard-task-list">{overview.recentLeads.map(lead => <li key={lead.id}><Link href={`/dashboard/leads/${lead.id}`}><div><strong>{leadDisplayName(lead)}</strong><small>{leadCompanyName(lead) ? `${leadCompanyName(lead)} · ` : ""}{formatOperationalDate(lead.createdAt, { dateOnly: true })}</small></div><ArrowRight size={18} aria-hidden="true" /></Link></li>)}</ul> : <div className="dashboard-empty"><Inbox size={24} aria-hidden="true" /><strong>No open leads</strong><p>Website inquiries and manually added leads appear here. Closed records remain in Leads.</p></div>}
+          <div className="dashboard-panel-heading"><div><span>New relationships</span><h2>Recent open prospects</h2></div><Link href="/dashboard/leads">All prospects<ArrowRight size={16} aria-hidden="true" /></Link></div>
+          {overview.recentLeads.length ? <ul className="dashboard-task-list">{overview.recentLeads.map(lead => <li key={lead.id}><Link href={`/dashboard/leads/${lead.id}`}><div><strong>{leadDisplayName(lead)}</strong><small>{leadCompanyName(lead) ? `${leadCompanyName(lead)} · ` : ""}{formatOperationalDate(lead.createdAt, { dateOnly: true })}</small></div><ArrowRight size={18} aria-hidden="true" /></Link></li>)}</ul> : <div className="dashboard-empty"><Inbox size={24} aria-hidden="true" /><strong>No open prospects</strong><p>Connections, referrals, outreach, and inquiries appear here. Closed records remain in Prospects.</p></div>}
         </section>
         <section className="dashboard-panel">
-          <div className="dashboard-panel-heading"><div><span>Next seven days and overdue</span><h2>Lead follow-ups</h2></div><CalendarClock size={21} aria-hidden="true" /></div>
-          {overview.followUps.length ? <ul className="dashboard-task-list">{overview.followUps.map(lead => <li key={lead.id}><Link href={`/dashboard/leads/${lead.id}`}><div><strong>{leadDisplayName(lead)}</strong><small>{lead.nextAction}</small><small>Due {formatOperationalDate(lead.dueAt, { dateOnly: true })}</small></div><ArrowRight size={18} aria-hidden="true" /></Link></li>)}</ul> : <div className="dashboard-empty"><CalendarClock size={24} aria-hidden="true" /><strong>No lead follow-ups due</strong><p>Add a next action and date to a lead. Your sales appointments and follow-ups are in My day.</p><Link href="/dashboard/sales/today">Open My day<ArrowRight size={16} aria-hidden="true" /></Link></div>}
+          <div className="dashboard-panel-heading"><div><span>Next seven days and overdue</span><h2>Prospect follow-ups</h2></div><CalendarClock size={21} aria-hidden="true" /></div>
+          {overview.followUps.length ? <ul className="dashboard-task-list">{overview.followUps.map(lead => <li key={lead.id}><Link href={`/dashboard/leads/${lead.id}`}><div><strong>{leadDisplayName(lead)}</strong><small>{lead.nextAction}</small><small>Due {formatOperationalDate(lead.dueAt, { dateOnly: true })}</small></div><ArrowRight size={18} aria-hidden="true" /></Link></li>)}</ul> : <div className="dashboard-empty"><CalendarClock size={24} aria-hidden="true" /><strong>No prospect follow-ups due</strong><p>Add a next action and date to a prospect. Your sales appointments and follow-ups are in My day.</p><Link href="/dashboard/sales/today">Open My day<ArrowRight size={16} aria-hidden="true" /></Link></div>}
         </section>
       </div>
       <div className="dashboard-secondary-grid">

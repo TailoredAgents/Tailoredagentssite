@@ -25,7 +25,7 @@ export async function GET() {
   return new Response(`\uFEFF${lines.join("\r\n")}`, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="tailored-agents-leads-${date}.csv"`,
+      "Content-Disposition": `attachment; filename="tailored-agents-prospects-${date}.csv"`,
       "Cache-Control": "private, no-store",
       "X-Content-Type-Options": "nosniff",
     },

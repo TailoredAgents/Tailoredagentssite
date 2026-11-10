@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useId, useOptimistic, useState, useTransition } from "react";
 import { updateLeadStatusAction } from "@/lib/operations/actions";
 import { statusLabel } from "@/lib/operations/format";
@@ -39,5 +40,6 @@ export function LeadStatusSelect({ leadId, name, status }: { leadId: string; nam
     <span id={feedbackId} className={styles.feedback} role={result.status === "error" && !pending ? "alert" : "status"}>
       {pending ? "Saving…" : result.message}
     </span>
+    {value === "won" && !pending ? <Link href={`/dashboard/leads/${leadId}#convert-to-client`}>Client details &amp; conversion</Link> : null}
   </div>;
 }

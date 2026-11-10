@@ -36,7 +36,7 @@ test("receives one signed message, links CRM context and keeps notes internal", 
   await page.getByRole("combobox", { name: "Team status", exact: true }).selectOption("waiting");
   await page.getByRole("combobox", { name: "Assigned teammate", exact: true }).selectOption("sms-owner");
   await page.getByRole("combobox", { name: "Linked business", exact: true }).selectOption("00000000-0000-4000-8000-000000000802");
-  await page.getByRole("combobox", { name: "Linked website inquiry", exact: true }).selectOption("00000000-0000-4000-8000-000000000803");
+  await page.getByRole("combobox", { name: "Linked prospect", exact: true }).selectOption("00000000-0000-4000-8000-000000000803");
   await page.getByRole("button", { name: "Save SMS details", exact: true }).click();
   await expect(page.getByText("SMS conversation updated.", { exact: true })).toBeVisible();
   await page.getByRole("textbox", { name: "New internal note", exact: true }).fill("Discuss the website and AI receptionist on Tuesday.");

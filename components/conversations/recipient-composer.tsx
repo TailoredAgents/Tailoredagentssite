@@ -28,7 +28,7 @@ export function RecipientConversation(props: Props) {
   const { recipient } = props;
   const [channel, setChannel] = useState<"email" | "sms" | "call">(recipientPhones(recipient).length ? "sms" : "email");
   return <div className="conversation-recipient-start">
-    <header className="conversation-thread-heading"><div><span className="conversation-eyebrow">{recipient.kind === "lead" ? "Lead" : "Contact"}</span><h2>{recipient.name}</h2><p>{recipient.businessName || recipient.email || recipient.phone}</p></div><Link href="/dashboard/inbox/new">Change person</Link></header>
+    <header className="conversation-thread-heading"><div><span className="conversation-eyebrow">{recipient.kind === "lead" ? "Prospect" : "Contact"}</span><h2>{recipient.name}</h2><p>{recipient.businessName || recipient.email || recipient.phone}</p></div><Link href="/dashboard/inbox/new">Change person</Link></header>
     <div className="conversation-recipient-intro"><MessageSquareText size={26} aria-hidden="true" /><h3>Start the conversation</h3><p>Choose how to reach {recipient.name}. Their details are ready below.</p></div>
     <div className="conversation-composer-shell"><div className="conversation-composer-tabs" role="tablist" aria-label="Communication channel">{([["email","Email",Mail],["sms","SMS",MessageSquareText],["call","Call",Phone]] as const).map(([value,label,Icon],index) => <button key={value} type="button" role="tab" id={`recipient-tab-${value}`} aria-controls={`recipient-compose-${value}`} aria-selected={value === channel} tabIndex={value === channel ? 0 : -1} onClick={() => setChannel(value)} onKeyDown={e => {
       if (!["ArrowLeft","ArrowRight","Home","End"].includes(e.key)) return;

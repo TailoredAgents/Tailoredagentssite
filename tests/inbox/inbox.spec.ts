@@ -43,7 +43,7 @@ test("reads approved mail safely, downloads attachments, assigns and links a con
   await page.getByLabel("Team status").selectOption("waiting");
   await page.getByLabel("Assigned teammate").selectOption("inbox-owner");
   await page.getByLabel("Linked business").selectOption("00000000-0000-4000-8000-000000000901");
-  await page.getByLabel("Linked website inquiry").selectOption("00000000-0000-4000-8000-000000000902");
+  await page.getByLabel("Linked prospect").selectOption("00000000-0000-4000-8000-000000000902");
   await page.getByRole("button", { name: "Save details", exact: true }).click();
   await expect(page.getByText("Conversation updated.")).toBeVisible();
   await page.getByLabel("New internal note").fill("Customer prefers a morning discovery call.");

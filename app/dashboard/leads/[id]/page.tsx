@@ -36,7 +36,7 @@ import {
 } from "@/lib/operations/format";
 import { leadStatuses } from "@/lib/operations/validation";
 
-export const metadata: Metadata = { title: "Lead workspace" };
+export const metadata: Metadata = { title: "Prospect workspace" };
 
 export default async function LeadPage({
   params,
@@ -60,7 +60,7 @@ export default async function LeadPage({
     <>
       <header className="dashboard-topbar">
         <div>
-          <span>Leads</span>
+          <span>Prospects</span>
           <strong>{leadDisplayName(lead)}</strong>
         </div>
         <span className="dashboard-secure">
@@ -71,13 +71,13 @@ export default async function LeadPage({
       <div className="dashboard-content">
         <Link className="dashboard-back-link" href="/dashboard/leads">
           <ArrowLeft size={14} />
-          Back to leads
+          Back to prospects
         </Link>
         <section className="dashboard-page-heading dashboard-page-heading-compact dashboard-record-heading">
           <div>
             <span>
-              {lead.source === "smart_card" ? "Smart Card inquiry" : meta ? "Facebook / Instagram lead" : manual
-                ? "Manually added lead"
+              {lead.source === "smart_card" ? "Smart Card inquiry" : meta ? "Facebook / Instagram prospect" : manual
+                ? "Manually added prospect"
                 : lead.inquiryType === "website-review"
                   ? "Website review"
                   : "Project inquiry"}
@@ -95,14 +95,14 @@ export default async function LeadPage({
           </em>
         </section>
 
-        <div className="dashboard-record-contact-action" style={{ display: "flex", flexWrap: "wrap", gap: ".65rem" }}><Link className="dashboard-primary-button" href={`/dashboard/inbox?lead=${lead.id}`}><MessageSquareText size={16} aria-hidden="true" />Contact lead</Link>{websitePlan ? <Link className="dashboard-secondary-button" href={`/dashboard/sales/factory/${websitePlan.id}`}><Sparkles size={16} aria-hidden="true" />Open website project</Link> : mutable ? <StartFactoryButton leadId={lead.id} /> : null}{websitePlan?.latestBuild?.previewUrl ? <a className="dashboard-secondary-button" href={websitePlan.latestBuild.previewUrl} target="_blank" rel="noreferrer">View website</a> : null}</div>
-        <RecordFacts facts={[{label:"Lead owner",value:lead.ownerName || "Unassigned"},{label:"Service interest",value:lead.interest || "General inquiry"},{label:"Follow-up",value:lead.nextActionAt ? formatOperationalDate(lead.nextActionAt,{dateOnly:true}) : "Not scheduled"}]} />
+        <div className="dashboard-record-contact-action" style={{ display: "flex", flexWrap: "wrap", gap: ".65rem" }}><Link className="dashboard-primary-button" href={`/dashboard/inbox?lead=${lead.id}`}><MessageSquareText size={16} aria-hidden="true" />Contact prospect</Link>{websitePlan ? <Link className="dashboard-secondary-button" href={`/dashboard/sales/factory/${websitePlan.id}`}><Sparkles size={16} aria-hidden="true" />Open website project</Link> : mutable ? <StartFactoryButton leadId={lead.id} /> : null}{websitePlan?.latestBuild?.previewUrl ? <a className="dashboard-secondary-button" href={websitePlan.latestBuild.previewUrl} target="_blank" rel="noreferrer">View website</a> : null}</div>
+        <RecordFacts facts={[{label:"Prospect owner",value:lead.ownerName || "Unassigned"},{label:"Service interest",value:lead.interest || "General inquiry"},{label:"Follow-up",value:lead.nextActionAt ? formatOperationalDate(lead.nextActionAt,{dateOnly:true}) : "Not scheduled"}]} />
         <div className="dashboard-record-grid">
           <div className="dashboard-record-main">{phoneRecipient ? <section className="dashboard-panel dashboard-detail-card"><PhoneNumbers recipient={phoneRecipient} readOnly={!mutable}/></section> : null}
             <section className="dashboard-panel dashboard-detail-card">
               <div className="dashboard-panel-heading">
                 <div>
-                  <span>{manual ? "Lead details" : "Inquiry"}</span>
+                  <span>{manual ? "Prospect details" : "Inquiry"}</span>
                   <h2>Original context</h2>
                 </div>
                 {meta ? <small>Instant Form</small> : manual ? (
@@ -253,13 +253,13 @@ export default async function LeadPage({
               <div className="dashboard-panel-heading">
                 <div>
                   <span>Pipeline</span>
-                  <h2>Lead management</h2>
+                  <h2>Prospect management</h2>
                 </div>
               </div>
               <OperationForm
                 disabled={!mutable}
                 action={updateLeadAction}
-                submitLabel="Save lead"
+                submitLabel="Save prospect"
               >
                 <fieldset disabled={!mutable} className="dashboard-form-grid">
                   <input type="hidden" name="leadId" value={lead.id} />
@@ -310,7 +310,7 @@ export default async function LeadPage({
                       name="outcomeSummary"
                       defaultValue={lead.outcomeSummary || ""}
                       maxLength={1000}
-                      placeholder="Record why the lead was won, lost, or deferred"
+                      placeholder="Record why the prospect was won, lost, or deferred"
                     />
                   </label>
                 </fieldset>
@@ -318,7 +318,7 @@ export default async function LeadPage({
             </section>
 
             {lead.clientId ? (
-              <section className="dashboard-panel dashboard-conversion-complete">
+              <section className="dashboard-panel dashboard-conversion-complete" id="convert-to-client">
                 <UsersRound size={19} />
                 <div>
                   <span>Converted</span>
@@ -329,17 +329,22 @@ export default async function LeadPage({
                 </div>
               </section>
             ) : (
-              <section className="dashboard-panel">
+              <section className="dashboard-panel" id="convert-to-client">
                 <div className="dashboard-panel-heading">
                   <div>
-                    <span>Conversion</span>
-                    <h2>Create the operating records</h2>
+                    <span>Paid engagement agreed</span>
+                    <h2>Convert to client</h2>
                   </div>
                 </div>
+                <p className="dashboard-form-note">
+                  Use this when the prospect accepts your proposal or agrees to paid work.
+                  This marks them Won and creates their client and project records.
+                  Payment can arrive later; conversion does not record a payment.
+                </p>
                 <OperationForm
                   disabled={!mutable}
                   action={convertLeadAction}
-                  submitLabel="Convert lead"
+                  submitLabel="Convert to client"
                   pendingLabel="Converting"
                 >
                   <fieldset disabled={!mutable} className="dashboard-form-grid">

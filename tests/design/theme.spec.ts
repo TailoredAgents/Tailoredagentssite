@@ -43,7 +43,7 @@ test("system follows appearance changes while an explicit light choice stays lig
 
 test("sidebar appearance changes preserve unsaved page input and theme the phone", async ({ page }, info) => {
   await signIn(page); await page.goto("/dashboard/leads");
-  const search = page.getByRole("searchbox", { name: "Search leads", exact: true }); await search.fill("Unsaved color preference check");
+  const search = page.getByRole("searchbox", { name: "Search prospects", exact: true }); await search.fill("Unsaved color preference check");
   if (info.project.name === "phone") await page.getByRole("button", { name: "Menu", exact: true }).click();
   await page.getByLabel("Appearance", { exact: true }).selectOption("dark");
   if (info.project.name === "phone") await page.getByRole("button", { name: "Close menu", exact: true }).click();

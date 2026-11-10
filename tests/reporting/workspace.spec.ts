@@ -80,10 +80,10 @@ test("navigation, search, empty results and shortcuts work with keyboard and pho
 test("real record changes save and milestone updates report success", async ({ page }, info) => {
   await signIn(page);
   await page.goto(`/dashboard/leads/${fixture.lead}`);
-  const lead = page.getByRole("form", { name: "Save lead" });
+  const lead = page.getByRole("form", { name: "Save prospect" });
   await lead.getByLabel("Next action", { exact: true }).fill(`Confirm discovery call — ${info.project.name}`);
-  await lead.getByRole("button", { name: "Save lead", exact: true }).click();
-  await expect(lead.getByRole("status")).toHaveText("Lead updated.");
+  await lead.getByRole("button", { name: "Save prospect", exact: true }).click();
+  await expect(lead.getByRole("status")).toHaveText("Prospect updated.");
   await page.reload();
   await expect(lead.getByLabel("Next action", { exact: true })).toHaveValue(`Confirm discovery call — ${info.project.name}`);
   const note = page.getByRole("form", { name: "Add note" });

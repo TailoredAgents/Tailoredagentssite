@@ -178,7 +178,7 @@ test("Meta leads and source details fit the CRM and connection status is honest"
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await page.goto("/dashboard/leads?source=facebook");
-  await expect(page.getByLabel("Filter leads by source")).toHaveValue(
+  await expect(page.getByLabel("Filter prospects by source")).toHaveValue(
     "facebook",
   );
   const leadRow = page.getByRole("link", { name: /Meta browser lead/ });

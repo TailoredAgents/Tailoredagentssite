@@ -33,10 +33,10 @@ export function MetaSettingsPanel({
     >
       <div className="dashboard-panel-heading">
         <div>
-          <span>Lead acquisition</span>
+          <span>Prospect acquisition</span>
           <h2>Facebook & Instagram</h2>
         </div>
-        <Link href="/dashboard/leads?source=facebook">View Meta leads</Link>
+        <Link href="/dashboard/leads?source=facebook">View Meta prospects</Link>
       </div>
       <dl className="dashboard-detail-list">
         <div>
@@ -89,7 +89,7 @@ export function MetaSettingsPanel({
         {!!conversions?.problems.length && <p>Conversion delivery needs attention: {conversions.problems.map(problem => `${problem.code} (${problem.count})`).join(", ")}. An administrator can check the connection in Meta Events Manager. Delivery retries keep the original event to prevent duplicates.</p>}
         {admin && conversions?.ready && count("failed") > 0 && <OperationForm action={retryMetaConversionsAction} submitLabel="Retry failed conversions"><p>Retry corrected connection errors within 24 hours of the first attempt. Older failures remain visible for review.</p></OperationForm>}
         <p>
-          New Instant Form submissions appear in Leads with the submitted
+          New Instant Form submissions appear in Prospects with the submitted
           answers and available ad details. Assign an owner and follow up from
           the CRM. Website inquiries continue to arrive through the existing
           forms.

@@ -11,7 +11,7 @@ export function cleanLeadCompany(value?: string | null) {
 /** Leads represent people; the company is supporting context. */
 export function leadDisplayName(lead: LeadIdentity) {
   const person = lead.name?.trim();
-  return (person && person !== "Business contact" ? person : "") || cleanLeadCompany(lead.organization) || lead.phone?.trim() || lead.email?.trim() || "Unnamed lead";
+  return (person && person !== "Business contact" ? person : "") || cleanLeadCompany(lead.organization) || lead.phone?.trim() || lead.email?.trim() || "Unnamed prospect";
 }
 
 export function leadCompanyName(lead: LeadIdentity) {

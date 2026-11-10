@@ -72,7 +72,7 @@ async function combine(page:Page,request:APIRequestContext) {
   }
   await page.getByRole("combobox",{name:"Contact",exact:true}).selectOption(state.contactId);
   await page.getByRole("combobox",{name:"Business",exact:true}).selectOption(state.businessId);
-  await page.getByRole("combobox",{name:"Website inquiry",exact:true}).selectOption(state.leadId);
+  await page.getByRole("combobox",{name:"Prospect",exact:true}).selectOption(state.leadId);
   await page.getByRole("button",{name:"Save connected records",exact:true}).click();
   await expect(page.getByRole("form",{name:"Save connected records",exact:true}).getByRole("status")).toContainText(/connected|updated|linked/i);
   await pane(page,"Thread");
@@ -86,7 +86,7 @@ test("chooses a person first and opens a lead directly in the Inbox", async ({pa
   await signIn(page);
   await page.getByRole("link",{name:"New conversation",exact:true}).click();
   await expect(page.getByRole("heading",{name:"New conversation",exact:true})).toBeVisible();
-  await page.getByRole("searchbox",{name:"Find a contact or lead"}).fill("Taylor");
+  await page.getByRole("searchbox",{name:"Find a contact or prospect"}).fill("Taylor");
   await page.getByRole("button",{name:"Search",exact:true}).click();
   await expect(page.locator(".conversation-recipient-result")).toHaveCount(1);
   expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa"]).analyze()).violations).toEqual([]);
@@ -96,7 +96,7 @@ test("chooses a person first and opens a lead directly in the Inbox", async ({pa
   await expect(page.getByRole("region",{name:"Conversation timeline",exact:true})).toContainText("Taylor has a separate request.");
   const state=await control(request,"inspect");
   await page.goto(`/dashboard/leads/${state.leadId}`);
-  await page.getByRole("link",{name:"Contact lead",exact:true}).click();
+  await page.getByRole("link",{name:"Contact prospect",exact:true}).click();
   await expect(page).toHaveURL(new RegExp(`lead=${state.leadId}`));
   await expect(page.getByRole("region",{name:"Selected customer conversation",exact:true}).getByRole("heading",{name:"Jordan Example",exact:true})).toBeVisible();
   await expect(page.getByRole("region",{name:"Conversation timeline",exact:true})).toContainText("Tuesday morning");
@@ -475,9 +475,9 @@ test("deleting a linked lead removes its Inbox history after refresh", async ({p
   const conversation=await combine(page,request);
   const state=await control(request,"inspect");
   await page.goto(`/dashboard/leads/${state.leadId}`);
-  await page.getByRole("button",{name:"Delete lead",exact:true}).click();
-  await expect(page.getByRole("form",{name:"Confirm lead deletion"})).toContainText("linked Inbox history");
-  await page.getByRole("button",{name:"Permanently delete lead",exact:true}).click();
+  await page.getByRole("button",{name:"Delete prospect",exact:true}).click();
+  await expect(page.getByRole("form",{name:"Confirm prospect deletion"})).toContainText("linked Inbox history");
+  await page.getByRole("button",{name:"Permanently delete prospect",exact:true}).click();
   await expect(page).toHaveURL(/\/dashboard\/leads$/);
   await page.goto(`/dashboard/inbox?conversation=${conversation}`);
   await expect(page.getByRole("region",{name:"Conversation timeline",exact:true})).toHaveCount(0);
@@ -514,7 +514,7 @@ test("manages alternate numbers and keeps drafts and SMS history with the select
   await phones.getByLabel("Source / note (optional)").fill("Business contact page");
   await phones.getByRole("button",{name:"Add number",exact:true}).click();
   await expect(phones.getByText("(404) 555-0199",{exact:true})).toBeVisible();
-  await page.getByRole("link",{name:"Contact lead",exact:true}).click();
+  await page.getByRole("link",{name:"Contact prospect",exact:true}).click();
   await pane(page,"Thread");
   await page.getByRole("tab",{name:"SMS",exact:true}).click();
   const picker=page.getByRole("combobox",{name:"Text to",exact:true});
