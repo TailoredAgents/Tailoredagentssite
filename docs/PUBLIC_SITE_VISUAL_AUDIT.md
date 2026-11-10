@@ -110,6 +110,7 @@ Resolved findings:
 Verification:
 
 - **19 public browser tests passed; one redundant mobile invocation of the viewport matrix was intentionally skipped.** The matrix itself passed for every standard route at 320, 768 and 1100 pixels, in addition to the usual desktop and phone runs.
+- A final screenshot review added underlining to links within legal-page prose. **Two additional targeted desktop/phone tests passed**, checking their visual affordance, accessibility and the Terms-to-Contact navigation. These ran after the main suite; they are not described as a second full-suite run.
 - Expanded axe checks from the main content to the whole page, including navigation/footer. All 17 standard pages and all six selectable product views passed the configured WCAG A/AA checks. This is not a complete accessibility certification.
 - Checked form field errors, network errors, retained input, retry identifiers, loading states and success with intercepted responses. No submissions reached the server/provider.
 - Checked keyboard navigation, pricing calculator boundaries, every pricing FAQ, solution selection, product selection and keyboard scrolling. All main-content images loaded; no uncaught browser runtime errors were observed across the standard page matrix.

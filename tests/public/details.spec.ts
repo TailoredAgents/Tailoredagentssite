@@ -117,6 +117,20 @@ test("all six product examples are keyboard-operable and the sample workspace ca
   }
 });
 
+test("legal page links are visually identifiable and the contact route works", async ({ page }) => {
+  for (const path of ["/terms", "/privacy"]) {
+    await page.goto(path);
+    for (const link of await page.locator(".legal a").all()) {
+      expect(await link.evaluate(el => getComputedStyle(el).textDecorationLine)).toContain("underline");
+    }
+    const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+    expect(result.violations).toEqual([]);
+  }
+  await page.goto("/terms");
+  await page.getByRole("link", { name: "Contact Tailored Agents", exact: true }).click();
+  await expect(page).toHaveURL(/\/contact$/);
+});
+
 test("narrow phones and tablets keep public pages and all solution choices usable", async ({ page }, info) => {
   test.skip(info.project.name !== "desktop", "The viewport matrix only needs one run.");
   test.setTimeout(180_000);

@@ -159,6 +159,7 @@
 .public-site .contact-form :is(.field-error,.form-foot p) { font-size:.76rem; line-height:1.6; }
 .public-site .contact-form [aria-invalid="true"] { border-color:#a3473a; background:#fff9f7; }
 .public-site .contact-form .button:disabled { cursor:wait; opacity:.75; }
+.public-site .legal a { color:#174bba; text-decoration:underline; text-underline-offset:3px; }
 .public-site .platform-tabs button[aria-pressed="true"] { border-color:#799ef257; color:#fff; background:#3c69d840; }
 .public-site .platform-scroll-hint { display:none; }
 
