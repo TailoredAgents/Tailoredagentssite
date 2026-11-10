@@ -4,6 +4,38 @@ Status: **Implementation in progress. Connection, read tools, reviewed proposals
 Owner: Austin. Prepared November 2, 2026, America/New_York.
 Baseline reviewed: main `19daac8`, including the November 1 Mail and Eastern-time releases.
 
+## Updated owner direction — November 10: company-wide employee assistant
+
+Austin's primary services are now AI agents and document automation, with websites as an additional service. The assistant must support the whole company and all permitted service types. Website Builder and SEO remain useful integrations, but completing their tool coverage is not a prerequisite for the core employee experience.
+
+The requested experience is for Austin, Devon, Jeffrey and other employees to sign in to their own dashboard profile and talk to an assistant that understands their work, plans with them and carries out authorized tasks. The implementation target is a native dashboard conversation surface; retain the external Operations connection as another way to reach the same business services. This section supersedes the website-first delivery priority and external-chat-only starting point below. It does not claim these new capabilities already exist.
+
+### Current foundation and gaps
+
+- Existing: account-scoped Operations tools, selected permissions, live identity checks, direct/reviewed actions, receipts, private goals and a dashboard for connection controls.
+- Missing: native employee chat and saved conversation history; editable personal preferences and shared company knowledge; a general multi-step task runner; durable delegated background work; employee-facing run progress and cancellation; service-specific AI-agent and document-automation delivery workflows.
+- Existing customer records, projects, tasks and permitted conversations can supply context. Private goals and channel permissions must remain private. Shared company knowledge must be deliberately shared rather than inferred from another employee's private chat.
+- Current Operations grants expire with their authorizing dashboard session. A background run must not silently bypass that expiration. Durable background authority needs its own explicit, revocable delegation, bounded permissions and live membership checks.
+
+### Revised delivery order
+
+1. **Talk to it inside the dashboard.** Add saved employee conversations, clear source links and existing operational tools under the signed-in employee's permissions. Preserve direct execution for authorized routine work and receipts showing actual outcomes. Do not require each employee to maintain an external ChatGPT connection for native chat.
+2. **Give it useful memory and planning.** Add editable personal preferences, explicit company/client knowledge, document attachments and saved task plans. Each plan records steps, owner, dependencies, progress and the evidence for completion. Distinguish a proposed task from an assigned task.
+3. **Let delegated work continue.** Add durable jobs with checkpoints, bounded retries, progress, stop/pause and cost accounting. Closing the page must not lose a job or duplicate an action. Expired or withdrawn authority must stop future side effects. Report uncertain outcomes instead of claiming success or retrying a send blindly.
+4. **Expand company delivery capabilities.** Support AI-agent discovery, requirements, implementation handoffs, testing and support; document extraction, field validation, output preparation and exception review; and existing website work. Actual document processing, code execution or agent deployment needs an implemented connector/runtime and tested results, not just generated instructions.
+5. **Add explicitly configured routines.** Daily preparation, project checks, follow-up queues and completion summaries can run on saved schedules or business events. Activate each with an owner, allowed actions, frequency and allowance. Preserve existing outbound-channel policies. Routine capability development does not itself authorize a new scheduled run.
+
+### Employee experience acceptance
+
+- Each employee can open Assistant in their dashboard, resume their own conversation and ask for a daily or customer brief with links to real records.
+- Tests prove that one employee cannot retrieve another employee's private chats, goals or restricted messages; shared client/project context follows existing workspace permissions.
+- A request such as "Create an onboarding plan for this AI-agent client and assign Devon the discovery follow-up" produces a saved, inspectable result with the correct owner and no duplicate tasks after retry.
+- A document workflow identifies the input version, extracted fields, uncertainties and resulting artifact; it does not invent missing values or claim a downstream system was updated without a receipt.
+- A background job survives a browser close and worker restart, checks current authority before further actions, respects its allowance, and can be stopped without blindly replaying work.
+- The UI distinguishes planning, working, waiting for input, completed, failed and uncertain outcomes. Employees can see what changed and why a task stopped.
+
+The first deliverable is native chat using the existing business services, not an unrestricted shell/browser account. Broader engineering and external application work should use scoped execution environments and explicit connectors. Provider/model selection and a new assistant reasoning allowance remain implementation/activation decisions; no new spend or unattended work is enabled by this document.
+
 ## Updated owner direction — November 2
 
 Austin explicitly requested that the bot perform work without per-action approval. Implemented an opt-in direct execution mode, enabled once by the signed-in owner for a particular connection and its selected scopes. This supersedes this document’s default requirement to visit the dashboard for every supported mutation. Keep reviewed proposals available as an option, and keep scope/role/channel checks, stale-state checks, spending limits, idempotency, receipts and pause/revoke. Existing grants were consented for proposals and must not be silently upgraded. Direct mode does not waive approval requirements imposed by the external ChatGPT host or the separate Mail connection.
