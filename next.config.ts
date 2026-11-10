@@ -24,8 +24,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // Keep assistant browser verification independent of another active dev server.
   distDir: process.env.ASSISTANT_BROWSER_TEST === 'true' ? '.next-assistant-test' : '.next',
-  // Twilio uses native Node HTTP clients and server-side credential handling.
-  serverExternalPackages: ["twilio"],
+  // Keep server-only native dependencies out of the JavaScript bundle.
+  serverExternalPackages: ["twilio", "@napi-rs/canvas"],
   outputFileTracingIncludes: {"/api/assistant/**/*": ["./scripts/assistant/document-*.mjs", "./assets/assistant/*", "./node_modules/pdfjs-dist/**/*", "./node_modules/@napi-rs/**/*", "./node_modules/{yauzl,saxes,xmlchars,fflate,pdf-lib,pako,tslib,sharp}/**/*", "./node_modules/@pdf-lib/**/*", "./node_modules/@img/**/*"], "/api/cron/search-console": ["./scripts/assistant/document-*.mjs", "./assets/assistant/*", "./node_modules/pdfjs-dist/**/*", "./node_modules/@napi-rs/**/*", "./node_modules/{yauzl,saxes,xmlchars,fflate,pdf-lib,pako,tslib,sharp}/**/*", "./node_modules/@pdf-lib/**/*", "./node_modules/@img/**/*"]},
   ...(voiceFixture ? { webpack: fixtureWebpack, turbopack: { resolveAlias: { "@twilio/voice-sdk": { browser: "./scripts/voice-browser-sdk-fixture.ts" } } } } : {}),
   poweredByHeader: false,

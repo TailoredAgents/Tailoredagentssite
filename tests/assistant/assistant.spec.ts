@@ -38,7 +38,7 @@ for(const direct of [false,true])for(const javascript of [true,false])test(`huma
   const action=await request.post('/api/mcp/operations',{headers:{authorization:'Bearer '+credentials.access_token,accept:'application/json, text/event-stream'},data:{jsonrpc:'2.0',id:2,method:'tools/call',params:{name:'execute_action',arguments:{idempotencyKey:'browser-direct-goal',operation:{action:'save_goal',change:{title:clientName}}}}}});
   expect((await action.json()).result.structuredContent.data).toMatchObject({status:'succeeded',executionAuthority:'delegated'});
   if(javascript){
-   await page.goto('/dashboard/assistant');
+   await page.goto('/dashboard/assistant?view=settings');
    const connection=page.getByRole('article').filter({has:page.getByRole('heading',{name:clientName,exact:true})}).first();
    await connection.getByRole('button',{name:'Require my review',exact:true}).click();
    await expect(page.getByRole('status')).toContainText('Direct actions are off');
