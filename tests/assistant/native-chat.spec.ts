@@ -44,6 +44,8 @@ test('employee enables native chat, completes a tool action, and resumes private
  await expect(work.getByRole('link',{name:'Your assistant finished working'}).first()).toBeVisible();
  await work.getByRole('button',{name:'Notification settings',exact:true}).click();
  await expect(work.getByLabel('Text me when my assistant needs review or attention')).toBeDisabled();
+ await expect(work.getByRole('heading',{name:'iPhone notifications',exact:true})).toBeVisible();
+ await expect(work.getByLabel('Use verified iPhone notifications')).toBeDisabled();
  await work.getByLabel('Quiet hours start').fill('22:00');
  await work.getByRole('button',{name:'Save notification settings',exact:true}).click();
  await expect(work.getByText('Saved.',{exact:true})).toBeVisible();

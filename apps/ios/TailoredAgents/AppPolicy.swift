@@ -73,3 +73,13 @@ enum AppPolicy {
         return name
     }
 }
+
+enum PushPolicy {
+    static func destination(_ path: String) -> URL? {
+        guard let components = URLComponents(string: path), components.scheme == nil, components.host == nil,
+              components.path == "/dashboard/assistant", components.fragment == nil else { return nil }
+        let items = components.queryItems ?? []
+        guard items.count <= 1, items.allSatisfy({ ["action", "thread"].contains($0.name) && UUID(uuidString: $0.value ?? "") != nil }) else { return nil }
+        return URL(string: "https://www.tailoredagents.com" + path)
+    }
+}

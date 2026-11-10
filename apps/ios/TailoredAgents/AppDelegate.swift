@@ -1,7 +1,20 @@
 import UIKit
+import UserNotifications
 
 @main
 final class AppDelegate: UIResponder, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        UNUserNotificationCenter.current().delegate = PushCoordinator.shared
+        return true
+    }
+
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        PushCoordinator.shared.registered(deviceToken)
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        PushCoordinator.shared.registrationFailed()
+    }
     func application(_ application: UIApplication,
                      configurationForConnecting connectingSceneSession: UISceneSession,
                      options: UIScene.ConnectionOptions) -> UISceneConfiguration {
@@ -22,7 +35,11 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window.tintColor = .label
         window.rootViewController = WorkspaceController()
         self.window = window
+        window.rootViewController?.loadViewIfNeeded()
         window.makeKeyAndVisible()
+        if let response = options.notificationResponse {
+            PushCoordinator.shared.received(response.notification.request.content.userInfo, opened: true)
+        }
     }
 
     func sceneWillResignActive(_ scene: UIScene) {
@@ -47,5 +64,6 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func sceneDidBecomeActive(_ scene: UIScene) {
         privacyCover?.removeFromSuperview()
         privacyCover = nil
+        PushCoordinator.shared.synchronize()
     }
 }

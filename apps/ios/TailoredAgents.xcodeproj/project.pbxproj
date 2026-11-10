@@ -100,6 +100,35 @@
 			<key>fileRef</key>
 			<string>6086D7A51763F19E161A0141</string>
 		</dict>
+		<key>2342DEA6BBFAA35E06BCA038</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>PushCoordinator.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>60671BF28A541C4396086F65</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>2342DEA6BBFAA35E06BCA038</string>
+		</dict>
+		<key>3D87A60C828193504A9ADAAA</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>text.plist.xml</string>
+			<key>path</key>
+			<string>Push.entitlements</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
 		<key>9AC3B5AD93CBC0305C62F78F</key>
 		<dict>
 			<key>isa</key>
@@ -140,6 +169,8 @@
 				<string>AC3FEBB3605239779A290FD7</string>
 				<string>BF3BC9A8A253F9E0FD32E515</string>
 				<string>6086D7A51763F19E161A0141</string>
+				<string>2342DEA6BBFAA35E06BCA038</string>
+				<string>3D87A60C828193504A9ADAAA</string>
 				<string>9AC3B5AD93CBC0305C62F78F</string>
 				<string>795A02A63DC9C1E86758E98F</string>
 			</array>
@@ -201,6 +232,7 @@
 				<string>D8C40F00112248BB0F4265D0</string>
 				<string>C5FDC0AB3B2F94C07D068CCB</string>
 				<string>9A4D2F703BE59EC63478EBCD</string>
+				<string>60671BF28A541C4396086F65</string>
 			</array>
 			<key>runOnlyForDeploymentPostprocessing</key>
 			<string>0</string>
@@ -283,6 +315,8 @@
 				<string>1</string>
 				<key>MARKETING_VERSION</key>
 				<string>1.0.0</string>
+				<key>TA_APNS_ENVIRONMENT</key>
+				<string>disabled</string>
 				<key>TARGETED_DEVICE_FAMILY</key>
 				<string>1</string>
 				<key>SUPPORTED_PLATFORMS</key>
@@ -352,6 +386,8 @@
 				<string>1</string>
 				<key>MARKETING_VERSION</key>
 				<string>1.0.0</string>
+				<key>TA_APNS_ENVIRONMENT</key>
+				<string>disabled</string>
 				<key>TARGETED_DEVICE_FAMILY</key>
 				<string>1</string>
 				<key>SUPPORTED_PLATFORMS</key>

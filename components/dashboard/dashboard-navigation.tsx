@@ -29,6 +29,7 @@ import { dashboardAuthClient } from "@/lib/dashboard/auth-client";
 import type { DashboardContext } from "@/lib/dashboard/data";
 import { PageFinder } from "./page-finder";
 import { DashboardThemeSelect } from "./theme-provider";
+import { nativeNotificationAction } from "@/lib/assistant/native-notifications";
 
 const navigationGroups = [
   {
@@ -77,6 +78,7 @@ export function DashboardNavigation({ context }: { context: DashboardContext }) 
   const [signOutError, setSignOutError] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   const navigation = useRef<HTMLElement>(null);
+  useEffect(() => { nativeNotificationAction('sync'); }, [pathname, context.user.id]);
   useEffect(() => {
     const container = navigation.current;
     const active = container?.querySelector<HTMLElement>('[aria-current="page"]');
@@ -98,6 +100,7 @@ export function DashboardNavigation({ context }: { context: DashboardContext }) 
     try {
       const result = await dashboardAuthClient.signOut();
       if (result.error) throw new Error("Sign-out unavailable");
+      nativeNotificationAction('signOut');
       window.location.assign("/sign-in");
     } catch {
       setSignOutError(true);

@@ -45,6 +45,12 @@ enum PolicyTests {
             precondition(AppPolicy.downloadFilename(input) == expected, "Filename: \(input)")
         }
         precondition(AppPolicy.downloadFilename(String(repeating: "📧", count: 200)).utf8.count <= 200)
-        print("Passed \(destinations.count + filenames.count + 8) navigation, download, and filename checks.")
+        let pushId = "00000000-0000-4000-8000-000000000001"
+        precondition(PushPolicy.destination("/dashboard/assistant") != nil)
+        precondition(PushPolicy.destination("/dashboard/assistant?thread=" + pushId) != nil)
+        for path in ["//evil.example/dashboard/assistant", "https://evil.example/dashboard/assistant", "/api/assistant/push", "/dashboard/assistant?action=bad", "/dashboard/assistant?thread=" + pushId + "&action=" + pushId, "/dashboard/assistant#other", "/dashboard/assistant?next=https://evil.example"] {
+            precondition(PushPolicy.destination(path) == nil, "Push destination: " + path)
+        }
+        print("Passed \(destinations.count + filenames.count + 17) navigation, download, and filename checks.")
     }
 }

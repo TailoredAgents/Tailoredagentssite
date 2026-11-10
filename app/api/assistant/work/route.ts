@@ -8,6 +8,7 @@ import {runEmployeeNotificationWorker} from '@/lib/assistant/notification-worker
 import {stopChatTurn} from '@/lib/assistant/chat-store';
 import {cardRateLimit} from '@/lib/smart-cards/http';
 import {controlAssignment} from '@/lib/assistant/assignments';
+import {removeOwnedPushDevice} from '@/lib/assistant/push-devices';
 import {runAssistantWorker} from '@/lib/assistant/chat-worker';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -19,6 +20,7 @@ export async function POST(request:Request){return endpoint(async()=>{
  if(v.operation==='verify_phone')return json(await requestEmployeePhoneVerification(c,v.phone));
  if(v.operation==='confirm_phone')await confirmEmployeePhone(c,v.id,v.code);
  if(v.operation==='preferences')await saveEmployeeNotificationPreferences(c,v.preferences);
+ if(v.operation==='remove_push_device')await removeOwnedPushDevice(c,v.id);
  if(v.operation==='read')await markEmployeeNotificationRead(c,v.id);
  if(v.operation==='stop')await stopChatTurn(c,v.threadId,v.id);
  if(v.operation==='assignment'){await controlAssignment(c,v);if(v.action==='resume')after(()=>runAssistantWorker(v.id,30).then(()=>undefined));}

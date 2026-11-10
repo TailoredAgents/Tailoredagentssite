@@ -5,6 +5,7 @@ final class WorkspaceController: UITabBarController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        PushCoordinator.shared.openDashboard = { [weak self] url in self?.open(.dashboard, request: URLRequest(url: url)) }
         viewControllers = AppTab.allCases.map { tab in
             let screen = WebScreenController(tab: tab)
             screen.openTab = { [weak self] tab, request in self?.open(tab, request: request) }

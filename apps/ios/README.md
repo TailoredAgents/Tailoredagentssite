@@ -36,11 +36,11 @@ Open `TailoredAgents.xcodeproj` for normal Xcode development. Its checked-in pro
 - Existing web file inputs provide Photos/Files uploads. Camera and microphone usage descriptions cover taking a photo or recording a video when explicitly chosen from the attachment picker.
 - Google Search Console account linking is completed in Safari, then Dashboard can be reloaded in the app. This avoids attempting Google's sign-in inside an embedded browser and keeps the OAuth cookies together.
 - The app switcher obscures the workspace when the app becomes inactive. TLS verification and server-side access controls retain their platform defaults.
-- Push notifications, background mailbox fetching, offline mail, Face ID app locking, and a unified single sign-in are not included in this initial version. Changing the installation method does not add those capabilities.
+- Assistant native push is optional and disabled in the default free-account build; activation steps are below. Background mailbox fetching, offline mail, Face ID app locking, and a unified single sign-in remain outside this app’s scope.
 
 Website changes appear through the existing deployments. Native changes require rebuilding and reinstalling the IPA. Pushing this repository does not deploy the Cloudflare mail service or install the iOS app.
 
-The [employee-assistant delivery plan](../../docs/OPERATIONS_ASSISTANT_PLAN.md) specifies native push as an extension of this app, with employee SMS alerts first and SMS fallback for employees without verified push. Push remains planned: it requires native implementation, APNs/signing configuration, a rebuilt app and physical-device acceptance. The separate Mail website's web-push support does not establish native push support here.
+The [employee-assistant delivery plan](../../docs/OPERATIONS_ASSISTANT_PLAN.md) specifies native push as an extension of this app, with employee SMS alerts first and SMS fallback for employees without verified push. Push now has server and native implementation; it still requires APNs/signing configuration, a rebuilt app and physical-device acceptance. The separate Mail website's web-push support does not establish native push support here.
 
 ## Verification
 
@@ -63,3 +63,23 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild \
 ```
 
 Remaining physical-device checks: reopening signed-in tabs; composing mail; saving drafts; selecting Photos/Files for uploads; dashboard operations; external links; network loss/recovery; and successful Sideloadly refresh. Automatic refresh configuration and an actual renewal have not yet been confirmed. Do not treat the successful installation, initial sign-in, banner/attachment checks, or simulator checks as completion of these other workflows.
+
+## Optional assistant push (not activated)
+
+The owner currently has a free Apple account. Keep the normal Sideloadly build and employee SMS alerts. [Apple Developer Program membership](https://developer.apple.com/programs/whats-included/) and push-capable provisioning are activation dependencies; no enrollment or purchase has been performed.
+
+After enrollment, enable Push Notifications for App ID `com.tailoredagents.workspace` on the same Apple team. Create an APNs token-signing key with access to that topic, and store its `.p8` contents, team ID and key ID only in the website’s secret environment (`ASSISTANT_APNS_PRIVATE_KEY`, `ASSISTANT_APNS_TEAM_ID`, `ASSISTANT_APNS_KEY_ID`). Use the correct `ASSISTANT_APNS_ENVIRONMENT=development|production`; set `ASSISTANT_PUSH_ENABLED=true` only for the matching signed build. Never put the signing key in Swift, JavaScript, source control or logs.
+
+On macOS, run the policy tests and unsigned simulator/device build first. A paid-team development build can then be created with:
+
+```sh
+APPLE_TEAM_ID=YOURTEAMID TA_APNS_ENVIRONMENT=development bash apps/ios/scripts/build-push.sh
+```
+
+The script creates a signed development `.app`, does not publish or upload it, and checks its signed entitlement. Install using Xcode Devices and Simulators. Distribution/TestFlight needs an appropriate distribution profile/export and `production` environment; the script deliberately does not purchase, publish or guess distribution credentials. Default Debug/Release builds retain `TA_APNS_ENVIRONMENT=disabled` and no push entitlement, preserving free-account installation.
+
+In the app’s Dashboard tab, tap **… → Assistant notifications → Enable on this iPhone**. Allow iOS permission, then open the verification notification. Server-side verification is required before push takes priority over opted-in SMS. Tokens and a random per-installation revocation secret remain native; credentials never cross the JavaScript bridge. The server chooses the employee from the Dashboard session. Notification payloads contain generic text and opaque IDs; opening resolves the destination only for the signed-in owner. Profile changes and explicit sign-out revoke the old binding; an offline revocation retries on reconnect. Device removal is also available under Dashboard → Assistant → Notification settings.
+
+Provider acceptance is not delivery/read confirmation. No duplicate SMS is sent merely because a push is unread or uncertain; a definite rejection or unavailable verified device can use the employee’s existing SMS opt-in. Quiet hours, coalescing and per-employee/company limits apply. Tokens that Apple reports invalid are disabled.
+
+November 10 implementation verification: server tests cover APNs signing/response identity, verification ownership, replay, token rotation, account changes, safe opening and SMS fallback. **The new Swift code has not been compiled with Xcode in this Windows session, and signed physical-device APNs delivery has not been tested.** Earlier October native test results apply only to the earlier app version. Required release gate: macOS policy/build/UI tests, then a signed iPhone test in foreground/background/closed state, denied permission, token refresh, logout/account switch, session expiry and SMS fallback. Keep SMS available until those checks pass.

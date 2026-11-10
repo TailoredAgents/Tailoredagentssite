@@ -16,7 +16,7 @@ def add(name, value):
 
 sources, resources, children = [], [], []
 for filename in ['AppDelegate.swift', 'AppPolicy.swift', 'WorkspaceController.swift',
-                 'WebScreenController.swift', 'AttachmentStore.swift', 'Info.plist', 'Assets.xcassets']:
+                 'WebScreenController.swift', 'AttachmentStore.swift', 'PushCoordinator.swift', 'Push.entitlements', 'Info.plist', 'Assets.xcassets']:
     file_type = 'sourcecode.swift' if filename.endswith('.swift') else (
         'folder.assetcatalog' if filename.endswith('.xcassets') else 'text.plist.xml')
     ref = add(filename, {'isa': 'PBXFileReference', 'lastKnownFileType': file_type,
@@ -53,6 +53,7 @@ for config in ['Debug', 'Release']:
             'INFOPLIST_FILE': 'TailoredAgents/Info.plist', 'GENERATE_INFOPLIST_FILE': 'NO',
             'ASSETCATALOG_COMPILER_APPICON_NAME': 'AppIcon', 'CODE_SIGN_STYLE': 'Automatic',
             'CURRENT_PROJECT_VERSION': '1', 'MARKETING_VERSION': '1.0.0',
+            'TA_APNS_ENVIRONMENT': 'disabled',
             'TARGETED_DEVICE_FAMILY': '1', 'SUPPORTED_PLATFORMS': 'iphoneos iphonesimulator',
             'SUPPORTS_MACCATALYST': 'NO', 'SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD': 'NO',
             'LD_RUNPATH_SEARCH_PATHS': ['$(inherited)', '@executable_path/Frameworks'],

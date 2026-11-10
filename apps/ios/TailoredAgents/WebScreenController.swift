@@ -35,7 +35,9 @@ final class WebScreenController: UIViewController, WKNavigationDelegate, WKUIDel
         // WebKit retains secure session cookies; native code never reads passwords.
         configuration.websiteDataStore = .default()
         configuration.applicationNameForUserAgent = "TailoredAgents-iOS/1.0"
+        if appTab == .dashboard { configuration.userContentController.add(PushCoordinator.shared, name: "taAssistantPush") }
         webView = WKWebView(frame: .zero, configuration: configuration)
+        if appTab == .dashboard { PushCoordinator.shared.attach(webView, presenter: self) }
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
@@ -60,13 +62,17 @@ final class WebScreenController: UIViewController, WKNavigationDelegate, WKUIDel
         configureErrorPanel()
         backButton.accessibilityLabel = "Back"
         navigationItem.leftBarButtonItem = backButton
-        let menu = UIMenu(children: [
+        var menuActions: [UIMenuElement] = [
             UIAction(title: "Reload", image: UIImage(systemName: "arrow.clockwise")) { [weak self] _ in self?.requestReload() },
             UIAction(title: "Open in Safari", image: UIImage(systemName: "safari")) { [weak self] _ in
                 guard let self else { return }
                 self.openExternal(self.webView.url ?? self.appTab.homeURL)
             }
-        ])
+        ]
+        if appTab == .dashboard {
+            menuActions.append(UIAction(title: "Assistant notifications", image: UIImage(systemName: "bell")) { _ in PushCoordinator.shared.showSettings() })
+        }
+        let menu = UIMenu(children: menuActions)
         pageMenuButton = UIBarButtonItem(image: UIImage(systemName: "ellipsis.circle"), menu: menu)
         pageMenuButton.accessibilityLabel = "Page options"
         navigationItem.rightBarButtonItems = [pageMenuButton]
@@ -228,6 +234,10 @@ final class WebScreenController: UIViewController, WKNavigationDelegate, WKUIDel
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
         errorPanel.isHidden = true
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        if appTab == .dashboard { PushCoordinator.shared.synchronize() }
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
