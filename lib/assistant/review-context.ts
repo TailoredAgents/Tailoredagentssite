@@ -7,6 +7,8 @@ import {getDatabasePool} from '@/lib/dashboard/db';
 import {AssistantError} from './config';
 import {getCalendarEntry} from '@/lib/booking/staff';
 import {smsReview} from './sms';
+import {emailReview,callReview} from './outbound';
+import {notificationSender} from './booking-notifications';
 import {getCallFollowUpOptions,getCallFollowUpTask} from '@/lib/voice/follow-up-tasks';
 import {getManagedProfile,getManagedCard,getCardAiSettings} from '@/lib/smart-cards/settings';
 import {readMailDraft,readSmsDraft} from './drafts';
@@ -15,6 +17,8 @@ import type {Principal} from './oauth';
 // accept these labels from the assistant. Re-resolve before executing the change.
 export async function reviewContext(p:Principal,tool:string,input:Record<string,unknown>){
  const context=p.context;const result:Record<string,unknown>={requestedFor:context.user.name,workspace:context.workspace.name};
+ if(tool==='send_email')result.email=await emailReview(p,input);
+ if(tool==='call_customer')result.call=await callReview(p,input);
  if(tool==='save_mail_draft')result.currentPrivateDraft=await readMailDraft(p,input);
  if(tool==='save_sms_draft')result.currentPrivateDraft=await readSmsDraft(p,input);
  if(['save_card_profile','create_card_link','update_card_link','set_card_assistant'].includes(tool)){
@@ -118,7 +122,7 @@ export async function reviewContext(p:Principal,tool:string,input:Record<string,
   if(!profile)throw new AssistantError('not_found','This calendar profile is unavailable.',404);
   result.calendar=profile.display_name;result.calendarOwner=profile.login_email;result.timezone='America/New_York';
  }
- if(['book_consultation','reschedule_consultation','close_calendar_entry','cancel_consultation'].includes(tool)){
+ if(['book_consultation','reschedule_consultation','close_calendar_entry','cancel_consultation','book_consultation_and_notify','reschedule_consultation_and_notify','cancel_consultation_and_notify'].includes(tool)){
   await cardAccess(context,true);
   for(const [label,id] of [['currentBooking',input.bookingId??input.id],['selectedTime',input.slotId]]){
    if(typeof id!=='string')continue;
@@ -126,7 +130,9 @@ export async function reviewContext(p:Principal,tool:string,input:Record<string,
    if(!entry)throw new AssistantError('not_found','This calendar entry is unavailable.',404);
    result[String(label)]=entry;
   }
-  result.timezone='America/New_York';result.visitorNotification='This action sends no message.';
+  result.timezone='America/New_York';
+  if(tool.endsWith('_and_notify')){result.notificationSender=await notificationSender(p);result.visitorNotification='Automatically queues a text with the confirmed appointment time or cancellation to this customer. Standard SMS charges apply. Check its notification receipt for acceptance.';}
+  else result.visitorNotification='This action sends no message.';
  }
  return result;
 }

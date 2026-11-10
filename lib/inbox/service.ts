@@ -266,6 +266,7 @@ function providerKey(workspaceId: string, requestId: string) {
 export async function sendInboxMessage(
   context: DashboardContext,
   raw: unknown,
+  guard?: {beforeDelivery:()=>Promise<void>},
 ): Promise<InboxActionState> {
   const input = sendSchema.parse(raw);
   // Drafts preserve the editor's whitespace, while the send payload is trimmed.
@@ -395,6 +396,7 @@ export async function sendInboxMessage(
   try {
     // The gateway must revalidate current Mail permission and honor this exact
     // idempotency key. Unknown/crashed calls never create a fresh provider key.
+    if(guard)await guard.beforeDelivery();
     const result = await sendMail(context, {
       mailboxId: input.mailboxId,
       fromAddressId: mailbox.id,

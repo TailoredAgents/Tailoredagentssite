@@ -5,6 +5,7 @@ import {communicationChanges} from './communication-changes';
 import {callChanges} from './call-changes';
 import {cardChanges} from './card-changes';
 import {draftChanges} from './draft-changes';
+import {personalChanges} from './personal-changes';
 import type {Principal} from '../oauth';
 import type {AssistantScope} from '../config';
 import {goalSchema,saveGoal} from '../goals';
@@ -16,11 +17,13 @@ import {addConversationNote} from '@/lib/conversations/service';
 import {changeCalendar,CalendarInputError} from '@/lib/booking/calendar';
 import {bookConsultation,bookConsultationSchema,moveConsultationSchema} from '@/lib/booking/staff';
 import {CardError} from '@/lib/smart-cards/http';
-export type ChangeTool={name:string;title:string;description:string;schema:z.ZodObject;scopes:AssistantScope[];external?:boolean;run:(p:Principal,input:unknown)=>Promise<unknown>};
+import {bookingNotificationHook} from '../booking-notifications';
+export type ChangeTool={name:string;title:string;description:string;schema:z.ZodObject;scopes:AssistantScope[];external?:boolean;reviewRequired?:boolean;run:(p:Principal,input:unknown)=>Promise<unknown>};
 function change<S extends z.ZodObject>(name:string,title:string,description:string,schema:S,run:(p:Principal,input:z.output<S>)=>Promise<unknown>,scopes:AssistantScope[]=['operations:write']):ChangeTool{
  return {name,title,description,schema,scopes,async run(p,input){try{return await run(p,schema.parse(input));}catch(error){if(error instanceof SalesInputError||error instanceof CalendarInputError||error instanceof CardError)throw new AssistantError('change_rejected',error.message,409);throw error;}}};
 }
 export const changeTools:ChangeTool[]=[
+ ...personalChanges,
  ...operationChanges,
  ...communicationChanges,
  ...callChanges,
@@ -43,7 +46,10 @@ export const changeTools:ChangeTool[]=[
  change('publish_consultation_time','Add extra consultation time','Publish an extra public consultation slot, 15–120 minutes, at least two hours ahead and within 90 days. Cannot overlap existing availability, appointments, bookings or blocks. Owner/admin only. Regular availability is already 8 AM–7 PM Eastern daily.',z.object({profile:z.enum(['austin','jeffrey','devon','conner']),startsAt:z.iso.datetime({offset:true}),minutes:z.union([z.literal(15),z.literal(30),z.literal(45),z.literal(60),z.literal(90),z.literal(120)])}),(p,v)=>changeCalendar(p.context,{...v,operation:'publish',mode:'open'})),
  change('book_consultation','Book phone consultation','Book an existing lead into a public time returned by get_availability. Read the lead first; a phone number and its current updatedAt are required. Owner/admin only. No visitor notification is sent; do not claim otherwise.',bookConsultationSchema,(p,v)=>bookConsultation(p.context,v)),
  change('reschedule_consultation','Reschedule phone consultation','Move an existing booked or cancelled consultation to a different available slot. Read get_calendar_entry for its current updatedAt. Owner/admin only. No visitor notification is sent; arrange any message separately.',moveConsultationSchema,(p,v)=>bookConsultation(p.context,v,true)),
+ change('book_consultation_and_notify','Book and notify customer','Book a prospect into a time from get_availability and automatically queue a customer text. Read the prospect first. Requires current updatedAt, a valid phone, owner/admin access and a booking notification number in Chat settings. Check get_booking_notifications for its receipt; queued is not delivered.',bookConsultationSchema,async(p,v)=>bookConsultation(p.context,v,false,await bookingNotificationHook(p)),['operations:write','conversations:read','conversations:send']),
+ change('reschedule_consultation_and_notify','Reschedule and notify customer','Move a consultation and automatically queue the customer’s new time by text. Read get_calendar_entry for current updatedAt. Requires owner/admin and configured booking notifications. Check get_booking_notifications for the result.',moveConsultationSchema,async(p,v)=>bookConsultation(p.context,v,true,await bookingNotificationHook(p)),['operations:write','conversations:read','conversations:send']),
  change('close_calendar_entry','Remove time block or extra opening','Close an existing open time or time block using its current updatedAt. Cannot cancel a booked appointment. Owner/admin only.',z.object({id:z.uuid(),expectedUpdatedAt:z.iso.datetime({offset:true})}),(p,v)=>changeCalendar(p.context,{...v,operation:'close'})),
  change('cancel_consultation','Cancel phone consultation','Cancel a booked consultation using its current updatedAt. The user must confirm the visitor has already been contacted; never infer this from a draft or a requested message. Owner/admin only. This action itself sends no notification.',z.object({id:z.uuid(),expectedUpdatedAt:z.iso.datetime({offset:true}),visitorAlreadyContacted:z.literal(true)}),(p,v)=>changeCalendar(p.context,{id:v.id,expectedUpdatedAt:v.expectedUpdatedAt,operation:'cancel',contacted:'on'})),
+ change('cancel_consultation_and_notify','Cancel and notify customer','Cancel a booked consultation and automatically queue a customer text. Requires current updatedAt, owner/admin and configured booking notifications. Check get_booking_notifications; queued is not delivered.',z.object({id:z.uuid(),expectedUpdatedAt:z.iso.datetime({offset:true})}),async(p,v)=>changeCalendar(p.context,{...v,operation:'cancel'},await bookingNotificationHook(p)),['operations:write','conversations:read','conversations:send']),
 ];
 export const findChange=(name:string)=>changeTools.find(t=>t.name===name);

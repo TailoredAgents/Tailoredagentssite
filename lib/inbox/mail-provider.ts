@@ -203,7 +203,11 @@ async function request(
     : null;
   // Assistant mail sending must use the reviewed sender/allowance path, never
   // silently inherit the dashboard's unrestricted interactive send transport.
-  if (delegated && body.action === 'send') throw new MailProviderError('grant_required','Send through the connected Mail tools after review.');
+  if (delegated && body.action === 'send') {
+    const action=delegated.reviewedEmailActionId?(await getDatabasePool().query(`SELECT input FROM assistant_actions WHERE id=$1 AND grant_id=$2 AND user_id=$3 AND workspace_id=$4 AND tool='send_email' AND status='running' AND approved_at IS NOT NULL AND execution_authority='dashboard'`,[delegated.reviewedEmailActionId,delegated.grantId,context.user.id,context.workspace.id])).rows[0]:null;
+    if(!action||body.threadId||body.mailboxId!==action.input.mailboxId||body.to!==action.input.to||body.subject!==action.input.subject||body.text!==action.input.text)
+      throw new MailProviderError('grant_required','Review this exact email in the Assistant dashboard before sending.');
+  }
   if (!session || session.user.id !== context.user.id)
     throw new MailProviderError(
       "grant_required",

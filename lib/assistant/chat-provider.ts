@@ -10,15 +10,21 @@ import {CHAT_MODEL,CHAT_MAX_OUTPUT,chatReservation,chatUsageCost} from './chat-c
 const outputItem=z.object({type:z.string(),name:z.string().optional(),arguments:z.string().optional(),call_id:z.string().optional(),content:z.array(z.object({type:z.string(),text:z.string().optional(),refusal:z.string().optional()}).passthrough()).optional()}).passthrough();
 export const chatResponseSchema=z.object({status:z.literal('completed'),output:z.array(outputItem),usage:z.object({input_tokens:z.number().int().nonnegative(),output_tokens:z.number().int().nonnegative()})});
 export type ChatResponse=z.infer<typeof chatResponseSchema>;
-export async function requestChatResponse(p:Principal,turnId:string,step:number,payload:Record<string,unknown>):Promise<ChatResponse>{
+export async function requestChatResponse(p:Principal,turnId:string,step:number,payload:Record<string,unknown>,hosted?:'web'|'calculation'):Promise<ChatResponse>{
  if(!process.env.OPENAI_API_KEY?.trim()||process.env.ASSISTANT_CHAT_ENABLED==='false')throw new AssistantError('not_configured','Dashboard chat is not configured yet.',503);
  await assertTurnActive(p,turnId);
+ const prior=(await getDatabasePool().query('SELECT status,response FROM assistant_chat_requests WHERE turn_id=$1 AND step=$2 AND workspace_id=$3',[turnId,step,p.context.workspace.id])).rows[0];
+ if(prior){if(prior.status==='completed'&&prior.response)return chatResponseSchema.parse(prior.response);throw new AssistantError('provider_outcome_unknown','A previous AI request has an uncertain outcome. Its allowance remains reserved; this step will not be charged again automatically.',409);}
  const serialized=JSON.stringify({...payload,model:CHAT_MODEL,service_tier:'default',store:false,reasoning:{effort:'low'},max_output_tokens:CHAT_MAX_OUTPUT,include:['reasoning.encrypted_content']});
- const reservation=chatReservation(Buffer.byteLength(serialized)),requestId=randomUUID();
+ if(hosted&&!p.scopes.includes('research:use'))throw new AssistantError('insufficient_scope','Enable research and calculations in Chat settings.',403);
+ // One hosted call only. Reserve conservatively for intermediate model context
+ // and a fresh 1 GB container. Uncertain requests retain this reservation.
+ const hostedReservation=hosted==='web'?700000:hosted==='calculation'?6000000:0;
+ const reservation=chatReservation(Buffer.byteLength(serialized))+hostedReservation,requestId=randomUUID();
  const db=await getDatabasePool().connect();let month='';
  try{
   await db.query('BEGIN');
-  const turn=(await db.query<{remaining:number}>(`SELECT EXTRACT(EPOCH FROM deadline-now()) remaining FROM assistant_chat_turns WHERE id=$1 AND grant_id=$2 AND status='running' AND deadline>now()+interval '2 seconds' FOR UPDATE`,[turnId,p.grantId])).rows[0];
+  const turn=(await db.query(`SELECT id FROM assistant_chat_turns WHERE id=$1 AND grant_id=$2 AND status IN ('queued','running') FOR UPDATE`,[turnId,p.grantId])).rows[0];
   if(!turn)throw new AssistantError('stopped','This reply stopped.',409);
   const setting=(await db.query<{monthly_limit_micros:string}>('SELECT monthly_limit_micros FROM assistant_chat_settings WHERE workspace_id=$1 FOR UPDATE',[p.context.workspace.id])).rows[0];
   if(!setting||Number(setting.monthly_limit_micros)===0)throw new AssistantError('budget_not_set','An owner or administrator needs to set the company’s monthly assistant allowance.',403);
@@ -38,11 +44,12 @@ export async function requestChatResponse(p:Principal,turnId:string,step:number,
  const chunks:Uint8Array[]=[];let size=0;
  try{for(;;){const c=await reader.read();if(c.done)break;size+=c.value.byteLength;if(size>512000){await reader.cancel();throw new Error('oversized_provider_reply');}chunks.push(c.value);}}finally{reader.releaseLock();}
  const result=chatResponseSchema.parse(JSON.parse(Buffer.concat(chunks).toString('utf8')));
- const cost=chatUsageCost(result.usage.input_tokens,result.usage.output_tokens);
+ const hostedCost=result.output.reduce((sum,item)=>sum+(item.type==='web_search_call'?10000:item.type==='code_interpreter_call'?30000:0),0);
+ const cost=chatUsageCost(result.usage.input_tokens,result.usage.output_tokens)+hostedCost;
  const ledger=await getDatabasePool().connect();
  try{
   await ledger.query('BEGIN');
-  const claimed=await ledger.query("UPDATE assistant_chat_requests SET status='completed',amount_micros=$2 WHERE id=$1 AND status='reserved' RETURNING id",[requestId,cost]);
+  const claimed=await ledger.query("UPDATE assistant_chat_requests SET status='completed',amount_micros=$2,response=$3::jsonb WHERE id=$1 AND status='reserved' RETURNING id",[requestId,cost,JSON.stringify(result)]);
   if(claimed.rowCount)await ledger.query('UPDATE assistant_chat_usage SET amount_micros=amount_micros-$3+$4 WHERE workspace_id=$1 AND month=$2',[p.context.workspace.id,month,reservation,cost]);
   await ledger.query('COMMIT');
  }catch(e){await ledger.query('ROLLBACK');throw e;}finally{ledger.release();}

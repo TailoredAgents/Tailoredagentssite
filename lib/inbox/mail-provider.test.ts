@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {assistantExecution} from '@/lib/assistant/execution-context';
 import type { DashboardContext } from "@/lib/dashboard/data";
 vi.mock("server-only", () => ({}));
-const deletedThread = vi.hoisted(() => ({ query: vi.fn(async () => ({rowCount:0,rows:[]})) }));
+const deletedThread = vi.hoisted(() => ({ query: vi.fn<(...args:unknown[])=>Promise<{rowCount:number;rows:Record<string,unknown>[]}>>(async () => ({rowCount:0,rows:[]})) }));
 vi.mock("@/lib/dashboard/db", () => ({ getDatabasePool: () => deletedThread }));
 const session = vi.hoisted(() => ({
   user: { id: "fixture-user" },
@@ -80,6 +80,20 @@ describe("CRM Mail transport and privacy", () => {
     deletedThread.query.mockResolvedValue({rowCount:1,rows:[]});
     await expect(getMailThread(context,"mailbox-sales","deleted-thread")).rejects.toThrow("deleted from the CRM");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it('allows only the exact reviewed email under its running dashboard action',async()=>{
+    const delegated={userId:context.user.id,sessionId:'delegated-session',grantId:'test-grant',reviewedEmailActionId:'reviewed-action'};
+    deletedThread.query.mockResolvedValue({rowCount:1,rows:[{input}]});
+    fetchMock.mockResolvedValue(Response.json({messageId:'message-1',threadId:'thread-1',status:'accepted'}));
+    await assistantExecution.run(delegated,async()=>{
+      await expect(sendMail(context,{...input,to:'different@example.test'})).rejects.toMatchObject({state:'grant_required'});
+      await expect(sendMail(context,{...input,text:'Changed content'})).rejects.toMatchObject({state:'grant_required'});
+      expect(fetchMock).not.toHaveBeenCalled();
+      await sendMail(context,input);expect(fetchMock).toHaveBeenCalledTimes(1);
+      deletedThread.query.mockResolvedValue({rowCount:0,rows:[]});
+      await expect(sendMail(context,input)).rejects.toMatchObject({state:'grant_required'});
+    });
+    expect(token).toHaveBeenCalledWith('delegated-session',context.user.id);
   });
   afterEach(() => {
     vi.unstubAllGlobals();

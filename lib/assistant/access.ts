@@ -12,5 +12,5 @@ export async function asAssistant<T>(p:Principal,required:AssistantScope[],write
  const parent=assistantExecution.getStore(),direct=requireDirect||(parent?.grantId===fresh.grantId&&parent.direct===true);
  if(write&&direct&&process.env.OPERATIONS_ASSISTANT_DIRECT_ENABLED==='false')throw new AssistantError('direct_actions_paused','Direct actions are paused by the administrator. Reviewed proposals remain available.',503);
  if(write&&direct&&!fresh.directActions)throw new AssistantError('direct_actions_disabled','Enable direct actions once for this connection in the Assistant dashboard, or use a reviewed proposal.',403);
- return assistantExecution.run({userId:fresh.context.user.id,sessionId:fresh.sessionId,grantId:fresh.grantId,direct},()=>run(fresh));
+ return assistantExecution.run({userId:fresh.context.user.id,sessionId:fresh.sessionId,grantId:fresh.grantId,direct,reviewedEmailActionId:parent?.grantId===fresh.grantId?parent.reviewedEmailActionId:undefined},()=>run(fresh));
 }

@@ -10,6 +10,7 @@ import { runVoiceMaintenance } from "@/lib/voice/maintenance";
 import { runCallRecordingWorker } from "@/lib/voice/recording-worker";
 import { runMetaLeadWorker } from "@/lib/meta/service";
 import { runMetaConversionWorker } from "@/lib/meta/conversions";
+import {runAssistantWorker} from '@/lib/assistant/chat-worker';
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -37,11 +38,12 @@ export async function POST(request: Request) {
       voice = { checked: 0, failed: 1 };
       console.error("voice_retention_worker_failed");
     }
-    const [outcomes,callRecordings,metaLeads,metaConversions] = await Promise.all([
+    const [outcomes,callRecordings,metaLeads,metaConversions,assistant] = await Promise.all([
       syncAllSearchConsoleConnections(),
       runCallRecordingWorker().catch(()=>{console.error("call_recording_worker_failed");return {checked:0,failed:1,more:false};}),
       runMetaLeadWorker().catch(()=>{console.error("meta_lead_worker_failed");return {checked:0,failed:1,more:false};}),
       runMetaConversionWorker().catch(()=>{console.error("meta_conversion_worker_failed");return {checked:0,failed:1,more:false};}),
+      runAssistantWorker().catch(()=>({checked:0,failed:1,more:false})),
     ]);
     const textAlerts = await runIncomingSmsAlertWorker().catch(() => ({ checked: 0, failed: 1, more: false }));
     const leadAlerts = await runLeadAlertWorker().catch(() => ({ checked: 0, failed: 1, more: false }));
@@ -52,7 +54,8 @@ export async function POST(request: Request) {
       AND (lease_expires_at IS NULL OR lease_expires_at < now()) LIMIT 1`);
     return privateJson({
       ok: true,
-      more: introductions.more || Boolean(due.rowCount) || callRecordings.more || metaLeads.more || metaConversions.more || leadAlerts.more || textAlerts.more,
+      more: assistant.more || introductions.more || Boolean(due.rowCount) || callRecordings.more || metaLeads.more || metaConversions.more || leadAlerts.more || textAlerts.more,
+      assistant,
       checked: outcomes.length,
       failed: outcomes.filter((outcome) => outcome.status === "failed").length,
       voice,

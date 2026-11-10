@@ -4,6 +4,14 @@ Status: **Implementation in progress. Connection, read tools, reviewed proposals
 Owner: Austin. Prepared November 2, 2026, America/New_York.
 Baseline reviewed: main `19daac8`, including the November 1 Mail and Eastern-time releases.
 
+## Current scope correction — November 10
+
+Austin explicitly excludes building/programming/deploying custom client AI systems and automation workflows. Those remain his work. This correction supersedes any broader delivery-automation ambitions below. The assistant handles company operations and operational research/calculations.
+
+The current release adds durable queued chat, saved step recovery, explicit daily/weekday/weekly routines, searchable private memory/history, public web research, sandbox calculations, opted-in SMS, exactly reviewed new email, employee-connected phone calls, and automatic consultation texts with outbox receipts. See `OPERATIONS_ASSISTANT_SETUP.md` for implemented limits and verification. Session-bound authorization still expires; arbitrary external apps, uploaded-document execution, permanent recall and autonomous AI voice calls are not implemented. No routine or customer communication is activated merely by shipping these capabilities.
+
+The older phased plan below is retained as historical planning, not a statement of current scope or availability.
+
 ## Updated owner direction — November 10: company-wide employee assistant
 
 Austin's primary services are now AI agents and document automation, with websites as an additional service. The assistant must support the whole company and all permitted service types. Website Builder and SEO remain useful integrations, but completing their tool coverage is not a prerequisite for the core employee experience.
@@ -15,7 +23,7 @@ The requested experience is for Austin, Devon, Jeffrey and other employees to si
 November 10 delivery: native dashboard chat, private saved conversations, explicit employee access, the existing business tools, action receipts, bounded multi-step turns and a separate $25/month shared allowance are implemented. Local database and browser verification are recorded in `OPERATIONS_ASSISTANT_SETUP.md`. Durable background jobs, editable long-term knowledge, uploaded-document execution and recurring routines remain outstanding; request-driven chat does not complete those phases.
 
 - Existing: native employee chat and saved conversation history, account-scoped Operations tools, selected permissions, live identity checks, direct/reviewed actions, receipts, private goals, bounded turn progress/stop and a dashboard for connection controls.
-- Missing: editable personal preferences and shared company knowledge; durable multi-step delegated background work; service-specific AI-agent and document-automation execution workflows.
+- Missing: editable personal preferences and shared company knowledge; durable multi-step delegated background work; uploaded-document analysis (custom client-system development is excluded).
 - Existing customer records, projects, tasks and permitted conversations can supply context. Private goals and channel permissions must remain private. Shared company knowledge must be deliberately shared rather than inferred from another employee's private chat.
 - Current Operations grants expire with their authorizing dashboard session. A background run must not silently bypass that expiration. Durable background authority needs its own explicit, revocable delegation, bounded permissions and live membership checks.
 

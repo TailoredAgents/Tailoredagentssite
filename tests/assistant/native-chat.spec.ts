@@ -10,8 +10,13 @@ test('employee enables native chat, completes a tool action, and resumes private
  await expect(chat).toBeVisible();
  await chat.getByRole('button',{name:'Chat settings',exact:true}).click();
  await chat.getByLabel('How should the assistant work?').selectOption('direct');
+ await chat.getByLabel('Research the public web and run sandbox calculations').check();
+ await chat.getByLabel('Run recurring work while I’m away').check();
+ await chat.getByLabel('Prepare emails for my exact review before sending').check();
  await chat.getByRole('button',{name:/Enable my assistant|Update my access/}).click();
  await expect(chat.getByText(/Direct actions enabled/)).toBeVisible();
+ await expect(chat.getByRole('heading',{name:'Private memory',exact:true})).toBeVisible();
+ await expect(chat.getByRole('heading',{name:'Recurring work',exact:true})).toBeVisible();
  await chat.getByLabel('Monthly limit in US dollars').fill('25');
  await chat.getByRole('button',{name:'Save allowance',exact:true}).click();
  await chat.getByLabel('Message your assistant').fill('Save a goal to finish agent onboarding.');
@@ -20,6 +25,11 @@ test('employee enables native chat, completes a tool action, and resumes private
  await chat.locator('summary').filter({hasText:'Activity'}).click();
  await expect(chat.getByRole('link',{name:'View action'})).toHaveAttribute('href',new RegExp('/dashboard/assistant\\?action='));
  await page.reload();
+ await chat.getByRole('button',{name:'Chat settings',exact:true}).click();
+ await expect(chat.getByLabel('Research the public web and run sandbox calculations')).toBeChecked();
+ await expect(chat.getByLabel('Run recurring work while I’m away')).toBeChecked();
+ await expect(chat.getByLabel('Prepare emails for my exact review before sending')).toBeChecked();
+ await chat.getByRole('button',{name:'Chat settings',exact:true}).click();
  await chat.getByRole('button',{name:'Save a goal to finish agent onboarding.',exact:true}).first().click();
  await expect(chat.getByText('Your onboarding goal is saved.',{exact:true})).toBeVisible();
  await expect(chat.getByRole('button',{name:'Send',exact:true})).toBeDisabled();

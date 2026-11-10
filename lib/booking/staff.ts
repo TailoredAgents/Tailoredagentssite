@@ -6,6 +6,8 @@ import {cardAccess} from '@/lib/smart-cards/data';
 import {CardError} from '@/lib/smart-cards/http';
 import {formatEasternTime} from '@/lib/time';
 import {lockCalendar,requireOpenSlot} from './calendar';
+import type {PoolClient} from 'pg';
+export type BookingAfterSave=(db:PoolClient,id:string)=>Promise<{notificationId:string;notificationStatus:string}>;
 
 const revision=z.iso.datetime({offset:true});
 export const bookConsultationSchema=z.object({leadId:z.uuid(),expectedLeadUpdatedAt:revision,profile:z.enum(['austin','jeffrey','devon','conner']),slotId:z.uuid()});
@@ -19,7 +21,7 @@ export async function getCalendarEntry(context:DashboardContext,id:string){
 }
 // Both staff and public bookings take the same workspace calendar lock and use
 // the same availability query. No email, SMS, research or paid build is started.
-export async function bookConsultation(context:DashboardContext,raw:unknown,move=false){
+export async function bookConsultation(context:DashboardContext,raw:unknown,move=false,afterSave?:BookingAfterSave){
  const input=move?moveConsultationSchema.parse(raw):bookConsultationSchema.parse(raw);
  const db=await getDatabasePool().connect();
  try{
@@ -40,8 +42,9 @@ export async function bookConsultation(context:DashboardContext,raw:unknown,move
   const slot=await requireOpenSlot(db,input.slotId,input.profile);
   if(previousId)await db.query("UPDATE booking_slots SET lead_id=NULL,status=CASE WHEN status='booked' THEN 'open' ELSE status END,updated_at=now() WHERE workspace_id=$1 AND id=$2",[context.workspace.id,previousId]);
   await db.query("UPDATE booking_slots SET status='booked',lead_id=$3,updated_at=now() WHERE workspace_id=$1 AND id=$2",[context.workspace.id,slot.id,leadId]);
-  await db.query("UPDATE leads SET description=COALESCE(description,'')||$3,updated_at=now() WHERE workspace_id=$1 AND id=$2",[context.workspace.id,leadId,`\n\nCalendar update: phone consultation ${move?'rescheduled':'booked'} for ${formatEasternTime(slot.startsAt)} to ${formatEasternTime(slot.endsAt)}. No visitor notification was sent by this action.`]);
+  await db.query("UPDATE leads SET description=COALESCE(description,'')||$3,updated_at=now() WHERE workspace_id=$1 AND id=$2",[context.workspace.id,leadId,`\n\nCalendar update: phone consultation ${move?'rescheduled':'booked'} for ${formatEasternTime(slot.startsAt)} to ${formatEasternTime(slot.endsAt)}. ${afterSave?'Customer text notification queued.':'No visitor notification was sent by this action.'}`]);
   await insertAuditLog(db,{workspaceId:context.workspace.id,actorUserId:context.user.id,action:move?'appointment.rescheduled':'appointment.staff_booked',targetType:'booking_slot',targetId:slot.id,metadata:{leadId,previousSlotId:previousId??null,profile:input.profile,notificationSent:false}});
-  await db.query('COMMIT');return {...slot,leadId,previousSlotId:previousId??null,notificationSent:false};
+  const notification=afterSave?await afterSave(db,slot.id):{};
+  await db.query('COMMIT');return {...slot,leadId,previousSlotId:previousId??null,notificationSent:false,...notification};
  }catch(error){await db.query('ROLLBACK');throw error;}finally{db.release();}
 }

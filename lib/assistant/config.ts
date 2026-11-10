@@ -5,6 +5,13 @@ export const scopeLabels = {
  'operations:write': 'Change business records, tasks, calendar and supported settings',
  'conversations:read': 'Read permitted customer conversations and call history',
  'conversations:send': 'Send text messages (standard messaging charges apply)',
+ 'mail:send': 'Prepare email sends for your review',
+ 'voice:send': 'Connect calls to your saved employee phone (calling charges apply)',
+ 'research:use': 'Search the web and run sandboxed analysis within the assistant allowance',
+ 'routines:write': 'Schedule and manage recurring assistant work',
+ 'routines:read': 'Read your private recurring assistant work',
+ 'memory:read': 'Read your private saved memories and search your past assistant chats',
+ 'memory:write': 'Save, correct and forget your private memories',
  'personal:read': 'Read your private goals',
  'personal:write': 'Change your private goals',
 } as const;

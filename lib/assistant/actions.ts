@@ -8,6 +8,7 @@ import {AssistantError,AssistantOutcomeError,isWriteScope,assistantOrigin} from 
 import {asAssistant,requireScopes} from './access';
 import {reviewContext} from './review-context';
 import {findChange} from './tools/changes';
+import {assistantExecution} from './execution-context';
 // Hash canonical, parsed values. Unknown fields cannot become authority or approvals.
 export function canonical(value:unknown):string{
  if(value===undefined)return 'null';
@@ -48,6 +49,7 @@ export async function listActions(p:Principal,page=1){
 export async function reviewAction(context:DashboardContext,id:string,decision:'approve'|'reject'){return performAction(context,id,decision);}
 export async function executeAction(p:Principal,name:string,raw:unknown,key:string){
  const tool=findChange(name);if(!tool)throw new AssistantError('unsupported_action','This action is unavailable.');
+ if(tool.reviewRequired)return prepareAction(p,name,raw,key);
  return asAssistant(p,tool.scopes,true,async fresh=>{
   const proposal=await prepareAction(fresh,name,raw,key);
   return performAction(fresh.context,proposal.id,'approve',fresh.grantId);
@@ -74,6 +76,10 @@ async function performAction(context:DashboardContext,id:string,decision:'approv
  try{
   const value=await asAssistant(p!,tool.scopes,true,async fresh=>{
    if(canonical(await reviewContext(fresh,row.tool,row.input))!==canonical(row.review_context))throw new AssistantError('review_changed','The reviewed customer, teammate or record changed. Prepare a new proposal.',409);
+   if(row.tool==='send_email'){
+    if(delegateGrantId)throw new AssistantError('review_required','Email needs your exact review.',403);
+    return assistantExecution.run({...assistantExecution.getStore()!,reviewedEmailActionId:row.id},()=>tool.run(fresh,row.input));
+   }
    return tool.run(fresh,row.input);
   },!!delegateGrantId);
   const result=value??{saved:true};

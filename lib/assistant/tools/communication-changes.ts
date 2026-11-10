@@ -5,7 +5,12 @@ import {z} from 'zod';
 import {workSchema} from '@/lib/conversations/validation';
 import {saveConversationWork,ConversationInputError} from '@/lib/conversations/service';
 import {AssistantError} from '../config';
+import {emailSchema,executeEmail,callCustomerSchema,executeCall} from '../outbound';
 export const communicationChanges:ChangeTool[]=[{
+ name:'send_email',title:'Send email',description:'Prepare a new email from an allowed mailbox. Exact human review is always required, even with direct actions. Read list_mailboxes and the customer’s current records first. Use a stable requestId. Acceptance is not proof of delivery.',schema:emailSchema,scopes:['conversations:read','mail:send'],external:true,reviewRequired:true,run:executeEmail,
+},{
+ name:'call_customer',title:'Connect employee to customer',description:'Call the employee’s saved approved phone, then connect the customer after the employee answers and presses 1. Read get_voice_status and the customer first. Supply an exact phone and stable requestId. Standard calling charges apply. This is not an AI voice call.',schema:callCustomerSchema,scopes:['conversations:read','voice:send'],external:true,run:executeCall,
+},{
  name:'send_sms',title:'Send text message',
  description:'Send an exact text message using the connection’s execution mode. First call get_sms_recipient and inspect the conversation; supply its conversationId and lastMessageId (null for none). Use a stable requestId. The recipient and newest message are rechecked before sending. The existing number grant, opt-out and hourly limits apply. Standard SMS charges apply; a sent text cannot be recalled. Check get_sms_send_status for delivery; an accepted request is not proof of delivery.',
  schema:assistantSmsSchema,scopes:smsSendScopes,external:true,run:executeSms,

@@ -82,7 +82,7 @@ async function saveTeamEvent(context:DashboardContext,raw:Record<string,unknown>
   await db.query('COMMIT');return {id,notificationSent:false};
  }catch(error){await db.query('ROLLBACK');throw error;}finally{db.release();}
 }
-export async function changeCalendar(context:DashboardContext,raw:Record<string,unknown>){
+export async function changeCalendar(context:DashboardContext,raw:Record<string,unknown>,afterSave?:import('./staff').BookingAfterSave){
  if(['create_event','update_event','remove_event'].includes(String(raw.operation)))return saveTeamEvent(context,raw);
  const db=await getDatabasePool().connect();let changedId:string|undefined;
  try{
@@ -105,14 +105,15 @@ export async function changeCalendar(context:DashboardContext,raw:Record<string,
     const current=(await db.query<{updated_at:Date}>('SELECT updated_at FROM booking_slots WHERE workspace_id=$1 AND id=$2 FOR UPDATE',[context.workspace.id,id])).rows[0];
     if(!current||current.updated_at.getTime()!==Date.parse(expected))throw new CalendarInputError('This calendar entry changed. Read it again before editing.');
    }
-   if(raw.operation==='cancel'&&raw.contacted!=='on')throw new CalendarInputError('Contact the visitor about the cancellation before confirming it here.');
+   if(raw.operation==='cancel'&&raw.contacted!=='on'&&!afterSave)throw new CalendarInputError('Contact the visitor about the cancellation before confirming it here.');
    const r=await db.query(`UPDATE booking_slots SET status=$3,updated_at=now() WHERE workspace_id=$1 AND id=$2 AND status=ANY($4::text[]) RETURNING id,lead_id`,[context.workspace.id,id,raw.operation==='cancel'?'cancelled':'closed',raw.operation==='cancel'?['booked']:['open','blocked']]);
    changedId=id;
    if(!r.rowCount)throw new CalendarInputError('This calendar entry has changed. Refresh to see its current status.');
-   if(raw.operation==='cancel'&&r.rows[0].lead_id)await db.query("UPDATE leads SET description=description||E'\\n\\nCalendar update: this consultation was cancelled after the team contacted the visitor.',updated_at=now() WHERE workspace_id=$1 AND id=$2 AND anonymized_at IS NULL",[context.workspace.id,r.rows[0].lead_id]);
+   if(raw.operation==='cancel'&&r.rows[0].lead_id)await db.query("UPDATE leads SET description=COALESCE(description,'')||$3,updated_at=now() WHERE workspace_id=$1 AND id=$2 AND anonymized_at IS NULL",[context.workspace.id,r.rows[0].lead_id,afterSave?'\n\nCalendar update: consultation cancelled; customer notification queued.':'\n\nCalendar update: consultation cancelled after the team contacted the visitor.']);
   }else throw new CalendarInputError('Unknown calendar action.');
   await insertAuditLog(db,{workspaceId:context.workspace.id,actorUserId:context.user.id,action:`booking_calendar.${raw.operation}`,targetType:'booking_slot',targetId:changedId,metadata:{profile:raw.profile??null,slot:raw.id??null}});
-  await db.query('COMMIT');return {id:changedId,notificationSent:false};
+  const notification=afterSave&&changedId?await afterSave(db,changedId):{};
+  await db.query('COMMIT');return {id:changedId,notificationSent:false,...notification};
  }catch(e){await db.query('ROLLBACK');throw e;}finally{db.release();}
 }
 export async function getBookingCalendar(context:DashboardContext,range?:{start:string;end:string}){
