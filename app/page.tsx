@@ -1,109 +1,51 @@
+import { publicPageMetadata } from "@/lib/site";
 import { managedMetadata } from "@/lib/seo/public-metadata";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BarChart3, Bot, Check, MonitorSmartphone, Search, Workflow } from "lucide-react";
-import { GrowthHeroVisual, SeoDashboard, WebsiteConceptGallery } from "@/components/growth-visuals";
-import { ProductWindow } from "@/components/product-window";
+import { ArrowRight, Cable, FileText, Handshake, MessagesSquare, Search, Workflow } from "lucide-react";
+import { BusinessWorkflowDemo } from "@/components/business-workflow-demo";
 import { ArrowLink, Eyebrow, FinalCta } from "@/components/ui";
-import { coreServices, servicePricing } from "@/lib/services";
 
-const baselineMetadata: Metadata = {
-  title: "Premium Websites, Local SEO & AI Automation",
-  description: "Tailored Agents builds high-performing websites, improves local search visibility, and develops managed AI agents and intelligent automations for growing businesses.",
-  alternates: { canonical: "/" },
-};
+const baselineMetadata = publicPageMetadata(
+  "Custom AI Agents & Business Automation",
+  "Georgia-based Tailored Agents builds custom AI agents, workflow automation and software around your business. Explore solutions, ongoing support and partnerships.",
+  "/",
+);
 
-const serviceIcons = [MonitorSmartphone, Search, Workflow];
-
-const growthSteps = [
-  ["01", "Website foundation", "Start with a credible customer experience, clear services, and useful inquiry paths."],
-  ["02", "Managed growth", "Build visibility and understand results through SEO, analytics, and human-reviewed priorities."],
-  ["03", "Website intelligence", "Add chat, qualification, booking, or follow-up when the customer journey is ready."],
-  ["04", "Business operations", "Expand into calls, service, documents, and connected workflows one useful responsibility at a time."],
+const opportunities = [
+  [MessagesSquare,"Follow up while the opportunity is fresh","Organize incoming leads, prepare relevant replies, and help the right person take the next step."],
+  [Cable,"Connect the tools your team already uses","Move information between supported systems so people spend less time copying the same details."],
+  [FileText,"Turn documents into useful information","Extract and check details, match them to records, and route exceptions for review."],
+  [Workflow,"Make reporting easier to act on","Bring scattered updates into a useful summary, with the evidence behind it."],
+  [Search,"Help your team find the answer","Build assistants around approved business knowledge, with sources and a clear path to a person."],
 ] as const;
 
 export default function Home() {
-  return (
-    <>
-      <section className="growth-hero">
-        <div className="growth-hero-atmosphere" aria-hidden="true" />
-        <div className="container-shell growth-hero-grid">
-          <div className="growth-hero-copy">
-            <Eyebrow>Websites · Growth · Automation</Eyebrow>
-            <h1 className="growth-display"><span>Better websites.</span><span>More <em>visibility.</em></span><span>Smarter business.</span></h1>
-            <p className="lede">Tailored Agents builds high-performing websites, improves local search visibility, and develops intelligent automations that help growing businesses capture more opportunities and operate more efficiently.</p>
-            <div className="hero-actions"><ArrowLink href="/free-review">Get a Free Website Review</ArrowLink><Link className="button button-light" href="/work">Explore Our Work<ArrowRight size={15}/></Link></div>
-            <div className="growth-proof-row"><span><Check size={13}/> Designed around your business</span><span><Check size={13}/> Built for speed and clarity</span><span><Check size={13}/> Ready to grow with you</span></div>
-          </div>
-          <GrowthHeroVisual />
-        </div>
-        <div className="container-shell growth-capability-strip"><span>Website strategy</span><i/><span>Responsive development</span><i/><span>Local search visibility</span><i/><span>Business automation</span></div>
-      </section>
+  return <>
+    <section className="business-hero">
+      <div className="container-shell business-hero-grid">
+        <div className="business-hero-copy"><Eyebrow>Custom AI · Automation · Software</Eyebrow><h1>AI that works<br/>around <em>your<br className="business-title-break"/> business.</em></h1><p className="lede">We build custom AI agents and automation that reduce repetitive work, connect your systems, and give your team more time for the work that matters.</p><div className="hero-actions"><ArrowLink href="/contact">Let’s talk about your business</ArrowLink><Link className="business-text-link" href="/solutions">Explore solutions<ArrowRight size={16}/></Link></div><p className="business-location">Based in Georgia. Built for businesses wherever they operate.</p></div>
+        <BusinessWorkflowDemo/>
+      </div>
+      <div className="container-shell business-capabilities"><span>Custom AI agents</span><span>Workflow automation</span><span>Connected software</span><span>Ongoing support</span></div>
+    </section>
 
-      <section className="section-pad featured-websites-section">
-        <div className="container-shell">
-          <div className="section-heading-wide"><div><Eyebrow>Featured website design</Eyebrow><h2 className="h2">First impressions that <span className="serif-italic">work harder.</span></h2></div><p className="lede">We design customer-facing experiences around credibility, usability, performance, and the decisions a visitor needs to make before becoming an inquiry.</p></div>
-          <WebsiteConceptGallery featuredOnly />
-          <div className="section-end-link"><ArrowLink href="/websites">Explore website development</ArrowLink></div>
-        </div>
-      </section>
+    <section className="business-case section-pad"><div className="container-shell business-case-grid">
+      <div><Eyebrow>Inside our work · StonegateOS</Eyebrow><h2 className="h2">From a conversation<br/>to a <span className="serif-italic">clear next step.</span></h2><p className="lede">Customer conversations, follow-up and job details shouldn’t live in separate places. StonegateOS brings them into a connected operating platform for a service business.</p><ArrowLink href="/work/stonegateos" light>Explore the engineering case study</ArrowLink></div>
+      <div className="business-case-workflow"><span className="micro-label">One workflow in the platform</span><ol>{[["Capture the conversation","Keep a customer call connected to its business context."],["Prepare the useful details","Transcription and analysis can turn the recording into structured information."],["Put context with the customer","Prepare CRM documentation so the next person can pick up the conversation."],["Keep a person in control","Review suggested next steps and sensitive actions before carrying them out."]].map(([title,text],index)=><li key={title}><span>0{index+1}</span><div><h3>{title}</h3><p>{text}</p></div></li>)}</ol><p className="business-case-note">An actively developed internal platform. Capabilities depend on configuration; this is not a claim that every workflow is verified live.</p></div>
+    </div></section>
 
-      <section className="section-pad service-section">
-        <div className="container-shell">
-          <div className="section-heading-wide"><div><Eyebrow>What we do</Eyebrow><h2 className="h2">A stronger digital presence, built to <span className="serif-italic">keep improving.</span></h2></div><p className="lede">Begin with the service your business needs now. Add ongoing visibility work and targeted automation as the next opportunity becomes clear.</p></div>
-          <div className="core-service-grid">
-            {coreServices.map((service, index) => {
-              const Icon = serviceIcons[index];
-              return <Link href={service.href} className={`core-service-card service-card-${index + 1}`} key={service.key}><div className="service-card-top"><span><Icon size={20}/></span><em>0{index + 1}</em></div><h3>{service.title}</h3><p>{service.summary}</p><div className="service-detail">{service.detail}</div><b>Explore service <ArrowRight size={14}/></b></Link>;
-            })}
-          </div>
-        </div>
-      </section>
+    <section className="section-pad"><div className="container-shell business-opportunities"><div><Eyebrow>Start with the work</Eyebrow><h2 className="h2">Where does your team<br/>keep getting <span className="serif-italic">stuck?</span></h2><p className="lede">You don’t need to know which AI to buy. Bring us the repeated task, awkward handoff or missing connection. We’ll help work out what’s worth building.</p><p className="text-muted">These are examples of solutions we can scope, not a list of ready-made products.</p></div><div className="business-problem-list">{opportunities.map(([Icon,title,text],index)=><article key={title}><span><Icon size={21}/></span><div><small>0{index+1}</small><h3>{title}</h3><p>{text}</p></div></article>)}</div></div></section>
 
-      <section className="section-pad analytics-showcase-section">
-        <div className="container-shell analytics-intro">
-          <div><Eyebrow>Managed SEO & Growth Hub</Eyebrow><h2 className="h2">Your website is the front door. The work behind it should be <span className="serif-italic">visible.</span></h2></div>
-          <div><p className="lede">Our managed-service experience is designed to bring performance signals, search priorities, completed work, and recommended next actions into one clear view. The dashboard shown below is illustrative.</p><ArrowLink href="/seo" light>Explore SEO & the Growth Hub</ArrowLink></div>
-        </div>
-        <div className="container-shell analytics-dashboard-stage"><SeoDashboard /></div>
-        <div className="container-shell hub-layer-grid">
-          <article><BarChart3 size={18}/><span>01 / Monitor</span><h3>Understand what is happening.</h3><p>Website activity, conversion events, visibility signals, and performance trends become easier to review.</p></article>
-          <article><Search size={18}/><span>02 / Improve</span><h3>Turn signals into priorities.</h3><p>See what was reviewed, what changed, what deserves attention next, and why the work matters.</p></article>
-          <article><Bot size={18}/><span>03 / Expand</span><h3>Add intelligence when the workflow is ready.</h3><p>The same business context can support website assistants, lead follow-up, approvals, activity history, and operational agents as the engagement expands.</p></article>
-        </div>
-      </section>
+    <section className="section-pad business-industry-section"><div className="container-shell"><div className="section-heading-wide"><div><Eyebrow>Focused opportunities</Eyebrow><h2 className="h2">Real workflows.<br/><span className="serif-italic">Different industries.</span></h2></div><p className="lede">We start with how the work gets done. Explore two areas we’re focused on, or talk with us about a different business.</p></div><div className="business-industry-grid"><Link href="/solutions/commercial-insurance"><span>01 / Commercial insurance</span><h3>Less document chasing.<br/>More time for clients.</h3><p>Explore intake, document preparation and review workflows for agency teams.</p><b>Explore insurance automation<ArrowRight size={17}/></b></Link><Link href="/solutions/freight-automation"><span>02 / Freight brokerages &amp; 3PL</span><h3>Keep the paperwork<br/>moving with the freight.</h3><p>Explore delivery documents, invoice checks and billing preparation around your operation.</p><b>Explore freight automation<ArrowRight size={17}/></b></Link></div></div></section>
 
-      <section className="section-pad growth-journey-section">
-        <div className="container-shell">
-          <div className="section-heading-wide"><div><Eyebrow>A long-term technology partner</Eyebrow><h2 className="h2">Start with what brings people in. Build what helps the business <span className="serif-italic">run.</span></h2></div><p className="lede">Websites and managed SEO establish the foundation. From there, add customer-facing intelligence and operational agents over time—all designed to connect through the same relationship and shared business context.</p></div>
-          <div className="growth-journey">
-            {growthSteps.map(([number, title, text], index) => <article key={title}><span>{number}</span><div className="journey-icon">{index === 0 ? <MonitorSmartphone size={18}/> : index === 1 ? <BarChart3 size={18}/> : index === 2 ? <Search size={18}/> : <Workflow size={18}/>}</div><h3>{title}</h3><p>{text}</p>{index < growthSteps.length - 1 && <i aria-hidden="true">→</i>}</article>)}
-          </div>
-        </div>
-      </section>
+    <section className="section-pad"><div className="container-shell"><div className="section-heading-wide"><div><Eyebrow>How we work together</Eyebrow><h2 className="h2">Understand it.<br/>Build it. <span className="serif-italic">Improve it.</span></h2></div><p className="lede">Start with one useful opportunity and a clear scope. Implementation, ongoing support and improvements are agreed around what your business needs.</p></div><div className="business-process">{[["Understand","Walk through the workflow, the people involved, the systems you use and where time gets lost."],["Scope","Agree on a practical solution, connections, human checkpoints, costs and what success should look like."],["Build & implement","Develop the solution, test it with your team and prepare the handoff into everyday use."],["Support & improve","Provide the monitoring, maintenance and improvements included in your support agreement."]].map(([title,text],index)=><article key={title}><span>0{index+1}</span><h3>{title}</h3><p>{text}</p></article>)}</div><div className="section-end-link"><Link className="business-text-link" href="/pricing">How we scope and price the work<ArrowRight size={16}/></Link></div></div></section>
 
-      <section className="dark-section section-pad stonegate-section growth-stonegate-section">
-        <div className="container-shell showcase-intro">
-          <div className="showcase-copy"><Eyebrow>Featured engineering work · StonegateOS</Eyebrow><h2 className="h2">The technical depth behind the <span className="serif-italic">growth work.</span></h2><p className="lede">StonegateOS demonstrates our ability to develop connected applications, internal platforms, customer workflows, field tools, analytics, and AI-assisted automation for complex service operations.</p><ArrowLink href="/work/stonegateos" light>Read the case study</ArrowLink></div>
-          <ul className="check-list"><li>Customer acquisition</li><li>CRM & communications</li><li>Scheduling & quoting</li><li>Field operations</li><li>Partner workflows</li><li>Marketing analysis</li><li>AI-assisted work</li><li>Durable automation</li></ul>
-        </div>
-        <div className="container-shell product-stage"><ProductWindow /></div>
-      </section>
+    <section className="section-pad section-rule"><div className="container-shell business-services"><div><Eyebrow>Our full range</Eyebrow><h2 className="h2">The right tools for<br/>the <span className="serif-italic">whole business.</span></h2><p className="lede">AI and automation are our focus. Websites, search visibility and custom software remain part of what we do—available together or as separate engagements.</p></div><div>{[["AI agents & automation","/automation"],["Custom software & integrations","/engineering"],["Website design & development","/websites"],["SEO & analytics","/seo"],["Website & SEO packages","/packages"]].map(([title,href])=><Link href={href} key={href}>{title}<ArrowRight size={18}/></Link>)}</div></div></section>
 
-      <section className="section-pad pricing-section">
-        <div className="container-shell">
-          <div className="section-heading-wide"><div><Eyebrow>Clear starting points</Eyebrow><h2 className="h2">Competitive options. Thoughtful <span className="serif-italic">scope.</span></h2></div><p className="lede">See the entry price before starting a conversation. Every paid engagement still receives a written scope so the deliverables, responsibilities, and complete price are clear.</p></div>
-          <div className="pricing-grid">
-            {Object.values(servicePricing).map((item, index) => <article className={index === 0 ? "featured-price" : ""} key={item.label}><span>0{index + 1}</span><h3>{item.label}</h3><small>{item.qualifier}</small><strong>{item.price}</strong><p>{item.note}</p><Link href={item.href}>{item.cta}<ArrowRight size={14}/></Link></article>)}
-          </div>
-          <p className="pricing-note">Website packages begin at $1,500 and managed SEO at $400 per month. Founding-client website agents begin at $99 per month with $0 setup for a standard deployment. Custom workflows, advanced agents, integrations, and usage are scoped separately.</p>
-          <div className="section-end-link"><ArrowLink href="/pricing">Explore packages and pricing</ArrowLink></div>
-        </div>
-      </section>
-
-      <FinalCta />
-    </>
-  );
+    <section className="section-pad business-partner-section"><div className="container-shell business-partner"><div className="business-partner-icon"><Handshake size={32}/></div><div><Eyebrow>Build with us</Eyebrow><h2 className="h2">Good relationships create<br/><span className="serif-italic">new possibilities.</span></h2><p>Know a business we could help? Have an audience, industry expertise or an idea for a joint solution? Let’s discuss referrals, delivery partnerships or our revenue-share program.</p></div><ArrowLink href="/partners">Explore partnerships</ArrowLink></div></section>
+    <FinalCta/>
+  </>;
 }
 
 export const revalidate = 300;

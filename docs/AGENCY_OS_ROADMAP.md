@@ -6,6 +6,8 @@ Updated October 24, 2026. This is the active implementation sequence authorized 
 
 **Business direction, November 10:** Tailored Agents is prioritizing custom AI agents, workflow automation, integrations and ongoing managed support, based in Georgia. Commercial insurance and freight brokerages/3PL are the first campaign focuses. Website creation remains an optional service and sales tool.
 
+**Public positioning, November 10:** Homepage, navigation, automation, pricing, work, about, contact and social previews now lead with custom AI and business operations. Existing website/SEO offers remain. `/partners` invites referral, delivery and revenue-share conversations; terms stay private. [Implementation, content boundaries and verification](PUBLIC_SITE_POSITIONING.md). This public-site change does not implement the AI discovery workflow below.
+
 **Website intake change:** Website Builder now starts only when a teammate requests **Create website mockup**. Facebook, website and manual lead intake are independent of the builder. Migration **0048** disables and retires the automatic-research flag. Manual research, preapproval chat, exact-version approval, budget limits and existing previews remain. Previously queued/running work is preserved and may finish. [Deployment and operating details](WEBSITE_FACTORY_SETUP.md#on-demand-planning-release--november-10).
 
 **Next phase — AI discovery and solution planning (planned, not implemented by this release):**

@@ -1,10 +1,19 @@
 export const interestOptions = [
-  "Website design and development",
-  "Local SEO and analytics",
   "Business automation and AI",
   "Custom software or platform",
+  "Website design and development",
+  "Local SEO and analytics",
+  "Partnership or referral",
+  "Revenue-share opportunity",
   "Not sure yet",
 ] as const;
+
+export function contactInterestFromQuery(value: string | string[] | undefined): (typeof interestOptions)[number] | "" {
+  if (value === "partnership") return "Partnership or referral";
+  if (value === "revenue-share") return "Revenue-share opportunity";
+  if (value === "automation") return "Business automation and AI";
+  return "";
+}
 
 export const inquiryTypes = ["project", "website-review"] as const;
 export type InquiryType = (typeof inquiryTypes)[number];

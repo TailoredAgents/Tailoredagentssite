@@ -10,7 +10,7 @@ export function SiteFooter() {
         <div className="footer-top">
           <div>
             <Link href="/" className="brand" aria-label="Tailored Agents home"><BrandLogo dark /></Link>
-            <p className="footer-statement">Premium websites, measurable digital growth, and tailored AI automation.</p>
+            <p className="footer-statement">Custom AI, automation and software built around your business.</p>
           </div>
           <div className="footer-links">
             <div>
@@ -18,9 +18,16 @@ export function SiteFooter() {
               {siteConfig.nav.map((item) => <Link key={item.href} href={item.href}>{item.label}</Link>)}
             </div>
             <div>
+              <h3>Services</h3>
+              <Link href="/automation">AI agents & automation</Link>
+              <Link href="/engineering">Software & integrations</Link>
+              <Link href="/websites">Website development</Link>
+              <Link href="/seo">SEO & analytics</Link>
+              <Link href="/packages">Website & SEO packages</Link>
+              <Link href="/free-review">Free website review</Link>
+            </div>
+            <div>
               <h3>Information</h3>
-              <Link href="/engineering">Engineering</Link>
-              <Link href="/solutions">Solutions</Link>
               <Link href="/industries/hvac">HVAC services</Link>
               <Link href="/privacy">Privacy</Link>
               <Link href="/terms">Terms</Link>
@@ -31,7 +38,7 @@ export function SiteFooter() {
         </div>
         <div className="footer-bottom">
           <span>© {businessDateKey().slice(0, 4)} Tailored Agents. All rights reserved.</span>
-          <span>Websites · Growth · AI agents · Software engineering</span>
+          <span>Based in Georgia · AI · Automation · Software · Web & SEO</span>
         </div>
       </div>
     </footer>

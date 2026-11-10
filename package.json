@@ -21,6 +21,7 @@
     "test:insurance:browser": "playwright test --config playwright.insurance.config.ts",
     "test:assistant:browser": "playwright test --config playwright.assistant.config.ts",
     "test:browser": "playwright test",
+    "test:public:browser": "playwright test --config playwright.public.config.ts",
     "test:inbox:browser": "playwright test --config playwright.inbox.config.ts",
     "test:sms:browser": "playwright test --config playwright.sms.config.ts",
     "test:conversations:browser": "playwright test --config playwright.conversations.config.ts",

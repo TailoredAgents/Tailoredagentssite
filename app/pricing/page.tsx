@@ -1,3 +1,4 @@
+import { publicPageMetadata } from "@/lib/site";
 import { managedMetadata } from "@/lib/seo/public-metadata";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -6,16 +7,17 @@ import { PricingCards } from "@/components/pricing-cards";
 import { Eyebrow, FinalCta } from "@/components/ui";
 import { customAutomationPlans, foundingAgentPlans, seoPlans, websitePlans } from "@/lib/services";
 
-const baselineMetadata: Metadata = {
-  title: "Website, SEO & AI Automation Pricing",
-  description: "Clear starting prices for professional websites, managed local SEO, focused automation, and managed AI agents from Tailored Agents.",
-  alternates: { canonical: "/pricing" },
-};
+const baselineMetadata = publicPageMetadata(
+  "Custom AI, Automation & Service Pricing",
+  "Custom AI and automation scoped around your business, plus transparent pricing for focused workflows, websites, SEO and standard managed agents.",
+  "/pricing",
+);
 
 const pricingGroups = [
-  ["Websites", "From $1,500", "#websites"],
-  ["SEO & Analytics", "From $400/month", "#seo"],
-  ["AI agent add-ons", "From $99/month", "#automation"],
+  ["Custom systems", "Tailored proposal", "#custom-solutions"],
+  ["Implementation", "Defined scope", "#custom-solutions"],
+  ["Ongoing support", "Agreed service plan", "#custom-solutions"],
+  ["AI & provider usage", "Identified separately", "#custom-solutions"],
 ] as const;
 
 export default function PricingPage() {
@@ -25,15 +27,23 @@ export default function PricingPage() {
         <div className="container-shell pricing-page-hero-grid">
           <div>
             <Eyebrow>Clear pricing</Eyebrow>
-            <h1 className="page-title">Serious work. Clear ways to <span className="serif-italic">start.</span></h1>
-            <p className="lede">These packages establish a useful starting point without forcing every business into the same solution. Founding-client agent pricing makes expansion accessible, while every engagement still receives a written scope before paid work begins.</p>
-            <div className="hero-actions"><Link className="button button-dark" href="/packages">Build a Flexible Package</Link><Link className="button button-light" href="#websites">Compare individual services<ArrowDown size={15} aria-hidden="true" /></Link></div>
+            <h1 className="page-title">A clear scope. Built around <span className="serif-italic">your business.</span></h1>
+            <p className="lede">Custom AI and automation pricing depends on the workflow, integrations, implementation, ongoing management and usage. We agree on a written scope before paid work begins. Existing website, SEO and standard agent offers remain available below.</p>
+            <div className="hero-actions"><Link className="button button-dark" href="/contact">Discuss your business</Link><Link className="button button-light" href="#websites">View standard service prices<ArrowDown size={15} aria-hidden="true" /></Link></div>
           </div>
-          <aside className="pricing-hero-panel" aria-label="Service starting prices">
-            <span className="micro-label blue">Straightforward starting points</span>
+          <aside className="pricing-hero-panel" aria-label="What a custom engagement includes">
+            <span className="micro-label blue">How custom work is priced</span>
             {pricingGroups.map(([label, price, href]) => <Link href={href} key={label}><span>{label}</span><strong>{price}</strong><ArrowDown size={14} aria-hidden="true" /></Link>)}
-            <p>No gated price sheet. No surprise agency fees. The written proposal defines what is included and what would change the scope.</p>
+            <p>We scope the work with you. The proposal defines deliverables, responsibilities, support, usage and what would change the price.</p>
           </aside>
+        </div>
+      </section>
+
+      <section className="section-pad package-section package-section-alt" id="custom-solutions">
+        <div className="container-shell">
+          <div className="section-heading-wide"><div><Eyebrow>Custom AI & automation</Eyebrow><h2 className="h2">From one useful workflow to a <span className="serif-italic">connected system.</span></h2></div><p className="lede">Start with a specific operational need. Larger systems receive a tailored proposal; the focused-workflow starting price below applies only to its defined scope.</p></div>
+          <PricingCards plans={[customAutomationPlans[1], customAutomationPlans[0]]} columns={2} />
+          <p className="business-pricing-note">Exploring a delivery partnership or revenue-share arrangement? <Link href="/partners">Let’s discuss the fit and terms privately.</Link></p>
         </div>
       </section>
 
@@ -56,8 +66,6 @@ export default function PricingPage() {
           <div className="section-heading-wide"><div><Eyebrow>Founding-client AI add-ons</Eyebrow><h2 className="h2">Start with one useful capability. Expand when the value is <span className="serif-italic">clear.</span></h2></div><p className="lede">These introductory monthly offers are designed for repeatable website and business workflows. Availability, fit, usage, integrations, and the standard configuration are confirmed before billing.</p></div>
           <PricingCards plans={foundingAgentPlans} columns={4} />
           <div className="founding-pricing-note"><strong>Why founding-client pricing?</strong><span>We are building our early client base and standardizing these services without reducing the level of management, review, or support. Standard deployments have $0 setup; usage and nonstandard work remain separate.</span></div>
-          <div className="pricing-subsection-heading"><Eyebrow>Custom automation & advanced agents</Eyebrow><h2 className="h2">Some systems should be scoped around the <span className="serif-italic">business.</span></h2><p className="lede">Broader integrations, advanced agent responsibilities, portals, and custom software retain implementation pricing and an individually defined support model.</p></div>
-          <PricingCards plans={customAutomationPlans} columns={2} />
         </div>
       </section>
 
@@ -74,8 +82,10 @@ export default function PricingPage() {
 
       <section className="section-pad pricing-faq-section">
         <div className="container-shell pricing-faq-grid">
-          <div><Eyebrow>Pricing questions</Eyebrow><h2 className="h2">Know what affects the <span className="serif-italic">number.</span></h2><p className="lede">The free website review is the simplest way to identify which package is realistic before discussing a paid engagement.</p></div>
+          <div><Eyebrow>Pricing questions</Eyebrow><h2 className="h2">Know what affects the <span className="serif-italic">number.</span></h2><p className="lede">A business conversation helps us understand what you need. A free website review is also available for website-specific opportunities.</p></div>
           <div className="pricing-faq-list">
+            <details><summary>How do you price a custom AI solution?</summary><p>We look at the workflow, the data and systems involved, integration access, implementation, testing, ongoing support and expected usage. Those details become a tailored proposal. There is no single published minimum for a custom system.</p></details>
+            <details><summary>Do I need a new website to use your AI services?</summary><p>No. We can begin with an internal process, a customer workflow or a connection between your existing tools. Website projects are a separate option.</p></details>
             <details><summary>Is the $1,500 Launch Website a complete website?</summary><p>Yes, within its defined scope: up to five essential pages, responsive design and development, a standard inquiry form, foundational SEO and analytics, one consolidated revision round, and deployment assistance. The client supplies the core copy, logo, and photography.</p></details>
             <details><summary>What usually increases a website price?</summary><p>Additional pages, copywriting, custom photography or media work, ecommerce, specialized forms, customer portals, third-party integrations, and custom application behavior add scope.</p></details>
             <details><summary>What does the SEO Foundation Setup cover?</summary><p>It establishes the technical audit, measurement baseline, search and location priorities, reporting environment, and initial action plan. Managed SEO then continues month to month and can be canceled before the next billing cycle.</p></details>

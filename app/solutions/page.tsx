@@ -1,12 +1,14 @@
+import { publicPageMetadata } from "@/lib/site";
 import { managedMetadata } from "@/lib/seo/public-metadata";
+import Link from "next/link";
 import type { Metadata } from "next";
-import { FinalCta, PageHero } from "@/components/ui";
+import { ArrowLink, Eyebrow, FinalCta, PageHero } from "@/components/ui";
 
-const baselineMetadata: Metadata = {
-  title: "Automation & AI Solutions",
-  description: "Explore website AI assistants, lead qualification, phone reception, follow-up, marketing intelligence, operations automation, and custom software.",
-  alternates: { canonical: "/solutions" },
-};
+const baselineMetadata = publicPageMetadata(
+  "Automation & AI Solutions",
+  "Explore custom AI agents, operations automation, team knowledge, lead follow-up and connected software, with focused solutions for insurance and freight teams.",
+  "/solutions",
+);
 
 const solutions = [
   {
@@ -60,8 +62,9 @@ export default function SolutionsPage() {
           <div><span>01</span><small>Start with</small><b>Business friction</b></div><i>→</i><div><span>02</span><small>Map the</small><b>Workflow & information</b></div><i>→</i><div><span>03</span><small>Define the</small><b>Automation boundary</b></div><i>→</i><div><span>04</span><small>Evaluate the</small><b>Business outcome</b></div>
         </div>
       </section>
+      <section className="business-solutions-intro"><div className="container-shell"><p className="lede">The workflows below are examples we can scope. Available integrations, responsibilities and launch requirements are confirmed for each engagement.</p><div className="business-solution-links"><Link href="/solutions/commercial-insurance">Commercial insurance →</Link><Link href="/solutions/freight-automation">Freight brokerages &amp; 3PL →</Link></div></div></section>
       <div className="container-shell">
-        {solutions.map((solution, index) => (
+        {[solutions[3], solutions[4], solutions[1], solutions[0], solutions[2]].map((solution, index) => (
           <section className="detail-section" key={solution.title}>
             <div className="detail-index">0{index + 1} / {solution.title}</div>
             <div className="detail-body">
@@ -75,6 +78,7 @@ export default function SolutionsPage() {
           </section>
         ))}
       </div>
+      <section className="section-pad section-rule"><div className="container-shell business-services"><div><Eyebrow>Also part of our work</Eyebrow><h2 className="h2">Your public presence <span className="serif-italic">still matters.</span></h2><p className="lede">Website design and search visibility remain available as separate services or as part of a broader engagement.</p></div><div><ArrowLink href="/websites">Website development</ArrowLink><ArrowLink href="/seo">SEO & analytics</ArrowLink><ArrowLink href="/packages">Website & SEO packages</ArrowLink></div></div></section>
       <FinalCta />
     </>
   );

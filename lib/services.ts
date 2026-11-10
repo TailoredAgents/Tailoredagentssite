@@ -274,7 +274,7 @@ export const coreServices = [
     key: "automation",
     href: "/automation",
     title: "AI Agents & Business Automation",
-    summary: "Add website intelligence first, then expand into managed agents for calls, follow-up, customer communication, and repeatable operations.",
+    summary: "Build custom AI agents around calls, follow-up, customer communication and internal operations, with or without a website project.",
     detail: "Productized add-ons, custom integrations, human escalation, monitoring, and purpose-built systems.",
   },
 ] as const;

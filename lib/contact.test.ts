@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateContact } from "./contact";
+import { contactInterestFromQuery, validateContact } from "./contact";
 
 const valid = {
   inquiryType: "project",
@@ -30,6 +30,16 @@ const validReview = {
 
 describe("validateContact", () => {
   it("accepts a complete valid inquiry", () => expect(validateContact(valid).data).toBeDefined());
+  it.each(["partnership", "revenue-share", "automation"])("accepts the %s inquiry selected by a public link", (query) => {
+    const interest = contactInterestFromQuery(query);
+    expect(interest).not.toBe("");
+    expect(validateContact({ ...valid, interest }).data?.interest).toBe(interest);
+  });
+  it("does not use arbitrary or repeated query values as form choices", () => {
+    for (const query of [undefined, "unexpected", "<script>alert(1)</script>", ["partnership", "revenue-share"]]) {
+      expect(contactInterestFromQuery(query)).toBe("");
+    }
+  });
   it("rejects malformed email and short descriptions", () => {
     const result = validateContact({ ...valid, email: "not-an-email", description: "too short" });
     expect(result.errors?.email).toBeDefined();

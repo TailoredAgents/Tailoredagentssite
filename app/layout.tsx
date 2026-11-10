@@ -7,6 +7,7 @@ import { AnalyticsTracker } from "@/components/analytics-tracker";
 import { MetaPixel } from "@/components/meta-pixel";
 import { absoluteUrl, siteConfig } from "@/lib/site";
 import "./globals.css";
+import "./business-public.css";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
     title: siteConfig.title,
     description: siteConfig.description,
     url: siteConfig.url,
-    images: [{ url: absoluteUrl("/opengraph-image"), width: 1200, height: 630, alt: "Tailored Agents — Better websites, more visibility, smarter business." }],
+    images: [{ url: absoluteUrl("/opengraph-image"), width: 1200, height: 630, alt: "Tailored Agents — Custom AI built around your business" }],
   },
   twitter: { card: "summary_large_image", title: siteConfig.title, description: siteConfig.description, images: [absoluteUrl("/opengraph-image")] },
   robots: { index: true, follow: true },
@@ -44,9 +45,10 @@ const organizationJsonLd = {
     "@type": "OfferCatalog",
     name: "Tailored Agents services",
     itemListElement: [
+      { "@type": "Offer", itemOffered: { "@type": "Service", name: "Tailored AI Agents & Business Automation" } },
+      { "@type": "Offer", itemOffered: { "@type": "Service", name: "Custom Software & Integrations" } },
       { "@type": "Offer", itemOffered: { "@type": "Service", name: "Website Design & Development" } },
       { "@type": "Offer", itemOffered: { "@type": "Service", name: "Local SEO & Growth Analytics" } },
-      { "@type": "Offer", itemOffered: { "@type": "Service", name: "Tailored AI Agents & Business Automation" } },
     ],
   },
 };

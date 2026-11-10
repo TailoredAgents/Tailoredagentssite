@@ -1,25 +1,26 @@
+import { publicPageMetadata } from "@/lib/site";
 import { managedMetadata } from "@/lib/seo/public-metadata";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, CalendarCheck, DatabaseZap, MessagesSquare, PhoneCall, Route, Sparkles } from "lucide-react";
-import { HeroCallSystem } from "@/components/hero-call-system";
+import { BusinessWorkflowDemo } from "@/components/business-workflow-demo";
 import { PricingCards } from "@/components/pricing-cards";
 import { WorkflowShowcase } from "@/components/workflow-showcase";
 import { ArrowLink, Eyebrow, FinalCta } from "@/components/ui";
 import { customAutomationPlans, foundingAgentPlans } from "@/lib/services";
 
-const baselineMetadata: Metadata = {
-  title: "AI Agents & Business Automation",
-  description: "Website AI assistants, lead qualification, follow-up, AI phone reception, business automation, integrations, and custom agent systems.",
-  alternates: { canonical: "/automation" },
-};
+const baselineMetadata = publicPageMetadata(
+  "AI Agents & Business Automation",
+  "Custom AI agents, document workflows, internal assistants and business automation built around your existing systems. No website project required.",
+  "/automation",
+);
 
 const agentCategories = [
   {
     icon: MessagesSquare,
     label: "Website-related agents",
     title: "Make the customer journey more useful.",
-    description: "Add intelligence to the website after the core experience is working—using approved business knowledge, clear handoffs, and a voice that fits the brand.",
+    description: "Help visitors on a new or existing website using approved business knowledge, clear handoffs and a voice that fits the brand. A website rebuild is not a prerequisite.",
     items: [
       "Business-trained chat assistants",
       "Lead qualification and structured intake",
@@ -33,7 +34,7 @@ const agentCategories = [
   {
     icon: Route,
     label: "Business operations agents",
-    title: "Carry context beyond the website.",
+    title: "Make everyday operations work better.",
     description: "Give a managed agent one bounded operational responsibility, then expand only after the workflow, systems, exceptions, and accountable people are understood.",
     items: [
       "AI phone reception and missed-call recovery",
@@ -63,23 +64,23 @@ export default function AutomationPage() {
         <div className="container-shell service-hero-grid">
           <div>
             <Eyebrow>AI Agents & Business Automation</Eyebrow>
-            <h1 className="page-title">Start with the website. Add intelligence as the business is <span className="serif-italic">ready.</span></h1>
-            <p className="lede">Tailored Agents helps clients expand from a strong website and managed growth program into useful AI assistants, phone agents, follow-up, and connected operations—one clearly defined responsibility at a time.</p>
-            <div className="hero-actions"><ArrowLink href="/contact">Discuss an Agent Opportunity</ArrowLink><Link className="button button-light" href="#founding-pricing">View Founding Pricing<ArrowRight size={15}/></Link></div>
-            <p className="service-hero-meta">Website intelligence · Business operations · Human escalation</p>
+            <h1 className="page-title">Start where your business needs <span className="serif-italic">help.</span></h1>
+            <p className="lede">We build AI agents and automation around the work your team does every day: following up, processing documents, finding answers and connecting systems. Your existing website can stay exactly as it is.</p>
+            <div className="hero-actions"><ArrowLink href="/contact">Talk about your workflow</ArrowLink><Link className="button button-light" href="#custom-automation">Explore engagement options<ArrowRight size={15}/></Link></div>
+            <p className="service-hero-meta">Custom AI · Connected operations · Human oversight</p>
           </div>
-          <HeroCallSystem />
+          <BusinessWorkflowDemo />
         </div>
       </section>
 
       <section className="section-pad agent-category-section">
         <div className="container-shell">
           <div className="section-heading-wide">
-            <div><Eyebrow>Two ways to expand</Eyebrow><h2 className="h2">One client relationship. More capability <span className="serif-italic">over time.</span></h2></div>
-            <p className="lede">The goal is not a disconnected collection of bots. Website and operations agents are designed to build on approved business context and eventually connect through the same client experience.</p>
+            <div><Eyebrow>Built around the job</Eyebrow><h2 className="h2">Useful assistance for your team <span className="serif-italic">and customers.</span></h2></div>
+            <p className="lede">Start with a business problem and the systems involved. An agent can support internal work, customer communication or both, with a scope that fits the situation.</p>
           </div>
           <div className="agent-category-grid">
-            {agentCategories.map(({ icon: Icon, label, title, description, items, note }) => (
+            {[...agentCategories].reverse().map(({ icon: Icon, label, title, description, items, note }) => (
               <article key={label}>
                 <div className="agent-category-heading"><span><Icon size={21}/></span><small>{label}</small></div>
                 <h3>{title}</h3>
@@ -104,6 +105,13 @@ export default function AutomationPage() {
 
       <section className="section-pad growth-journey-section"><div className="container-shell"><div className="section-heading-wide"><div><Eyebrow>How a managed agent works</Eyebrow><h2 className="h2">Useful autonomy needs clear <span className="serif-italic">boundaries.</span></h2></div><p className="lede">A focused first agent establishes the context, integrations, review controls, and operating evidence needed before more responsibility is added.</p></div><div className="growth-journey automation-journey">{[["01","Define","Give the agent one responsibility, a clear owner, and a measurable business outcome."],["02","Connect","Provide only the approved data and tools needed to complete that responsibility."],["03","Control","Set validation, approval, escalation, and failure behavior before the agent acts."],["04","Improve","Review activity and usage, refine the workflow, and expand only when the evidence supports it."]].map(([n,h,p],index)=><article key={n}><span>{n}</span><div className="journey-icon"><Route size={18}/></div><h3>{h}</h3><p>{p}</p>{index<3&&<i aria-hidden="true">→</i>}</article>)}</div></div></section>
 
+      <section className="section-pad package-section" id="custom-automation">
+        <div className="container-shell">
+          <div className="section-heading-wide"><div><Eyebrow>Custom automation & advanced agents</Eyebrow><h2 className="h2">When the workflow is unique, the scope should be <span className="serif-italic">honest.</span></h2></div><p className="lede">Focused automations can begin with one handoff. Advanced agents, multi-system workflows, portals, and custom software are planned around the real requirements rather than forced into an introductory package.</p></div>
+          <PricingCards plans={customAutomationPlans} columns={2}/>
+          <div className="package-section-link"><ArrowLink href="/pricing">View all pricing details</ArrowLink></div>
+        </div>
+      </section>
       <section className="section-pad package-section package-section-alt" id="founding-pricing">
         <div className="container-shell">
           <div className="section-heading-wide"><div><Eyebrow>Founding-client agent pricing</Eyebrow><h2 className="h2">Accessible ways to add one useful <span className="serif-italic">capability.</span></h2></div><p className="lede">Founding-client pricing helps us standardize repeatable agents with early clients while preserving managed delivery, clear boundaries, and a premium service experience.</p></div>
@@ -112,13 +120,6 @@ export default function AutomationPage() {
         </div>
       </section>
 
-      <section className="section-pad package-section" id="custom-automation">
-        <div className="container-shell">
-          <div className="section-heading-wide"><div><Eyebrow>Custom automation & advanced agents</Eyebrow><h2 className="h2">When the workflow is unique, the scope should be <span className="serif-italic">honest.</span></h2></div><p className="lede">Focused automations can begin with one handoff. Advanced agents, multi-system workflows, portals, and custom software are planned around the real requirements rather than forced into an introductory package.</p></div>
-          <PricingCards plans={customAutomationPlans} columns={2}/>
-          <div className="package-section-link"><ArrowLink href="/pricing">View all pricing details</ArrowLink></div>
-        </div>
-      </section>
       <FinalCta />
     </>
   );

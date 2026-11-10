@@ -1,23 +1,25 @@
+import { publicPageMetadata } from "@/lib/site";
 import { managedMetadata } from "@/lib/seo/public-metadata";
 import type { Metadata } from "next";
-import { FinalCta, PageHero } from "@/components/ui";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import { ArrowLink, Eyebrow, FinalCta, PageHero } from "@/components/ui";
 
-const baselineMetadata: Metadata = {
-  title: "About Tailored Agents",
-  description: "Tailored Agents combines digital design, software engineering, local growth expertise, and practical business automation.",
-  alternates: { canonical: "/company" },
-};
+const baselineMetadata = publicPageMetadata(
+  "About Tailored Agents",
+  "Meet the Georgia-based team building custom AI, business automation and software. Practical solutions, personal relationships and a clear path from idea to implementation.",
+  "/company",
+);
 
 export default function CompanyPage() {
-  return (
-    <>
-      <PageHero eyebrow="About" title={<>Design quality and engineering depth, working toward the <span className="serif-italic">same business goal.</span></>} description="Tailored Agents builds premium websites, manages digital visibility, and develops practical automation and software for growing businesses." meta="Digital design · Growth · Automation · Engineering" />
-      <section className="section-pad"><div className="container-shell case-intro"><div><span className="eyebrow">Our perspective</span><h2 className="h2">A website should not be separated from what the business is trying to <span className="serif-italic">become.</span></h2></div><div><p className="lede">The customer experience, search visibility, inquiry flow, internal follow-up, and surrounding business systems all influence one another. We bring design and engineering together so those parts can improve in a deliberate sequence.</p><p className="text-muted">That can begin with a focused website project. It can continue through managed SEO and analytics, targeted automation, integrations, or a custom platform when the opportunity justifies it.</p></div></div></section>
-      <section className="section-pad section-rule"><div className="container-shell"><div className="principle-grid">{[['01','Understand the business','We clarify the audience, offer, current experience, growth priorities, and operational constraints before prescribing a solution.'],['02','Design with purpose','Visual quality, content, responsiveness, accessibility, and conversion paths support the same customer journey.'],['03','Use evidence carefully','Analytics and search data inform priorities when they are genuinely configured and available. We do not manufacture proof.'],['04','Automate responsibly','Sensitive, ambiguous, or customer-facing actions retain appropriate review, escalation, and ownership.'],['05','Engineer durable systems','Maintainability, security, permissions, failure behavior, and deployment quality are part of the work.'],['06','Improve in stages','Begin with the clearest opportunity, evaluate real use, and expand when the next investment makes sense.']].map(([n,h,p]) => <div className="principle" key={n}><span>{n}</span><h3>{h}</h3><p>{p}</p></div>)}</div></div></section>
-      <section className="section-pad"><div className="content-narrow"><span className="eyebrow">What we are building toward</span><h2 className="h2" style={{marginTop:"1.3rem"}}>A long-term technology partner for businesses with <span className="serif-italic">important growth to support.</span></h2><p className="lede">Our range is intentional: strong customer-facing design at the beginning, disciplined measurement and improvement over time, and serious engineering capability when the business needs more.</p></div></section>
-      <FinalCta />
-    </>
-  );
+  return <>
+    <PageHero eyebrow="About Tailored Agents" title={<>People who care how your business <span className="serif-italic">works.</span></>} description="We’re a Georgia-based team building custom AI agents, automation and software around the people doing the work. Our first step is understanding your business, not prescribing a technology." meta="Based in Georgia · Built around your business" />
+    <section className="section-pad"><div className="container-shell case-intro"><div><Eyebrow>Our direction</Eyebrow><h2 className="h2">Better connections.<br/>Less repeated work.<br/><span className="serif-italic">More room to move.</span></h2></div><div><p className="lede">We bring software development and business conversations together. The opportunity might be a lead that needs a faster response, a document that gets entered three times or a team that cannot find the information it needs.</p><p className="text-muted">AI and automation are our focus. Website development, SEO and analytics remain part of our work, available independently or alongside a custom solution. You can start with whichever part of the business needs attention.</p><ArrowLink href="/solutions">Explore the work we can help with</ArrowLink></div></div></section>
+    <section className="section-pad business-team-section"><div className="container-shell"><div className="section-heading-wide"><div><Eyebrow>Start a conversation</Eyebrow><h2 className="h2">Meet Austin<br/>and <span className="serif-italic">Jeffrey.</span></h2></div><p className="lede">Whether we met at a local business event or someone made an introduction, we’d like to hear how your business works and what you’re trying to improve.</p></div><div className="business-team-grid">{[["AD","Austin Dugger","austin"],["JH","Jeffrey Hacker","jeffrey"]].map(([initials,name,slug])=><article key={slug}><span className="business-team-initials" aria-hidden="true">{initials}</span><div><h3>{name}</h3><p>Development &amp; Sales</p><Link className="business-text-link" href={`/c/${slug}`}>Contact {name.split(" ")[0]}<ArrowRight size={16}/></Link></div></article>)}</div></div></section>
+    <section className="section-pad"><div className="container-shell"><div className="principle-grid">{[["01","Understand the work","Learn the process, people, information and constraints before recommending a solution."],["02","Scope a practical start","Agree on a useful outcome, responsibilities, costs and what success should look like."],["03","Build for everyday use","Connect the right tools and make the experience clear for the people using it."],["04","Keep people in control","Set appropriate permissions, review, escalation and ownership for the agent’s work."],["05","Test the real workflow","Check integrations, failure behavior and exceptions alongside the intended experience."],["06","Support what we agree","Define ongoing monitoring, maintenance and improvements in the service agreement."]].map(([n,h,p])=><div className="principle" key={n}><span>{n}</span><h3>{h}</h3><p>{p}</p></div>)}</div></div></section>
+    <section className="section-pad business-partner-section"><div className="container-shell business-services"><div><Eyebrow>Know someone we should meet?</Eyebrow><h2 className="h2">A good introduction starts<br/>with a <span className="serif-italic">real problem.</span></h2><p className="lede">Think of us when an owner is dealing with repetitive work, scattered information, missed follow-up or a workflow their current software does not handle well.</p></div><div><ArrowLink href="/partners">Partnerships & revenue sharing</ArrowLink><ArrowLink href="/contact?interest=partnership">Make an introduction</ArrowLink></div></div></section>
+    <FinalCta/>
+  </>;
 }
 
 export const revalidate = 300;
