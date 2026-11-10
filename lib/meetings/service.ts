@@ -9,11 +9,12 @@ import {normalizePhone} from '@/lib/sales/import';
 import {uploadSchema,UPLOAD_CHUNK_BYTES,MAX_AUDIO_BYTES,meetingKinds,type MeetingRecord} from './contract';
 import {getMeeting,meetingError,meetingRole,meetingTransaction} from './access';
 import {inspectAudio,pcmWav} from './audio';
+import {combineTranscripts} from './grouping';
 export const audioPrefix=(workspace:string,id:string)=>`meetings/${workspace}/${id}/audio/`;
 export const digest=(bytes:Uint8Array|string)=>createHash('sha256').update(bytes).digest('hex');
 export async function listMeetings(c:DashboardContext,q='',page=1){
  await meetingRole(c);const search=z.string().max(120).parse(q),offset=(z.number().int().min(1).max(1000).parse(page)-1)*20;
- const r=await getDatabasePool().query(`SELECT m.id,m.title,m.status,m.classification,m.source,m.visibility,m.created_at,m.expires_at,m.duration_seconds,m.error_code,u.name owner_name FROM meetings m JOIN "user" u ON u.id=m.owner_user_id WHERE m.workspace_id=$1 AND (m.owner_user_id=$2 OR m.visibility='team') AND m.status NOT IN ('deleting','deleted') AND m.expires_at>now() AND ($3='' OR m.title ILIKE '%'||$3||'%' OR m.transcript ILIKE '%'||$3||'%') ORDER BY m.created_at DESC,m.id DESC LIMIT 21 OFFSET $4`,[c.workspace.id,c.user.id,search,offset]);
+ const r=await getDatabasePool().query(`SELECT m.id,m.title,m.status,m.classification,m.source,m.visibility,m.created_at,m.expires_at,(SELECT sum(p.duration_seconds) FROM meetings p WHERE p.id=m.id OR p.parent_meeting_id=m.id) duration_seconds,m.error_code,u.name owner_name FROM meetings m JOIN "user" u ON u.id=m.owner_user_id WHERE m.workspace_id=$1 AND m.parent_meeting_id IS NULL AND (m.owner_user_id=$2 OR m.visibility='team') AND m.status NOT IN ('deleting','deleted') AND m.expires_at>now() AND ($3='' OR m.title ILIKE '%'||$3||'%' OR m.transcript ILIKE '%'||$3||'%') ORDER BY m.created_at DESC,m.id DESC LIMIT 21 OFFSET $4`,[c.workspace.id,c.user.id,search,offset]);
  return {items:r.rows.slice(0,20),hasMore:r.rows.length>20,page};
 }
 export async function meetingSettings(c:DashboardContext){
@@ -29,7 +30,7 @@ export async function startUpload(c:DashboardContext,input:unknown){
  const v=uploadSchema.parse(input);
  return meetingTransaction(c,async db=>{
  await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[`meetings:${c.workspace.id}`]);
- const found=(await db.query("SELECT id,status,owner_user_id,audio_hash,expected_bytes,expires_at FROM meetings WHERE workspace_id=$1 AND (id=$2 OR (owner_user_id=$3 AND audio_hash=$4 AND source='upload' AND status NOT IN ('deleting','deleted'))) ORDER BY created_at LIMIT 1",[c.workspace.id,v.id,c.user.id,v.hash])).rows[0];
+ const found=(await db.query("SELECT id,status,owner_user_id,audio_hash,expected_bytes,expires_at FROM meetings WHERE workspace_id=$1 AND (id=$2 OR (owner_user_id=$3 AND audio_hash=$4 AND source='upload' AND parent_meeting_id IS NULL AND status NOT IN ('deleting','deleted'))) ORDER BY created_at LIMIT 1",[c.workspace.id,v.id,c.user.id,v.hash])).rows[0];
  if(found&&new Date(found.expires_at).getTime()<=Date.now())throw meetingError('This recording has expired and is awaiting cleanup. Try again after the next worker run.',409);
  if(found){if(found.owner_user_id!==c.user.id||found.audio_hash!==v.hash||found.expected_bytes!==v.size)throw meetingError('This upload identifier is already in use.',409);return {id:found.id,status:found.status,duplicate:true};}
  const quota=(await db.query("SELECT COALESCE(sum(GREATEST(received_bytes,expected_bytes)),0)::float8 bytes,count(*) FILTER(WHERE created_at>now()-interval '1 day')::int recent FROM meetings WHERE workspace_id=$1 AND status<>'deleted'",[c.workspace.id])).rows[0];
@@ -49,28 +50,52 @@ export async function uploadChunk(c:DashboardContext,id:string,sequence:number,b
  await db.query('UPDATE meetings SET received_bytes=received_bytes+$2,updated_at=now() WHERE id=$1',[id,bytes.length]);
  });
 }
-export async function finishUpload(c:DashboardContext,id:string){
+// Finalize one immutable recording without ending its logical meeting.
+export async function finishRecording(c:DashboardContext,rootId:string,partId=rootId){
  return meetingTransaction(c,async db=>{
- const m=await getMeeting(c,id,true,db,true);if(!['uploading','capturing'].includes(m.status))return {id:m.id,status:m.status};
- const chunks=(await db.query<{bytes:Buffer;sequence:number}>('SELECT bytes,sequence FROM meeting_upload_chunks WHERE meeting_id=$1 ORDER BY sequence',[id])).rows;
+ await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[`meetings:${c.workspace.id}`]);
+ const root=await getMeeting(c,rootId,true,db,true);
+ const m=(await db.query("SELECT * FROM meetings WHERE workspace_id=$1 AND (id=$2 OR parent_meeting_id=$2) AND id=$3 AND status NOT IN ('deleting','deleted') FOR UPDATE",[c.workspace.id,rootId,partId])).rows[0];
+ if(!m)throw meetingError('This recording is unavailable.',404);
+ if(m.audio_key)return {id:rootId,status:root.status};
+ if(!['uploading','capturing','ready'].includes(m.status))throw meetingError('This recording cannot be finished while processing.',409);
+ const chunks=(await db.query<{bytes:Buffer;sequence:number}>('SELECT bytes,sequence FROM meeting_upload_chunks WHERE meeting_id=$1 ORDER BY sequence',[partId])).rows;
  if(chunks.some((p,i)=>p.sequence!==i))throw meetingError('The upload is incomplete. Select the same file to resume.');
  let bytes=Buffer.concat(chunks.map(p=>p.bytes));if(!bytes.length||bytes.length!==m.received_bytes)throw meetingError('The recording is incomplete.');
- if(m.source==='upload'&&(bytes.length!==m.expected_bytes||digest(bytes)!==(await db.query('SELECT audio_hash FROM meetings WHERE id=$1',[id])).rows[0].audio_hash))throw meetingError('The file is incomplete or changed. Select the original file to resume.');
+ if(m.source==='upload'&&(bytes.length!==m.expected_bytes||digest(bytes)!==m.audio_hash))throw meetingError('The file is incomplete or changed. Select the original file to resume.');
  if(m.source==='omi')bytes=pcmWav(bytes,m.sample_rate!);
  let info;try{info=await inspectAudio(bytes);}catch{throw meetingError('Use valid WAV, MP3, M4A or WebM audio, up to 24 MB and 60 minutes.');}
- const key=`${audioPrefix(c.workspace.id,id)}recording.${info.extension}`;
+ const key=`${audioPrefix(c.workspace.id,partId)}recording.${info.extension}`;
  try{await factoryStorage().put(key,bytes,info.mime);}catch{throw meetingError('Private storage is unavailable. The uploaded chunks are saved; try Finish upload again.',503);}
- await db.query("UPDATE meetings SET status='ready',audio_key=$2,audio_type=$3,duration_seconds=$4,updated_at=now(),revision=revision+1,error_code=NULL WHERE id=$1",[id,key,info.mime,info.seconds]);
- await db.query('DELETE FROM meeting_upload_chunks WHERE meeting_id=$1',[id]);return {id,status:'ready'};
+ await db.query("UPDATE meetings SET status=CASE WHEN id=$5 AND source='omi' THEN status ELSE 'ready' END,audio_key=$2,audio_type=$3,duration_seconds=$4,part_closed_at=COALESCE(part_closed_at,now()),updated_at=now(),revision=revision+1,error_code=NULL WHERE id=$1",[partId,key,info.mime,info.seconds,rootId]);
+ await db.query('DELETE FROM meeting_upload_chunks WHERE meeting_id=$1',[partId]);return {id:rootId,status:'ready'};
  });
+}
+export async function settleMeeting(c:DashboardContext,id:string){
+ return meetingTransaction(c,async db=>{const m=await getMeeting(c,id,true,db,true);
+ if(m.status!=='capturing'||m.receiving||m.parts.some(p=>!p.audio_type))return;
+ await db.query("UPDATE meetings SET status=CASE WHEN auto_process_requested AND $2 THEN 'queued' ELSE 'ready' END,updated_at=now(),revision=revision+1 WHERE id=$1",[id,!!process.env.OPENAI_API_KEY&&process.env.MEETING_PROCESSING_ENABLED!=='false']);
+ });
+}
+export async function finishUpload(c:DashboardContext,id:string){
+ const m=await getMeeting(c,id,true);
+ if(m.source==='upload')return finishRecording(c,id);
+ await meetingTransaction(c,async db=>{
+ await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[`meetings:${c.workspace.id}`]);
+ await getMeeting(c,id,true,db,true);
+ await db.query('UPDATE meeting_devices SET armed_until=NULL,current_meeting_id=NULL WHERE current_meeting_id=$1 AND user_id=$2',[id,c.user.id]);
+ await db.query('UPDATE meetings SET part_closed_at=COALESCE(part_closed_at,now()) WHERE id=$1 OR parent_meeting_id=$1',[id]);
+ });
+ for(const part of m.parts)if(!part.audio_type)await finishRecording(c,id,part.id);
+ await settleMeeting(c,id);return {id,status:(await getMeeting(c,id)).status};
 }
 export async function queueMeeting(c:DashboardContext,id:string,consentNote:string){
  z.string().trim().min(3).max(1000).parse(consentNote);
- return meetingTransaction(c,async db=>{const m=await getMeeting(c,id,true,db,true);if(!['ready','failed'].includes(m.status)||!m.audio_key)throw meetingError('Finish uploading before processing this meeting.');if(!process.env.OPENAI_API_KEY||process.env.MEETING_PROCESSING_ENABLED==='false')throw meetingError('Meeting AI processing is not enabled on the server.');await db.query("UPDATE meetings SET status='queued',consent_note=$2,consent_at=now(),consent_by=$3,error_code=NULL,updated_at=now(),revision=revision+1 WHERE id=$1",[id,consentNote,c.user.id]);await insertAuditLog(db,{workspaceId:c.workspace.id,actorUserId:c.user.id,action:'meeting.processing_requested',targetType:'meeting',targetId:id});});
+ return meetingTransaction(c,async db=>{const m=await getMeeting(c,id,true,db,true);if(!['ready','failed'].includes(m.status)||m.receiving||m.parts.some(p=>!p.audio_type))throw meetingError('Finish uploading before processing this meeting.');if(!process.env.OPENAI_API_KEY||process.env.MEETING_PROCESSING_ENABLED==='false')throw meetingError('Meeting AI processing is not enabled on the server.');await db.query("UPDATE meetings SET status='queued',consent_note=$2,consent_at=now(),consent_by=$3,error_code=NULL,updated_at=now(),revision=revision+1 WHERE id=$1",[id,consentNote,c.user.id]);await insertAuditLog(db,{workspaceId:c.workspace.id,actorUserId:c.user.id,action:'meeting.processing_requested',targetType:'meeting',targetId:id});});
 }
 export async function updateMeeting(c:DashboardContext,input:unknown){
  const v=z.object({id:z.uuid(),revision:z.number().int(),title:z.string().trim().min(1).max(160),visibility:z.enum(['private','team']),classification:z.enum(['unmatched','linked','unrelated']),notes:z.string().max(6000),retentionDays:z.number().int().min(1).max(180)}).parse(input);
- return meetingTransaction(c,async db=>{const m=await getMeeting(c,v.id,true,db,true);if(m.revision!==v.revision)throw meetingError('This meeting changed. Refresh before saving.',409);if(v.classification==='linked'&&![m.lead_id,m.client_id,m.business_id,m.contact_id,m.opportunity_id].some(Boolean))throw meetingError('Link a CRM record first.');await db.query('UPDATE meetings SET title=$2,visibility=$3,classification=$4,review_notes=$5,expires_at=created_at+$6*interval \'1 day\',revision=revision+1,updated_at=now() WHERE id=$1',[v.id,v.title,v.visibility,v.classification,v.notes,v.retentionDays]);await insertAuditLog(db,{workspaceId:c.workspace.id,actorUserId:c.user.id,action:'meeting.review_updated',targetType:'meeting',targetId:v.id,metadata:{visibility:v.visibility}});});
+ return meetingTransaction(c,async db=>{const m=await getMeeting(c,v.id,true,db,true);if(m.revision!==v.revision)throw meetingError('This meeting changed. Refresh before saving.',409);if(v.classification==='linked'&&![m.lead_id,m.client_id,m.business_id,m.contact_id,m.opportunity_id].some(Boolean))throw meetingError('Link a CRM record first.');await db.query('UPDATE meetings SET title=$2,visibility=$3,classification=$4,review_notes=$5,expires_at=created_at+$6*interval \'1 day\',revision=revision+1,updated_at=now() WHERE id=$1',[v.id,v.title,v.visibility,v.classification,v.notes,v.retentionDays]);await db.query('UPDATE meetings SET expires_at=(SELECT expires_at FROM meetings WHERE id=$1) WHERE parent_meeting_id=$1',[v.id]);await insertAuditLog(db,{workspaceId:c.workspace.id,actorUserId:c.user.id,action:'meeting.review_updated',targetType:'meeting',targetId:v.id,metadata:{visibility:v.visibility}});});
 }
 export async function linkMeeting(c:DashboardContext,id:string,kind:typeof meetingKinds[number],targetId:string){
  await relationshipAccess(c,{kind,id:targetId});return meetingTransaction(c,async db=>{await getMeeting(c,id,true,db,true);await db.query(`UPDATE meetings SET ${kind}_id=$2,classification='linked',revision=revision+1,updated_at=now() WHERE id=$1`,[id,targetId]);await insertAuditLog(db,{workspaceId:c.workspace.id,actorUserId:c.user.id,action:'meeting.linked',targetType:'meeting',targetId:id,metadata:{kind,targetId}});});
@@ -91,11 +116,45 @@ export async function createMeetingProspect(c:DashboardContext,input:unknown){
  });
 }
 export async function deleteMeeting(c:DashboardContext,id:string,confirmed:boolean){
- if(confirmed!==true)throw meetingError('Confirm permanent deletion first.');return meetingTransaction(c,async db=>{await getMeeting(c,id,true,db,true);await db.query("UPDATE meetings SET status='deleting',transcript=NULL,findings=NULL,review_notes='',consent_note='',title='Deleted meeting',lease_token=NULL,lease_until=NULL,deleted_at=now(),updated_at=now() WHERE id=$1",[id]);await db.query('DELETE FROM meeting_upload_chunks WHERE meeting_id=$1',[id]);await insertAuditLog(db,{workspaceId:c.workspace.id,actorUserId:c.user.id,action:'meeting.deletion_requested',targetType:'meeting',targetId:id});});
+ if(confirmed!==true)throw meetingError('Confirm permanent deletion first.');
+ return meetingTransaction(c,async db=>{
+ await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[`meetings:${c.workspace.id}`]);
+ await getMeeting(c,id,true,db,true);
+ await db.query('UPDATE meeting_devices SET armed_until=NULL,current_meeting_id=NULL WHERE current_meeting_id=$1',[id]);
+ await db.query("UPDATE meetings SET status='deleting',transcript=NULL,part_transcript=NULL,findings=NULL,review_notes='',consent_note='',title='Deleted meeting',lease_token=NULL,lease_until=NULL,deleted_at=now(),updated_at=now() WHERE id=$1 OR parent_meeting_id=$1",[id]);
+ await db.query('DELETE FROM meeting_upload_chunks WHERE meeting_id IN (SELECT id FROM meetings WHERE id=$1 OR parent_meeting_id=$1)',[id]);
+ await insertAuditLog(db,{workspaceId:c.workspace.id,actorUserId:c.user.id,action:'meeting.deletion_requested',targetType:'meeting',targetId:id});
+ });
 }
-export async function readAudio(c:DashboardContext,id:string){const m=await getMeeting(c,id);if(!m.audio_key)throw meetingError('Audio is still uploading.',409);const bytes=await factoryStorage().get(m.audio_key,MAX_AUDIO_BYTES);await getMeeting(c,id);return {bytes,mime:m.audio_type||'application/octet-stream'};}
+export async function readAudio(c:DashboardContext,id:string,partId=id){
+ z.uuid().parse(partId);await getMeeting(c,id);
+ const read=async()=>{const m=(await getDatabasePool().query("SELECT audio_key,audio_type FROM meetings WHERE workspace_id=$1 AND id=$2 AND (id=$3 OR parent_meeting_id=$3) AND status NOT IN ('deleting','deleted')",[c.workspace.id,partId,id])).rows[0];if(!m)throw meetingError('This recording is unavailable.',404);if(!m.audio_key)throw meetingError('Audio is still uploading.',409);return m;};
+ const m=await read(),bytes=await factoryStorage().get(m.audio_key,MAX_AUDIO_BYTES);
+ // Sharing, membership, deletion and a moved part are rechecked after storage I/O.
+ await getMeeting(c,id);await read();return {bytes,mime:m.audio_type||'application/octet-stream'};
+}
 export async function searchMeetingTargets(c:DashboardContext,q:string){
  await meetingRole(c);z.string().min(2).max(120).parse(q);
  return (await getDatabasePool().query(`SELECT 'lead' kind,id,name label FROM leads WHERE workspace_id=$1 AND anonymized_at IS NULL AND (name ILIKE '%'||$2||'%' OR organization ILIKE '%'||$2||'%') UNION ALL SELECT 'client',id,name FROM clients WHERE workspace_id=$1 AND name ILIKE '%'||$2||'%' UNION ALL SELECT 'opportunity',id,title FROM crm_opportunities WHERE workspace_id=$1 AND title ILIKE '%'||$2||'%' UNION ALL SELECT 'contact',id,name FROM contacts WHERE workspace_id=$1 AND name ILIKE '%'||$2||'%' UNION ALL SELECT 'business',id,name FROM crm_businesses WHERE workspace_id=$1 AND anonymized_at IS NULL AND name ILIKE '%'||$2||'%' LIMIT 30`,[c.workspace.id,q])).rows;
 }
-export function meetingPublicRecord(m:MeetingRecord){const {audio_key:_key,lease_token:_lease,...record}=m;return record;}
+export async function separateMeeting(c:DashboardContext,input:unknown){
+ const v=z.object({id:z.uuid(),partId:z.uuid(),revision:z.number().int(),title:z.string().trim().min(1).max(160)}).parse(input);
+ return meetingTransaction(c,async db=>{
+ await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[`meetings:${c.workspace.id}`]);
+ const m=await getMeeting(c,v.id,true,db,true);
+ if(m.revision!==v.revision)throw meetingError('This meeting changed. Refresh before separating it.',409);
+ if(m.receiving||!['ready','review','failed'].includes(m.status)||m.parts.some(p=>!p.audio_type))throw meetingError('Finish receiving and processing before separating recordings.',409);
+ const parts=(await db.query('SELECT * FROM meetings WHERE id=$1 OR parent_meeting_id=$1 ORDER BY part_order,id FOR UPDATE',[v.id])).rows;
+ const index=parts.findIndex(p=>p.id===v.partId);
+ if(index<1)throw meetingError('Choose a recording after the first one.');
+ const remaining=parts.slice(0,index),moved=parts.slice(index),newId=moved[0].id;
+ // The new conversation starts private and unmatched. Original audio objects
+ // and cached part transcripts stay intact; neither analysis remains valid.
+ for(let i=0;i<moved.length;i++)await db.query(`UPDATE meetings SET parent_meeting_id=$2,part_order=$3,visibility='private',classification='unmatched',lead_id=NULL,business_id=NULL,opportunity_id=NULL,client_id=NULL,contact_id=NULL,findings=NULL,review_notes='',status='ready',error_code=NULL,auto_process_requested=false,content_version=content_version+1,revision=revision+1,updated_at=now() WHERE id=$1`,[moved[i].id,i?newId:null,i]);
+ await db.query('UPDATE meetings SET title=$2,transcript=$3,gap_before_seconds=0,boundary_reason=NULL WHERE id=$1',[newId,v.title,moved.every(p=>p.part_transcript)?combineTranscripts(moved):null]);
+ await db.query("UPDATE meetings SET transcript=$2,findings=NULL,status='ready',error_code=NULL,auto_process_requested=false,content_version=content_version+1,revision=revision+1,updated_at=now() WHERE id=$1",[v.id,remaining.every(p=>p.part_transcript)?combineTranscripts(remaining):null]);
+ await insertAuditLog(db,{workspaceId:c.workspace.id,actorUserId:c.user.id,action:'meeting.separated',targetType:'meeting',targetId:v.id,metadata:{newMeetingId:newId,parts:moved.length}});
+ return {id:newId};
+ });
+}
+export function meetingPublicRecord(m:MeetingRecord){const {audio_key:_key,lease_token:_lease,part_transcript:_part,...record}=m;return record;}

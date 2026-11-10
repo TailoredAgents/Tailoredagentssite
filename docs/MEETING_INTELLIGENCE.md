@@ -31,17 +31,17 @@ Implementation and release runbook · November 10, 2026
 - Temporary upload/PCM chunks are in private PostgreSQL rows. Completed uploads delete those chunks after durable object storage succeeds. Partial manual uploads expire after 24 hours. Default recording/transcript/findings retention is 30 days, configurable from 1–180 days from creation.
 - Expiration/deletion denies reads immediately. The worker removes audio and temporary chunks asynchronously; a storage outage leaves a deletion retry pending. It never restores content from a late AI result. Minimal non-content usage/audit records remain. Independently copied CRM notes and clients are not deleted with a recording.
 - Application audit records contain action metadata, not audio, transcripts or secret tokens. Backups and provider-side retention follow their respective platform policies; deleting from this application does not delete already-retained backups or provider logs.
-- Consent notes are an accountable record of what the uploader states, not an automated legal determination. Each recording window needs permission appropriate to the participants.
+- Consent notes are an accountable record of what the uploader states, not an automated legal determination. Each receiving window needs permission appropriate to the participants.
 - Recorded speech and AI output are untrusted data. They cannot instruct the system to send messages, grant access, create records or execute tools.
 
 ## AI and cost controls
 
 - Reuses `OPENAI_API_KEY`. No second assistant or separate OpenAI account is required.
-- File transcription: `gpt-transcribe`. Analysis: `gpt-6-luna`, structured output, no hosted tools, no external web search, `store:false`, 6,000 maximum output tokens. The complete saved transcript is bounded to 160 KB; oversized/invalid outputs fail visibly instead of silently truncating.
+- File transcription: `gpt-transcribe`. Analysis: `gpt-6-luna`, structured output, no hosted tools, no external web search, `store:false`, 6,000 maximum output tokens. Each part transcript is bounded to 160 KB. Ordered transcripts are combined without truncation. Analysis accepts up to 160 KB combined; a larger meeting keeps its full transcript and asks the owner to separate recordings before analysis, without reserving an unusable analysis request.
 - **Austin approved $10/month on November 10, 2026.** Activation is recorded in the release status below. New workspaces default to $0. An owner/admin sets the company allowance in Meeting Inbox → Processing allowance & Omi devices. This is separate from chat, website builds and SEO. No production allowance is assumed from an earlier unrelated budget.
-- Reserves $0.30 for a transcription request and $0.25 for analysis, before a provider request. The $0.55 allowance is conservative, not an assertion of actual cost. Official file-transcription pricing checked November 10 was $0.0045/minute, so a normal 60-minute recording is approximately $0.27 for transcription. Analysis adds text-model usage. Reservations are not reconciled downward in this first version.
+- Reserves **$0.006 per recorded minute, rounded up per audio part**, plus **$0.25 for one combined analysis**. A 90-minute meeting in nine 10-minute parts reserves **$0.79**. The detail screen shows the remaining estimate before processing; already-transcribed parts are reused. This is our conservative allowance policy, not a provider invoice or a guarantee of current model pricing. Reservations are not reconciled downward. The previous flat $0.30-per-part reservation no longer applies to new requests; historical reservations remain unchanged.
 - Workspace/month rows are locked so concurrent jobs cannot reserve past the selected allowance. The accounting month uses America/New_York. The provider project can additionally have account-level controls; local reservations are not a provider billing guarantee for malformed media or future price changes.
-- Uncertain requests retain their reservations and are not automatically retried. At most three requested attempts per stage per recording. Already-sent provider requests may finish after a pause/deletion; results cannot resurrect a deleted record.
+- Uncertain requests retain their reservations and are not automatically retried. At most three requested transcription attempts per immutable recording and three analysis attempts per meeting content version. Separating recordings invalidates findings and requires a deliberate new analysis, while reusing saved transcripts and retaining earlier charges. Already-sent provider requests may finish after a pause/deletion; results cannot resurrect a deleted record.
 - `MEETING_PROCESSING_ENABLED=false` pauses new paid processing. Setting the dashboard allowance to 0 also blocks new reservations; uploads/playback remain available.
 - Uploads: at most 100 new manual recordings per workspace/day and 2 GB of active meeting media reserved/received. Omi: at most 230.4 MB per device per rolling day plus the workspace cap. This is separate from actual disk-free space. The existing preview disk also holds website artifacts; watch disk usage before expanding intake.
 
@@ -53,9 +53,24 @@ Software setup does **not** prove the two physical devices work. No production O
 2. Sign into Tailored Agents as the owner of that device: Austin for Austin's device; Jeffrey for Jeffrey's.
 3. Open **Meeting Inbox → Processing allowance & Omi devices**. Enter the device label and exact Omi user ID. Click **Create private connection**.
 4. Copy the private webhook URL shown once. It contains a revocable 256-bit bearer secret. Never paste it into chat, this file, tickets, screenshots, analytics or public webhook testing sites. Only its SHA-256 hash is saved by the CRM. Revoke and recreate if lost or disclosed.
-5. In the official Omi app, open **Settings → Developer Settings / Developer Mode → Realtime audio bytes**. Paste that URL, use a 10-second interval, save and enable the integration. Labels may vary by installed app version.
-6. Back in the CRM, open a capture window (30–120 minutes), document recording permission, and optionally enable automatic transcription/analysis within the meeting allowance. Capture is paused by default; this prevents all-day ambient recording from silently entering the company system. Pause with a zero-minute window or revoke the connection to stop it.
-7. Confirm **Last audio** updates, the correct person's Meeting Inbox receives a private recording, and playback is intelligible. Stop delivery or use **Finish recording upload**. Automatic grouping closes after roughly three minutes without delivery; long streams split at 19.2 MB (10 minutes at 16 kHz, 20 at 8 kHz). These are transport segments, not a claim to detect complete conversations.
+5. In the official Omi app, open **Settings → Developer Settings / Developer Mode → Realtime audio bytes**. Enter `<your-private-URL>,10` for a 10-second delivery interval, save and enable the integration. Omi app settings own live listening, recording and Bluetooth; this is not a custom companion app. Labels may vary by installed app version.
+6. Back in the CRM, open a **Receiving window** (30–120 minutes), document recording permission, and optionally enable automatic transcription/analysis within the meeting allowance. Receiving starts paused. **Pause receiving** prevents new audio from being stored here; it does not stop Omi recording. Change recording/microphone settings in the official Omi app. Revocation invalidates the private webhook credential.
+7. Confirm **Last audio** updates, the correct person's Meeting Inbox receives one private meeting, and playback is intelligible. A receiving window groups ordered audio parts; long streams roll over at 19.2 MB (10 minutes at 16 kHz, 20 at 8 kHz). An interruption or sample-rate change starts a new part in the same meeting, not a new prospect. **Finish receiving & save meeting** closes the CRM window and saves remaining parts. The worker also finalizes parts after roughly three minutes without delivery and settles the meeting when the window expires. Analysis waits until receiving has ended and every part is saved.
+
+### Long meetings and networking events
+
+- The first recording retains the meeting URL and CRM identity. Further parts are grouped under it and hidden from the top-level inbox. Each has its own intact audio object and ordered playback control; the combined transcript labels part boundaries. Arrival-time gaps and sample-rate changes are visible. This is **not** automatic speaker or business identification.
+- At an event, use **Next conversation** before speaking with another owner. The next received audio starts another private, unmatched meeting without changing the receiving deadline. This is a boundary between webhook deliveries, not an instantaneous hardware cut; a delivery already in flight may contain a small overlap. Pause receiving instead when consent does not cover the next conversation.
+- After saving, **Separate another conversation** moves a selected part and all following parts into a new private meeting. Whole audio files and cached part transcripts remain intact. Existing CRM links stay with the original meeting; the new meeting must be reviewed and linked separately. Both analyses are invalidated, never silently reused for different people.
+- Separation deliberately does not trim speech within a part. For an already-recorded part containing several people, export/trim it in an audio editor and upload the separate recordings; use Next conversation during future events. No waveform editor, microphone control, inferred identity or new mobile app is introduced.
+- A meeting holds at most 24 parts before the next delivery starts another meeting. Existing 230.4 MB/device/rolling-day and 2 GB/workspace limits remain: roughly 120 minutes/day at 16 kHz or 240 at 8 kHz before retained-intake limits apply. Opening another window does not remove those limits. Manual uploads remain limited to 24 MB / 60 minutes per file.
+
+### Paused delivery behavior
+
+- Authenticate the private URL token, exact Omi UID, active non-viewer membership and non-revoked connection; validate the binary content type, bounded even PCM bytes and 8/16 kHz rate **even while paused**.
+- Recheck the receiving deadline under a database lock. Valid but paused/expired deliveries receive HTTP 200 with `accepted:false`, `discarded:true`, `reason:receiving_paused`. No audio, hash, meeting, AI request or delivery timestamp is stored for that payload. General rate-limit counters may still update.
+- Wrong/revoked credentials or mismatched UID remain 401; malformed audio stays 400/413/415; intake/rate limits still reject. A database/storage failure is not falsely acknowledged as successful storage.
+- Omi's current developer sender treats any 2xx as success. Its public source records non-2xx failures and currently disables after 100 failures (with separate retry/circuit-breaker behavior); this is an observed implementation detail, not a permanent API promise. Success acknowledgement prevents intentional CRM pauses from contributing delivery errors. An already-disabled integration still needs to be enabled again in Omi.
 
 ### Verified protocol and its limitations
 
@@ -64,7 +79,7 @@ Software setup does **not** prove the two physical devices work. No production O
 - The token is intentionally in the configured URL because the documented developer flow does not offer custom headers. **Hosting/edge access logs may record query URLs.** Restrict log access and redact query strings in any external request logging/APM. The application never logs these URLs. Deploying this feature does not broadly change Cloudflare security rules.
 - Raw audio has no guaranteed delivery ID, sequence number or recording-end signal. Immediate identical non-silent retries are suppressed within 30 seconds; silent chunks are retained. This is best-effort replay handling, not exactly-once delivery, complete conversation detection, or reliable reconstruction of missing/offline audio. Identical repeated speech could be mistaken for a retry. The UI discloses that recordings may contain gaps/repeats.
 - App source currently splits deliveries into short chunks. Device/app/version and backend behavior can differ. It may depend on Omi's backend even though our transcription uses OpenAI. Do not assume the raw webhook bypasses every Omi subscription restriction or prevents audio from traversing Omi infrastructure.
-- The documented free processing allowance and ability to export recordings do **not** establish unlimited webhook delivery, background reliability or automatic offline replay. Manual uploading remains the fallback; a paid Omi subscription is neither purchased nor promised unnecessary for every device setup.
+- Official Omi docs explicitly require a **live listening session** for raw-audio delivery; historical/store-and-forward uploads do **not** replay raw audio to this webhook. The documented free processing allowance and ability to export recordings do **not** establish unlimited webhook delivery or background reliability. Manual uploading remains the fallback; a paid Omi subscription is neither purchased nor promised unnecessary for every device setup.
 
 ### Physical acceptance checklist (not completed by synthetic tests)
 
@@ -75,7 +90,7 @@ Software setup does **not** prove the two physical devices work. No production O
 - [ ] Lock the iPhone, background the app, change Wi-Fi/cellular, disconnect/reconnect Bluetooth; note missing audio and behavior.
 - [ ] Test offline recording/export and recovery. Do not assume automatic sync.
 - [ ] Test on the actual free plan, including behavior when its processing allowance is exhausted. Ask Omi support if the installed app cannot deliver raw audio without paid processing.
-- [ ] Revocation and expired capture windows stop intake. Confirm other teammates cannot read private recordings.
+- [ ] Revocation and expired receiving windows stop intake. Confirm other teammates cannot read private recordings.
 - [ ] With a small explicitly authorized processing allowance, test a harmless consented recording through OpenAI and review transcript accuracy and actual dashboard/provider costs.
 - [ ] Export and manually upload a recording as a fallback. No customer conversation should be the first acceptance fixture.
 
@@ -162,3 +177,34 @@ Synthetic tests do not prove live OpenAI accuracy, physical Omi behavior, free-p
 - [Omi subscription explanation](https://help.omi.me/en/articles/12058411-understanding-omi-subscriptions)
 - [OpenAI file transcription](https://developers.openai.com/api/docs/guides/speech-to-text)
 - [OpenAI pricing](https://developers.openai.com/api/docs/pricing)
+
+
+## Final pre-device readiness pass — November 10, 2026
+
+This section supersedes the original flat reservation and one-meeting-per-segment behavior above. It does not claim physical-device acceptance.
+
+### Scope and migration
+
+- Migration **0056_meeting_groups.sql** adds parent/part metadata, preserves existing recording IDs/storage keys/transcripts, and versions analysis reservations. No audio or usage history is removed and no budget is changed. Existing single-file uploads and old request rows remain valid. A transcript completed by the previous worker during rollout is reused.
+- No Mail or employee-assistant source is changed. Existing permissioned meeting tools read the combined root transcript. No new OAuth grants, credentials, paid services, notifications or real customer recordings are created for testing.
+- Use the existing Render web build (`npm ci && npm run db:migrate && npm run db:retention && npm run build`). Take a private Render PostgreSQL recovery export first. The same existing shared cron calls `/api/cron/meetings`; no new service or schedule is needed. The private audio storage service needs no code/config change.
+- If rollout fails, stop new paid meeting processing with the existing flag if necessary; preserve the database, audio and usage rows. Do not reverse the additive migration or delete parts to roll back. Older app code remains schema-compatible but does not understand new grouped conversations: keep grouped intake paused until the new release is restored.
+
+### Verification and release evidence
+
+Local verification passed in a detached checkout based on `8a31ca0`, with only this release’s scoped files overlaid. The full Vitest suite passed **933 tests**; **445 were skipped** because their separate optional integration environments/features were not configured. The final focused meeting suite passes **40 checks**, including two 90-minute synthetic meetings (8/16 kHz) with byte-for-byte ordered audio verification, one analysis each, owner separation, paused HTTP acknowledgement, rejected malformed/unauthorized payloads, duplicate suppression, preserved silence, interruptions, explicit networking boundaries, split privacy, cached-transcript reuse, linked sparse prospects, oversized transcripts, and deletion/expiry safeguards. No real provider request or email/SMS was sent.
+
+- **15/15** actual private-storage HTTP/security tests passed; unchanged storage still denies public meeting media and enforces path, size, concurrency and authentication boundaries.
+- **4/4** Playwright meeting journeys passed across desktop and phone: manual fallback, private playback/ranges, safe paused intake, grouped recordings, separation, AI review, sparse prospect linking and deletion. No serious/critical axe violations or horizontal overflow in the tested detail views. Desktop/phone screenshots were inspected.
+- Lint, TypeScript, `git diff --check`, and the production webpack build passed. After the final receiving-status copy and auto-processing preference fix, the focused 40-test suite, lint and TypeScript passed again; a final production build verifies those same files before push.
+- A private Render PostgreSQL export was created **November 10 at 5:17 PM Eastern** and the download became available in Render Recovery. It was not downloaded or made public. Seven-day point-in-time recovery is also shown by Render.
+- Production rollout and authenticated readback remain pending this commit’s deployment; record the release outcome here after verification. The earlier release status is historical, not evidence that these new changes are already deployed.
+
+### Still requires the devices
+
+- Test Austin and Jeffrey independently with the actual official iPhone app and firmware, a short harmless consented sample first, then a long conversation.
+- Verify audible quality and rate, background/locked-phone Bluetooth and Wi-Fi/cellular transitions, missed/repeated audio, receiving-window expiry and re-enabling in Omi if a prior integration was disabled.
+- Confirm actual Basic/free-plan behavior, especially after its documented processing allowance. The CRM tests do not establish unlimited raw-audio delivery on that plan.
+- Review transcript accuracy, actual OpenAI usage, and the networking boundary across real deliveries. Manual export/upload remains the fallback. A passing deployment is not evidence of hardware or provider accuracy.
+
+References for this pass: [Omi audio streaming](https://docs.omi.me/doc/developer/apps/AudioStreaming), [Omi integrations](https://docs.omi.me/doc/developer/apps/Integrations), [developer audio sender](https://github.com/BasedHardware/omi/blob/main/backend/utils/webhooks.py), [developer failure tracking](https://github.com/BasedHardware/omi/blob/main/backend/database/webhook_health.py), [Omi subscriptions](https://help.omi.me/en/articles/12058411-understanding-omi-subscriptions), [GPT-Transcribe model](https://developers.openai.com/api/docs/models/gpt-transcribe).

@@ -23,6 +23,7 @@ export async function POST(request:Request){return endpoint(async()=>{
  switch(v.operation){
  case 'start':{const {operation:_operation,...input}=v;result=await service.startUpload(c,input);break;}
  case 'finish':result=await service.finishUpload(c,id());break;
+ case 'separate':result=await service.separateMeeting(c,v);break;
  case 'process':await service.queueMeeting(c,id(),z.string().parse(v.consentNote));after(()=>runMeetingWorker(id()).then(()=>undefined));break;
  case 'update':await service.updateMeeting(c,v);break;
  case 'link':await service.linkMeeting(c,id(),z.enum(meetingKinds).parse(v.kind),z.uuid().parse(v.targetId));break;
@@ -32,6 +33,7 @@ export async function POST(request:Request){return endpoint(async()=>{
  case 'budget':await service.saveMeetingBudget(c,z.number().parse(v.dollars));break;
  case 'deviceCreate':result=await omi.createMeetingDevice(c,v);break;
  case 'deviceArm':await omi.armMeetingDevice(c,v);break;
+ case 'deviceNext':await omi.nextOmiConversation(c,id());break;
  case 'deviceRevoke':await omi.revokeMeetingDevice(c,id());break;
  default:throw meetingError('Choose a supported action.');
  }

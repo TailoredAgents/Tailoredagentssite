@@ -50,3 +50,5 @@
 @media(max-width:480px) { .relationship-content { padding: 16px; }.meeting-progress { padding: 12px; }.meeting-progress span { font-size: 12px; }.meeting-list > a { padding: 16px; }.meeting-list > a > div { flex-basis: 65%; } }
 
 .meeting-unlink { display: block; margin-top: 6px; text-decoration: underline; color: var(--workspace-muted); font-size: 13px; }
+
+.meeting-recordings{display:grid;gap:12px}.meeting-recording{padding:12px;border:1px solid var(--workspace-line);border-radius:10px;min-width:0}.meeting-recording audio{display:block;max-width:100%;width:100%;margin-top:10px}
