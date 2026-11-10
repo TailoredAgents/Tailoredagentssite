@@ -1,8 +1,18 @@
 # Website Factory: research, planning and website builds
 
-## Salesperson workflow (October 27 update)
+## On-demand planning release — November 10
 
-1. New leads now enter research automatically under the approved research allowance. Open a **Website plan ready** item in **My Day** or **Website Builder**. For an older lead, **Create website mockup** lets you search by name, company, email or phone; the lead’s page has the same entry point. Missing company, website or location details do not block starting.
+Tailored Agents is prioritizing AI agents and workflow automation. Website Builder remains an optional sales tool. Migration **0048_on_demand_website_planning.sql** turns off the legacy automatic-intake flag and prevents it from being reenabled. The application removes all three intake hooks and the automatic-research checkbox. Old settings payloads cannot restore automatic intake. Research stays available for explicitly requested mockups within the existing budget; exact plan approval still gates building.
+
+Deploy the CRM with the normal Render build command from `render.yaml`: `npm ci && npm run db:migrate && npm run db:retention && npm run build`. Migration runs before the new app starts. The migration is compatible with old intake code, which reads the now-false flag and skips planning. An old open settings form that tries to enable automatic intake must be refreshed. No worker configuration, new provider, or budget change is needed.
+
+Existing projects, queued/running research, plan chat, approvals, builds and previews are retained. Already queued research can still finish; this release stops **new lead intake** from creating more work. It does not cancel existing requests. Do not restore automatic website research as part of the separate AI discovery phase described in [the agency roadmap](AGENCY_OS_ROADMAP.md).
+
+Verification and release status are recorded in the roadmap; local checks are not evidence of production deployment.
+
+## Salesperson workflow (November 10 update)
+
+1. Website planning is on demand. New Facebook, website and manually entered leads do not start website research, even when they mention a website. When a mockup is relevant, select **Create website mockup** in **Website Builder** or on the lead’s page. Search by name, company, email or phone. Missing company, website or location details do not block starting; a signed client or completed sale is not required.
 2. Review the proposed direction and pages. Use **Your direction → Update the plan** to add context or request changes. **Full plan** and **Research & sources** contain the details. Unsent chat drafts are preserved and must be sent or cleared before approval.
 3. Select **Approve plan & build website** after reviewing the latest version. Approval applies to that exact plan. The page follows real build stages automatically; you can leave and return.
 4. A **Website ready to share** work item appears in My Day and Website Builder. Choose **Open website** or **Copy preview link** at the top of the project. Source downloads and sharing controls are in **Download source & sharing options**. To plan a new version, expand **Plan & project history**. Planning chat does not edit already published files.
@@ -49,7 +59,7 @@ The standalone builder CLI correction subsequently deployed successfully from so
 
 Open **Website Builder** in the sidebar, or create/open a website project from a lead. A lead needs no company name, website, location, industry, or other specific business field to enter this workflow. Missing or questionable information should yield an explicitly provisional, useful general concept.
 
-1. A deliberate start creates a durable research request. After automatic intake is enabled, new Meta, website and manual leads can create the same request automatically. Existing leads are never silently backfilled.
+1. A deliberate **Create website mockup** action creates a durable research request. Lead intake never starts website planning. Existing leads are never silently backfilled.
 2. The worker saves a research result, then uses a separate bounded request to produce the proposed plan. Findings, possible matches, submitted details, assumptions and unknowns remain distinct.
 3. Teammates can discuss the plan and supply public reference URLs in the persistent chat. New directions create a revised plan when needed; a clarification can preserve the current version. While an agent is processing the saved context, the chat draft remains available and can be sent afterward.
 4. **Approve plan & build website** records the exact current plan and its approver. Stale plans and plans with pending revisions cannot be approved. Repeated requests do not duplicate the build request.
@@ -104,7 +114,7 @@ The sequence below is the setup and pilot procedure; completed deployment, allow
 5. Select a small, authorized set of leads, including no website, an unhelpful company name, uncertain business matches and sparse details. Run research and assess the sources and proposed plans. A nonexistent search match must not become a factual assertion that the business lacks a site.
 6. Use planning chat to correct a detail and change the design direction. Verify a revised version and its change explanation. Ask a clarification and verify that no unnecessary version is created when the plan is unchanged.
 7. Approve the latest plan and verify that the exact version enters the build queue. While building is disabled, it must remain queued without an invented URL. Check that further discussion preserves the already approved snapshot.
-8. Compare observed quality, timing, conservative usage estimates and OpenAI project usage. Then enable automatic research for new leads if the owner wants it. This does not authorize any automatic website construction.
+8. Compare observed quality, timing, conservative usage estimates and OpenAI project usage. Keep website research on demand: each new mockup requires an explicit start and each build requires exact plan approval.
 
 The first live result above is separate from the synthetic implementation tests. Austin subsequently confirmed planning chat works. Continue the remaining pilot checks and record actual cost, broader model quality and exact-version approval evidence separately in the build plan's resume log.
 

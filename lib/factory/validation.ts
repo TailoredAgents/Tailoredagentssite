@@ -9,4 +9,4 @@ export const startFactorySchema = z.object({ leadId: uuid });
 export const messageFactorySchema = z.object({ projectId: uuid, requestId: uuid, body: z.string().trim().min(1,"Add a detail or direction for the website plan.").max(8000), referenceUrls: z.array(referenceUrl).max(8).default([]) });
 export const approvalFactorySchema = z.object({ projectId: uuid, planId: uuid });
 export const retryFactorySchema = z.object({ projectId: uuid, jobId: uuid, requestId: uuid });
-export const settingsFactorySchema = z.object({ researchEnabled: z.boolean(), autoResearch: z.boolean(), monthlyBudgetDollars: z.coerce.number().finite().min(1).max(1000).refine(v => Math.abs(Math.round(v * 100)-v * 100)<1e-8,"Use a dollar amount with at most two decimal places.") });
+export const settingsFactorySchema = z.object({ researchEnabled: z.boolean(), monthlyBudgetDollars: z.coerce.number().finite().min(1).max(1000).refine(v => Math.abs(Math.round(v * 100)-v * 100)<1e-8,"Use a dollar amount with at most two decimal places.") });

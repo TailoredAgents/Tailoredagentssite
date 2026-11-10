@@ -110,10 +110,13 @@ test("researches a sparse lead, refines through chat, and approves only the revi
   await signIn(page);
   await page.goto("/dashboard/sales/factory/settings");
   await page.getByLabel("Enable AI research").check();
-  await page.getByLabel("Research new leads automatically").check();
+  await expect(page.getByLabel("Research new leads automatically")).toHaveCount(0);
+  await expect(page.getByText(/New leads do not start website research/)).toBeVisible();
   await page.getByLabel("Monthly research limit (USD)").fill("25");
   await page.getByRole("button",{name:"Save research settings",exact:true}).click();
   await expect(page.getByText("Website planning settings saved.",{exact:true})).toBeVisible();
+  expect((await control(request)).projects).toHaveLength(0);
+  expect((await control(request)).jobs).toHaveLength(0);
   await openLeadPlan(page,(await control(request)).leadId);
   expect((await control(request)).calls).toBe(0);
   let state=await generate(request);

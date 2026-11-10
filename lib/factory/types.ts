@@ -21,7 +21,7 @@ export type FactoryPlanContent = {
   sources: Array<{ id: string; title: string; url: string; retrievedAt: string; evidence: string }>;
 };
 export type FactoryActionState = { status: "idle" | "success" | "error"; message?: string; projectId?: string };
-export type FactorySettings = { researchEnabled: boolean; autoResearch: boolean; monthlyBudgetMicros: number; budgetApprovedAt: string | null };
+export type FactorySettings = { researchEnabled: boolean; monthlyBudgetMicros: number; budgetApprovedAt: string | null };
 export type FactoryProjectSummary = {
   id: string; leadId: string; leadName: string; companyName: string;
   status: "draft" | "research_queued" | "researching" | "plan_ready" | "approved" | "failed";

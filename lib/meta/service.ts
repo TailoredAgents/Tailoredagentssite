@@ -1,6 +1,5 @@
 import { enqueueLeadIntroduction } from "@/lib/lead-intro/service";
 import "server-only";
-import { enqueueFactoryLead } from "@/lib/factory/service";
 import { enqueueLeadAlerts } from "./lead-alerts";
 import { randomUUID } from "node:crypto";
 import { getDatabasePool, insertAuditLog } from "@/lib/dashboard/db";
@@ -123,7 +122,6 @@ export async function runMetaLeadWorker() {
         await client.query("UPDATE lead_intro_settings SET last_error_code='enqueue_failed' WHERE workspace_id=$1",[workspaceId]);
         console.error("lead_introduction_enqueue_failed");
       }
-      await enqueueFactoryLead(client, workspaceId, leadId);
       await insertAuditLog(client, {
         workspaceId,
         action: "lead.received",

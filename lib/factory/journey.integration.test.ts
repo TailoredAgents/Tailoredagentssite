@@ -8,7 +8,7 @@ vi.mock("./build-config",()=>({factoryBuildConfiguration:()=>({configured:true,r
 import {getDatabasePool} from "@/lib/dashboard/db";
 import type {DashboardContext} from "@/lib/dashboard/data";
 import {createManualLead} from "@/lib/operations/manual-leads";
-import {saveFactorySettings,sendFactoryMessage,approveFactoryPlan} from "./service";
+import {startFactory,saveFactorySettings,sendFactoryMessage,approveFactoryPlan} from "./service";
 import {runFactoryWorkerStep} from "./worker";
 import {runFactoryBuildWorkerStep,type FactoryBuildRuntime} from "./build-worker";
 import {saveFactoryBuildSettings} from "./build-service";
@@ -49,7 +49,7 @@ describe.skipIf(!url)("Salesperson-only lead-to-hosted-preview journey (no paid 
     }
     // Owner setup is complete before a lead arrives. All subsequent human actions
     // are by a Member; the background workers require no logged-in browser.
-    await saveFactorySettings(owner,{researchEnabled:true,autoResearch:true,monthlyBudgetDollars:25});
+    await saveFactorySettings(owner,{researchEnabled:true,monthlyBudgetDollars:25});
     await saveFactoryBuildSettings(owner,{enabled:true,monthlyBudgetDollars:50,perBuildBudgetDollars:5});
   });
   afterAll(async()=>{await pool?.end();delete(globalThis as {tailoredAgentsDatabasePool?:Pool}).tailoredAgentsDatabasePool;vi.unstubAllEnvs();vi.unstubAllGlobals();});
@@ -70,6 +70,9 @@ describe.skipIf(!url)("Salesperson-only lead-to-hosted-preview journey (no paid 
     vi.stubGlobal("fetch",research);
     const intake={submissionId:randomUUID(),name:"Synthetic lead",email:"lead@example.test",organization:company,description:brief};
     const lead=await createManualLead(salesperson,intake);expect(await createManualLead(salesperson,intake)).toEqual(lead);
+    expect((await pool.query("SELECT id FROM factory_projects WHERE lead_id=$1",[lead.leadId])).rows).toHaveLength(0);
+    expect(research).not.toHaveBeenCalled();
+    await startFactory(salesperson,{leadId:lead.leadId});
     const projects=(await pool.query("SELECT id FROM factory_projects WHERE lead_id=$1",[lead.leadId])).rows;expect(projects).toHaveLength(1);
     const projectId=projects[0].id;
     expect((await pool.query("SELECT count(*)::int n FROM factory_build_versions")).rows[0].n).toBe(0);
@@ -89,6 +92,16 @@ describe.skipIf(!url)("Salesperson-only lead-to-hosted-preview journey (no paid 
     expect((await pool.query("SELECT approved_by FROM factory_build_requests")).rows).toEqual([{approved_by:salesperson.user.id}]);
 
     const blueprint=fixtureBlueprint(family,undefined,true),objects=new Map<string,Uint8Array>();
+    // Current generation responses include explicit media/crop choices. Older
+    // renderer fixtures omit these fields, so opt this provider fixture in.
+    blueprint.heroImage.uploadId=null;
+    blueprint.media=[];
+    blueprint.presentation={version:1,fontTheme:"studio",heroEmphasis:null,logoAssetId:null,pageImages:[],sectionImages:[],imageFocalPoints:[]};
+    blueprint.pages[0].sections.find(section=>section.id==="services")!.items.forEach((item,index)=>{item.body=[
+      "Describe your central objective and explore the information needed to define a useful starting point. Bring the questions that matter most to you.",
+      "Compare different approaches to your project and consider the practical constraints behind each option. Identify the decisions that need further discussion before choosing a direction.",
+      "Outline a manageable next step with clear priorities and responsibilities. Use your initial discussion to determine which information is needed before a scope can be agreed.",
+    ][index];});
     const image=new Uint8Array(await sharp({create:{width:1000,height:700,channels:3,background:"#38586a"}}).png().toBuffer());
     let reviews=0,corrections=0,generations=0;
     const runtime:FactoryBuildRuntime={

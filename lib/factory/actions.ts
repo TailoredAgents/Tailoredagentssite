@@ -9,7 +9,7 @@ async function change(form:FormData,work:(context:Awaited<ReturnType<typeof requ
   try{
     const input:Record<string,unknown>=Object.fromEntries(form.entries());
     if(form.has("referenceUrls"))input.referenceUrls=String(form.get("referenceUrls")??"").split(/\r?\n/).map(v=>v.trim()).filter(Boolean);
-    for(const key of ["researchEnabled","autoResearch"])input[key]=form.get(key)==="on"||form.get(key)==="true";
+    input.researchEnabled=form.get("researchEnabled")==="on"||form.get("researchEnabled")==="true";
     const result=await work(context,input);
     revalidatePath("/dashboard/sales/factory");revalidatePath("/dashboard/sales/factory/settings");revalidatePath("/dashboard/sales/factory/new");
     revalidatePath("/dashboard/sales/mockups");

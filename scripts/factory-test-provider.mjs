@@ -43,7 +43,7 @@ const server=createServer(async(req,res)=>{
       if(body.action==="reset")await reset();
       if(body.action==="fail")failure=true;
       if(body.action==="recover")failure=false;
-      if(body.action==="enabled") await pool.query("INSERT INTO factory_settings(workspace_id,research_enabled,auto_research,monthly_budget_micros,budget_approved_at) VALUES($1,true,true,25000000,now()) ON CONFLICT(workspace_id) DO UPDATE SET research_enabled=true,auto_research=true,budget_approved_at=now()",[workspace]);
+      if(body.action==="enabled") await pool.query("INSERT INTO factory_settings(workspace_id,research_enabled,auto_research,monthly_budget_micros,budget_approved_at) VALUES($1,true,false,25000000,now()) ON CONFLICT(workspace_id) DO UPDATE SET research_enabled=true,auto_research=false,budget_approved_at=now()",[workspace]);
       const projects=(await pool.query("SELECT id,status,current_plan_id FROM factory_projects ORDER BY created_at")).rows;
       const jobs=(await pool.query("SELECT id,status,stage,error FROM factory_jobs ORDER BY created_at")).rows;
       const plans=(await pool.query("SELECT id,version,content FROM factory_plans ORDER BY created_at")).rows;

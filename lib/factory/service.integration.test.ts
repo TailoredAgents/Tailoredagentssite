@@ -4,7 +4,7 @@ import type { Pool } from "pg";
 import { afterAll,beforeAll,beforeEach,describe,expect,it,vi } from "vitest";
 import type { DashboardContext } from "@/lib/dashboard/data";
 import { getDatabasePool } from "@/lib/dashboard/db";
-import { startFactory,sendFactoryMessage,approveFactoryPlan,saveFactorySettings,retryFactoryJob,enqueueFactoryLead } from "./service";
+import { startFactory,sendFactoryMessage,approveFactoryPlan,saveFactorySettings,retryFactoryJob } from "./service";
 import { getFactoryProject,getFactoryWorkspace,getFactoryLeadProject,getFactoryLeadChoices } from "./data";
 import { createManualLead } from "@/lib/operations/manual-leads";
 import { storePublicInquiry } from "@/lib/operations/public-inquiries";
@@ -114,17 +114,16 @@ describe.skipIf(!url)("Website Factory planning authorization and durable workfl
     const input={projectId,jobId:job.id,requestId:randomUUID()};await Promise.all([retryFactoryJob(member,input),retryFactoryJob(member,input)]);
     expect((await pool.query("SELECT count(*)::int n FROM factory_jobs WHERE project_id=$1 AND status='queued'",[projectId])).rows[0].n).toBe(1);
   });
-  it("requires owner settings approval and only autoenqueues new leads after optin",async()=>{
-    const db=await pool.connect();
-    try{expect(await enqueueFactoryLead(db,ws,leadId)).toBeNull();}finally{db.release();}
+  it("requires owner settings approval and cannot reenable automatic intake with an old settings payload",async()=>{
     await expect(saveFactorySettings(member,{researchEnabled:true,autoResearch:true,monthlyBudgetDollars:25})).rejects.toThrow("workspace access");
     await saveFactorySettings(owner,{researchEnabled:true,autoResearch:true,monthlyBudgetDollars:25});
     expect((await getFactoryWorkspace(owner)).settings.budgetApprovedAt).not.toBeNull();
-    const intake=await pool.connect();try{await intake.query("BEGIN");const first=await enqueueFactoryLead(intake,ws,leadId);const again=await enqueueFactoryLead(intake,ws,leadId);await intake.query("COMMIT");expect(again?.projectId).toBe(first?.projectId);}finally{intake.release();}
+    expect((await pool.query("SELECT auto_research FROM factory_settings WHERE workspace_id=$1",[ws])).rows[0].auto_research).toBe(false);
+    expect((await pool.query("SELECT count(*)::int n FROM factory_projects")).rows[0].n).toBe(0);
     await saveFactorySettings(owner,{researchEnabled:false,autoResearch:false,monthlyBudgetDollars:10});
     expect((await getFactoryWorkspace(owner)).settings.budgetApprovedAt).toBeNull();
   });
-  it("manual and website lead intake remain idempotent with research enabled and no provider key",async()=>{
+  it("manual and website intake never queue research, including website requests with research enabled",async()=>{
     await saveFactorySettings(owner,{researchEnabled:true,autoResearch:true,monthlyBudgetDollars:19.99});
     const manual={submissionId:randomUUID(),name:"Jamie Example",email:"jamie@example.test"};
     const first=await createManualLead(member,manual),again=await createManualLead(member,manual);
@@ -132,9 +131,32 @@ describe.skipIf(!url)("Website Factory planning authorization and durable workfl
     const web={submissionId:randomUUID(),fingerprint:"a".repeat(64),inquiryType:"website-review",name:"Taylor Example",organization:"None",email:"taylor@example.test"};
     const incoming=await storePublicInquiry(web),duplicate=await storePublicInquiry(web);
     expect(duplicate).toMatchObject({leadId:incoming.leadId,duplicate:true});
-    expect((await pool.query("SELECT count(*)::int n FROM factory_projects")).rows[0].n).toBe(2);
-    expect((await pool.query("SELECT count(*)::int n FROM factory_jobs WHERE status='queued'")).rows[0].n).toBe(2);
+    expect((await pool.query("SELECT count(*)::int n FROM factory_projects")).rows[0].n).toBe(0);
+    expect((await pool.query("SELECT count(*)::int n FROM factory_jobs WHERE status='queued'")).rows[0].n).toBe(0);
     expect((await pool.query("SELECT count(*)::int n FROM factory_costs")).rows[0].n).toBe(0);
+    const [requested,repeated]=await Promise.all([startFactory(member,{leadId:incoming.leadId}),startFactory(member,{leadId:incoming.leadId})]);
+    expect(repeated.projectId).toBe(requested.projectId);
+    expect((await pool.query("SELECT count(*)::int n FROM factory_jobs WHERE status='queued'")).rows[0].n).toBe(1);
+    expect((await pool.query("SELECT count(*)::int n FROM factory_build_requests")).rows[0].n).toBe(0);
+  });
+  it("migrates old automatic settings without changing saved work, approvals or budgets",async()=>{
+    await saveFactorySettings(owner,{researchEnabled:true,monthlyBudgetDollars:19.99});
+    const {projectId}=await startFactory(member,{leadId});
+    const planId=await plan(projectId);await approveFactoryPlan(member,{projectId,planId});
+    const before=await getFactoryProject(owner,projectId);
+    const db=await pool.connect();
+    try {
+      await db.query("BEGIN");
+      // Reconstruct the previous schema in this disposable transaction only.
+      await db.query("ALTER TABLE factory_settings DROP CONSTRAINT factory_research_on_demand");
+      await db.query("UPDATE factory_settings SET auto_research=true WHERE workspace_id=$1",[ws]);
+      await db.query(await readFile("db/migrations/0048_on_demand_website_planning.sql","utf8"));
+      expect((await db.query("SELECT research_enabled,auto_research,monthly_budget_micros,budget_approved_at FROM factory_settings WHERE workspace_id=$1",[ws])).rows[0]).toMatchObject({research_enabled:true,auto_research:false,monthly_budget_micros:"19990000",budget_approved_at:expect.any(Date)});
+      expect((await db.query("SELECT plan_id FROM factory_build_requests WHERE project_id=$1",[projectId])).rows).toEqual([{plan_id:planId}]);
+      expect((await db.query("SELECT content FROM factory_plans WHERE id=$1",[planId])).rows[0].content).toEqual(before?.plans[0].content);
+      await expect(db.query("UPDATE factory_settings SET auto_research=true WHERE workspace_id=$1",[ws])).rejects.toThrow("factory_research_on_demand");
+    } finally { await db.query("ROLLBACK");db.release(); }
+    expect(await getFactoryProject(owner,projectId)).toEqual(before);
   });
   it("does not enqueue automatic research for manual or website intake while disabled",async()=>{
     await createManualLead(member,{submissionId:randomUUID(),email:"sparse@example.test"});

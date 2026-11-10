@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import type { DashboardContext } from "@/lib/dashboard/data";
 import { insertAuditLog } from "@/lib/dashboard/db";
-import { authorizeFactory, factoryTransaction, readFactorySettings } from "./data";
+import { authorizeFactory, factoryTransaction } from "./data";
 import { FactoryInputError } from "./types";
 import { startFactorySchema,messageFactorySchema,approvalFactorySchema,retryFactorySchema,settingsFactorySchema } from "./validation";
 import { queueApprovedFactoryBuild } from "./build-service";
@@ -22,12 +22,8 @@ async function createWorkspace(db: PoolClient, workspaceId: string, leadId: stri
   const existing=(await db.query<{id:string}>("SELECT id FROM factory_projects WHERE workspace_id=$1 AND lead_id=$2",[workspaceId,leadId])).rows[0];
   return {projectId:existing.id,created:false};
 }
-/** Call within lead intake's existing transaction. No provider request or paid work occurs here. */
-export async function enqueueFactoryLead(db: PoolClient, workspaceId: string, leadId: string, actorUserId: string|null=null) {
-  const settings=await readFactorySettings(db,workspaceId);
-  if(!settings.researchEnabled||!settings.autoResearch||!settings.budgetApprovedAt)return null;
-  return createWorkspace(db,workspaceId,leadId,actorUserId);
-}
+// Website planning starts only through an authorized teammate's explicit request.
+// Lead intake is independent of the builder, including leads with website interest.
 export async function startFactory(context: DashboardContext,input:unknown) {
   const data=startFactorySchema.parse(input);
   return factoryTransaction(context.workspace.id,async db=>{
@@ -102,11 +98,10 @@ export async function retryFactoryJob(context:DashboardContext,input:unknown){
 }
 export async function saveFactorySettings(context:DashboardContext,input:unknown){
   const data=settingsFactorySchema.parse(input);
-  if(data.autoResearch&&!data.researchEnabled)throw new FactoryInputError("Enable research before enabling automatic research for new leads.");
   return factoryTransaction(context.workspace.id,async db=>{
     await authorizeFactory(db,context,"manage");
-    await db.query(`INSERT INTO factory_settings(workspace_id,research_enabled,auto_research,monthly_budget_micros,budget_approved_at,updated_by) VALUES($1,$2,$3,$4,CASE WHEN $2 THEN now() ELSE NULL END,$5) ON CONFLICT(workspace_id) DO UPDATE SET research_enabled=EXCLUDED.research_enabled,auto_research=EXCLUDED.auto_research,monthly_budget_micros=EXCLUDED.monthly_budget_micros,budget_approved_at=EXCLUDED.budget_approved_at,updated_by=EXCLUDED.updated_by,updated_at=now()`,[context.workspace.id,data.researchEnabled,data.autoResearch,Math.round(data.monthlyBudgetDollars*1000000),context.user.id]);
-    await insertAuditLog(db,{workspaceId:context.workspace.id,actorUserId:context.user.id,action:"factory.settings_updated",targetType:"workspace",targetId:context.workspace.id,metadata:{researchEnabled:data.researchEnabled,autoResearch:data.autoResearch,monthlyBudgetDollars:data.monthlyBudgetDollars}});
+    await db.query(`INSERT INTO factory_settings(workspace_id,research_enabled,auto_research,monthly_budget_micros,budget_approved_at,updated_by) VALUES($1,$2,false,$3,CASE WHEN $2 THEN now() ELSE NULL END,$4) ON CONFLICT(workspace_id) DO UPDATE SET research_enabled=EXCLUDED.research_enabled,auto_research=false,monthly_budget_micros=EXCLUDED.monthly_budget_micros,budget_approved_at=EXCLUDED.budget_approved_at,updated_by=EXCLUDED.updated_by,updated_at=now()`,[context.workspace.id,data.researchEnabled,Math.round(data.monthlyBudgetDollars*1000000),context.user.id]);
+    await insertAuditLog(db,{workspaceId:context.workspace.id,actorUserId:context.user.id,action:"factory.settings_updated",targetType:"workspace",targetId:context.workspace.id,metadata:{researchEnabled:data.researchEnabled,autoResearch:false,monthlyBudgetDollars:data.monthlyBudgetDollars}});
     return {};
   });
 }

@@ -149,6 +149,15 @@ describe.skipIf(!url)("Meta durable lead intake", () => {
   });
 
   const recipients = [{ name: "Owner", phone: "2125550123" }, { name: "Sales", phone: "2125550124" }, { name: "Developer", phone: "2125550125" }];
+  it("imports Facebook leads without starting website research when the builder is enabled", async () => {
+    await pool.query("INSERT INTO factory_settings(workspace_id,research_enabled,monthly_budget_micros,budget_approved_at) VALUES($1,true,25000000,now()) ON CONFLICT(workspace_id) DO UPDATE SET research_enabled=true,budget_approved_at=now()",[ws]);
+    await enqueueMetaLeads(payload());
+    await runMetaLeadWorker();
+    expect((await pool.query("SELECT id FROM leads WHERE source='facebook'")).rowCount).toBe(1);
+    expect((await pool.query("SELECT id FROM factory_projects")).rowCount).toBe(0);
+    expect((await pool.query("SELECT id FROM factory_jobs")).rowCount).toBe(0);
+    expect((await pool.query("SELECT id FROM factory_costs")).rowCount).toBe(0);
+  });
   async function importWithAlerts() {
     await pool.query("INSERT INTO sms_numbers(id,workspace_id,account_sid,provider_sid,phone) VALUES($1,$2,$3,$4,'+16785417725')", [randomUUID(),ws,process.env.TWILIO_ACCOUNT_SID,'PN'+'1'.repeat(32)]);
     await saveLeadAlertSettings(context("owner"), {enabled:true,recipients});
