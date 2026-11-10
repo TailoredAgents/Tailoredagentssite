@@ -64,12 +64,19 @@ test("solution and call examples can be explored with a keyboard without contact
 
 test("public pages fit the viewport and have accessible content and matching share metadata", async ({ page }, info) => {
   test.setTimeout(240_000);
+  const runtimeErrors: string[] = [];
+  page.on("pageerror", error => runtimeErrors.push(error.message));
   for (const path of ["/", "/automation", "/pricing", "/partners", "/company", "/solutions", "/work", "/contact", "/engineering", "/websites", "/seo", "/packages", "/industries/hvac", "/free-review", "/work/stonegateos", "/privacy", "/terms"]) {
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+    for (const img of await page.locator("main img").all()) {
+      await img.scrollIntoViewIfNeeded();
+      await expect.poll(() => img.evaluate(el => (el as HTMLImageElement).complete && (el as HTMLImageElement).naturalWidth > 0)).toBe(true);
+    }
     const dimensions = await page.evaluate(() => ({ content: document.documentElement.scrollWidth, viewport: innerWidth }));
     expect(dimensions.content, path).toBeLessThanOrEqual(dimensions.viewport + 1);
-    const result = await new AxeBuilder({ page }).include("main").withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+    const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
     expect.soft(result.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) })), path).toEqual([]);
     if (["/", "/automation", "/pricing", "/partners", "/company", "/solutions", "/work", "/contact"].includes(path)) {
       const description = await page.locator('meta[name="description"]').getAttribute("content");
@@ -79,4 +86,5 @@ test("public pages fit the viewport and have accessible content and matching sha
     }
     await page.screenshot({ path: info.outputPath(`${path.replaceAll("/", "") || "home"}.png`), fullPage: true });
   }
+  expect(runtimeErrors).toEqual([]);
 });

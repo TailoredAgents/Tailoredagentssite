@@ -93,3 +93,29 @@ Validate this design with the same people who disliked the previous version. Ask
 - The published homepage and Solutions examples were exercised in the browser; the phone navigation opened correctly. The actual new homepage was visually verified and the viewport override was reset afterward.
 - Public link-preview image: **200, PNG, 1200×630**. No field Core Web Vitals measurement or actual lead submission was performed.
 - Desktop/phone screenshots and the production route-check JSON are saved locally under `C:/Users/xenon/.codex/visualizations/2026/10/21/01a1601f-9a15-7062-94b2-c97c7609469b/public-audit/` (not committed).
+
+## Final detail and functionality pass — November 10, 2026
+
+This follow-up preserves the approved art direction and focuses on finishing details rather than another redesign.
+
+Resolved findings:
+
+- The footer's copyright and location text failed the broader contrast check. Improved contrast, size, link spacing, and the phone layout.
+- Mobile navigation now shows the current page, closes with Escape (returning focus), closes when focus/click leaves the header, and resets when switching to desktop. A scrollable height limit keeps links reachable on short landscape screens.
+- All five solution choices are visible in a phone/tablet grid instead of a horizontally hidden strip.
+- Both inquiry forms now focus the first invalid field, preserve input after failure, announce a readable sending state, and provide a success message even when the response omits its text. Existing validation, submission identifiers, consent and delivery behavior are retained.
+- StonegateOS case-study headings used a desktop two-column layout on small phones; the 320-pixel test caught actual page overflow. The headings now stack. The six demo selectors use keyboard-operable buttons, and the scrollable conceptual workspace has a focus target and explanation.
+- The Terms contact section contained a prelaunch placeholder. It now links to the actual contact page; no governing jurisdiction or new legal terms were invented. The footer's HVAC link now accurately describes website services.
+
+Verification:
+
+- **19 public browser tests passed; one redundant mobile invocation of the viewport matrix was intentionally skipped.** The matrix itself passed for every standard route at 320, 768 and 1100 pixels, in addition to the usual desktop and phone runs.
+- Expanded axe checks from the main content to the whole page, including navigation/footer. All 17 standard pages and all six selectable product views passed the configured WCAG A/AA checks. This is not a complete accessibility certification.
+- Checked form field errors, network errors, retained input, retry identifiers, loading states and success with intercepted responses. No submissions reached the server/provider.
+- Checked keyboard navigation, pricing calculator boundaries, every pricing FAQ, solution selection, product selection and keyboard scrolling. All main-content images loaded; no uncaught browser runtime errors were observed across the standard page matrix.
+- **14 contact/package unit tests passed.** Typecheck passed. Lint completed with one pre-existing `prefer-string-starts-ends-with` warning in unrelated assistant code; changed website files passed the targeted lint check.
+- **Isolated production Webpack build passed**, including TypeScript and static generation. This uses committed main plus only these website changes because another task is modifying assistant/booking/mail code in the shared checkout. That work was preserved.
+- Audited 60 distinct internal links across all 19 live pages. Two apparent HTTP errors were Cloudflare's raw email-obfuscation URLs; browser verification confirmed both resolve to the correct `mailto:austin@tailoredagents.com` link after decoding. No broken page destinations or missing known-page anchor targets remained in this audit.
+- The insurance and freight examples were checked live using their explicitly fictional simulations and calculators. No real booking, chat-provider request, email or SMS was made. Actual production inquiry delivery, booking persistence and paid assistant responses were not retested in this visual pass.
+
+Artifacts are in `C:/Users/xenon/.codex/visualizations/2026/10/21/01a1601f-9a15-7062-94b2-c97c7609469b/public-finish/`. Release verification should confirm Render success for the finishing-pass commit and inspect the live mobile chooser, footer, navigation and contact links. Field performance measurements and customer feedback remain ongoing work, not grounds for endlessly redesigning the site.

@@ -14,8 +14,15 @@ export function WebsiteReviewForm() {
   const submissionId = useRef<string | null>(null);
   const [status, setStatus] = useState<Status>({ type: "idle" });
   const [errors, setErrors] = useState<ContactErrors>({});
+  const formRef = useRef<HTMLFormElement>(null);
+  const statusRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { startedAt.current = Date.now(); }, []);
+  useEffect(() => {
+    if (status.type === "error") {
+      (formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]') ?? statusRef.current)?.focus();
+    }
+  }, [errors, status.type]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,14 +49,14 @@ export function WebsiteReviewForm() {
       form.reset();
       submissionId.current = null;
       startedAt.current = Date.now();
-      setStatus({ type: "success", message: result.message });
+      setStatus({ type: "success", message: result.message || "Thank you. Your review request has been received." });
     } catch {
       setStatus({ type: "error", message: "A network error interrupted the request. Please check your connection before trying again." });
     }
   }
 
   return (
-    <form className="contact-form review-request-form" data-analytics-form="website-review" onSubmit={submit} noValidate>
+    <form ref={formRef} className="contact-form review-request-form" data-analytics-form="website-review" onSubmit={submit} noValidate>
       <input type="hidden" name="inquiryType" value="website-review" />
       <div className="form-heading"><span>Request your review</span><h2>Tell us where to look.</h2><p>Share your current website and the best way to reach you. The goal field is optional.</p></div>
       <div className="form-grid">
@@ -61,8 +68,8 @@ export function WebsiteReviewForm() {
         <div className="field field-full"><label htmlFor="review-description">Primary concern or goal <span className="optional">(optional)</span></label><textarea id="review-description" name="description" maxLength={1000} placeholder="For example: the site feels dated, mobile inquiries are difficult, or local visibility is unclear." aria-invalid={!!errors.description} aria-describedby={errors.description ? "review-description-error" : "review-description-help"}/><p className="text-muted" id="review-description-help">Please do not include confidential, regulated, or sensitive personal information.</p>{errors.description && <p className="field-error" id="review-description-error">{errors.description}</p>}</div>
         <div className="hp-field" aria-hidden="true"><label htmlFor="review-website-hp">Leave this field blank</label><input id="review-website-hp" name="website" tabIndex={-1} autoComplete="off"/></div>
       </div>
-      <div className="form-foot"><p>By submitting, you agree to our <Link href="/privacy">privacy notice</Link>. We use these details only to review your request and respond.</p><button className="button button-dark" type="submit" disabled={status.type === "submitting"}>{status.type === "submitting" ? <LoaderCircle size={15} className="spin"/> : <>Request my review<ArrowRight size={15}/></>}</button></div>
-      {status.type !== "idle" && status.type !== "submitting" && <div className={`form-status ${status.type}`} role="status">{status.message}</div>}
+      <div className="form-foot"><p>By submitting, you agree to our <Link href="/privacy">privacy notice</Link>. We use these details only to review your request and respond.</p><button className="button button-dark" type="submit" disabled={status.type === "submitting"}>{status.type === "submitting" ? <><LoaderCircle size={15} className="spin" aria-hidden="true"/>Sending…</> : <>Request my review<ArrowRight size={15}/></>}</button></div>
+      {status.type !== "idle" && status.type !== "submitting" && <div ref={statusRef} tabIndex={-1} className={`form-status ${status.type}`} role={status.type === "error" ? "alert" : "status"}>{status.message}</div>}
     </form>
   );
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PageHero } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Website Terms", description: "Terms governing use of the Tailored Agents website.", alternates: { canonical: "/terms" } };
@@ -16,7 +17,7 @@ export default function TermsPage() {
         <h2>Third-party services</h2><p>The website may rely on hosting, delivery, and infrastructure providers. Third-party services are governed by their own terms and may change independently.</p>
         <h2>Disclaimers</h2><p>The website is provided on an “as available” basis. To the extent permitted by law, no warranty is made that the site will be uninterrupted, error-free, or suitable for every purpose.</p>
         <h2>Changes</h2><p>These terms may be updated as the website and its functionality evolve. Continued use after an update constitutes acceptance of the revised terms.</p>
-        <h2>Contact</h2><p>A verified legal contact address and governing jurisdiction must be confirmed before public launch.</p>
+        <h2>Contact</h2><p>Questions about this website or these terms? <Link href="/contact">Contact Tailored Agents</Link> through our inquiry page or the business phone number in the footer.</p>
       </article>
     </>
   );

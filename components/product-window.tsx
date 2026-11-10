@@ -19,18 +19,19 @@ export function ProductWindow() {
   const activeView = views.find((view) => view.id === active) ?? views[0];
 
   return (
-    <div className="platform-showcase" aria-label="Interactive conceptual StonegateOS platform demonstration using synthetic data">
-      <div className="platform-switcher" role="tablist" aria-label="Explore StonegateOS capabilities">
+    <div className="platform-showcase" role="group" aria-label="Interactive conceptual StonegateOS platform demonstration using synthetic data">
+      <div className="platform-switcher" role="group" aria-label="Explore StonegateOS capabilities">
         <span className="platform-switcher-label">Explore the platform · Synthetic interface</span>
         <div className="platform-tabs">
           {views.map((view) => {
             const Icon = view.icon;
-            return <button key={view.id} id={`platform-tab-${view.id}`} type="button" role="tab" aria-selected={active === view.id} aria-controls="platform-panel" onClick={() => setActive(view.id)}><Icon size={14}/><span>{view.label}</span></button>;
+            return <button key={view.id} id={`platform-tab-${view.id}`} type="button" aria-pressed={active === view.id} aria-controls="platform-panel" onClick={() => setActive(view.id)}><Icon size={14}/><span>{view.label}</span></button>;
           })}
         </div>
       </div>
 
-      <div className="os-window">
+      <p className="platform-scroll-hint">Swipe across the sample workspace to explore. Keyboard users can focus it and use the arrow keys.</p>
+      <div className="os-window" role="region" aria-label="Scrollable sample workspace" tabIndex={0}>
         <div className="os-topbar"><div className="os-brand"><span>S</span><b>StonegateOS</b></div><div className="os-search">⌕ &nbsp; Search customers, jobs, conversations… <kbd>⌘ K</kbd></div><div className="os-top-actions"><span>?</span><span>2</span><b>AM</b></div></div>
         <div className="os-shell">
           <aside className="os-sidebar" aria-label="Conceptual application navigation">
@@ -43,7 +44,7 @@ export function ProductWindow() {
           </aside>
           <div className="os-content">
             <div className="os-view-heading"><div><span className="micro-label">Connected operations · {activeView.label}</span><h3>{viewTitle(active)}</h3><p>{viewDescription(active)}</p></div><span className="os-action">{viewAction(active)}</span></div>
-            <div className={`os-view os-view-${active}`} id="platform-panel" role="tabpanel" aria-labelledby={`platform-tab-${active}`} tabIndex={0}>
+            <div className={`os-view os-view-${active}`} id="platform-panel" role="region" aria-labelledby={`platform-tab-${active}`} tabIndex={0}>
               <PlatformView active={active} />
             </div>
           </div>

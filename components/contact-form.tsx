@@ -14,7 +14,14 @@ export function ContactForm({ initialInterest = "" }: { initialInterest?: (typeo
   const submissionId = useRef<string | null>(null);
   const [status, setStatus] = useState<Status>({ type: "idle" });
   const [errors, setErrors] = useState<ContactErrors>({});
+  const formRef = useRef<HTMLFormElement>(null);
+  const statusRef = useRef<HTMLDivElement>(null);
   useEffect(() => { startedAt.current = Date.now(); }, []);
+  useEffect(() => {
+    if (status.type === "error") {
+      (formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]') ?? statusRef.current)?.focus();
+    }
+  }, [errors, status.type]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,14 +43,14 @@ export function ContactForm({ initialInterest = "" }: { initialInterest?: (typeo
       form.reset();
       submissionId.current = null;
       startedAt.current = Date.now();
-      setStatus({ type: "success", message: result.message });
+      setStatus({ type: "success", message: result.message || "Thank you. Your inquiry has been received." });
     } catch {
       setStatus({ type: "error", message: "A network error interrupted the request. Please check your connection before trying again." });
     }
   }
 
   return (
-    <form className="contact-form" data-analytics-form="project" onSubmit={submit} noValidate>
+    <form ref={formRef} className="contact-form" data-analytics-form="project" onSubmit={submit} noValidate>
       <input type="hidden" name="inquiryType" value="project" />
       <div className="form-grid">
         <div className="field"><label htmlFor="name">Name</label><input id="name" name="name" autoComplete="name" required aria-invalid={!!errors.name} aria-describedby={errors.name ? "name-error" : undefined}/>{errors.name && <p className="field-error" id="name-error">{errors.name}</p>}</div>
@@ -54,8 +61,8 @@ export function ContactForm({ initialInterest = "" }: { initialInterest?: (typeo
         <div className="field field-full"><label htmlFor="description">What would you like to discuss?</label><textarea id="description" name="description" required minLength={30} maxLength={3000} placeholder="What are you trying to improve, connect, or build?" aria-invalid={!!errors.description} aria-describedby={errors.description ? "description-error" : "description-help"}/><p className="text-muted" id="description-help" style={{fontSize:".67rem",margin:0}}>Please avoid including confidential, regulated, or sensitive personal information.</p>{errors.description && <p className="field-error" id="description-error">{errors.description}</p>}</div>
         <div className="hp-field" aria-hidden="true"><label htmlFor="website">Website</label><input id="website" name="website" tabIndex={-1} autoComplete="off"/></div>
       </div>
-      <div className="form-foot"><p>By submitting, you agree to our <Link href="/privacy" style={{textDecoration:"underline"}}>privacy notice</Link>. We use these details only to respond to your inquiry.</p><button className="button button-dark" type="submit" disabled={status.type === "submitting"}>{status.type === "submitting" ? <LoaderCircle size={15} className="spin"/> : <>Send inquiry<ArrowRight size={15}/></>}</button></div>
-      {status.type !== "idle" && status.type !== "submitting" && <div className={`form-status ${status.type}`} role="status">{status.message}</div>}
+      <div className="form-foot"><p>By submitting, you agree to our <Link href="/privacy" style={{textDecoration:"underline"}}>privacy notice</Link>. We use these details only to respond to your inquiry.</p><button className="button button-dark" type="submit" disabled={status.type === "submitting"}>{status.type === "submitting" ? <><LoaderCircle size={15} className="spin" aria-hidden="true"/>Sending…</> : <>Send inquiry<ArrowRight size={15}/></>}</button></div>
+      {status.type !== "idle" && status.type !== "submitting" && <div ref={statusRef} tabIndex={-1} className={`form-status ${status.type}`} role={status.type === "error" ? "alert" : "status"}>{status.message}</div>}
     </form>
   );
 }

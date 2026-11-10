@@ -28,7 +28,7 @@ export function SiteFooter() {
             </div>
             <div>
               <h3>Information</h3>
-              <Link href="/industries/hvac">HVAC services</Link>
+              <Link href="/industries/hvac">Websites for HVAC</Link>
               <Link href="/privacy">Privacy</Link>
               <Link href="/terms">Terms</Link>
               <Link href="/contact">Start a conversation</Link>
