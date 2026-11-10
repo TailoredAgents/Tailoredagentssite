@@ -144,7 +144,15 @@ Synthetic tests do not prove live OpenAI accuracy, physical Omi behavior, free-p
 
 ### Release and activation status
 
-Pending final commit, push, Render web/storage/cron checks and the approved $10 dashboard setting. This paragraph is replaced with observed deployment evidence during release; it is not a completion claim.
+- Implementation committed and pushed to `main`: **`6942518e6c748182e4cfaf28de1a4537bd5f5548`**.
+- A private PostgreSQL logical export was created in Render Recovery at **4:28 PM Eastern, November 10**; its download became available before pushing. It remains in Render; no dump or credentials were copied into the repository. Render also displayed a seven-day point-in-time recovery window.
+- **Website deployed successfully at 4:33:16 PM Eastern**: Render `dep-dbpopmff3r2c73aqcg50`, GitHub deployment `7694814057`. The authenticated Meeting Inbox rendered under Austin's Owner account.
+- **Private preview/storage service deployed the same commit**, with its live-commit link verified in Render (`srv-dbfu0g2jnfac73elqll0`). Existing Cosmo v9 preview still returned HTML 200.
+- **Shared cron deployed the same commit**: `dep-dbpopmvf3r2c73aqch9g`, service `crn-dbaggnjncjis73dgadhg`. First scheduled execution reported **`Meetings: 0 checked; 0 need review.` at 4:35:37 PM Eastern** and the whole cron run finished successfully at **4:35:49 PM**. Reporting, SEO and Website planning also completed without review errors.
+- **The approved $10/month meeting allowance is saved in production.** Authenticated UI readback showed `$0.00 reserved of $10.00`, Eastern monthly accounting, and no Omi connections. The existing OpenAI configuration was recognized; its key was not revealed or changed. No recording has been paid-processed as part of release verification.
+- Public acceptance: website/storage health **200**; unauthenticated meeting list, private audio, meeting cron, Omi POST and private-storage GET all **401**. No Cloudflare bypass or security relaxation was needed.
+- Still requires Austin/Jeffrey: create each own Omi connection using the actual Omi UID, test the real devices/free plan/background/offline behavior, and review a harmless consented live transcription. Each assistant user explicitly opts into meeting reads. No production device credential or new assistant grant was created during this release.
+
 
 ## Sources checked
 
