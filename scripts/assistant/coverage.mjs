@@ -2,7 +2,7 @@ import ts from 'typescript';
 import {readFile,readdir,writeFile} from 'node:fs/promises';
 import path from 'node:path';
 // Generated inventory makes omissions visible when new dashboard actions ship.
-async function walk(dir){const files=[];for(const entry of await readdir(dir,{withFileTypes:true})){if(['node_modules','.next'].includes(entry.name))continue;const name=path.join(dir,entry.name);if(entry.isDirectory())files.push(...await walk(name));else if(/\.tsx?$/.test(name)&&!name.endsWith('.test.ts'))files.push(name);}return files;}
+async function walk(dir){const files=[];for(const entry of await readdir(dir,{withFileTypes:true})){if(['node_modules','.next'].includes(entry.name))continue;const name=path.posix.join(dir,entry.name);if(entry.isDirectory())files.push(...await walk(name));else if(/\.tsx?$/.test(name)&&!name.endsWith('.test.ts'))files.push(name);}return files;}
 const implementations={
  'lib/inbox/actions.ts#saveDraftAction':['prepare_save_mail_draft'],
  'lib/sms/actions.ts#saveSmsDraftAction':['prepare_save_sms_draft'],

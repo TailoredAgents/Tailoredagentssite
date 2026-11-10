@@ -1,0 +1,32 @@
+import {test,expect} from '@playwright/test';
+test('employee enables native chat, completes a tool action, and resumes private history',async({page,request,baseURL},testInfo)=>{
+ test.setTimeout(120000);
+ await page.goto('/sign-in');
+ await page.getByLabel('Team email').fill('owner@example.test');
+ await page.getByLabel('Password',{exact:true}).fill('Reporting-test-password-2026');
+ await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page).toHaveURL(/\/dashboard$/);
+ await page.goto('/dashboard/assistant');
+ const chat=page.getByRole('region',{name:'Employee assistant'});
+ await expect(chat).toBeVisible();
+ await chat.getByRole('button',{name:'Chat settings',exact:true}).click();
+ await chat.getByLabel('How should the assistant work?').selectOption('direct');
+ await chat.getByRole('button',{name:/Enable my assistant|Update my access/}).click();
+ await expect(chat.getByText(/Direct actions enabled/)).toBeVisible();
+ await chat.getByLabel('Monthly limit in US dollars').fill('25');
+ await chat.getByRole('button',{name:'Save allowance',exact:true}).click();
+ await chat.getByLabel('Message your assistant').fill('Save a goal to finish agent onboarding.');
+ await chat.getByRole('button',{name:'Send',exact:true}).click();
+ await expect(chat.getByText('Your onboarding goal is saved.',{exact:true})).toBeVisible({timeout:60000});
+ await chat.locator('summary').filter({hasText:'Activity'}).click();
+ await expect(chat.getByRole('link',{name:'View action'})).toHaveAttribute('href',new RegExp('/dashboard/assistant\\?action='));
+ await page.reload();
+ await chat.getByRole('button',{name:'Save a goal to finish agent onboarding.',exact:true}).first().click();
+ await expect(chat.getByText('Your onboarding goal is saved.',{exact:true})).toBeVisible();
+ await expect(chat.getByRole('button',{name:'Send',exact:true})).toBeDisabled();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.screenshot({path:testInfo.outputPath('native-chat.png'),fullPage:false});
+ // Both browser cookie authentication and same-origin writes are enforced.
+ const denied=await page.request.post(baseURL+'/api/assistant/chat',{headers:{origin:'https://untrusted.example'},data:{operation:'budget',dollars:1000}});
+ expect(denied.status()).toBe(403);
+ expect((await request.get('/api/assistant/chat')).status()).toBe(401);
+});

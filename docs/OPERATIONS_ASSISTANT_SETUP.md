@@ -2,6 +2,24 @@
 
 This is an implementation checkpoint, not the completion of the full owner-assistant plan. The capability inventory explicitly tracks pending and partial coverage.
 
+## Native employee chat — November 10
+
+The Assistant dashboard now includes saved, private employee conversations and a Responses tool loop using the existing Operations services. The employee signs in normally, selects read-only, reviewed changes or direct changes, and optionally grants access to permitted customer conversations. No external ChatGPT OAuth connection is required for native chat. Existing external clients remain supported below the chat interface.
+
+Migration `0049_employee_assistant_chat.sql` creates conversations, turns, a provider-request ledger and separate company allowances. Austin approved **$25/month shared across the existing Tailored Agents workspace** on November 10. The migration seeds only that workspace; other workspaces default to zero. Owners/admins can adjust or pause their allowance under Chat settings. The existing `OPENAI_API_KEY` is used; `ASSISTANT_CHAT_ENABLED=false` pauses further requests/tools. No provider secret is exposed to the browser.
+
+Native access uses real session-bound grants. Every tool refreshes identity, membership, scopes and pause/revoke state. Native chat does not grant SMS sending or connect the separate Mail service. Read-only employees cannot authorize writes. Public/external tools marked external are excluded. The account can use the existing Connections controls to pause, change mode or revoke native access.
+
+Conversations are filtered by workspace and employee, including for administrators. The UI shows the latest 100 conversations and 100 turns per selected conversation. Model context uses at most 20 recent turns / 32 KB of text; older stored history is not represented as complete memory. Tools return bounded current business context. Conversation history is saved until account/workspace deletion; this increment does not add automatic knowledge extraction or document uploads.
+
+Each turn admits one running request per conversation. Repeated request IDs cannot repeat a turn, and canonically identical changes within a turn reuse the action receipt. Replies run at most nine model steps, with one tool call at a time and a three-minute deadline. Errors and uncertain actions stop dependent work. Stop prevents subsequent steps; an already-started action can finish and retains its receipt. Interrupted turns are marked when next read and never automatically replayed. This is request-driven chat, **not a durable background worker or recurring routine**.
+
+Allowance is reserved transactionally before every provider request, shared across employees. Standard GPT-6.1 Sol input is conservatively counted at the cache-write rate; output uses the published standard rate. Completed usage settles the reservation. Unknown provider outcomes retain their reservation. No paid hosted tools are enabled. Source: [Responses function calling](https://developers.openai.com/api/docs/guides/function-calling), [GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol); pricing is consistent with the existing `lib/seo/config.ts` rate card. Actual provider billing may be lower than the conservative local ledger.
+
+Verification: **41 assistant tests passed**, including the existing OAuth/action regressions and new real-PostgreSQL chat cases. **Two browser tests passed** on desktop and phone, covering real sign-in, native consent, saving a goal through a synthetic model tool loop, reopening conversation history, same-origin writes and anonymous denial. Lint, TypeScript and an isolated production build passed. Browser verification uses a guarded test-process provider preload against an isolated local database; no paid model calls were made. Production model output and deployment acceptance must be checked separately; synthetic replies are not live-model evidence.
+
+Run the chat integration suite with `ASSISTANT_CHAT_TEST_DATABASE_URL` pointing only to a disposable local `/ta_assistant_chat_test` database. For browsers, seed `/ta_reporting_browser_test` using the existing preview script, set `REPORTING_TEST_DATABASE_URL` and `REPORTING_TEST_PORT`, and run `npm run test:assistant-chat:browser`. The separate `.next-assistant-test` output avoids taking over another developer's server.
+
 ## Connect the existing ChatGPT client
 
 Use a separate OAuth MCP connection named **Tailored Agents Operations** with:

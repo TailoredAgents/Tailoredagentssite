@@ -1,0 +1,37 @@
+import {z} from 'zod';
+import {headers} from 'next/headers';
+import {getOptionalDashboardContext} from '@/lib/dashboard/data';
+import {getDashboardAuth} from '@/lib/dashboard/auth';
+import {AssistantError,json} from '@/lib/assistant/config';
+import {body,checkOrigin,endpoint} from '@/lib/assistant/http';
+import {chatRequestSchema} from '@/lib/assistant/chat-contract';
+import {chatState,connectNative,nativePrincipal,saveChatBudget,stopChatTurn} from '@/lib/assistant/chat-store';
+import {runChatTurn} from '@/lib/assistant/chat-runner';
+import {cardRateLimit} from '@/lib/smart-cards/http';
+export const runtime='nodejs';
+export const dynamic='force-dynamic';
+export const maxDuration=180;
+async function identity(){
+ const context=await getOptionalDashboardContext();
+ const session=await getDashboardAuth()?.api.getSession({headers:await headers()});
+ if(!context||!session||session.user.id!==context.user.id)throw new AssistantError('unauthorized','Sign in again to use your assistant.',401);
+ return {context,sessionId:session.session.id};
+}
+export async function GET(request:Request){return endpoint(async()=>{
+ const {context,sessionId}=await identity();
+ const raw=new URL(request.url).searchParams.get('thread');const thread=raw?z.uuid().parse(raw):undefined;
+ return json(await chatState(context,sessionId,thread));
+});}
+export async function POST(request:Request){return endpoint(async()=>{
+ checkOrigin(request,true);
+ const {context,sessionId}=await identity();const v=chatRequestSchema.parse(await body(request,40000));
+ if(v.operation==='connect')await connectNative(context,sessionId,v.mode,v.conversations);
+ if(v.operation==='budget')await saveChatBudget(context,v.dollars);
+ if(v.operation==='stop')await stopChatTurn(context,v.threadId,v.requestId);
+ if(v.operation==='send'){
+  await cardRateLimit('assistant:chat',context.user.id,6,60);
+  const p=await nativePrincipal(context,sessionId);
+  await runChatTurn(p,v.threadId,v.requestId,v.message);
+ }
+ return json(await chatState(context,sessionId,'threadId' in v?v.threadId:undefined));
+});}

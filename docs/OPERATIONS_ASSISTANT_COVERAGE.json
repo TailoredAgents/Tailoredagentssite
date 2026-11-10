@@ -11,6 +11,20 @@
       "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
     },
     {
+      "file": "app/api/assistant/chat/route.ts",
+      "export": "GET",
+      "status": "control",
+      "tools": [],
+      "reason": "Authenticated owner control or MCP transport; deliberately not callable as an approval tool."
+    },
+    {
+      "file": "app/api/assistant/chat/route.ts",
+      "export": "POST",
+      "status": "control",
+      "tools": [],
+      "reason": "Authenticated owner control or MCP transport; deliberately not callable as an approval tool."
+    },
+    {
       "file": "app/api/auth/[...all]/route.ts",
       "export": "GET",
       "status": "transport_review",

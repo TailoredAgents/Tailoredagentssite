@@ -12,8 +12,10 @@ The requested experience is for Austin, Devon, Jeffrey and other employees to si
 
 ### Current foundation and gaps
 
-- Existing: account-scoped Operations tools, selected permissions, live identity checks, direct/reviewed actions, receipts, private goals and a dashboard for connection controls.
-- Missing: native employee chat and saved conversation history; editable personal preferences and shared company knowledge; a general multi-step task runner; durable delegated background work; employee-facing run progress and cancellation; service-specific AI-agent and document-automation delivery workflows.
+November 10 delivery: native dashboard chat, private saved conversations, explicit employee access, the existing business tools, action receipts, bounded multi-step turns and a separate $25/month shared allowance are implemented. Local database and browser verification are recorded in `OPERATIONS_ASSISTANT_SETUP.md`. Durable background jobs, editable long-term knowledge, uploaded-document execution and recurring routines remain outstanding; request-driven chat does not complete those phases.
+
+- Existing: native employee chat and saved conversation history, account-scoped Operations tools, selected permissions, live identity checks, direct/reviewed actions, receipts, private goals, bounded turn progress/stop and a dashboard for connection controls.
+- Missing: editable personal preferences and shared company knowledge; durable multi-step delegated background work; service-specific AI-agent and document-automation execution workflows.
 - Existing customer records, projects, tasks and permitted conversations can supply context. Private goals and channel permissions must remain private. Shared company knowledge must be deliberately shared rather than inferred from another employee's private chat.
 - Current Operations grants expire with their authorizing dashboard session. A background run must not silently bypass that expiration. Durable background authority needs its own explicit, revocable delegation, bounded permissions and live membership checks.
 

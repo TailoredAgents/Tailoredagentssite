@@ -22,6 +22,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Keep assistant browser verification independent of another active dev server.
+  distDir: process.env.ASSISTANT_BROWSER_TEST === 'true' ? '.next-assistant-test' : '.next',
   // Twilio uses native Node HTTP clients and server-side credential handling.
   serverExternalPackages: ["twilio"],
   ...(voiceFixture ? { webpack: fixtureWebpack, turbopack: { resolveAlias: { "@twilio/voice-sdk": { browser: "./scripts/voice-browser-sdk-fixture.ts" } } } } : {}),

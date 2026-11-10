@@ -20,6 +20,7 @@
     "test:freight:browser": "playwright test --config playwright.freight.config.ts",
     "test:insurance:browser": "playwright test --config playwright.insurance.config.ts",
     "test:assistant:browser": "playwright test --config playwright.assistant.config.ts",
+    "test:assistant-chat:browser": "playwright test --config playwright.assistant-chat.config.ts",
     "test:browser": "playwright test",
     "test:public:browser": "playwright test --config playwright.public.config.ts",
     "test:inbox:browser": "playwright test --config playwright.inbox.config.ts",
