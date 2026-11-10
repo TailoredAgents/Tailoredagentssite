@@ -18,6 +18,7 @@ import {
   shiftDay,
   shiftMonth,
   viewDays,
+  touchesDay,
   type CalendarEvent,
   type CalendarView,
 } from "@/lib/booking/display";
@@ -90,7 +91,13 @@ export function BookingCalendar({
     [notice, setNotice] = useState(""),
     [opening, setOpening] = useState(false),
     [sidebar, setSidebar] = useState(false),
-    [mobile, setMobile] = useState(false);
+    [mobile, setMobile] = useState(false),
+    [workweek, setWorkweek] = useState(false),
+    [peek, setPeek] = useState<{
+      event: CalendarEvent;
+      left: number;
+      top: number;
+    } | null>(null);
   const days = viewDays(anchor, view),
     miniDays = viewDays(anchor, "month");
   // Revalidation can remove a cancelled entry (and its form) before the form's
@@ -173,7 +180,17 @@ export function BookingCalendar({
       status: "appointment",
     })),
   ].filter((e) => selected.includes(e.profile ?? "unassigned"));
+  const weekendEvents =
+    view === "week" && workweek
+      ? events.filter((e) => touchesDay(e, days[0]) || touchesDay(e, days[6]))
+          .length
+      : 0;
+  const dayEvents = [...events].sort(
+    (a, b) =>
+      Number(b.allDay) - Number(a.allDay) || a.start.localeCompare(b.start),
+  );
   function navigate(date: string, nextView = view) {
+    setPeek(null);
     setNotice("");
     startTransition(() =>
       router.replace(`/dashboard/calendar?date=${date}&view=${nextView}`, {
@@ -195,7 +212,19 @@ export function BookingCalendar({
     setNotice("Calendar saved. Online availability is updated.");
     router.refresh();
   }
+  function showPeek(event: CalendarEvent, el: HTMLElement) {
+    const rect = el.getBoundingClientRect();
+    setPeek({
+      event,
+      left: Math.max(12, Math.min(rect.left, window.innerWidth - 332)),
+      top:
+        rect.bottom + 160 > window.innerHeight
+          ? Math.max(12, rect.top - 150)
+          : rect.bottom + 8,
+    });
+  }
   function openEvent(event: CalendarEvent) {
+    setPeek(null);
     const s =
       event.source === "slot"
         ? data.slots.find((s) => s.id === event.id)
@@ -437,7 +466,7 @@ export function BookingCalendar({
                     day: "numeric",
                   })
                 : view === "week"
-                  ? `${dateLabel(days[0], { month: "short", day: "numeric" })} – ${dateLabel(days[6], { month: "short", day: "numeric", year: "numeric" })}`
+                  ? `${dateLabel(days[workweek ? 1 : 0], { month: "short", day: "numeric" })} – ${dateLabel(days[workweek ? 5 : 6], { month: "short", day: "numeric", year: "numeric" })}`
                   : dateLabel(anchor, { month: "long", year: "numeric" })}
             </h2>
           </div>
@@ -450,19 +479,30 @@ export function BookingCalendar({
             >
               <RefreshCw size={18} />
             </button>
-            <label>
-              <span className="sr-only">Calendar view</span>
-              <select
-                value={view}
-                onChange={(e) =>
-                  navigate(anchor, e.target.value as CalendarView)
-                }
+            {view === "week" ? (
+              <button
+                className="tc-workweek"
+                aria-pressed={workweek}
+                onClick={() => setWorkweek(!workweek)}
               >
-                <option value="day">{mobile ? "Daily schedule" : "Day"}</option>
-                <option value="week">Week</option>
-                <option value="month">Month</option>
-              </select>
-            </label>
+                Workweek
+              </button>
+            ) : null}
+            <div
+              className="tc-view-switch"
+              role="group"
+              aria-label="Calendar view"
+            >
+              {(["day", "week", "month"] as const).map((value) => (
+                <button
+                  key={value}
+                  aria-pressed={view === value}
+                  onClick={() => navigate(anchor, value)}
+                >
+                  {value[0].toUpperCase() + value.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
         </header>
         {notice ? (
@@ -493,141 +533,281 @@ export function BookingCalendar({
             </div>
           </div>
         ) : null}
-        <div
-          className={`tc-calendar-surface ${view === "week" || view === "month" ? "tc-wide-grid" : ""}`}
-        >
-          <FullCalendar
-            key={`${anchor}-${view}-${mobile}`}
-            plugins={plugins}
-            initialDate={anchor}
-            initialView={
-              view === "month"
-                ? "dayGridMonth"
-                : view === "week"
-                  ? "timeGridWeek"
-                  : mobile
-                    ? "listDay"
-                    : "timeGridDay"
-            }
-            headerToolbar={false}
-            timeZone="America/New_York"
-            firstDay={0}
-            fixedWeekCount={true}
-            height={
-              mobile && view === "day"
-                ? "auto"
-                : "clamp(480px, calc(100dvh - 400px), 1000px)"
-            }
-            scrollTime="08:00:00"
-            scrollTimeReset={true}
-            slotDuration="00:30:00"
-            slotHeaderInterval="01:00:00"
-            slotMinHeight={30}
-            nowIndicator={true}
-            slotEventOverlap={false}
-            allDaySlot={true}
-            dayMaxEvents={3}
-            eventMinHeight={28}
-            eventDisplay="block"
-            eventInteractive={true}
-            dayHeaderFormat={{ weekday: "short", day: "numeric" }}
-            slotHeaderFormat={{
-              hour: "numeric",
-              minute: "2-digit",
-              omitZeroMinute: true,
-              meridiem: "short",
-            }}
-            dayHeaderClass="tc-grid-day"
-            dayCellClass="tc-grid-cell"
-            slotHeaderClass="tc-grid-hour"
-            slotLaneClass="tc-grid-slot"
-            selectable={editable.length > 0}
-            editable={false}
-            selectMirror={true}
-            selectMinDistance={5}
-            longPressDelay={250}
-            dateClick={(info) => {
-              if (editable.length) {
-                const local = info.dateStr;
-                setDraft({
-                  day: local.slice(0, 10),
-                  minute: info.allDay
-                    ? 540
-                    : Number(local.slice(11, 13)) * 60 +
-                      Number(local.slice(14, 16)),
-                  allDay: info.allDay,
-                  kind: "appointment",
-                });
+        {weekendEvents > 0 ? (
+          <div className="tc-weekend-notice">
+            {weekendEvents} event{weekendEvents === 1 ? "" : "s"} touch the
+            weekend.{" "}
+            <button onClick={() => setWorkweek(false)}>Show full week</button>
+          </div>
+        ) : null}
+        <div className={`tc-view-body tc-view-${view}`}>
+          <div
+            className={`tc-calendar-surface ${view === "week" || view === "month" ? "tc-wide-grid" : ""}`}
+          >
+            <FullCalendar
+              key={`${anchor}-${view}-${mobile}-${workweek}`}
+              plugins={plugins}
+              initialDate={anchor}
+              initialView={
+                view === "month"
+                  ? "dayGridMonth"
+                  : view === "week"
+                    ? "timeGridWeek"
+                    : mobile
+                      ? "listDay"
+                      : "timeGridDay"
               }
-            }}
-            select={(info) => {
-              if (editable.length)
-                setDraft({
-                  day: info.startStr.slice(0, 10),
-                  minute: 540,
-                  start: info.allDay ? undefined : info.start.toISOString(),
-                  end: info.allDay ? undefined : info.end.toISOString(),
-                  allDay: info.allDay,
-                  lastDay: info.allDay
-                    ? shiftDay(info.endStr.slice(0, 10), -1)
-                    : undefined,
-                  kind: "appointment",
-                });
-            }}
-            events={events.map((e) => ({
-              id: `${e.source}-${e.id}`,
-              title: e.title,
-              start: e.allDay
-                ? easternInputValue(e.start).slice(0, 10)
-                : e.start,
-              end: e.allDay ? easternInputValue(e.end).slice(0, 10) : e.end,
-              allDay: e.allDay,
-              color: colors[e.profile ?? ""]?.ink ?? "#52637d",
-              contrastColor: "#fff",
-              extendedProps: { entry: e },
-            }))}
-            eventClass={(info) =>
-              `tc-event ${info.event.allDay ? "tc-all-day-event" : "tc-timed-event"}`
-            }
-            eventDidMount={(info) => {
-              const e = info.event.extendedProps.entry as
-                | CalendarEvent
-                | undefined;
-              if (!e) return;
-              info.el.setAttribute(
-                "title",
-                `${e.title} · ${e.person} · ${e.allDay ? "All day" : clock(e.start) + " – " + clock(e.end)}`,
-              );
-            }}
-            eventContent={(info) => {
-              const event = info.event.extendedProps.entry as
-                | CalendarEvent
-                | undefined;
-              if (!event)
+              headerToolbar={false}
+              timeZone="America/New_York"
+              firstDay={0}
+              weekends={view !== "week" || !workweek}
+              expandRows={view === "month"}
+              dayRowClass={view === "month" ? "tc-month-row" : undefined}
+              fixedWeekCount={true}
+              height={
+                mobile && view === "day"
+                  ? "auto"
+                  : view === "month"
+                    ? "auto"
+                    : "clamp(480px, calc(100dvh - 350px), 1050px)"
+              }
+              scrollTime="08:00:00"
+              scrollTimeReset={true}
+              slotDuration="00:30:00"
+              slotHeaderInterval="01:00:00"
+              slotMinHeight={34}
+              nowIndicator={true}
+              slotEventOverlap={false}
+              allDaySlot={true}
+              dayMaxEvents={2}
+              eventMaxStack={view === "week" ? 2 : undefined}
+              eventMinHeight={28}
+              eventDisplay="block"
+              eventInteractive={true}
+              dayHeaders={view !== "day"}
+              dayHeaderFormat={
+                view === "month"
+                  ? { weekday: "short" }
+                  : { weekday: "short", day: "numeric" }
+              }
+              dayHeaderContent={(info) =>
+                view === "month" ? (
+                  <span className="tc-weekday-name">{info.weekdayText}</span>
+                ) : (
+                  <button
+                    type="button"
+                    aria-label={`View ${formatEasternTime(info.date.toISOString(), { dateOnly: true })}`}
+                    onClick={() =>
+                      navigate(
+                        easternInputValue(info.date.toISOString()).slice(0, 10),
+                        "day",
+                      )
+                    }
+                    className={`tc-day-heading ${info.isToday ? "tc-today-heading" : ""}`}
+                  >
+                    <span>{info.weekdayText}</span>
+                    <strong>{info.dayNumberText}</strong>
+                    {info.isToday ? <small>Today</small> : null}
+                  </button>
+                )
+              }
+              dayCellTopContent={(info) => (
+                <span
+                  className={`tc-month-date ${info.isToday ? "tc-today-date" : ""}`}
+                >
+                  {info.dayNumberText}
+                </span>
+              )}
+              dayCellTopClass="tc-date-top"
+              dayCellClass={(info) =>
+                `tc-grid-cell ${info.isToday ? "tc-today-cell" : ""} ${info.isOther ? "tc-other-month" : ""}`
+              }
+              moreLinkContent={(info) => (
+                <span className="tc-more-label">+{info.num} more</span>
+              )}
+              moreLinkClick={(info) => {
+                if (view === "month")
+                  navigate(
+                    easternInputValue(info.date.toISOString()).slice(0, 10),
+                    "day",
+                  );
+                else return "popover";
+              }}
+              slotHeaderFormat={{
+                hour: "numeric",
+                minute: "2-digit",
+                omitZeroMinute: true,
+                meridiem: "short",
+              }}
+              dayHeaderClass="tc-grid-day"
+              slotHeaderClass="tc-grid-hour"
+              slotLaneClass="tc-grid-slot"
+              selectable={editable.length > 0}
+              editable={false}
+              selectMirror={true}
+              selectMinDistance={5}
+              longPressDelay={250}
+              dateClick={(info) => {
+                if (editable.length) {
+                  const local = info.dateStr;
+                  setDraft({
+                    day: local.slice(0, 10),
+                    minute: info.allDay
+                      ? 540
+                      : Number(local.slice(11, 13)) * 60 +
+                        Number(local.slice(14, 16)),
+                    allDay: info.allDay,
+                    kind: "appointment",
+                  });
+                }
+              }}
+              select={(info) => {
+                if (editable.length)
+                  setDraft({
+                    day: info.startStr.slice(0, 10),
+                    minute: 540,
+                    start: info.allDay ? undefined : info.start.toISOString(),
+                    end: info.allDay ? undefined : info.end.toISOString(),
+                    allDay: info.allDay,
+                    lastDay: info.allDay
+                      ? shiftDay(info.endStr.slice(0, 10), -1)
+                      : undefined,
+                    kind: "appointment",
+                  });
+              }}
+              events={events.map((e) => ({
+                id: `${e.source}-${e.id}`,
+                title: e.title,
+                start: e.allDay
+                  ? easternInputValue(e.start).slice(0, 10)
+                  : e.start,
+                end: e.allDay ? easternInputValue(e.end).slice(0, 10) : e.end,
+                allDay: e.allDay,
+                color:
+                  view === "month"
+                    ? (colors[e.profile ?? ""]?.bg ?? "#e8edf5")
+                    : (colors[e.profile ?? ""]?.ink ?? "#52637d"),
+                contrastColor:
+                  view === "month"
+                    ? (colors[e.profile ?? ""]?.ink ?? "#52637d")
+                    : "#fff",
+                extendedProps: { entry: e },
+              }))}
+              eventClass={(info) =>
+                `tc-event ${view === "month" ? "tc-compact-event" : ""} ${info.event.allDay ? "tc-all-day-event" : "tc-timed-event"}`
+              }
+              eventDidMount={(info) => {
+                const e = info.event.extendedProps.entry as
+                  | CalendarEvent
+                  | undefined;
+                if (!e) return;
+                info.el.onfocus = () => showPeek(e, info.el);
+                info.el.onblur = () => setPeek(null);
+                info.el.setAttribute(
+                  "aria-label",
+                  `${e.title} · ${e.person} · ${e.allDay ? "All day" : clock(e.start) + " – " + clock(e.end)}`,
+                );
+              }}
+              eventWillUnmount={(info) => {
+                info.el.onfocus = null;
+                info.el.onblur = null;
+              }}
+              eventMouseEnter={(info) => {
+                const e = info.event.extendedProps.entry as
+                  | CalendarEvent
+                  | undefined;
+                if (e && !mobile) showPeek(e, info.el);
+              }}
+              eventMouseLeave={() => setPeek(null)}
+              eventContent={(info) => {
+                const event = info.event.extendedProps.entry as
+                  | CalendarEvent
+                  | undefined;
+                if (!event)
+                  return (
+                    <div className="tc-event-copy">
+                      <strong>New appointment</strong>
+                    </div>
+                  );
+                if (view === "month")
+                  return (
+                    <div className="tc-month-event">
+                      <span>
+                        {event.allDay ? "All day" : clock(event.start)}
+                      </span>
+                      <strong>{event.title}</strong>
+                    </div>
+                  );
                 return (
                   <div className="tc-event-copy">
-                    <strong>New appointment</strong>
+                    <strong>{event.title}</strong>
+                    <span>
+                      {event.allDay ? "All day" : clock(event.start)} ·{" "}
+                      {event.person.split(" ")[0]}
+                    </span>
                   </div>
                 );
-              return (
-                <div className="tc-event-copy">
-                  <span>
-                    {event.allDay ? "All day" : clock(event.start)} ·{" "}
-                    {event.person.split(" ")[0]}
-                  </span>
-                  <strong>{event.title}</strong>
+              }}
+              eventClick={(info) =>
+                openEvent(info.event.extendedProps.entry as CalendarEvent)
+              }
+              noEventsContent={
+                <span className="tc-agenda-empty">
+                  Nothing scheduled. Your next appointment will appear here.
+                </span>
+              }
+            />
+          </div>
+          {view === "day" && !mobile ? (
+            <aside className="tc-day-agenda" aria-label="Daily agenda">
+              <div className="tc-agenda-heading">
+                <span>THE DAY AT A GLANCE</span>
+                <h3>{dateLabel(anchor, { weekday: "long" })}</h3>
+                <p>
+                  {dateLabel(anchor, { month: "long", day: "numeric" })} ·{" "}
+                  {dayEvents.length} scheduled
+                </p>
+              </div>
+              {dayEvents.length ? (
+                <div className="tc-agenda-items">
+                  {dayEvents.map((event) => (
+                    <button
+                      key={`${event.source}-${event.id}`}
+                      style={color(event.profile)}
+                      onClick={() => openEvent(event)}
+                    >
+                      <span className="tc-agenda-time">
+                        {event.allDay
+                          ? "All day"
+                          : `${clock(event.start)} – ${clock(event.end)}`}
+                      </span>
+                      <strong>{event.title}</strong>
+                      <span className="tc-agenda-person">
+                        <i />
+                        {event.person}
+                      </span>
+                    </button>
+                  ))}
                 </div>
-              );
-            }}
-            eventClick={(info) =>
-              openEvent(info.event.extendedProps.entry as CalendarEvent)
-            }
-            noEventsContent={
-              <span className="tc-agenda-empty">
-                Nothing scheduled. Your next appointment will appear here.
-              </span>
-            }
-          />
+              ) : (
+                <div className="tc-agenda-clear">
+                  <CalendarDays size={30} />
+                  <strong>Room in your day</strong>
+                  <p>
+                    Add a client appointment, a meeting, or time to focus. It
+                    will appear here with the details.
+                  </p>
+                </div>
+              )}
+              <div className="tc-agenda-tip">
+                <Clock3 size={17} />
+                <p>
+                  Everything is shown in Eastern time. Scheduled events block
+                  online availability.
+                </p>
+              </div>
+            </aside>
+          ) : null}
         </div>
         <footer className="tc-footer">
           <span>
@@ -642,6 +822,30 @@ export function BookingCalendar({
           </span>
         </footer>
       </section>
+      {peek ? (
+        <div
+          className="tc-event-peek"
+          role="tooltip"
+          style={{
+            ...color(peek.event.profile),
+            left: peek.left,
+            top: peek.top,
+          }}
+        >
+          <span>
+            <i />
+            {peek.event.person}
+          </span>
+          <strong>{peek.event.title}</strong>
+          <p>
+            {peek.event.allDay
+              ? "All day"
+              : `${clock(peek.event.start)} – ${clock(peek.event.end)}`}{" "}
+            · Eastern
+          </p>
+          <small>Click to view or edit</small>
+        </div>
+      ) : null}
       {opening ? (
         <CalendarModal
           title="Extra consultation opening"

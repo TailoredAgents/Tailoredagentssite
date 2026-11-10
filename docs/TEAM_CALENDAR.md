@@ -62,3 +62,14 @@ The visual review now includes a 2550 × 1345 desktop viewport (the size that ex
 Deployment verification is separate from local verification. After Render deploys, open Team calendar and confirm New appointment and Block time are visible, the time grid opens at 8 AM Eastern, and the named teammate filters work. Do not create real client appointments or send invitations as a deployment test without authorization.
 
 Local redesign checks passed: 65 focused unit/integration tests; five browser scenarios across desktop and phone (the desktop-only pointer test is intentionally skipped on phone); type checking, lint and production build. Browser tests ran with the device timezone set to America/Los_Angeles and still selected/displayed the correct Eastern start/end times. Automated accessibility scans passed in the tested calendar/editor states. No real events, customer records or messages were used. This records local verification, not a claim of live deployment.
+
+
+## View polish following live review — November 10, 2026
+
+- Day / Week / Month are explicit buttons. Month headings are weekdays only; today has a blue circular date marker.
+- Desktop Day pairs a bounded timeline with a daily agenda of full titles, start/end times and teammate names. Both entries open the existing editor/details flow; phones retain the daily list.
+- Week headings open the corresponding Day view. The optional Workweek button hides weekends; a visible notice counts events touching hidden weekend days and restores the full week. This is a display filter only, not a change to booking hours or stored events.
+- Month uses consistent responsive row heights and at most two compact event rows per day. The +more link opens the complete Day schedule. Automatic row fitting was rejected after visual testing hid event rows and obscured the first week's dates; tests now check these failures directly.
+- Hovering or keyboard-focusing events reveals full title/person/time details. Event titles, colors and stored permissions still come from existing calendar data. No new service, migration or notification behavior.
+
+Local verification: seven browser scenarios passed across desktop and phone (one additional desktop-only range-selection scenario intentionally skips the phone project); the checks cover month weekday text, equal row heights, visible first-week dates and event rows, overflow navigation, weekend filtering/recovery, tooltip keyboard access, event lifecycle, read-only access, Eastern time on a Pacific-time device, and automated accessibility scans in tested calendar/editor states. Type checking, lint and production build passed. Populated Day, Week and Month screenshots were reviewed. No live events or messages were created. Deployment/live verification remains separate from these local results.

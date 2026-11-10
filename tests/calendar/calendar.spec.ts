@@ -118,7 +118,10 @@ test("calendar creates, overlays, edits and removes busy events and full days", 
     path: info.outputPath("team-calendar-day.png"),
     fullPage: true,
   });
-  await page.getByLabel("Calendar view").selectOption("week");
+  await page
+    .getByRole("group", { name: "Calendar view" })
+    .getByRole("button", { name: "Week", exact: true })
+    .click();
   await expect(page.locator(".tc-grid-day")).toHaveCount(7);
   await page.screenshot({
     path: info.outputPath("team-calendar-week.png"),
@@ -132,12 +135,48 @@ test("calendar creates, overlays, edits and removes busy events and full days", 
     });
     await page.setViewportSize({ width: 1440, height: 1000 });
   }
-  await page.getByLabel("Calendar view").selectOption("month");
+  await page
+    .getByRole("group", { name: "Calendar view" })
+    .getByRole("button", { name: "Month", exact: true })
+    .click();
   await expect(page.locator(".tc-grid-cell")).toHaveCount(42);
+  await expect(page.locator(".tc-weekday-name")).toHaveText([
+    "Sun",
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat",
+  ]);
+  await expect(page.locator(".tc-compact-event").first()).toBeVisible();
+  const firstDate = await page.locator(".tc-month-date").first().boundingBox(),
+    header = await page.locator(".tc-grid-day").first().boundingBox();
+  expect(firstDate!.y).toBeGreaterThanOrEqual(header!.y + header!.height - 1);
+  const heights = await page
+    .locator(".tc-month-row")
+    .evaluateAll((rows) => rows.map((r) => r.getBoundingClientRect().height));
+  expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(4);
   await page.screenshot({
     path: info.outputPath("team-calendar-month.png"),
     fullPage: true,
   });
+  await page
+    .locator(`.tc-grid-cell[data-date="${day}"]`)
+    .getByText(/\+\d+ more/)
+    .click();
+  await expect(
+    page
+      .getByRole("group", { name: "Calendar view" })
+      .getByRole("button", { name: "Day", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.locator(".tc-timed-event").filter({ hasText: name + " Updated" }),
+  ).toBeVisible();
+  await page
+    .getByRole("group", { name: "Calendar view" })
+    .getByRole("button", { name: "Month", exact: true })
+    .click();
   await page.getByRole("button", { name: "Next month", exact: true }).click();
   await expect(
     page.locator(".tc-event").filter({ hasText: name + " Updated" }),
@@ -210,7 +249,10 @@ test("viewer can browse but cannot create an event", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "New appointment", exact: true }),
   ).toBeDisabled();
-  await page.getByLabel("Calendar view").selectOption("month");
+  await page
+    .getByRole("group", { name: "Calendar view" })
+    .getByRole("button", { name: "Month", exact: true })
+    .click();
   await expect(page.locator(".tc-grid-cell")).toHaveCount(42);
 });
 
@@ -258,8 +300,13 @@ test("wide calendar opens at business hours and selection prefills the editor", 
     path: info.outputPath("team-calendar-new-block.png"),
   });
   await dialog.getByRole("button", { name: "Close dialog" }).click();
-  await page.getByLabel("Calendar view").selectOption("day");
-  await expect(page.locator(".tc-grid-day")).toHaveCount(1);
+  await page
+    .getByRole("group", { name: "Calendar view" })
+    .getByRole("button", { name: "Day", exact: true })
+    .click();
+  await expect(
+    page.getByRole("complementary", { name: "Daily agenda" }),
+  ).toBeVisible();
   // The FullCalendar row hit area spans the event column (the hour label is separate).
   await expect
     .poll(() =>
@@ -278,7 +325,7 @@ test("wide calendar opens at business hours and selection prefills the editor", 
   expect(hit).toBeTruthy();
   await page.mouse.move(hit!.x + hit!.width / 2, hit!.y + 5);
   await page.mouse.down();
-  await page.mouse.move(hit!.x + hit!.width / 2, hit!.y + 55, { steps: 8 });
+  await page.mouse.move(hit!.x + hit!.width / 2, hit!.y + 62, { steps: 8 });
   await page.mouse.up();
   await expect(dialog).toBeVisible();
   await expect(dialog.getByLabel("Starts", { exact: true })).toHaveValue(
@@ -301,4 +348,53 @@ test("wide calendar opens at business hours and selection prefills the editor", 
       () => document.documentElement.scrollWidth > innerWidth,
     ),
   ).toBe(false);
+});
+
+test("workweek keeps weekend appointments discoverable", async ({
+  page,
+}, info) => {
+  const offset = info.project.name === "phone" ? 35 : 28;
+  const future = shiftDay(businessDateKey(), offset);
+  const sunday = shiftDay(future, -new Date(future + "T12:00:00Z").getUTCDay());
+  await login(page);
+  await page.goto(`/dashboard/calendar?date=${sunday}&view=week`);
+  await page.getByRole("button", { name: "Block time", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Event title").fill("Weekend availability test");
+  await dialog.getByLabel("All day", { exact: true }).check();
+  await dialog.getByRole("button", { name: "Save event", exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await page.getByRole("button", { name: "Workweek", exact: true }).click();
+  await expect(page.locator(".tc-grid-day")).toHaveCount(5);
+  await expect(page.locator(".tc-weekend-notice")).toContainText("1 event");
+  await page
+    .getByRole("button", { name: "Show full week", exact: true })
+    .click();
+  await expect(page.locator(".tc-grid-day")).toHaveCount(7);
+  const event = page
+    .locator(".tc-event")
+    .filter({ hasText: "Weekend availability test" });
+  await expect(event).toBeVisible();
+  if (info.project.name === "desktop") {
+    await event.hover();
+    await expect(page.getByRole("tooltip")).toContainText(
+      "Weekend availability test",
+    );
+    await page.mouse.move(0, 0);
+    await event.focus();
+    await expect(page.getByRole("tooltip")).toContainText(
+      "Weekend availability test",
+    );
+  }
+  await event.click();
+  await dialog
+    .getByRole("button", { name: "Remove event…", exact: true })
+    .click();
+  await dialog
+    .getByLabel("Remove this event and reopen the time for bookings.")
+    .check();
+  await dialog
+    .getByRole("button", { name: "Remove event", exact: true })
+    .click();
+  await expect(dialog).not.toBeVisible();
 });
