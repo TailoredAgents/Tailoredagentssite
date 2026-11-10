@@ -189,6 +189,8 @@ Coordinate with existing staff SMS/lead alerts and booking outboxes. Keep employ
 
 **F acceptance:** one event produces one useful run despite replay; completing a task cancels its pending reminder; brief sources match current permissions; noisy events coalesce; no duplicate customer outreach; stopped routines stay stopped; allowance exhaustion yields a clear blocked result and one appropriate alert.
 
+**November 10 implementation:** opt-in templates, event watches, time-zone schedules, daily/per-run allowances, persisted scan/run/source identities, source rechecks, private historical briefs and notification controls are implemented. Templates have a read-only business tool catalog; custom routines preserve existing permissions. See [routines and follow-up](OPERATIONS_ASSISTANT_ROUTINES.md). Fourteen proactive database checks and sixteen document checks pass; the existing chat and employee notification/push suites also passed during integration. Desktop and phone enable → edit → pause journeys pass in an isolated checkout, with the phone layout inspected. The isolated full suite passes 823 tests (626 environment-dependent cases skipped); production build, typecheck, lint and the capability inventory pass. No employee routine or live external alert was created. Production worker/employee activation remains H.
+
 ### G. Complete communication inside chat
 
 Reuse existing Inbox/Mail, SMS and call services. Finish the chat experience around those services rather than add a parallel sender.
@@ -239,14 +241,14 @@ Roll out to Austin with controlled employee test destinations, then Devon and Je
 
 ## Completion checklist for this one goal
 
-November 10 progress: the first implementation increment adds the employee work list, durable notification feed and opted-in SMS with verification, quiet hours and receipts. See [the release notes](OPERATIONS_ASSISTANT_SETUP.md) for evidence. Independent 30-day background delegation is also implemented and locally verified; bounded assignments, saved plans, pause/resume, review/input waiting and per-assignment spending ceilings are implemented. Production activation and real employee alert acceptance remain open. Document and knowledge implementation passed local acceptance. Native push activation and milestones F–H remain open. Austin confirmed only a free Apple account is available, so signed physical-device push acceptance requires future Developer Program enrollment.
+November 10 progress: the first implementation increment adds the employee work list, durable notification feed and opted-in SMS with verification, quiet hours and receipts. See [the release notes](OPERATIONS_ASSISTANT_SETUP.md) for evidence. Independent 30-day background delegation is also implemented and locally verified; bounded assignments, saved plans, pause/resume, review/input waiting and per-assignment spending ceilings are implemented. Production activation and real employee alert acceptance remain open. Document and knowledge implementation passed local acceptance. Proactive routines also passed local acceptance. Native push activation and milestones G–H remain open. Austin confirmed only a free Apple account is available, so signed physical-device push acceptance requires future Developer Program enrollment.
 
 - [ ] A: Baseline health and current production acceptance recorded.
 - [ ] B: Durable assignments, independent scoped delegation, work list and employee SMS pass acceptance.
 - [ ] C: Existing iPhone app supports native push, with signed physical-device delivery and fallback verified.
 - [x] D: Supported uploads produce useful, source-linked downloadable files (local acceptance; live/iPhone rollout remains H).
 - [x] E: Shared knowledge is published, cited, correctable and permissioned (local acceptance; production rollout remains H).
-- [ ] F: Opted-in proactive routines are useful, bounded and deduplicated.
+- [x] F: Opted-in proactive routines are useful, bounded and deduplicated (local acceptance; employee activation remains H).
 - [ ] G: Replies, attachments, inline review, delivery states and voice dictation work in chat.
 - [ ] H: Employee end-to-end journeys, cost controls and staged rollout are accepted.
 - [ ] Exact changes, deployment state and remaining activation dependencies are recorded; verified commits are pushed to main.

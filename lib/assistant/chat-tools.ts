@@ -5,6 +5,7 @@ import {getDatabasePool} from '@/lib/dashboard/db';
 import {readTools} from './tools/reads';
 import {changeTools} from './tools/changes';
 import type {Principal} from './oauth';
+import {routinePolicy} from './routine-policy';
 import {asAssistant} from './access';
 import {AssistantError} from './config';
 import {canonical,executeAction,prepareAction,listActions} from './actions';
@@ -19,7 +20,7 @@ export const researchModelTool={type:'function',name:'research_or_calculate',des
 const permitted=(p:Principal,scopes:string[])=>scopes.every(s=>p.scopes.includes(s as Principal['scopes'][number]));
 export function nativeCatalog(p:Principal){
  return [...readTools.filter(t=>permitted(p,t.scopes)).map(t=>({...t,kind:'read' as const})),
-  ...changeTools.filter(t=>p.context.role!=='viewer'&&!['book_consultation','reschedule_consultation','cancel_consultation'].includes(t.name)&&(!t.external||['send_sms','send_email','call_customer'].includes(t.name))&&permitted(p,t.scopes)).map(t=>({...t,kind:'change' as const}))];
+  ...changeTools.filter(t=>!routinePolicy.getStore()?.recommendationsOnly&&p.context.role!=='viewer'&&!['book_consultation','reschedule_consultation','cancel_consultation'].includes(t.name)&&(!t.external||['send_sms','send_email','call_customer'].includes(t.name))&&permitted(p,t.scopes)).map(t=>({...t,kind:'change' as const}))];
 }
 export function discoverNativeTools(p:Principal,query:string){
  const catalog=nativeCatalog(p);

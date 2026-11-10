@@ -5,6 +5,8 @@ import type {DashboardContext} from '@/lib/dashboard/data';
 import {getDatabasePool} from '@/lib/dashboard/db';
 import {resolveDashboardConfiguration} from '@/lib/dashboard/config';
 import {AssistantError} from './config';
+import {routineDocumentVisible} from './routine-document-access';
+import type {RoutineSource} from './routine-contract';
 import {knowledgeVisible,invalidateKnowledgeDocuments,validateTurnKnowledgeAccess} from './knowledge-lifecycle';
 import {DOCUMENT_MAX_BYTES,documentExtensions,type DocumentSummary,type DocumentExport} from './document-contract';
 import {documentWorker,extractDocument,extractedDocumentSchema,type ExtractedDocument} from './document-processing';
@@ -23,13 +25,13 @@ export const documentURL=(id:string)=>'/dashboard/assistant/documents/'+id;
 function summary(d:Record<string,unknown>,c:DashboardContext):DocumentSummary{return {id:String(d.id),name:String(d.name),extension:String(d.extension),status:String(d.status),generated:!!d.generated,revision:Number(d.revision),audience:String(d.audience),sharedWith:d.user_id===c.user.id?d.shared_with as string[]:[],owned:d.user_id===c.user.id,bytes:Number(d.byte_count),createdAt:(d.created_at as Date).toISOString(),expiresAt:d.retained_for_knowledge?null:(d.expires_at as Date).toISOString(),warnings:d.warnings as string[],error:d.error as string|null,url:documentURL(String(d.id)),hash:String(d.content_hash)};}
 export async function listDocuments(c:DashboardContext,query='',limit=100){
  await active(c);limit=Math.max(1,Math.min(100,limit));
- const rows=(await getDatabasePool().query(`SELECT d.id,d.user_id,d.name,d.extension,d.status,d.generated,d.revision,d.audience,d.shared_with,d.byte_count,d.created_at,d.expires_at,d.retained_for_knowledge,d.warnings,d.error,d.content_hash FROM assistant_documents d WHERE ${visible}
+ const rows=(await getDatabasePool().query(`SELECT d.id,d.user_id,d.name,d.extension,d.status,d.generated,d.revision,d.audience,d.shared_with,d.byte_count,d.created_at,d.expires_at,d.retained_for_knowledge,d.warnings,d.error,d.content_hash,d.routine_sources FROM assistant_documents d WHERE ${visible}
  AND ($3='' OR d.name ILIKE '%'||$3||'%' OR EXISTS(SELECT 1 FROM assistant_document_chunks chunk WHERE chunk.document_id=d.id AND chunk.search@@plainto_tsquery('simple',$3)))
  AND NOT EXISTS(WITH RECURSIVE ancestors AS(SELECT source.id,source.source_ids FROM assistant_documents source WHERE source.id=ANY(d.source_ids) UNION SELECT source.id,source.source_ids FROM assistant_documents source JOIN ancestors a ON source.id=ANY(a.source_ids)) SELECT 1 FROM ancestors a JOIN assistant_documents source ON source.id=a.id WHERE NOT(${visible.replaceAll('d.','source.')}) OR source.status<>'ready')
- ORDER BY d.created_at DESC LIMIT $4`,[...owner(c),query,limit+1])).rows;return {items:rows.slice(0,limit).map(d=>summary(d,c)),hasMore:rows.length>limit};
+ ORDER BY d.created_at DESC LIMIT $4`,[...owner(c),query,limit+1])).rows;const permitted=[];for(const row of rows.slice(0,limit))if(await routineDocumentVisible(c,row.routine_sources))permitted.push(summary(row,c));return {items:permitted,hasMore:rows.length>limit};
 }
 export async function documentRecord(c:DashboardContext,id:string,db:DB=getDatabasePool()){
- await active(c,db);const row=(await db.query(`SELECT d.* FROM assistant_documents d WHERE ${visible} AND d.id=$3`,[...owner(c),id])).rows[0];if(!row)throw missing();
+ await active(c,db);const row=(await db.query(`SELECT d.* FROM assistant_documents d WHERE ${visible} AND d.id=$3`,[...owner(c),id])).rows[0];if(!row||!await routineDocumentVisible(c,row.routine_sources))throw missing();
  if(row.source_ids.length){const forbidden=await db.query(`WITH RECURSIVE ancestors AS(SELECT id,source_ids FROM assistant_documents WHERE id=ANY($3::uuid[]) UNION SELECT d.id,d.source_ids FROM assistant_documents d JOIN ancestors a ON d.id=ANY(a.source_ids)) SELECT d.id FROM ancestors a JOIN assistant_documents d ON d.id=a.id WHERE NOT(${visible}) OR d.status<>'ready' LIMIT 1`,[...owner(c),row.source_ids]);if(forbidden.rowCount)throw missing();}return row;
 }
 export async function readDocument(c:DashboardContext,id:string,options:{query?:string;offset?:number;turnId?:string}={}){
@@ -46,6 +48,7 @@ export async function recordDocumentUse(c:DashboardContext,id:string,turnId:stri
 }
 export async function validateTurnDocumentAccess(c:DashboardContext,turnId:string){
  const invalid=await getDatabasePool().query(`WITH RECURSIVE sources AS(SELECT d.id,d.source_ids FROM assistant_document_uses u JOIN assistant_documents d ON d.id=u.document_id WHERE u.turn_id=$3 UNION SELECT d.id,d.source_ids FROM assistant_documents d JOIN sources s ON d.id=ANY(s.source_ids)) SELECT d.id FROM sources s JOIN assistant_documents d ON d.id=s.id WHERE NOT(${visible}) OR d.status<>'ready' LIMIT 1`,[...owner(c),turnId]);if(invalid.rowCount)throw missing();
+ const routineDocuments=(await getDatabasePool().query('SELECT d.routine_sources FROM assistant_document_uses u JOIN assistant_documents d ON d.id=u.document_id WHERE u.turn_id=$1',[turnId])).rows;for(const d of routineDocuments)if(!await routineDocumentVisible(c,d.routine_sources))throw missing();
 }
 export async function validateDocumentAttachments(c:DashboardContext,ids:string[],db:DB=getDatabasePool()){
  if(ids.length>5||new Set(ids).size!==ids.length)throw new AssistantError('document_limit','Choose up to five different files.');
@@ -64,8 +67,10 @@ export async function storeDocument(c:DashboardContext,input:{idempotency:string
   if(usage.total_files>=1000||usage.personal_files>=200)throw new AssistantError('document_quota','Document storage allows 200 files per employee and 1,000 company-wide. Delete unused files first.',409);
   if(Number(usage.total)+input.bytes.length>250_000_000||Number(usage.personal)+input.bytes.length>50_000_000)throw new AssistantError('document_quota','Document storage is full (50 MB per employee, 250 MB company-wide). Delete unused files before uploading.',409);
   const knowledgeIds=input.turnId?(await db.query('SELECT knowledge_id FROM assistant_knowledge_uses WHERE turn_id=$1',[input.turnId])).rows.map(r=>r.knowledge_id):[];if(input.turnId)await validateTurnKnowledgeAccess(c,input.turnId);
-  const sources=[...new Set((input.sources??[]).map(s=>s.id))];for(const source of sources)await documentRecord(c,source,db);
-  const row=(await db.query(`INSERT INTO assistant_documents(id,workspace_id,user_id,request_key,name,extension,content_hash,byte_count,bytes_encrypted,generated,source_ids,source_refs,knowledge_ids) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13) RETURNING *`,[id,...owner(c),input.idempotency,name,extension,hash,input.bytes.length,encrypt(input.bytes),!!input.generated,sources,JSON.stringify(input.sources??[]),knowledgeIds])).rows[0];id=row.id;
+  const routineSources:RoutineSource[]=input.turnId?(await db.query('SELECT routine_sources FROM assistant_chat_turns WHERE id=$1',[input.turnId])).rows[0]?.routine_sources??[]:[];
+  const sources=[...new Set((input.sources??[]).map(s=>s.id))];for(const source of sources){const record=await documentRecord(c,source,db);routineSources.push(...record.routine_sources);}
+  const uniqueRoutineSources=[...new Map(routineSources.map(s=>[s.kind+':'+s.id,s])).values()];if(!await routineDocumentVisible(c,uniqueRoutineSources))throw missing();
+  const row=(await db.query(`INSERT INTO assistant_documents(id,workspace_id,user_id,request_key,name,extension,content_hash,byte_count,bytes_encrypted,generated,source_ids,source_refs,knowledge_ids,routine_sources) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13,$14::jsonb) RETURNING *`,[id,...owner(c),input.idempotency,name,extension,hash,input.bytes.length,encrypt(input.bytes),!!input.generated,sources,JSON.stringify(input.sources??[]),knowledgeIds,JSON.stringify(uniqueRoutineSources)])).rows[0];id=row.id;
   if(input.generated&&input.extracted){const extracted=extractedDocumentSchema.parse(input.extracted);await db.query("UPDATE assistant_documents SET status='ready',kind=$2,mime=$3,warnings=$4::jsonb WHERE id=$1",[id,extracted.kind,extracted.mime,JSON.stringify(extracted.warnings)]);await db.query(`INSERT INTO assistant_document_chunks(document_id,key,location,content) SELECT $1,x.key,x.location,x.text FROM jsonb_to_recordset($2::jsonb) x(key text,location text,text text)`,[id,JSON.stringify(extracted.chunks)]);Object.assign(row,{status:'ready',kind:extracted.kind,mime:extracted.mime,warnings:extracted.warnings});}
   if(input.turnId)await db.query('INSERT INTO assistant_document_uses(document_id,turn_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[id,input.turnId]);await db.query('COMMIT');return summary(row,c);
  }catch(e){await db.query('ROLLBACK');throw e;}finally{db.release();}
@@ -110,7 +115,7 @@ export async function controlDocument(c:DashboardContext,id:string,v:{operation:
    const employees=[...new Set(v.employees??[])];if(v.audience==='employees'&&!employees.length)throw new AssistantError('document_audience','Choose at least one employee.');
    const members=await db.query("SELECT user_id FROM workspace_memberships WHERE workspace_id=$1 AND user_id=ANY($2::text[]) AND status='active'",[c.workspace.id,employees]);if(members.rowCount!==employees.length)throw new AssistantError('document_audience','Choose current employees from this workspace.');
    // A generated result cannot widen the audience of its private sources.
-   if(v.audience!=='private'&&(row.source_ids.length||row.knowledge_ids.length))throw new AssistantError('document_sources','Generated results with private source references remain private. Publish approved guidance separately.');
+   if(v.audience!=='private'&&(row.source_ids.length||row.knowledge_ids.length||row.routine_sources.length))throw new AssistantError('document_sources','Generated results with private source references remain private. Publish approved guidance separately.');
    await invalidateDocuments(db,[id]);await db.query('UPDATE assistant_documents SET audience=$2,shared_with=$3,revision=revision+1 WHERE id=$1',[id,v.audience,v.audience==='employees'?employees:[]]);
   }await db.query('COMMIT');
  }catch(e){await db.query('ROLLBACK');throw e;}finally{db.release();}

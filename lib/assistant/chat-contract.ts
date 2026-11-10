@@ -1,4 +1,5 @@
 import {z} from 'zod';
+import type {RoutineSummary} from './routine-contract';
 import {assignmentControlSchema,workCostSchema,type WorkStep} from './assignment-contract';
 
 export const chatRequestSchema=z.discriminatedUnion('operation',[
@@ -13,7 +14,7 @@ export const chatRequestSchema=z.discriminatedUnion('operation',[
 export type ChatActivity={label:string;status:string;reviewUrl?:string};
 export type ChatTurn={id:string;file_ids?:string[];user_message:string;assistant_message:string;status:'queued'|'running'|'waiting'|'waiting_input'|'paused'|'blocked'|'outcome_unknown'|'completed'|'failed'|'interrupted';activity:ChatActivity[];created_at:string;work_plan?:WorkStep[];employee_replies?:{text:string;createdAt:string}[];max_cost_micros?:string;used_micros?:string;blocked_reason?:string|null};
 export type ChatCapabilities={background?:boolean;meetings?:boolean;research:boolean;sms:boolean;email:boolean;calls:boolean;routines:boolean;notificationNumberId:string};
-export type ChatState={threads:{id:string;title:string}[];hasMore:boolean;turns:ChatTurn[];historyLimited:boolean;connection:({mode:string;paused:boolean;conversations:boolean;expiresAt?:string}&ChatCapabilities)|null;backgroundAvailable?:boolean;configured:boolean;monthlyLimit:number;monthlyUsed:number;canManageBudget:boolean;viewer:boolean;numbers:{id:string;phone:string}[];memories:{id:string;title:string;body:string;revision:number}[];routines:{id:string;title:string;instruction:string;cadence:string;local_time:string;enabled:boolean;revision:number;next_run_at:string;last_error:string|null}[];notifications:{id:string;phone:string;status:string;result:unknown}[]};
+export type ChatState={threads:{id:string;title:string}[];hasMore:boolean;turns:ChatTurn[];historyLimited:boolean;connection:({mode:string;paused:boolean;conversations:boolean;expiresAt?:string}&ChatCapabilities)|null;backgroundAvailable?:boolean;configured:boolean;monthlyLimit:number;monthlyUsed:number;canManageBudget:boolean;viewer:boolean;numbers:{id:string;phone:string}[];memories:{id:string;title:string;body:string;revision:number}[];routines:RoutineSummary[];notifications:{id:string;phone:string;status:string;result:unknown}[]};
 export const CHAT_MODEL='gpt-6.1-sol';
 export const CHAT_MAX_OUTPUT=3000;
 export const CHAT_MAX_INPUT_BYTES=100000;

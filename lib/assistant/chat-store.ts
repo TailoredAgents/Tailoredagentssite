@@ -13,6 +13,7 @@ import {listRoutines} from './routines';
 import {listBookingNotifications} from './booking-notifications';
 import {BACKGROUND_CLIENT,authorizeBackgroundIdentity,releaseBackgroundIdentity,revokeBackgroundIdentity,type BackgroundIdentity} from './background-identity';
 import {validateDocumentAttachments,validateTurnDocumentAccess} from './documents';
+import {validateRoutineWork} from './routine-policy';
 import {validateTurnKnowledgeAccess} from './knowledge-lifecycle';
 import {workCostSchema} from './assignment-contract';
 
@@ -116,6 +117,7 @@ export async function assertTurnActive(p:Principal,id:string){
   if(!r.rowCount)throw new AssistantError('stopped','This reply stopped. Check its activity before repeating work.',409);
   await validateTurnDocumentAccess(p.context,id);
   await validateTurnKnowledgeAccess(p.context,id);
+  await validateRoutineWork(p,id);
  });
 }
 export async function stopChatTurn(c:DashboardContext,threadId:string,id:string){

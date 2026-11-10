@@ -4,6 +4,7 @@ import {getDatabasePool} from '@/lib/dashboard/db';
 import {getTwilioConfiguration} from '@/lib/twilio/config';
 import {createSms,TwilioProviderError} from '@/lib/twilio/provider';
 import {suppressEmployeeSms} from './employee-notifications';
+import {routineNotificationAllowed} from './routine-policy';
 import {principal} from './oauth';
 import {apnsConfiguration} from './apns';
 import {runPushNotificationWorker} from './push-worker';
@@ -24,7 +25,7 @@ export async function runEmployeeNotificationWorker(limit=3){
     JOIN assistant_notification_preferences p ON p.workspace_id=n.workspace_id AND p.user_id=n.user_id AND p.sms_enabled AND p.verified_at IS NOT NULL
     JOIN workspace_memberships m ON m.workspace_id=n.workspace_id AND m.user_id=n.user_id AND m.status='active'
     JOIN workspaces w ON w.id=n.workspace_id AND w.status='active'
-    WHERE n.expires_at>now() AND n.created_at>p.verified_at AND n.read_at IS NULL AND n.resolved_at IS NULL
+    WHERE n.expires_at>now() AND n.created_at>p.verified_at AND n.read_at IS NULL AND n.resolved_at IS NULL AND n.external_allowed
     AND (n.category<>'review' OR n.created_at<now()-interval '30 seconds')
     AND ($2::boolean OR NOT p.push_enabled OR NOT EXISTS(SELECT 1 FROM assistant_push_devices d WHERE d.workspace_id=n.workspace_id AND d.user_id=n.user_id AND d.enabled AND d.revoked_at IS NULL AND d.verified_at IS NOT NULL AND n.created_at>d.verified_at AND d.permission IN ('authorized','provisional') AND d.environment=$3) OR EXISTS(SELECT 1 FROM assistant_notification_deliveries d WHERE d.notification_id=n.id AND d.channel='push' AND d.status='failed'))
     AND (n.category<>'completed' OR p.completions) AND p.phone<>$1
@@ -40,8 +41,8 @@ export async function runEmployeeNotificationWorker(limit=3){
   }catch(e){await db.query('ROLLBACK');throw e;}finally{db.release();}
   if(!job)break;
   // Recheck preferences, membership, resolution and opt-out after claiming, immediately before sending.
-  let allowed=!!(await pool.query(`SELECT 1 FROM assistant_notification_preferences p JOIN workspace_memberships m ON m.workspace_id=p.workspace_id AND m.user_id=p.user_id AND m.status='active' JOIN workspaces w ON w.id=p.workspace_id AND w.status='active' JOIN assistant_employee_notifications n ON n.id=$4 AND n.workspace_id=p.workspace_id AND n.user_id=p.user_id WHERE p.workspace_id=$1 AND p.user_id=$2 AND p.phone=$3 AND p.sms_enabled AND p.revision=$5 AND n.read_at IS NULL AND n.resolved_at IS NULL AND n.expires_at>now() AND NOT EXISTS(SELECT 1 FROM crm_channel_preferences c WHERE c.workspace_id=p.workspace_id AND c.channel='sms' AND c.normalized_address=p.phone AND c.status='blocked')`,[job.workspace_id,job.user_id,job.phone,job.id,job.revision])).rowCount;
-  if(allowed&&job.grant_id){try{const p=await principal((await pool.query('SELECT * FROM assistant_grants WHERE id=$1',[job.grant_id])).rows[0]);allowed=p.context.user.id===job.user_id&&p.context.workspace.id===job.workspace_id;}catch{allowed=false;}}
+  let allowed=!!(await pool.query(`SELECT 1 FROM assistant_notification_preferences p JOIN workspace_memberships m ON m.workspace_id=p.workspace_id AND m.user_id=p.user_id AND m.status='active' JOIN workspaces w ON w.id=p.workspace_id AND w.status='active' JOIN assistant_employee_notifications n ON n.id=$4 AND n.workspace_id=p.workspace_id AND n.user_id=p.user_id WHERE p.workspace_id=$1 AND p.user_id=$2 AND p.phone=$3 AND p.sms_enabled AND p.revision=$5 AND n.read_at IS NULL AND n.resolved_at IS NULL AND n.external_allowed AND n.expires_at>now() AND NOT EXISTS(SELECT 1 FROM crm_channel_preferences c WHERE c.workspace_id=p.workspace_id AND c.channel='sms' AND c.normalized_address=p.phone AND c.status='blocked')`,[job.workspace_id,job.user_id,job.phone,job.id,job.revision])).rowCount;
+  if(allowed&&job.grant_id){try{const p=await principal((await pool.query('SELECT * FROM assistant_grants WHERE id=$1',[job.grant_id])).rows[0]);allowed=p.context.user.id===job.user_id&&p.context.workspace.id===job.workspace_id&&await routineNotificationAllowed(p,job.id);}catch{allowed=false;}}
   if(!allowed){await pool.query("UPDATE assistant_notification_deliveries SET status='suppressed',updated_at=now() WHERE id=$1",[attempt]);continue;}
   checked++;
   try{
@@ -53,7 +54,7 @@ export async function runEmployeeNotificationWorker(limit=3){
    // A definitive rejection must not suppress other outstanding notifications.
    if(['failed','undelivered'].includes(r.status))continue;
    // Coalesce notifications already represented in this feed alert; later events remain eligible.
-   await pool.query(`INSERT INTO assistant_notification_deliveries(id,notification_id,channel,status,recipient,error_code) SELECT gen_random_uuid(),n.id,'sms','suppressed',$3,'included_in_feed_alert' FROM assistant_employee_notifications n JOIN assistant_notification_preferences p ON p.workspace_id=n.workspace_id AND p.user_id=n.user_id WHERE n.workspace_id=$1 AND n.user_id=$2 AND n.id<>$4 AND n.created_at<=(SELECT created_at FROM assistant_notification_deliveries WHERE id=$5) AND n.read_at IS NULL AND n.resolved_at IS NULL AND (n.category<>'completed' OR p.completions) ON CONFLICT DO NOTHING`,[job.workspace_id,job.user_id,job.phone,job.id,attempt]);
+   await pool.query(`INSERT INTO assistant_notification_deliveries(id,notification_id,channel,status,recipient,error_code) SELECT gen_random_uuid(),n.id,'sms','suppressed',$3,'included_in_feed_alert' FROM assistant_employee_notifications n JOIN assistant_notification_preferences p ON p.workspace_id=n.workspace_id AND p.user_id=n.user_id WHERE n.workspace_id=$1 AND n.user_id=$2 AND n.id<>$4 AND n.created_at<=(SELECT created_at FROM assistant_notification_deliveries WHERE id=$5) AND n.read_at IS NULL AND n.resolved_at IS NULL AND n.external_allowed AND (n.category<>'completed' OR p.completions) ON CONFLICT DO NOTHING`,[job.workspace_id,job.user_id,job.phone,job.id,attempt]);
   }catch(e){failed++;if(e instanceof TwilioProviderError&&e.providerCode===21610)await suppressEmployeeSms(job.phone);await pool.query("UPDATE assistant_notification_deliveries SET status=$2,error_code=$3,updated_at=now() WHERE id=$1 AND status='sending'",[attempt,e instanceof TwilioProviderError&&e.outcome==='rejected'?'failed':'unknown',e instanceof TwilioProviderError?e.providerCode?.toString()??'provider_rejected':'check_provider_status']);}
  }
  return {checked:checked+push.checked,failed:failed+push.failed,more:push.more||checked===Math.min(limit,10)};
