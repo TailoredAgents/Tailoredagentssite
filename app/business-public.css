@@ -77,7 +77,7 @@
 .business-process h3 { margin: 1.8rem 0 .7rem; font-size: 1.15rem; }
 .business-process p { color: #586b85; font-size: .83rem; }
 .business-services>div:last-child { border-top: 1px solid #cbd7e7; }
-.business-services>div:last-child>a { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.3rem 0; border: 0; border-bottom: 1px solid #cbd7e7; border-radius: 0; background: none; color: #1e477e; font-size: 1rem; }
+.business-services>div:last-child>a { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.3rem 0; border: 0; border-bottom: 1px solid #cbd7e7; border-radius: 0; background: none; box-shadow: none; transform: none; color: #1e477e; font-size: 1rem; }
 .business-services>div:last-child>a:hover { color: #175cd3; text-decoration: underline; text-underline-offset: 4px; }
 .business-partner-section { background: #e8eef8; }
 .business-partner { display: grid; grid-template-columns: auto 1fr auto; gap: 2rem; align-items: center; }
