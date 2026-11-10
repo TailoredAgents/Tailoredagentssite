@@ -117,15 +117,6 @@ export function BookingCalendar({
     }
   }, [detail, data.slots, data.tasks]);
   useEffect(() => {
-    if (
-      !new URLSearchParams(window.location.search).has("view") &&
-      window.matchMedia("(max-width:760px)").matches
-    )
-      router.replace(`/dashboard/calendar?date=${anchor}&view=day`, {
-        scroll: false,
-      });
-  }, [anchor, router]);
-  useEffect(() => {
     const query = window.matchMedia("(max-width:760px)");
     const update = () => setMobile(query.matches);
     update();
