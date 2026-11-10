@@ -10,6 +10,7 @@ import {finishChatTurn} from './chat-store';
 import {runBookingNotificationWorker} from './booking-notifications';
 import {runEmployeeNotificationWorker} from './notification-worker';
 import {claimAssignment,wakeReviewedAssignments} from './assignments';
+import {processDocuments} from './documents';
 import type {DashboardContext} from '@/lib/dashboard/data';
 export async function advanceReviewedWork(c:DashboardContext,actionId:string){
  const rows=(await getDatabasePool().query(`SELECT t.id FROM assistant_chat_turns t JOIN assistant_chat_threads c ON c.id=t.thread_id WHERE t.waiting_action_id=$1 AND c.workspace_id=$2 AND c.user_id=$3 AND t.status='waiting' LIMIT 3`,[actionId,c.workspace.id,c.user.id])).rows;
@@ -33,6 +34,7 @@ export async function enqueueDueRoutine(){
  }catch(e){await db.query('ROLLBACK');throw e;}finally{db.release();}
 }
 export async function runAssistantWorker(turnId?:string,limit=1){
+ if(!turnId)await processDocuments(1);
  if(process.env.ASSISTANT_CHAT_ENABLED==='false'||process.env.OPERATIONS_ASSISTANT_ENABLED==='false')return {checked:0,failed:0,more:false};
  await wakeReviewedAssignments();
  if(!turnId)await enqueueDueRoutine();

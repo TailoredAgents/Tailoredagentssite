@@ -40,30 +40,37 @@
     "factory:build-worker": "node --conditions=react-server --import tsx scripts/run-factory-build-worker.ts"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.13.0"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1157.0",
     "@fullcalendar/react": "7.1.4",
     "@modelcontextprotocol/sdk": "1.32.2",
+    "@napi-rs/canvas": "1.1.0",
+    "@pdf-lib/fontkit": "1.1.1",
     "@tailwindcss/postcss": "^4.1.14",
     "@twilio/voice-sdk": "^2.18.5",
     "better-auth": "^1.7.10",
+    "fflate": "0.8.3",
     "fontkit": "2.0.4",
     "lucide-react": "^0.468.0",
     "music-metadata": "12.4.0",
     "next": "16.4.2",
     "parse5": "8.0.1",
+    "pdf-lib": "1.17.1",
+    "pdfjs-dist": "6.5.438",
     "pg": "^8.16.3",
     "qrcode": "^1.5.4",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "saxes": "6.0.0",
     "server-only": "^0.0.1",
     "sharp": "0.35.5",
     "tailwindcss": "^4.1.14",
     "temporal-polyfill": "1.0.8",
     "tsx": "4.23.15",
     "twilio": "^6.2.0",
+    "yauzl": "3.4.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {

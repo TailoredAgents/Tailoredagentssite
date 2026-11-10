@@ -65,6 +65,11 @@ describe.skipIf(!url)('Native employee assistant integration',()=>{
   await expect(chatState({...owner,workspace:{...owner.workspace,id:randomUUID()}},'chat-session',thread)).rejects.toThrow();
   await stopChatTurn(other,thread,id);await assertTurnActive(p,id);
  });
+ it('charges bounded document vision to the shared assistant ledger and reuses a saved response',async()=>{
+  const {p,id}=await turn();await saveChatBudget(owner,25);const fetcher=vi.fn().mockResolvedValue(Response.json(answer('The image shows a discovery checklist.')));vi.stubGlobal('fetch',fetcher);
+  const payload={input:[{role:'user',content:[{type:'input_text',text:'Read the checklist.'},{type:'input_image',image_url:'data:image/png;base64,'+'a'.repeat(150000),detail:'high'}]}]};
+  await requestChatResponse(p,id,1,payload,'image');await requestChatResponse(p,id,1,payload,'image');expect(fetcher).toHaveBeenCalledTimes(1);expect(Number((await pool.query('SELECT amount_micros FROM assistant_chat_requests WHERE turn_id=$1',[id])).rows[0].amount_micros)).toBeGreaterThan(0);expect(Number((await pool.query('SELECT amount_micros FROM assistant_chat_usage WHERE workspace_id=$1',[ws])).rows[0].amount_micros)).toBeLessThan(25000000);
+ });
  it('does not expand read-only/channel permissions, and rechecks viewer membership at action time',async()=>{
   const p=await connection('read',false);
   expect(nativeCatalog(p).some(t=>t.kind==='change'||t.scopes.includes('conversations:read'))).toBe(false);

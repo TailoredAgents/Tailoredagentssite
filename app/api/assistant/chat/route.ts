@@ -38,7 +38,7 @@ export async function POST(request:Request){return endpoint(async()=>{
  if(v.operation==='send'){
   await cardRateLimit('assistant:chat',context.user.id,6,60);
   const p=await nativePrincipal(context,sessionId);
-  if(await beginChatTurn(p,v.threadId,v.requestId,v.message,v.maxCostDollars))after(()=>runAssistantWorker(v.requestId,30).then(()=>undefined));
+  if(await beginChatTurn(p,v.threadId,v.requestId,v.message,v.maxCostDollars,v.fileIds))after(()=>runAssistantWorker(v.requestId,30).then(()=>undefined));
  }
  return json(await chatState(context,sessionId,'threadId' in v?v.threadId:undefined));
 });}

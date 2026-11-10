@@ -8,6 +8,14 @@ globalThis.fetch = async function(input, init) {
  if (String(input) !== 'https://api.openai.com/v1/responses') return originalFetch(input, init);
  const payload = JSON.parse(init.body);
  const outputs = payload.input.filter(x => x.type === 'function_call_output');
+ const documentRequest=payload.input.find(x=>x.role==='user'&&typeof x.content==='string'&&x.content.includes('Make a document brief from my attachment.'));
+ if(documentRequest){
+  const fileId=documentRequest.content.match(/file IDs.*?: ([0-9a-f-]{36})/)?.[1];
+  const read=outputs.find(x=>x.call_id==='fixture_document_read'),created=outputs.find(x=>x.call_id==='fixture_document_create');
+  const output=!read?[{type:'function_call',name:'read_document',call_id:'fixture_document_read',arguments:JSON.stringify({id:fileId,query:'',offset:0})}]:!created?[{type:'function_call',name:'create_document',call_id:'fixture_document_create',arguments:JSON.stringify({format:'docx',title:'Discovery brief',body:'The customer wants document automation. Budget needs confirmation.',columns:[],rows:[],sources:[{id:fileId,chunk:'c1'}]})}]:[{type:'message',role:'assistant',content:[{type:'output_text',text:'Your brief is ready: [Open Discovery brief]('+JSON.parse(created.output).document.url+')'}]}];
+  return Response.json({status:'completed',output,usage:{input_tokens:100,output_tokens:20}});
+ }
+
  let output;
  const plan=(status,evidence)=>({steps:[{id:'goal',label:'Save onboarding goal',status,dependsOn:[],evidence}]});
  if (!outputs.length) output = [{type:'function_call',name:'update_work_plan',call_id:'fixture_plan',arguments:JSON.stringify(plan('working',''))}];

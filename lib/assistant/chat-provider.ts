@@ -10,17 +10,20 @@ import {CHAT_MODEL,CHAT_MAX_OUTPUT,chatReservation,chatUsageCost} from './chat-c
 const outputItem=z.object({type:z.string(),name:z.string().optional(),arguments:z.string().optional(),call_id:z.string().optional(),content:z.array(z.object({type:z.string(),text:z.string().optional(),refusal:z.string().optional()}).passthrough()).optional()}).passthrough();
 export const chatResponseSchema=z.object({status:z.literal('completed'),output:z.array(outputItem),usage:z.object({input_tokens:z.number().int().nonnegative(),output_tokens:z.number().int().nonnegative()})});
 export type ChatResponse=z.infer<typeof chatResponseSchema>;
-export async function requestChatResponse(p:Principal,turnId:string,step:number,payload:Record<string,unknown>,hosted?:'web'|'calculation'):Promise<ChatResponse>{
+export async function requestChatResponse(p:Principal,turnId:string,step:number,payload:Record<string,unknown>,hosted?:'web'|'calculation'|'image'):Promise<ChatResponse>{
  if(!process.env.OPENAI_API_KEY?.trim()||process.env.ASSISTANT_CHAT_ENABLED==='false')throw new AssistantError('not_configured','Dashboard chat is not configured yet.',503);
  await assertTurnActive(p,turnId);
  const prior=(await getDatabasePool().query('SELECT status,response FROM assistant_chat_requests WHERE turn_id=$1 AND step=$2 AND workspace_id=$3',[turnId,step,p.context.workspace.id])).rows[0];
  if(prior){if(prior.status==='completed'&&prior.response)return chatResponseSchema.parse(prior.response);throw new AssistantError('provider_outcome_unknown','A previous AI request has an uncertain outcome. Its allowance remains reserved; this step will not be charged again automatically.',409);}
  const serialized=JSON.stringify({...payload,model:CHAT_MODEL,service_tier:'default',store:false,reasoning:{effort:'low'},max_output_tokens:CHAT_MAX_OUTPUT,include:['reasoning.encrypted_content']});
- if(hosted&&!p.scopes.includes('research:use'))throw new AssistantError('insufficient_scope','Enable research and calculations in Chat settings.',403);
+ if(hosted&&hosted!=='image'&&!p.scopes.includes('research:use'))throw new AssistantError('insufficient_scope','Enable research and calculations in Chat settings.',403);
  // One hosted call only. Reserve conservatively for intermediate model context
  // and a fresh 1 GB container. Uncertain requests retain this reservation.
- const hostedReservation=hosted==='web'?700000:hosted==='calculation'?6000000:0;
- const reservation=chatReservation(Buffer.byteLength(serialized))+hostedReservation,requestId=randomUUID();
+ const hostedReservation=hosted==='web'?700000:hosted==='calculation'?6000000:hosted==='image'?250000:0;
+ // Visual inputs are server-rendered at <=768px. Reserve 100,000 additional input tokens
+ // conservatively, instead of treating base64 bytes as text tokens.
+ const estimated=hosted==='image'?serialized.replace(/data:image\/png;base64,[A-Za-z0-9+/=]+/g,'[bounded document image]'):serialized;
+ const reservation=chatReservation(Buffer.byteLength(estimated))+hostedReservation,requestId=randomUUID();
  const db=await getDatabasePool().connect();let month='';
  try{
   await db.query('BEGIN');
