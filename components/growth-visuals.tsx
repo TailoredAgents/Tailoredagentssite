@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { ArrowUpRight, BarChart3, Check, Gauge, MapPin, MessageSquareText, Search, Wrench } from "lucide-react";
 
 export function GrowthHeroVisual() {
@@ -9,8 +10,8 @@ export function GrowthHeroVisual() {
       <div className="growth-browser">
         <div className="concept-browser-bar"><span><i/><i/><i/></span><b>northstarcomfort.com</b><em>Design concept</em></div>
         <div className="concept-site concept-site-hvac">
-          <div className="concept-nav"><strong><i><Wrench size={13}/></i>NORTHSTAR</strong><span>Heating</span><span>Cooling</span><span>Maintenance</span><button>Request service</button></div>
-          <div className="concept-hero-copy"><small>Comfort, engineered for home.</small><h3>Reliable heating and cooling, without the guesswork.</h3><p>Clear service options, straightforward scheduling, and a team built around responsive care.</p><div><b>Schedule service</b><span>Explore solutions <ArrowUpRight size={11}/></span></div></div>
+          <div className="concept-nav"><strong><i><Wrench size={13}/></i>NORTHSTAR</strong><span>Heating</span><span>Cooling</span><span>Maintenance</span><span className="concept-demo-button">Request service</span></div>
+          <div className="concept-hero-copy"><Image className="hvac-concept-image" src="/concepts/comfort.webp" alt="AI-generated living room for the fictional HVAC design concept" width={1200} height={800} sizes="(max-width: 700px) 80vw, 600px"/><small>Comfort, engineered for home.</small><h3>Reliable heating and cooling, without the guesswork.</h3><p>Clear service options, straightforward scheduling, and a team built around responsive care.</p><div><b>Schedule service</b><span>Explore solutions <ArrowUpRight size={11}/></span></div></div>
           <div className="concept-service-row"><span><i>01</i><b>Cooling repair</b><small>Fast paths to request service</small></span><span><i>02</i><b>System replacement</b><small>Helpful options and next steps</small></span><span><i>03</i><b>Maintenance</b><small>Plans explained clearly</small></span></div>
         </div>
       </div>
@@ -21,7 +22,7 @@ export function GrowthHeroVisual() {
         <span className="mobile-concept-kicker">AC repair · Palm Beach County</span>
         <strong>Home comfort, handled.</strong>
         <p>Book service from any screen.</p>
-        <button>Request service</button>
+        <span className="concept-demo-button">Request service</span>
         <div className="mobile-concept-card"><small>Need help now?</small><b>Choose a service</b><span>Cooling · Heating · Maintenance</span></div>
       </div>
 
@@ -36,9 +37,9 @@ export function GrowthHeroVisual() {
 }
 
 const concepts = [
-  { id: "hvac", type: "HVAC website", name: "Northstar Heating & Air", line: "Responsive service paths built around urgency, trust, and local relevance.", tone: "blue" },
-  { id: "roofing", type: "Roofing website", name: "Ridgeway Roofing Co.", line: "A confident editorial system for projects, materials, service areas, and quote requests.", tone: "slate" },
-  { id: "outdoor", type: "Premium local service", name: "Lumen Outdoor Living", line: "A visual, project-led experience designed to make higher-value work feel tangible.", tone: "green" },
+  { id: "hvac", type: "HVAC website", name: "Northstar Heating & Air", line: "Responsive service paths built around urgency, trust, and local relevance.", tone: "blue", image: "comfort" },
+  { id: "roofing", type: "Roofing website", name: "Ridgeway Roofing Co.", line: "A confident editorial system for projects, materials, service areas, and quote requests.", tone: "slate", image: "roofing" },
+  { id: "outdoor", type: "Premium local service", name: "Lumen Outdoor Living", line: "A visual, project-led experience designed to make higher-value work feel tangible.", tone: "green", image: "garden" },
 ] as const;
 
 export function WebsiteConceptGallery({ featuredOnly = false }: { featuredOnly?: boolean }) {
@@ -52,9 +53,9 @@ export function WebsiteConceptGallery({ featuredOnly = false }: { featuredOnly?:
             <div className="mini-browser-bar"><i/><i/><i/><span>{concept.id}.concept</span></div>
             <div className="mini-site-nav"><b>{concept.name.split(" ")[0].toUpperCase()}</b><span>Services</span><span>Work</span><span>About</span><i>Get started</i></div>
             <div className="mini-site-hero"><small>{concept.type}</small><strong>{index === 0 ? "Comfort starts with a better experience." : index === 1 ? "Protection built above the standard." : "Outdoor spaces, considered beautifully."}</strong><p>{concept.line}</p><span>Explore the experience <ArrowUpRight size={12}/></span></div>
-            <div className="mini-site-grid"><i/><i/><i/></div>
+            <div className="concept-image"><Image src={`/concepts/${concept.image}.webp`} alt={`AI-generated illustrative imagery for the ${concept.type.toLowerCase()} concept`} width={1200} height={800} sizes="(max-width: 700px) 90vw, (max-width: 1100px) 45vw, 400px"/></div>
           </div>
-          <div className="concept-project-copy"><h3>{concept.name}</h3><p>{concept.line}</p></div>
+          <div className="concept-project-copy"><h3>{concept.name}</h3><p>{concept.line}</p><small>Fictional brand · AI-generated concept imagery</small></div>
         </article>
       ))}
     </div>

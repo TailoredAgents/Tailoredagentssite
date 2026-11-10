@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AudioLines, BrainCircuit, Check, Database, FileText, MessageSquareText, PhoneCall, PhoneIncoming, Sparkles, UserRound } from "lucide-react";
 
 const stages = [
@@ -48,14 +48,6 @@ const stages = [
 
 export function HeroCallSystem() {
   const [active, setActive] = useState(2);
-  const [manuallySelected, setManuallySelected] = useState(false);
-
-  useEffect(() => {
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced || manuallySelected) return;
-    const timer = window.setInterval(() => setActive((value) => (value + 1) % stages.length), 4800);
-    return () => window.clearInterval(timer);
-  }, [manuallySelected]);
 
   const stage = stages[active];
   const StageIcon = stage.icon;
@@ -85,16 +77,16 @@ export function HeroCallSystem() {
             <div className="call-meta"><span className="status-complete"><Check size={12} /> Processed</span><span>12:48</span></div>
           </div>
 
-          <div className="call-pipeline" role="tablist" aria-label="Call intelligence processing stages">
+          <div className="call-pipeline" role="group" aria-label="Call intelligence processing stages">
             {stages.map((item, index) => {
               const Icon = item.icon;
-              return <button key={item.id} id={`call-stage-tab-${item.id}`} aria-controls="call-stage-panel" type="button" role="tab" aria-selected={active === index} className={active === index ? "active" : active > index ? "complete" : ""} onClick={() => { setActive(index); setManuallySelected(true); }}><span className="pipeline-icon"><Icon size={13}/></span><span><small>0{index + 1}</small>{item.label}</span></button>;
+              return <button key={item.id} id={`call-stage-tab-${item.id}`} aria-label={item.label} aria-controls="call-stage-panel" type="button" aria-pressed={active === index} className={active === index ? "active" : active > index ? "complete" : ""} onClick={() => { setActive(index); }}><span className="pipeline-icon"><Icon size={13}/></span><span><small>0{index + 1}</small>{item.label}</span></button>;
             })}
           </div>
 
           <div className="call-grid">
             <section className="transcript-pane">
-              <div className="pane-title"><span>Transcript</span><span className="audio-indicator" aria-label="Recorded call audio"><i/><i/><i/><i/><i/><i/><i/></span></div>
+              <div className="pane-title"><span>Transcript</span><span className="audio-indicator" role="img" aria-label="Recorded call audio"><i/><i/><i/><i/><i/><i/><i/></span></div>
               <div className="transcript-scroll">
                 <TranscriptLine time="00:18" speaker="Agent" text="Thanks for calling. Tell me a little about what you need help with." />
                 <TranscriptLine time="00:27" speaker="Morgan" text="We’re clearing out an office in Decatur before the end of the month." highlighted />
@@ -107,7 +99,7 @@ export function HeroCallSystem() {
             </section>
 
             <section className="intelligence-pane">
-              <div className="intelligence-card" id="call-stage-panel" role="tabpanel" aria-labelledby={`call-stage-tab-${stage.id}`} tabIndex={0}>
+              <div className="intelligence-card" id="call-stage-panel" role="region" aria-labelledby={`call-stage-tab-${stage.id}`} tabIndex={0}>
                 <div className="intelligence-heading"><span className="intelligence-icon"><StageIcon size={18}/></span><div><span className="micro-label blue">{stage.eyebrow}</span><h4>{stage.title}</h4></div></div>
                 <p>{stage.body}</p>
                 <StageDetails id={stage.id} />

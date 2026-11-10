@@ -3,6 +3,7 @@ import { managedMetadata } from "@/lib/seo/public-metadata";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Cable, FileText, Handshake, MessagesSquare, Search, Workflow } from "lucide-react";
+import { HeroCallSystem } from "@/components/hero-call-system";
 import { BusinessWorkflowDemo } from "@/components/business-workflow-demo";
 import { ArrowLink, Eyebrow, FinalCta } from "@/components/ui";
 
@@ -32,7 +33,7 @@ export default function Home() {
 
     <section className="business-case section-pad"><div className="container-shell business-case-grid">
       <div><Eyebrow>Inside our work · StonegateOS</Eyebrow><h2 className="h2">From a conversation<br/>to a <span className="serif-italic">clear next step.</span></h2><p className="lede">Customer conversations, follow-up and job details shouldn’t live in separate places. StonegateOS brings them into a connected operating platform for a service business.</p><ArrowLink href="/work/stonegateos" light>Explore the engineering case study</ArrowLink></div>
-      <div className="business-case-workflow"><span className="micro-label">One workflow in the platform</span><ol>{[["Capture the conversation","Keep a customer call connected to its business context."],["Prepare the useful details","Transcription and analysis can turn the recording into structured information."],["Put context with the customer","Prepare CRM documentation so the next person can pick up the conversation."],["Keep a person in control","Review suggested next steps and sensitive actions before carrying them out."]].map(([title,text],index)=><li key={title}><span>0{index+1}</span><div><h3>{title}</h3><p>{text}</p></div></li>)}</ol><p className="business-case-note">An actively developed internal platform. Capabilities depend on configuration; this is not a claim that every workflow is verified live.</p></div>
+      <div className="business-case-showcase"><HeroCallSystem/><p className="business-case-note">Explore the stages above. Illustrative interface with synthetic data. StonegateOS is an actively developed internal platform; capabilities depend on configuration.</p></div>
     </div></section>
 
     <section className="section-pad"><div className="container-shell business-opportunities"><div><Eyebrow>Start with the work</Eyebrow><h2 className="h2">Where does your team<br/>keep getting <span className="serif-italic">stuck?</span></h2><p className="lede">You don’t need to know which AI to buy. Bring us the repeated task, awkward handoff or missing connection. We’ll help work out what’s worth building.</p><p className="text-muted">These are examples of solutions we can scope, not a list of ready-made products.</p></div><div className="business-problem-list">{opportunities.map(([Icon,title,text],index)=><article key={title}><span><Icon size={21}/></span><div><small>0{index+1}</small><h3>{title}</h3><p>{text}</p></div></article>)}</div></div></section>

@@ -33,14 +33,7 @@ export default function EngineeringPage() {
           <ol><li><span>01</span><b>Defined boundaries</b><small>Explicit responsibilities and permissions</small></li><li><span>02</span><b>Observable behavior</b><small>Traceable inputs, decisions, and outcomes</small></li><li><span>03</span><b>Recoverable failure</b><small>Retries, escalation, and safe fallbacks</small></li><li><span>04</span><b>Human ownership</b><small>Clear approval and operating responsibility</small></li></ol>
         </div>
       </section>
-      <div className="container-shell">
-        {practices.map(([title, copy, points], index) => (
-          <section className="detail-section" key={title}>
-            <div className="detail-index">0{index + 1}</div>
-            <div className="detail-body"><h2>{title}</h2><p>{copy}</p><div className="detail-columns"><div><h3>Representative work</h3><ul className="plain-list">{points.map((point) => <li key={point}>{point}</li>)}</ul></div><div><h3>Engineering position</h3><p>{index === 4 ? "No software is infallible. We design for clear operating boundaries, observable behavior, recoverable failure, and informed human ownership." : "The right implementation depends on the operation, risk, data, and existing technology. Architecture follows those constraints."}</p></div></div></div>
-          </section>
-        ))}
-      </div>
+      <section className="section-pad engineering-practice-section"><div className="container-shell"><div className="section-heading-wide"><div><span className="eyebrow">What we bring together</span><h2 className="h2">The whole system.<br/><span className="serif-italic">Thought through.</span></h2></div><p className="lede">Architecture follows your operation, data and existing tools. These are the disciplines we bring to the work.</p></div><div className="engineering-practice-grid">{practices.map(([title,copy,points],index)=><article key={title}><span className="practice-number">0{index+1}</span><h3>{title}</h3><p>{copy}</p><ul>{points.map(point=><li key={point}>{point}</li>)}</ul></article>)}</div><p className="engineering-footnote">No software is infallible. We plan for observable behavior, recoverable failure and informed human ownership.</p></div></section>
       <FinalCta />
     </>
   );

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight, Handshake, Network, Users } from "lucide-react";
-import { ArrowLink, Eyebrow, PageHero } from "@/components/ui";
+import { PartnershipVisual } from "@/components/partnership-visual";
+import { ArrowLink, Eyebrow } from "@/components/ui";
 import { publicPageMetadata } from "@/lib/site";
 
 export const metadata = publicPageMetadata(
@@ -11,7 +12,7 @@ export const metadata = publicPageMetadata(
 
 export default function PartnersPage() {
   return <>
-    <PageHero eyebrow="Partnerships" title={<>You know the business.<br/>Let’s build the <span className="serif-italic">possibility.</span></>} description="Bring your relationships, industry knowledge or an opportunity worth exploring. We bring custom AI, automation and software capability. Let’s see where working together makes sense." meta="Referrals · Delivery partnerships · Revenue sharing" />
+    <section className="partner-hero section-pad"><div className="container-shell partner-hero-grid"><div><Eyebrow>Partnerships</Eyebrow><h1 className="page-title">Your relationships.<br/>Our engineering.<br/><span className="serif-italic">New possibilities.</span></h1><p className="lede">Bring your industry knowledge and an opportunity worth exploring. We bring custom AI, automation and software capability. Let’s see what we can build together.</p><ArrowLink href="/contact?interest=partnership">Start a partnership conversation</ArrowLink></div><PartnershipVisual/></div></section>
     <section className="business-partnerships section-pad"><div className="container-shell">
       <div className="business-partnership-grid">
         <article><Users size={28}/><span>01 / Introductions</span><h2>Connect us with a business.</h2><p>Know an owner whose team is buried in manual work, disconnected tools or slow follow-up? A useful introduction starts with the problem they want to solve.</p><ArrowLink href="/contact?interest=partnership">Discuss an introduction</ArrowLink></article>

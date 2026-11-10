@@ -27,7 +27,7 @@ export function SiteFrame({
   return (
     <>
       {header}
-      <main id="main-content">{children}</main>
+      <main id="main-content" className="public-site" data-page={pathname}>{children}</main>
       {footer}
       {structuredData}
     </>

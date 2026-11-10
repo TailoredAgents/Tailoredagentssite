@@ -8,6 +8,7 @@ import { MetaPixel } from "@/components/meta-pixel";
 import { absoluteUrl, siteConfig } from "@/lib/site";
 import "./globals.css";
 import "./business-public.css";
+import "./public-design.css";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
@@ -55,7 +56,7 @@ const organizationJsonLd = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geist.variable} ${geistMono.variable}`}>
+    <html lang="en" data-scroll-behavior="smooth" className={`${geist.variable} ${geistMono.variable}`}>
       <body>
         <a className="skip-link" href="#main-content">Skip to content</a>
         <AnalyticsTracker />

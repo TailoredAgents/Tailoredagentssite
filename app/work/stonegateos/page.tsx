@@ -25,13 +25,14 @@ export default function StonegateCaseStudy() {
   return (
     <>
       <PageHero eyebrow="Case study · StonegateOS" title={<>One connected system for a <span className="serif-italic">complex operation.</span></>} description="A custom business operating platform developed around the practical requirements of a service business—and an ongoing proving ground for applied AI engineering." meta="Internal platform · Source reviewed October 2026" />
+      <section className="dark-section section-pad"><div className="container-shell product-stage"><ProductWindow /></div></section>
       <section className="section-pad">
         <div className="container-shell case-intro">
           <div><Eyebrow>Project overview</Eyebrow><h2 className="h2">Built from the operation <span className="serif-italic">outward.</span></h2></div>
           <div><p className="lede">StonegateOS connects the customer journey, office coordination, field execution, partner work, financial context, and intelligent workflows within one operating environment.</p><div className="case-facts"><div className="case-fact"><span>Type</span><span>Custom operating platform</span></div><div className="case-fact"><span>Surfaces</span><span>Public site, Team Console, mobile, customer proposals, Partner Portal</span></div><div className="case-fact"><span>Architecture</span><span>Next.js applications, PostgreSQL, API service, durable workers, provider integrations</span></div><div className="case-fact"><span>Status</span><span>Actively developed internal system; individual capability enablement varies by deployment configuration</span></div></div></div>
         </div>
       </section>
-      <section className="dark-section section-pad"><div className="container-shell product-stage"><ProductWindow /></div></section>
+
       <section className="section-pad">
         <div className="container-shell">
           <div className="intro-grid"><Eyebrow>Business challenge</Eyebrow><div><h2 className="h2">Operational truth was spread across <span className="serif-italic">too many handoffs.</span></h2><p className="lede">Customer information, conversations, lead follow-up, scheduling, quoting, field execution, partner coordination, and reporting all depend on one another. Treating each as a separate tool creates duplicated work and incomplete context.</p></div></div>

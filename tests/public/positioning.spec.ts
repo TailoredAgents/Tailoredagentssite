@@ -47,19 +47,36 @@ test("partnership choice reaches the existing inquiry form and stays editable", 
   await expect(page.getByLabel("Area of interest")).toHaveValue("");
 });
 
+test("solution and call examples can be explored with a keyboard without contacting a provider", async ({ page }) => {
+  await page.goto("/solutions");
+  const phoneSolution = page.getByRole("button", { name: /AI Phone & Missed-call Recovery/ });
+  await phoneSolution.focus();
+  await page.keyboard.press("Enter");
+  await expect(phoneSolution).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("heading", { name: "AI Phone & Missed-call Recovery", exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Discuss this workflow" }).click();
+  await expect(page.getByLabel("Area of interest")).toHaveValue("Business automation and AI");
+  await page.goto("/");
+  await page.getByRole("button", { name: "CRM updated", exact: true }).click();
+  await expect(page.getByText("CRM note prepared", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "CRM updated", exact: true })).toHaveAttribute("aria-pressed", "true");
+});
+
 test("public pages fit the viewport and have accessible content and matching share metadata", async ({ page }, info) => {
-  test.setTimeout(180_000);
-  for (const path of ["/", "/automation", "/pricing", "/partners", "/company", "/solutions", "/work", "/contact"]) {
+  test.setTimeout(240_000);
+  for (const path of ["/", "/automation", "/pricing", "/partners", "/company", "/solutions", "/work", "/contact", "/engineering", "/websites", "/seo", "/packages", "/industries/hvac", "/free-review", "/work/stonegateos", "/privacy", "/terms"]) {
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     const dimensions = await page.evaluate(() => ({ content: document.documentElement.scrollWidth, viewport: innerWidth }));
     expect(dimensions.content, path).toBeLessThanOrEqual(dimensions.viewport + 1);
     const result = await new AxeBuilder({ page }).include("main").withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
     expect.soft(result.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) })), path).toEqual([]);
-    const description = await page.locator('meta[name="description"]').getAttribute("content");
-    await expect(page.locator('meta[property="og:description"]')).toHaveAttribute("content", description!);
-    const shareUrl = await page.locator('meta[property="og:url"]').getAttribute("content");
-    expect(new URL(shareUrl!).href).toBe(`https://www.tailoredagents.com${path}`);
+    if (["/", "/automation", "/pricing", "/partners", "/company", "/solutions", "/work", "/contact"].includes(path)) {
+      const description = await page.locator('meta[name="description"]').getAttribute("content");
+      await expect(page.locator('meta[property="og:description"]')).toHaveAttribute("content", description!);
+      const shareUrl = await page.locator('meta[property="og:url"]').getAttribute("content");
+      expect(new URL(shareUrl!).href).toBe(`https://www.tailoredagents.com${path}`);
+    }
     await page.screenshot({ path: info.outputPath(`${path.replaceAll("/", "") || "home"}.png`), fullPage: true });
   }
 });

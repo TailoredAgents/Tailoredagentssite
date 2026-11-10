@@ -1,6 +1,7 @@
 import { publicPageMetadata } from "@/lib/site";
 import { managedMetadata } from "@/lib/seo/public-metadata";
 import Link from "next/link";
+import { SolutionExplorer } from "@/components/solution-explorer";
 import type { Metadata } from "next";
 import { ArrowLink, Eyebrow, FinalCta, PageHero } from "@/components/ui";
 
@@ -63,21 +64,7 @@ export default function SolutionsPage() {
         </div>
       </section>
       <section className="business-solutions-intro"><div className="container-shell"><p className="lede">The workflows below are examples we can scope. Available integrations, responsibilities and launch requirements are confirmed for each engagement.</p><div className="business-solution-links"><Link href="/solutions/commercial-insurance">Commercial insurance →</Link><Link href="/solutions/freight-automation">Freight brokerages &amp; 3PL →</Link></div></div></section>
-      <div className="container-shell">
-        {[solutions[3], solutions[4], solutions[1], solutions[0], solutions[2]].map((solution, index) => (
-          <section className="detail-section" key={solution.title}>
-            <div className="detail-index">0{index + 1} / {solution.title}</div>
-            <div className="detail-body">
-              <h2>{solution.title}</h2>
-              <p>{solution.system}</p>
-              <div className="detail-columns">
-                <div><h3>The business problem</h3><p>{solution.problem}</p><h3>Example workflow</h3><p className="mono">{solution.workflow}</p></div>
-                <div><h3>Typical integrations</h3><ul className="plain-list">{solution.integrations.map((item) => <li key={item}>{item}</li>)}</ul><h3>Human oversight</h3><p>{solution.oversight}</p></div>
-              </div>
-            </div>
-          </section>
-        ))}
-      </div>
+      <section className="section-pad solution-explorer-section"><div className="container-shell"><SolutionExplorer solutions={[solutions[3],solutions[4],solutions[1],solutions[0],solutions[2]]}/></div></section>
       <section className="section-pad section-rule"><div className="container-shell business-services"><div><Eyebrow>Also part of our work</Eyebrow><h2 className="h2">Your public presence <span className="serif-italic">still matters.</span></h2><p className="lede">Website design and search visibility remain available as separate services or as part of a broader engagement.</p></div><div><ArrowLink href="/websites">Website development</ArrowLink><ArrowLink href="/seo">SEO & analytics</ArrowLink><ArrowLink href="/packages">Website & SEO packages</ArrowLink></div></div></section>
       <FinalCta />
     </>
