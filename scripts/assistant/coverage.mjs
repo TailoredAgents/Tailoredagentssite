@@ -56,5 +56,5 @@ for(const file of [...await walk('lib'),...await walk('app')].sort()){
 }
 const output=JSON.stringify({version:1,generatedBy:'node scripts/assistant/coverage.mjs',meaning:'Implemented is source coverage, not a live client acceptance claim. Pending and partial rows must not be reported as complete.',entries:inventory},null,2)+'\n';
 const dest='docs/OPERATIONS_ASSISTANT_COVERAGE.json';
-if(process.argv.includes('--check')){if(await readFile(dest,'utf8')!==output)throw new Error('Assistant capability inventory changed. Regenerate and review coverage.');}else await writeFile(dest,output);
+if(process.argv.includes('--check')){if((await readFile(dest,'utf8')).replaceAll('\r\n','\n')!==output)throw new Error('Assistant capability inventory changed. Regenerate and review coverage.');}else await writeFile(dest,output);
 console.log(`${inventory.length} exported actions/transports inventoried; ${inventory.filter(x=>x.status==='pending'||x.status==='partial').length} pending or partial.`);

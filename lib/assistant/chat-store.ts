@@ -13,6 +13,7 @@ import {listRoutines} from './routines';
 import {listBookingNotifications} from './booking-notifications';
 import {BACKGROUND_CLIENT,authorizeBackgroundIdentity,releaseBackgroundIdentity,revokeBackgroundIdentity,type BackgroundIdentity} from './background-identity';
 import {validateDocumentAttachments,validateTurnDocumentAccess} from './documents';
+import {validateTurnKnowledgeAccess} from './knowledge-lifecycle';
 import {workCostSchema} from './assignment-contract';
 
 export const NATIVE_CLIENT='ta_native_dashboard';
@@ -114,6 +115,7 @@ export async function assertTurnActive(p:Principal,id:string){
   const r=await getDatabasePool().query(`SELECT t.id FROM assistant_chat_turns t JOIN assistant_chat_threads c ON c.id=t.thread_id WHERE t.id=$1 AND t.grant_id=$2 AND c.workspace_id=$3 AND c.user_id=$4 AND t.status IN ('queued','running') AND (t.routine_id IS NULL OR EXISTS(SELECT 1 FROM assistant_routines r WHERE r.id=t.routine_id AND r.enabled AND r.grant_id=t.grant_id)) AND ($5::uuid IS NULL OR (t.lease_token=$5 AND t.lease_until>now()))`,[id,p.grantId,...owner(p.context),lease?.turnId===id?lease.token:null]);
   if(!r.rowCount)throw new AssistantError('stopped','This reply stopped. Check its activity before repeating work.',409);
   await validateTurnDocumentAccess(p.context,id);
+  await validateTurnKnowledgeAccess(p.context,id);
  });
 }
 export async function stopChatTurn(c:DashboardContext,threadId:string,id:string){

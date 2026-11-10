@@ -251,6 +251,12 @@ describe.skipIf(!url)('Native employee assistant integration',()=>{
   expect((await searchChatHistory(p,'pineapple')).items).toHaveLength(1);expect((await searchChatHistory(q,'pineapple')).items).toHaveLength(0);
   await forgetMemory(p,note.id,note.revision);expect((await searchMemories(p,'Devon')).items).toHaveLength(0);
  });
+ it('replaces corrected private notes before executing a cached response',async()=>{
+  const {p,id,thread}=await turn();await saveChatBudget(owner,25);const note=await saveMemory(p,{title:'Meeting preference',body:'Use the obsolete early-morning preference.'});
+  const fetcher=vi.fn().mockResolvedValueOnce(Response.json(call('request_employee_input',{question:'Obsolete morning question?'}))).mockResolvedValueOnce(Response.json(answer('Using the corrected afternoon preference.')));vi.stubGlobal('fetch',fetcher);
+  await runAssistantWorker(id,1);await saveMemory(p,{id:note.id,expectedRevision:note.revision,title:'Meeting preference',body:'Use the corrected afternoon preference.'});await runAssistantWorker(id,5);
+  expect(fetcher).toHaveBeenCalledTimes(2);const prompt=JSON.parse(fetcher.mock.calls[1][1].body).instructions;expect(prompt).toContain('corrected afternoon');expect(prompt).not.toContain('obsolete early-morning');const result=(await chatState(owner,'chat-session',thread)).turns[0];expect(result.status).toBe('completed');expect(result.assistant_message).not.toContain('Obsolete morning');
+ });
  it('queues recurring work once, uses Eastern DST, and pauses revoked authorization',async()=>{
   await connectNative(owner,'chat-session','direct',true,{routines:true});const p=await nativePrincipal(owner,'chat-session');
   const r=await saveRoutine(p,{title:'Morning priorities',instruction:'Summarize my priorities',cadence:'weekdays',time:'09:00'});

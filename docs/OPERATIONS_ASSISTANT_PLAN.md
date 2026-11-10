@@ -2,7 +2,7 @@
 
 Prepared November 10, 2026 for Austin, Devon, Jeffrey and the rest of Tailored Agents.
 
-**Status: implementation plan. The work below is not delivered by this document.** This replaces the earlier overlapping phase lists; [the previous plan is archived](OPERATIONS_ASSISTANT_PLAN_ARCHIVE.md). Implemented behavior and verification remain in [setup and release notes](OPERATIONS_ASSISTANT_SETUP.md). The reviewed committed baseline is main `63dac95`, including assistant release `fab93f3`. Separate, uncommitted relationship and Meeting Inbox work was present during planning; coordinate with it rather than treating it as released or duplicating it.
+**Status: implementation in progress. Completed code and verification are recorded under each milestone; open activation gates remain explicit.** This replaces the earlier overlapping phase lists; [the previous plan is archived](OPERATIONS_ASSISTANT_PLAN_ARCHIVE.md). Implemented behavior and verification remain in [setup and release notes](OPERATIONS_ASSISTANT_SETUP.md). The reviewed committed baseline is main `63dac95`, including assistant release `fab93f3`. Separate, uncommitted relationship and Meeting Inbox work was present during planning; coordinate with it rather than treating it as released or duplicating it.
 
 ## The single goal
 
@@ -173,6 +173,8 @@ Answers cite the source version and location. Approved current guidance takes pr
 
 **E acceptance:** two employees can share approved guidance while private notes remain isolated; source citations resolve; conflicting/stale facts are identified; revoked/deleted entries cease appearing; an employee can correct a mistaken preference without it reappearing from a cached summary.
 
+**November 10 implementation:** versioned private drafts, explicit author publication, workspace/selected-employee audiences, source retention and immutable citations, indexed retrieval, overdue/overlapping-topic warnings, corrections, withdrawal, derived-file removal and cached-work invalidation are implemented. Private preference corrections refresh subsequent model context and discard a pre-correction cached response before its action executes. See [company knowledge](OPERATIONS_ASSISTANT_KNOWLEDGE.md). Eleven knowledge checks, sixteen document checks and thirty-one chat integration checks pass. Desktop and phone publication → correction → withdrawal journeys pass; the phone result was visually inspected. The isolated full suite passed 823 tests (612 environment-dependent cases skipped), and production build, typecheck, lint and the capability inventory passed. The inventory check now tolerates Windows line endings without weakening its content comparison. Production rollout remains part of H.
+
 ### F. Useful proactive follow-up
 
 Use transactional business events and deterministic due-date queries, not constant model polling. Initial triggers: a permitted customer reply, an overdue assigned task, an approaching or changed meeting, a blocked project/milestone, and an assistant assignment needing intervention.
@@ -237,13 +239,13 @@ Roll out to Austin with controlled employee test destinations, then Devon and Je
 
 ## Completion checklist for this one goal
 
-November 10 progress: the first implementation increment adds the employee work list, durable notification feed and opted-in SMS with verification, quiet hours and receipts. See [the release notes](OPERATIONS_ASSISTANT_SETUP.md) for evidence. Independent 30-day background delegation is also implemented and locally verified; bounded assignments, saved plans, pause/resume, review/input waiting and per-assignment spending ceilings are implemented. Production activation and real employee alert acceptance remain open. Native push and milestones D–H are not complete. Austin confirmed only a free Apple account is available, so signed physical-device push acceptance requires future Developer Program enrollment.
+November 10 progress: the first implementation increment adds the employee work list, durable notification feed and opted-in SMS with verification, quiet hours and receipts. See [the release notes](OPERATIONS_ASSISTANT_SETUP.md) for evidence. Independent 30-day background delegation is also implemented and locally verified; bounded assignments, saved plans, pause/resume, review/input waiting and per-assignment spending ceilings are implemented. Production activation and real employee alert acceptance remain open. Document and knowledge implementation passed local acceptance. Native push activation and milestones F–H remain open. Austin confirmed only a free Apple account is available, so signed physical-device push acceptance requires future Developer Program enrollment.
 
 - [ ] A: Baseline health and current production acceptance recorded.
 - [ ] B: Durable assignments, independent scoped delegation, work list and employee SMS pass acceptance.
 - [ ] C: Existing iPhone app supports native push, with signed physical-device delivery and fallback verified.
-- [ ] D: Supported uploads produce useful, source-linked downloadable files.
-- [ ] E: Shared knowledge is published, cited, correctable and permissioned.
+- [x] D: Supported uploads produce useful, source-linked downloadable files (local acceptance; live/iPhone rollout remains H).
+- [x] E: Shared knowledge is published, cited, correctable and permissioned (local acceptance; production rollout remains H).
 - [ ] F: Opted-in proactive routines are useful, bounded and deduplicated.
 - [ ] G: Replies, attachments, inline review, delivery states and voice dictation work in chat.
 - [ ] H: Employee end-to-end journeys, cost controls and staged rollout are accepted.

@@ -53,6 +53,34 @@
       "reason": "Authenticated owner control or MCP transport; deliberately not callable as an approval tool."
     },
     {
+      "file": "app/api/assistant/knowledge/[id]/route.ts",
+      "export": "GET",
+      "status": "control",
+      "tools": [],
+      "reason": "Authenticated owner control or MCP transport; deliberately not callable as an approval tool."
+    },
+    {
+      "file": "app/api/assistant/knowledge/[id]/route.ts",
+      "export": "POST",
+      "status": "control",
+      "tools": [],
+      "reason": "Authenticated owner control or MCP transport; deliberately not callable as an approval tool."
+    },
+    {
+      "file": "app/api/assistant/knowledge/route.ts",
+      "export": "GET",
+      "status": "control",
+      "tools": [],
+      "reason": "Authenticated owner control or MCP transport; deliberately not callable as an approval tool."
+    },
+    {
+      "file": "app/api/assistant/knowledge/route.ts",
+      "export": "POST",
+      "status": "control",
+      "tools": [],
+      "reason": "Authenticated owner control or MCP transport; deliberately not callable as an approval tool."
+    },
+    {
       "file": "app/api/assistant/push/route.ts",
       "export": "POST",
       "status": "control",
