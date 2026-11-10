@@ -12,6 +12,7 @@ import {searchMemories} from './memory';
 import {listRoutines} from './routines';
 import {listBookingNotifications} from './booking-notifications';
 import {BACKGROUND_CLIENT,authorizeBackgroundIdentity,releaseBackgroundIdentity,revokeBackgroundIdentity,type BackgroundIdentity} from './background-identity';
+import {workCostSchema} from './assignment-contract';
 
 export const NATIVE_CLIENT='ta_native_dashboard';
 const owner=(c:DashboardContext)=>[c.workspace.id,c.user.id];
@@ -69,7 +70,7 @@ export async function chatState(c:DashboardContext,sessionId:string,threadId?:st
  let turns:ChatTurn[]=[];
  if(threadId){
   if(!(await db.query('SELECT id FROM assistant_chat_threads WHERE workspace_id=$1 AND user_id=$2 AND id=$3',[...owner(c),threadId])).rowCount)throw unavailable();
-  turns=(await db.query<ChatTurn>('SELECT id,user_message,assistant_message,status,activity,created_at FROM assistant_chat_turns WHERE thread_id=$1 ORDER BY created_at DESC,id DESC LIMIT 101',[threadId])).rows;
+  turns=(await db.query<ChatTurn>('SELECT id,user_message,assistant_message,status,activity,created_at,work_plan,employee_replies,max_cost_micros,blocked_reason,(SELECT COALESCE(sum(amount_micros),0) FROM assistant_chat_requests r WHERE r.turn_id=t.id) used_micros FROM assistant_chat_turns t WHERE thread_id=$1 ORDER BY created_at DESC,id DESC LIMIT 101',[threadId])).rows;
  }
  const [threads,settings,connection]=await Promise.all([
   db.query<{id:string;title:string}>('SELECT id,title FROM assistant_chat_threads WHERE workspace_id=$1 AND user_id=$2 ORDER BY updated_at DESC,id DESC LIMIT 101',owner(c)),
@@ -86,17 +87,18 @@ export async function chatState(c:DashboardContext,sessionId:string,threadId?:st
   configured:!!process.env.OPENAI_API_KEY?.trim()&&process.env.ASSISTANT_CHAT_ENABLED!=='false'&&process.env.OPERATIONS_ASSISTANT_ENABLED!=='false',
   monthlyLimit:Number(settings.rows[0]?.monthly_limit_micros??0)/1000000,monthlyUsed:Number(settings.rows[0]?.used??0)/1000000,canManageBudget:['owner','admin'].includes(c.role),viewer:c.role==='viewer'};
 }
-export async function beginChatTurn(p:Principal,threadId:string,id:string,message:string){
+export async function beginChatTurn(p:Principal,threadId:string,id:string,message:string,maxCostDollars=1){
+ workCostSchema.parse(maxCostDollars);
  return asAssistant(p,[],false,async fresh=>{
   const db=await getDatabasePool().connect();
   try{
    await db.query('BEGIN');
    await db.query(`INSERT INTO assistant_chat_threads(id,workspace_id,user_id,title) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING`,[threadId,...owner(fresh.context),message.slice(0,100)]);
    if(!(await db.query('SELECT id FROM assistant_chat_threads WHERE workspace_id=$1 AND user_id=$2 AND id=$3 FOR UPDATE',[...owner(fresh.context),threadId])).rowCount)throw unavailable();
-   const existing=(await db.query('SELECT thread_id,user_message FROM assistant_chat_turns WHERE id=$1',[id])).rows[0];
-   if(existing){if(existing.thread_id!==threadId||existing.user_message!==message)throw new AssistantError('conflict','This request identifier already belongs to another message.',409);await db.query('COMMIT');return false;}
-   if((await db.query("SELECT id FROM assistant_chat_turns WHERE thread_id=$1 AND status IN ('queued','running')",[threadId])).rowCount)throw new AssistantError('busy','Wait for the current reply or stop it first.',409);
-   await db.query("INSERT INTO assistant_chat_turns(id,thread_id,grant_id,user_message,status) VALUES($1,$2,$3,$4,'queued')",[id,threadId,p.grantId,message]);
+   const existing=(await db.query('SELECT thread_id,user_message,max_cost_micros FROM assistant_chat_turns WHERE id=$1',[id])).rows[0];
+   if(existing){if(existing.thread_id!==threadId||existing.user_message!==message||Number(existing.max_cost_micros)!==Math.round(maxCostDollars*1000000))throw new AssistantError('conflict','This request identifier already belongs to another message.',409);await db.query('COMMIT');return false;}
+   if((await db.query("SELECT id FROM assistant_chat_turns WHERE thread_id=$1 AND status IN ('queued','running','waiting','waiting_input','paused','blocked','outcome_unknown')",[threadId])).rowCount)throw new AssistantError('busy','Wait for the current reply, resume it, or stop it first.',409);
+   await db.query("INSERT INTO assistant_chat_turns(id,thread_id,grant_id,user_message,status,max_cost_micros) VALUES($1,$2,$3,$4,'queued',$5)",[id,threadId,p.grantId,message,Math.round(maxCostDollars*1000000)]);
    await db.query('UPDATE assistant_chat_threads SET updated_at=now() WHERE id=$1',[threadId]);
    await db.query('COMMIT');return true;
   }catch(e){await db.query('ROLLBACK');throw e;}finally{db.release();}
@@ -111,7 +113,7 @@ export async function assertTurnActive(p:Principal,id:string){
  });
 }
 export async function stopChatTurn(c:DashboardContext,threadId:string,id:string){
- await getDatabasePool().query(`UPDATE assistant_chat_turns t SET status='interrupted',lease_token=NULL,lease_until=NULL,engine_state=NULL,finished_at=now(),assistant_message='Stopped. An action already in progress may still finish; check the activity and action receipts.' FROM assistant_chat_threads c WHERE c.id=t.thread_id AND c.workspace_id=$1 AND c.user_id=$2 AND c.id=$3 AND t.id=$4 AND t.status IN ('queued','running')`,[...owner(c),threadId,id]);
+ await getDatabasePool().query(`UPDATE assistant_chat_turns t SET status='interrupted',engine_state=NULL,finished_at=now(),assistant_message='Stopped. An action already in progress may still finish; check the activity and action receipts.' FROM assistant_chat_threads c WHERE c.id=t.thread_id AND c.workspace_id=$1 AND c.user_id=$2 AND c.id=$3 AND t.id=$4 AND t.status IN ('queued','running','waiting','waiting_input','paused','blocked','outcome_unknown')`,[...owner(c),threadId,id]);
 }
 export async function recordChatActivity(id:string,activity:ChatActivity){
  await getDatabasePool().query('UPDATE assistant_chat_turns SET activity=activity || $2::jsonb WHERE id=$1',[id,JSON.stringify([activity])]);
@@ -122,13 +124,14 @@ export async function finishChatTurn(id:string,message:string,status:'completed'
  if(finished.rows[0]?.routine_id)await getDatabasePool().query('UPDATE assistant_routines SET last_error=$2 WHERE id=$1',[finished.rows[0].routine_id,status==='failed'?message:null]);
 }
 export async function chatHistory(p:Principal,threadId:string){
- const r=await getDatabasePool().query<{user_message:string;assistant_message:string;status:string}>(`SELECT t.user_message,t.assistant_message,t.status FROM assistant_chat_turns t JOIN assistant_chat_threads c ON c.id=t.thread_id WHERE c.workspace_id=$1 AND c.user_id=$2 AND c.id=$3 ORDER BY t.created_at DESC,t.id DESC LIMIT 20`,[...owner(p.context),threadId]);
+ const r=await getDatabasePool().query<{user_message:string;assistant_message:string;status:string;employee_replies:{text:string}[]}>(`SELECT t.user_message,t.assistant_message,t.status,t.employee_replies FROM assistant_chat_turns t JOIN assistant_chat_threads c ON c.id=t.thread_id WHERE c.workspace_id=$1 AND c.user_id=$2 AND c.id=$3 ORDER BY t.created_at DESC,t.id DESC LIMIT 20`,[...owner(p.context),threadId]);
  const items: {role:'user'|'assistant';content:string}[]=[];
  let bytes=0;
  for(const t of r.rows){
   const content=t.assistant_message+(t.status==='completed'?'':`\n[Turn status: ${t.status}. Check action receipts before retrying any work.]`);
-  const size=Buffer.byteLength(t.user_message+content);if(bytes+size>32000)break;bytes+=size;
-  items.unshift({role:'user',content:t.user_message},...(t.assistant_message?[{role:'assistant' as const,content}]:[]));
+  const request=t.user_message+(t.employee_replies?.length?'\nEmployee clarifications:\n'+t.employee_replies.map(r=>r.text).join('\n'):'');
+  const size=Buffer.byteLength(request+content);if(bytes+size>32000)break;bytes+=size;
+  items.unshift({role:'user',content:request},...(t.assistant_message?[{role:'assistant' as const,content}]:[]));
  }
  return items;
 }

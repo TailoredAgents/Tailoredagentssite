@@ -24,8 +24,10 @@ export async function requestChatResponse(p:Principal,turnId:string,step:number,
  const db=await getDatabasePool().connect();let month='';
  try{
   await db.query('BEGIN');
-  const turn=(await db.query(`SELECT id FROM assistant_chat_turns WHERE id=$1 AND grant_id=$2 AND status IN ('queued','running') FOR UPDATE`,[turnId,p.grantId])).rows[0];
+  const turn=(await db.query(`SELECT id,max_cost_micros FROM assistant_chat_turns WHERE id=$1 AND grant_id=$2 AND status IN ('queued','running') FOR UPDATE`,[turnId,p.grantId])).rows[0];
   if(!turn)throw new AssistantError('stopped','This reply stopped.',409);
+  const spent=Number((await db.query('SELECT COALESCE(sum(amount_micros),0) amount FROM assistant_chat_requests WHERE turn_id=$1',[turnId])).rows[0].amount);
+  if(spent+reservation>Number(turn.max_cost_micros))throw new AssistantError('assignment_budget','This assignment reached its spending limit. Saved work remains available. Raise this assignment’s limit to continue within the company allowance.',429);
   const setting=(await db.query<{monthly_limit_micros:string}>('SELECT monthly_limit_micros FROM assistant_chat_settings WHERE workspace_id=$1 FOR UPDATE',[p.context.workspace.id])).rows[0];
   if(!setting||Number(setting.monthly_limit_micros)===0)throw new AssistantError('budget_not_set','An owner or administrator needs to set the company’s monthly assistant allowance.',403);
   month=(await db.query<{month:string}>(`SELECT to_char(now() AT TIME ZONE 'America/New_York','YYYY-MM-01') AS month`)).rows[0].month;

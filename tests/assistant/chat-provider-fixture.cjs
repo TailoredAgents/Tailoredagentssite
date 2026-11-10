@@ -9,10 +9,13 @@ globalThis.fetch = async function(input, init) {
  const payload = JSON.parse(init.body);
  const outputs = payload.input.filter(x => x.type === 'function_call_output');
  let output;
- if (!outputs.length) output = [{type:'function_call',name:'find_business_tools',call_id:'fixture_discover',arguments:JSON.stringify({query:'save_goal'})}];
- else if (outputs.length === 1) output = [{type:'function_call',name:'use_business_tool',call_id:'fixture_save',arguments:JSON.stringify({name:'save_goal',arguments:JSON.stringify({title:'Browser fixture: agent onboarding'})})}];
+ const plan=(status,evidence)=>({steps:[{id:'goal',label:'Save onboarding goal',status,dependsOn:[],evidence}]});
+ if (!outputs.length) output = [{type:'function_call',name:'update_work_plan',call_id:'fixture_plan',arguments:JSON.stringify(plan('working',''))}];
+ else if (outputs.length === 1) output = [{type:'function_call',name:'find_business_tools',call_id:'fixture_discover',arguments:JSON.stringify({query:'save_goal'})}];
+ else if (outputs.length === 2) output = [{type:'function_call',name:'use_business_tool',call_id:'fixture_save',arguments:JSON.stringify({name:'save_goal',arguments:JSON.stringify({title:'Browser fixture: agent onboarding'})})}];
+ else if (outputs.length === 3) output = [{type:'function_call',name:'update_work_plan',call_id:'fixture_done',arguments:JSON.stringify(plan('done','Saved goal action receipt confirms success.'))}];
  else {
-  const receipt = JSON.parse(outputs.at(-1).output);
+  const receipt = JSON.parse(outputs.find(x=>x.call_id==='fixture_save').output);
   output = [{type:'message',role:'assistant',content:[{type:'output_text',text:receipt.status==='succeeded'?'Your onboarding goal is saved.':'Your onboarding goal is ready for review.'}]}];
  }
  return Response.json({status:'completed',output,usage:{input_tokens:100,output_tokens:20}});

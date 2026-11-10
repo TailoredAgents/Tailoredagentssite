@@ -19,6 +19,8 @@ import {availableSlots} from '@/lib/booking/calendar';
 import {getCalendarEntry} from '@/lib/booking/staff';
 import {runBookingNotificationWorker} from './booking-notifications';
 import {refreshPrincipal} from './oauth';
+import {controlAssignment,claimAssignment} from './assignments';
+import {workPlanSchema} from './assignment-contract';
 const url=process.env.ASSISTANT_CHAT_TEST_DATABASE_URL;
 const ws='00000000-0000-4000-8000-000000000001';
 const owner={user:{id:'chat-owner',name:'Owner',email:'chat-owner@example.test'},workspace:{id:ws,name:'Tailored Agents',slug:'tailored-agents'},role:'owner' as const};
@@ -179,7 +181,60 @@ describe.skipIf(!url)('Native employee assistant integration',()=>{
   const {p,id,thread}=await turn();await saveChatBudget(owner,25);
   await expect(requestChatResponse(p,id,0,{input:'test'})).rejects.toThrow();
   await runAssistantWorker(id,2);
-  expect(fetch).toHaveBeenCalledTimes(1);expect((await chatState(owner,'chat-session',thread)).turns[0].status).toBe('failed');
+  expect(fetch).toHaveBeenCalledTimes(1);expect((await chatState(owner,'chat-session',thread)).turns[0].status).toBe('outcome_unknown');
+ });
+ it('waits for exact review, then resumes dependent work from the same plan and allowance',async()=>{
+  const p=await connection('review');await saveChatBudget(owner,25);
+  const steps=[{id:'goal',label:'Save onboarding goal',status:'working',dependsOn:[],evidence:''}];
+  const responses=[call('update_work_plan',{steps}),call('use_business_tool',{name:'save_goal',arguments:'{"title":"Reviewed background goal"}'}),call('update_work_plan',{steps:[{...steps[0],status:'done',evidence:'Saved goal action receipt confirmed success.'}]}),answer('Your reviewed goal is saved.')];
+  const fetcher=vi.fn().mockImplementation(async()=>Response.json(responses.shift()));vi.stubGlobal('fetch',fetcher);
+  const id=randomUUID(),thread=randomUUID();await beginChatTurn(p,thread,id,'Save this goal after my review.');await runAssistantWorker(id,30);
+  expect((await chatState(owner,'chat-session',thread)).turns[0].status).toBe('waiting');expect(fetcher).toHaveBeenCalledTimes(2);expect((await listGoals(owner)).total).toBe(0);
+  await runAssistantWorker(id,30);expect(fetcher).toHaveBeenCalledTimes(2);
+  const action=(await pool.query('SELECT id FROM assistant_actions')).rows[0].id;await reviewAction(owner,action,'approve');await runAssistantWorker(id,30);
+  const state=await chatState(owner,'chat-session',thread);expect(state.turns[0].status).toBe('completed');expect(state.turns[0].work_plan?.[0].status).toBe('done');expect((await listGoals(owner)).total).toBe(1);expect(fetcher).toHaveBeenCalledTimes(4);
+  const sent=JSON.parse(fetcher.mock.calls[2][1].body);expect(JSON.stringify(sent.input)).toContain('Exact human review completed');
+ });
+ it('uses one assignment ceiling across continuations and can raise it only through employee control',async()=>{
+  const p=await connection();await saveChatBudget(owner,25);const id=randomUUID(),thread=randomUUID();await beginChatTurn(p,thread,id,'Continue within my cap',.25);
+  await pool.query("INSERT INTO assistant_chat_requests(id,turn_id,workspace_id,month,step,amount_micros,status) VALUES($1,$2,$3,current_date,98,240000,'completed')",[randomUUID(),id,ws]);
+  await runAssistantWorker(id,1);expect(fetch).not.toHaveBeenCalled();expect((await chatState(owner,'chat-session',thread)).turns[0].status).toBe('blocked');
+  await expect(controlAssignment(other,{operation:'assignment',id,threadId:thread,action:'resume',maxCostDollars:1})).rejects.toThrow('unavailable');
+  await controlAssignment(owner,{operation:'assignment',id,threadId:thread,action:'resume',maxCostDollars:1});vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json(answer('Completed within the raised ceiling.'))));await runAssistantWorker(id,3);
+  expect((await chatState(owner,'chat-session',thread)).turns[0].status).toBe('completed');expect((await pool.query('SELECT count(*) n FROM assistant_chat_turns WHERE thread_id=$1',[thread])).rows[0].n).toBe('1');
+ });
+ it('asks for missing input without spending while waiting and includes the human reply on resume',async()=>{
+  const {id,thread}=await turn();await saveChatBudget(owner,25);const fetcher=vi.fn().mockResolvedValueOnce(Response.json(call('request_employee_input',{question:'Which onboarding project?'}))).mockResolvedValueOnce(Response.json(answer('I have the project context.')));vi.stubGlobal('fetch',fetcher);
+  await runAssistantWorker(id,10);expect((await chatState(owner,'chat-session',thread)).turns[0].status).toBe('waiting_input');await runAssistantWorker(id,10);expect(fetcher).toHaveBeenCalledTimes(1);
+  await expect(controlAssignment(owner,{operation:'assignment',id,threadId:thread,action:'resume'})).rejects.toThrow('Reply');
+  await controlAssignment(owner,{operation:'assignment',id,threadId:thread,action:'resume',message:'Document onboarding for the test client.'});await runAssistantWorker(id,10);
+  expect(JSON.parse(fetcher.mock.calls[1][1].body).input.at(-1)).toEqual({role:'user',content:'Document onboarding for the test client.'});expect((await chatState(owner,'chat-session',thread)).turns[0].status).toBe('completed');
+ });
+ it('pauses during a provider call, retains its response, and resumes without rebilling that request',async()=>{
+  const {id,thread}=await turn();await saveChatBudget(owner,25);let finish!:(r:Response)=>void,start!:()=>void;const started=new Promise<void>(r=>{start=r;});
+  const fetcher=vi.fn().mockImplementationOnce(()=>{start();return new Promise<Response>(r=>{finish=r;});}).mockResolvedValueOnce(Response.json(answer('Goal saved once.')));vi.stubGlobal('fetch',fetcher);
+  const worker=runAssistantWorker(id,1);await started;await controlAssignment(owner,{operation:'assignment',id,threadId:thread,action:'pause'});finish(Response.json(call('use_business_tool',{name:'save_goal',arguments:'{"title":"Pause-safe goal"}'})));await worker;
+  expect((await chatState(owner,'chat-session',thread)).turns[0].status).toBe('paused');expect((await listGoals(owner)).total).toBe(0);
+  await controlAssignment(owner,{operation:'assignment',id,threadId:thread,action:'resume'});await runAssistantWorker(id,10);expect(fetcher).toHaveBeenCalledTimes(2);expect((await listGoals(owner)).total).toBe(1);
+ });
+ it('serializes live workspace steps and gives the next employee a turn',async()=>{
+  const {id}=await turn();await connectNative(other,'other-session','read',false);const q=await nativePrincipal(other,'other-session'),second=randomUUID();await beginChatTurn(q,randomUUID(),second,'Read my tasks');
+  const claims=await Promise.all([claimAssignment(),claimAssignment()]);expect(claims.filter(Boolean)).toHaveLength(1);const first=claims.find(Boolean)!;
+  expect([id,second]).toContain(first.id);await pool.query("UPDATE assistant_chat_turns SET lease_token=NULL,lease_until=NULL,status='queued' WHERE id=$1",[first.id]);
+  expect((await claimAssignment())?.id).not.toBe(first.id);
+ });
+ it('rejects cyclic or unproven work plans and stops uncertain work from auto-resuming',async()=>{
+  expect(workPlanSchema.safeParse({steps:[{id:'a',label:'Do work',status:'done',dependsOn:['a'],evidence:''}]}).success).toBe(false);
+  const {id,thread}=await turn();await saveChatBudget(owner,25);await runAssistantWorker(id,1);expect((await chatState(owner,'chat-session',thread)).turns[0].status).toBe('outcome_unknown');
+  await expect(controlAssignment(owner,{operation:'assignment',id,threadId:thread,action:'resume'})).rejects.toThrow('receipts');expect(fetch).toHaveBeenCalledTimes(1);
+ });
+ it('continues beyond twelve steps without resetting its total ceiling and stops at thirty-six',async()=>{
+  const {id,thread}=await turn();await saveChatBudget(owner,25);
+  const steps=[{id:'review',label:'Review saved records',status:'working',dependsOn:[],evidence:''}];
+  vi.stubGlobal('fetch',vi.fn().mockImplementation(async()=>Response.json(call('update_work_plan',{steps}))));
+  await runAssistantWorker(id,30);expect((await pool.query('SELECT engine_state FROM assistant_chat_turns WHERE id=$1',[id])).rows[0].engine_state.step).toBe(15);
+  await runAssistantWorker(id,60);const t=(await chatState(owner,'chat-session',thread)).turns[0];expect(t.status).toBe('blocked');expect(t.blocked_reason).toContain('36');expect(fetch).toHaveBeenCalledTimes(36);expect(t.max_cost_micros).toBe('1000000');
+  await expect(controlAssignment(owner,{operation:'assignment',id,threadId:thread,action:'resume'})).rejects.toThrow('total step limit');
  });
  it('searches durable personal memory and old chats without crossing employee boundaries',async()=>{
   const {p,id}=await turn();const note=await saveMemory(p,{title:'Onboarding preference',body:'Devon handles document onboarding.'});

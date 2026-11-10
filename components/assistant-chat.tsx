@@ -2,6 +2,8 @@
 import {useCallback,useEffect,useRef,useState,type FormEvent} from 'react';
 import {useRouter} from 'next/navigation';
 import type {ChatState,ChatCapabilities} from '@/lib/assistant/chat-contract';
+import {ACTIVE_WORK} from '@/lib/assistant/assignment-contract';
+import {AssistantWorkPlan} from './assistant-work-plan';
 
 async function request(payload?:unknown,thread?:string){
  const response=await fetch('/api/assistant/chat'+(thread?'?thread='+encodeURIComponent(thread):''),payload?{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}:{cache:'no-store'});
@@ -19,6 +21,7 @@ export function AssistantChat(){
  const [state,setState]=useState<ChatState|null>(null),[thread,setThread]=useState<string>(),[message,setMessage]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
  const [mode,setMode]=useState('review'),[conversations,setConversations]=useState(true),[budget,setBudget]=useState('25'),[settings,setSettings]=useState(false);
  const [capabilities,setCapabilities]=useState<ChatCapabilities>({background:false,meetings:false,research:false,sms:false,email:false,calls:false,routines:false,notificationNumberId:''});
+ const [maxCost,setMaxCost]=useState('1');
  const currentThread=useRef<string|undefined>(undefined),bottom=useRef<HTMLDivElement>(null);
  const load=useCallback(async(id?:string)=>{
   try{const next=await request(undefined,id);if(currentThread.current===id){setState(next);setError('');}}
@@ -30,6 +33,8 @@ export function AssistantChat(){
  useEffect(()=>{if(state?.connection){setMode(state.connection.mode);setConversations(state.connection.conversations);setCapabilities({background:state.connection.background??false,meetings:state.connection.meetings??false,research:state.connection.research,sms:state.connection.sms,email:state.connection.email,calls:state.connection.calls,routines:state.connection.routines,notificationNumberId:state.connection.notificationNumberId});}},[accessKey]);
  useEffect(()=>{if(state)setBudget(String(state.monthlyLimit||25));},[state?.monthlyLimit]);
  const running=state?.turns.find(t=>t.status==='running'||t.status==='queued');
+ const activeWork=state?.turns.find(t=>ACTIVE_WORK.includes(t.status));
+ useEffect(()=>{if(activeWork?.max_cost_micros)setMaxCost(String(Number(activeWork.max_cost_micros)/1000000));},[activeWork?.id]);
  useEffect(()=>{if(!thread||(!running&&!busy))return;const timer=setInterval(()=>void load(thread),2500);return()=>clearInterval(timer);},[thread,running?.id,busy,load]);
  useEffect(()=>{bottom.current?.scrollIntoView({block:'nearest'});},[state?.turns.length,running?.activity.length]);
  function select(id?:string){currentThread.current=id;setThread(id);setLoading(true);setError('');void load(id);}
@@ -38,15 +43,16 @@ export function AssistantChat(){
   try{await request(payload);await load(currentThread.current);router.refresh();}catch(e){setError(e instanceof Error?e.message:'The change could not be saved.');}finally{setBusy(false);}
  }
  async function send(e:FormEvent){
-  e.preventDefault();if(!message.trim()||busy||running)return;
+  e.preventDefault();if(!message.trim()||busy||running||(activeWork&&activeWork.status!=='waiting_input'))return;
+  if(activeWork?.status==='waiting_input'){await control({operation:'assignment',id:activeWork.id,threadId:thread,action:'resume',message:message.trim(),maxCostDollars:Number(maxCost)});setMessage('');return;}
   const id=thread??crypto.randomUUID(),requestId=crypto.randomUUID(),text=message.trim();
   currentThread.current=id;setThread(id);setBusy(true);setMessage('');setError('');
-  try{const next=await request({operation:'send',threadId:id,requestId,message:text});if(currentThread.current===id)setState(next);router.refresh();}
+  try{const next=await request({operation:'send',threadId:id,requestId,message:text,maxCostDollars:Number(maxCost)});if(currentThread.current===id)setState(next);router.refresh();}
   catch(e){setError((e instanceof Error?e.message:'Connection interrupted.')+' Refresh the conversation before repeating the request.');}
   finally{setBusy(false);}
  }
  if(!state)return <section className="assistant-panel"><h2>Your assistant</h2><p role="status">{loading?'Loading your assistant…':error}</p>{!loading&&<button className="dashboard-secondary-button" onClick={()=>void load()}>Try again</button>}</section>;
- const disabled=busy||!!running||!state.connection||!state.configured||state.monthlyLimit===0||loading;
+ const disabled=busy||!!running||!!(activeWork&&activeWork.status!=='waiting_input')||!state.connection||!state.configured||state.monthlyLimit===0||loading;
  return <section className="assistant-panel assistant-chat" aria-label="Employee assistant">
   <div className="assistant-heading"><div><h2>What would you like to work on?</h2><p>Plan, find answers, and get work done across your company.</p></div><button className="dashboard-secondary-button" onClick={()=>setSettings(!settings)} aria-expanded={settings}>Chat settings</button></div>
   <p className="assistant-chat-meta">Your conversations are private to your profile. Shared records follow your account permissions. {state.connection?state.connection.paused?'Changes paused':state.connection.mode==='direct'?'Direct actions enabled':state.connection.mode==='review'?'Changes need your review':'Read-only access':'Enable access below to begin.'}</p>
@@ -75,9 +81,9 @@ export function AssistantChat(){
    <div className="assistant-chat-main"><div className="assistant-chat-messages" aria-label="Conversation" aria-busy={!!running||busy}>
     {loading?<p>Loading conversation…</p>:state.turns.length===0?<div className="assistant-chat-empty"><h3>A little context. A useful next step.</h3><p>Ask about a customer, plan your day, research a question, or tell me what needs doing.</p><div>{['What should I follow up on today?','Summarize this week’s client work.','Help me plan my day.'].map(prompt=><button key={prompt} disabled={busy} onClick={()=>setMessage(prompt)}>{prompt}</button>)}</div></div>:state.turns.map(t=><article key={t.id}>
      <div className="assistant-chat-message assistant-chat-user"><strong>You</strong><p>{t.user_message}</p></div>
-     <div className="assistant-chat-message"><strong>Assistant</strong><p><MessageText text={t.assistant_message||(['queued','running'].includes(t.status)?'Working in the background. You can leave this page.':'No reply was saved.')}/></p>{t.activity.length>0&&<details open={['queued','running','failed','interrupted'].includes(t.status)}><summary>Activity · {t.activity.length} updates</summary><ul>{t.activity.map((a,i)=><li key={i}>{a.label}: {a.status.replaceAll('_',' ')}{a.reviewUrl&&<>{' · '}<a href={a.reviewUrl}>View action</a></>}</li>)}</ul></details>}</div>
+     <div className="assistant-chat-message"><strong>Assistant</strong><p className="assistant-chat-meta">{t.status.replaceAll('_',' ')} · ${((Number(t.used_micros)||0)/1000000).toFixed(3)} used or reserved of ${((Number(t.max_cost_micros)||1000000)/1000000).toFixed(2)}</p><AssistantWorkPlan steps={t.work_plan??[]}/>{t.employee_replies?.map((r,i)=><p key={i}><strong>Your clarification:</strong> {r.text}</p>)}<p><MessageText text={t.assistant_message||(['queued','running'].includes(t.status)?'Working in the background. You can leave this page.':'No reply was saved.')}/></p>{t.activity.length>0&&<details open={['queued','running','failed','interrupted'].includes(t.status)}><summary>Activity · {t.activity.length} updates</summary><ul>{t.activity.map((a,i)=><li key={i}>{a.label}: {a.status.replaceAll('_',' ')}{a.reviewUrl&&<>{' · '}<a href={a.reviewUrl}>View action</a></>}</li>)}</ul></details>}</div>
     </article>)}{state.historyLimited&&<p>Showing the latest 100 turns. The assistant uses recent conversation context.</p>}<div ref={bottom}/>
-   </div><form className="assistant-chat-composer" onSubmit={send}><label htmlFor="assistant-message">Message your assistant</label><textarea id="assistant-message" rows={3} maxLength={8000} value={message} onChange={e=>setMessage(e.target.value)} placeholder="What would you like to work on?" disabled={busy||!!running}/><div className="assistant-controls"><button type="submit" className="dashboard-primary-button" disabled={disabled||!message.trim()}>{busy||running?'Working…':'Send'}</button>{running&&<button type="button" className="dashboard-secondary-button" onClick={()=>void control({operation:'stop',threadId:thread,requestId:running.id})}>Stop</button>}<button type="button" className="dashboard-secondary-button" onClick={()=>void load(thread)}>Refresh</button></div><p>Company operations, research and calculations. Custom AI systems and workflow development stay with Austin. Research reserves allowance before running; unused allowance is released on completion.</p></form></div>
+   </div><form className="assistant-chat-composer" onSubmit={send}><label htmlFor="assistant-message">Message your assistant</label><textarea id="assistant-message" rows={3} maxLength={8000} value={message} onChange={e=>setMessage(e.target.value)} placeholder="What would you like to work on?" disabled={busy||!!running}/><label>Maximum AI cost for this assignment (US dollars)<input type="number" min="0.25" max="25" step="0.25" value={maxCost} disabled={busy||!!running} onChange={e=>setMaxCost(e.target.value)}/></label><div className="assistant-controls"><button type="submit" className="dashboard-primary-button" disabled={disabled||!message.trim()}>{busy||running?'Working…':activeWork?.status==='waiting_input'?'Reply and resume':'Send'}</button>{running&&<button type="button" className="dashboard-secondary-button" onClick={()=>void control({operation:'assignment',threadId:thread,id:running.id,action:'pause'})}>Pause</button>}{activeWork&&['paused','blocked'].includes(activeWork.status)&&<button type="button" className="dashboard-secondary-button" disabled={busy} onClick={()=>void control({operation:'assignment',threadId:thread,id:activeWork.id,action:'resume',message:message.trim(),maxCostDollars:Number(maxCost)})}>Resume saved work</button>}{activeWork&&<button type="button" className="dashboard-secondary-button" onClick={()=>void control({operation:'stop',threadId:thread,requestId:activeWork.id})}>Stop</button>}<button type="button" className="dashboard-secondary-button" onClick={()=>void load(thread)}>Refresh</button></div><p>The assignment limit stays within the shared company allowance. Work pauses for exact review or missing input; use the saved work controls to continue. Research and calculations may need a higher reservation. Company operations, research and calculations. Custom AI systems and workflow development stay with Austin. Research reserves allowance before running; unused allowance is released on completion.</p></form></div>
   </div>
  </section>;
 }

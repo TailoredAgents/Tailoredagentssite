@@ -4,11 +4,17 @@ import {getDatabasePool} from '@/lib/dashboard/db';
 import {principal} from './oauth';
 import {requireScopes} from './access';
 import {chatLease} from './chat-lease';
-import {advanceChatTurn,type ChatEngine} from './chat-runner';
+import {advanceChatTurn} from './chat-runner';
 import {nextRoutineTime} from './routines';
 import {finishChatTurn} from './chat-store';
 import {runBookingNotificationWorker} from './booking-notifications';
 import {runEmployeeNotificationWorker} from './notification-worker';
+import {claimAssignment,wakeReviewedAssignments} from './assignments';
+import type {DashboardContext} from '@/lib/dashboard/data';
+export async function advanceReviewedWork(c:DashboardContext,actionId:string){
+ const rows=(await getDatabasePool().query(`SELECT t.id FROM assistant_chat_turns t JOIN assistant_chat_threads c ON c.id=t.thread_id WHERE t.waiting_action_id=$1 AND c.workspace_id=$2 AND c.user_id=$3 AND t.status='waiting' LIMIT 3`,[actionId,c.workspace.id,c.user.id])).rows;
+ for(const row of rows)await runAssistantWorker(row.id,30);
+}
 export async function enqueueDueRoutine(){
  const db=await getDatabasePool().connect();
  try{
@@ -18,7 +24,7 @@ export async function enqueueDueRoutine(){
   const grant=(await db.query('SELECT * FROM assistant_grants WHERE id=$1',[routine.grant_id])).rows[0];
   try{if(!grant)throw Error();const p=await principal(grant,db);requireScopes(p,['routines:write'],true);}
   catch{await db.query("UPDATE assistant_routines SET enabled=false,last_error='Connection expired, paused or revoked. Reconnect and resume this routine.',updated_at=now() WHERE id=$1",[routine.id]);await db.query('COMMIT');return;}
-  if(!(await db.query("SELECT id FROM assistant_chat_turns WHERE routine_id=$1 AND status IN ('queued','running')",[routine.id])).rowCount){
+  if(!(await db.query("SELECT id FROM assistant_chat_turns WHERE routine_id=$1 AND status IN ('queued','running','waiting','waiting_input','paused','blocked','outcome_unknown')",[routine.id])).rowCount){
    const thread=randomUUID();await db.query('INSERT INTO assistant_chat_threads(id,workspace_id,user_id,title) VALUES($1,$2,$3,$4)',[thread,routine.workspace_id,routine.user_id,routine.title.slice(0,100)]);
    await db.query("INSERT INTO assistant_chat_turns(id,thread_id,grant_id,user_message,status,routine_id) VALUES($1,$2,$3,$4,'queued',$5)",[randomUUID(),thread,routine.grant_id,routine.instruction,routine.id]);
   }
@@ -28,17 +34,18 @@ export async function enqueueDueRoutine(){
 }
 export async function runAssistantWorker(turnId?:string,limit=1){
  if(process.env.ASSISTANT_CHAT_ENABLED==='false'||process.env.OPERATIONS_ASSISTANT_ENABLED==='false')return {checked:0,failed:0,more:false};
+ await wakeReviewedAssignments();
  if(!turnId)await enqueueDueRoutine();
  let checked=0,failed=0;const until=Date.now()+145000;
  for(let n=0;n<limit&&Date.now()<until;n++){
-  const token=randomUUID(),db=getDatabasePool();
-  const row=(await db.query<{id:string;thread_id:string;grant_id:string;engine_state:ChatEngine|null}>(`UPDATE assistant_chat_turns SET status='running',lease_token=$2,lease_until=now()+interval '90 seconds',deadline=now()+interval '90 seconds' WHERE id=(SELECT id FROM assistant_chat_turns WHERE status IN ('queued','running') AND ($1::uuid IS NULL OR id=$1) AND (lease_until IS NULL OR lease_until<now()) ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1) RETURNING id,thread_id,grant_id,engine_state`,[turnId??null,token])).rows[0];
+  const db=getDatabasePool(),row=await claimAssignment(turnId);
   if(!row)break;checked++;
+  const token=row.token;
   await chatLease.run({turnId:row.id,token},async()=>{
-   try{const grant=(await db.query('SELECT * FROM assistant_grants WHERE id=$1',[row.grant_id])).rows[0];if(!grant)throw Error('grant_unavailable');const p=await principal(grant);requireScopes(p,[],false);await advanceChatTurn(p,row.thread_id,row.id,token,row.engine_state);}
+   try{if(row.work_expires_at<=new Date()){await finishChatTurn(row.id,'This assignment’s seven-day window ended. Saved results remain available.','failed');return;}const grant=(await db.query('SELECT * FROM assistant_grants WHERE id=$1',[row.grant_id])).rows[0];if(!grant)throw Error('grant_unavailable');const p=await principal(grant);requireScopes(p,[],false);await advanceChatTurn(p,row.thread_id,row.id,token,row.engine_state);}
    catch{failed++;await finishChatTurn(row.id,'Your assistant connection expired or became unavailable. Reconnect to start new work; check receipts before repeating actions.','failed');}
   });
-  await db.query("UPDATE assistant_chat_turns SET lease_token=NULL,lease_until=NULL,status='queued' WHERE id=$1 AND lease_token=$2 AND status='running'",[row.id,token]);
+  await db.query("UPDATE assistant_chat_turns SET lease_token=NULL,lease_until=NULL,status=CASE WHEN status='running' THEN 'queued' ELSE status END WHERE id=$1 AND lease_token=$2",[row.id,token]);
  }
  const more=!!(await getDatabasePool().query("SELECT id FROM assistant_chat_turns WHERE status IN ('queued','running') AND (lease_until IS NULL OR lease_until<now()) LIMIT 1")).rowCount;
  const notifications=await runBookingNotificationWorker();

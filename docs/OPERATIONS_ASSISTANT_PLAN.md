@@ -233,7 +233,7 @@ Roll out to Austin with controlled employee test destinations, then Devon and Je
 
 ## Completion checklist for this one goal
 
-November 10 progress: the first implementation increment adds the employee work list, durable notification feed and opted-in SMS with verification, quiet hours and receipts. See [the release notes](OPERATIONS_ASSISTANT_SETUP.md) for evidence. Independent 30-day background delegation is also implemented and locally verified; production activation and the rest of assignment execution remain open. Native push and milestones D–H are not complete. Austin confirmed only a free Apple account is available, so signed physical-device push acceptance requires future Developer Program enrollment.
+November 10 progress: the first implementation increment adds the employee work list, durable notification feed and opted-in SMS with verification, quiet hours and receipts. See [the release notes](OPERATIONS_ASSISTANT_SETUP.md) for evidence. Independent 30-day background delegation is also implemented and locally verified; bounded assignments, saved plans, pause/resume, review/input waiting and per-assignment spending ceilings are implemented. Production activation and real employee alert acceptance remain open. Native push and milestones D–H are not complete. Austin confirmed only a free Apple account is available, so signed physical-device push acceptance requires future Developer Program enrollment.
 
 - [ ] A: Baseline health and current production acceptance recorded.
 - [ ] B: Durable assignments, independent scoped delegation, work list and employee SMS pass acceptance.

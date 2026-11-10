@@ -7,6 +7,8 @@ import {confirmEmployeePhone,employeeWorkState,markEmployeeNotificationRead,requ
 import {runEmployeeNotificationWorker} from '@/lib/assistant/notification-worker';
 import {stopChatTurn} from '@/lib/assistant/chat-store';
 import {cardRateLimit} from '@/lib/smart-cards/http';
+import {controlAssignment} from '@/lib/assistant/assignments';
+import {runAssistantWorker} from '@/lib/assistant/chat-worker';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 async function identity(){const c=await getOptionalDashboardContext();if(!c)throw new AssistantError('unauthorized','Sign in again to view your work.',401);return c;}
@@ -19,6 +21,7 @@ export async function POST(request:Request){return endpoint(async()=>{
  if(v.operation==='preferences')await saveEmployeeNotificationPreferences(c,v.preferences);
  if(v.operation==='read')await markEmployeeNotificationRead(c,v.id);
  if(v.operation==='stop')await stopChatTurn(c,v.threadId,v.id);
+ if(v.operation==='assignment'){await controlAssignment(c,v);if(v.action==='resume')after(()=>runAssistantWorker(v.id,30).then(()=>undefined));}
  after(async()=>{try{await runEmployeeNotificationWorker();}catch{console.error('employee_notification_worker_failed');}});
  return json(await employeeWorkState(c));
 });}

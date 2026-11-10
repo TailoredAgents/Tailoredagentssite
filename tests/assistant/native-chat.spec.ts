@@ -23,6 +23,7 @@ test('employee enables native chat, completes a tool action, and resumes private
  await chat.getByLabel('Message your assistant').fill('Save a goal to finish agent onboarding.');
  await chat.getByRole('button',{name:'Send',exact:true}).click();
  await expect(chat.getByText('Your onboarding goal is saved.',{exact:true})).toBeVisible({timeout:60000});
+ await expect(chat.getByText('Plan · 1 of 1 complete',{exact:true})).toBeVisible();
  await chat.locator('summary').filter({hasText:'Activity'}).click();
  await expect(chat.getByRole('link',{name:'View action'})).toHaveAttribute('href',new RegExp('/dashboard/assistant\\?action='));
  await page.reload();
@@ -54,6 +55,31 @@ test('employee enables native chat, completes a tool action, and resumes private
  await work.getByRole('link',{name:'Your assistant finished working'}).first().click();
  await expect(page).toHaveURL(/thread=/);
  await expect(chat.getByText('Your onboarding goal is saved.',{exact:true})).toBeVisible();
+ // Reviewed work waits, then finishes the same assignment after the employee approves.
+ await chat.getByRole('button',{name:'Chat settings',exact:true}).click();
+ await chat.getByLabel('How should the assistant work?').selectOption('review');
+ await chat.getByRole('button',{name:'Update my access',exact:true}).click();
+ await expect(chat.getByText('Changes need your review',{exact:false})).toBeVisible();
+ await chat.getByRole('button',{name:'New conversation',exact:true}).click();
+ await chat.getByLabel('Message your assistant').fill('Save another goal after my review.');
+ await chat.getByLabel('Maximum AI cost for this assignment (US dollars)').fill('0.75');
+ await chat.getByRole('button',{name:'Send',exact:true}).click();
+ await expect(chat.getByText(/Review the proposed change to continue/)).toBeVisible({timeout:60000});
+ await expect(chat.getByRole('button',{name:'Send',exact:true})).toBeDisabled();
+ const actionLink=chat.getByRole('link',{name:'View action',exact:true}).first();
+ const reviewHref=await actionLink.getAttribute('href');
+ const pending=(await (await page.request.get('/api/assistant/chat')).json()).threads.find((t:{title:string})=>t.title==='Save another goal after my review.');
+ await page.goto(reviewHref!);
+ const actionId=new URL(reviewHref!,baseURL).searchParams.get('action');
+ await page.locator('#action-'+actionId).getByRole('button',{name:'Approve this change',exact:true}).click();
+ await page.goto('/dashboard/assistant?thread='+pending.id);
+ await expect(chat.getByText('Your onboarding goal is saved.',{exact:true})).toBeVisible({timeout:60000});
+ const completed=(await (await page.request.get('/api/assistant/chat?thread='+pending.id)).json()).turns[0];
+ expect(completed.status).toBe('completed');expect(completed.max_cost_micros).toBe('750000');
+ expect(completed.work_plan[0].status).toBe('done');
+ await chat.getByRole('button',{name:'Send',exact:true}).scrollIntoViewIfNeeded();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.screenshot({path:testInfo.outputPath('assistant-assignment.png'),fullPage:false});
  // Both browser cookie authentication and same-origin writes are enforced.
  const denied=await page.request.post(baseURL+'/api/assistant/chat',{headers:{origin:'https://untrusted.example'},data:{operation:'budget',dollars:1000}});
  expect(denied.status()).toBe(403);
