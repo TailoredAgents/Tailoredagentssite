@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, CalendarClock, Check, LayoutGrid, ListFilter, LockKeyhole, Sparkles, Upload } from "lucide-react";
+import { ArrowRight, CalendarClock, Check, LayoutGrid, ListFilter, LockKeyhole, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 
 export function SalesHeader({ title, subtitle, active, children }: { title: string; subtitle: string; active: "pipeline" | "today" | "mockups" | "imports"; children?: ReactNode }) {
@@ -7,7 +7,6 @@ export function SalesHeader({ title, subtitle, active, children }: { title: stri
     { key: "pipeline", href: "/dashboard/sales", label: "Pipeline", icon: LayoutGrid },
     { key: "today", href: "/dashboard/sales/today", label: "My day", icon: CalendarClock },
     { key: "mockups", href: "/dashboard/sales/factory", label: "Website Builder", icon: Sparkles },
-    { key: "imports", href: "/dashboard/sales/imports", label: "Calling lists", icon: Upload },
   ] as const;
   return <>
     <header className="dashboard-topbar"><div><span>Tailored Agents / Sales</span><strong>{title}</strong></div><span className="dashboard-secure"><LockKeyhole size={14} />Private workspace</span></header>

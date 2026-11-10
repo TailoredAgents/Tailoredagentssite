@@ -15,7 +15,6 @@ import {
   Inbox,
   Globe2,
   FolderKanban,
-  ListFilter,
   LogOut,
   Menu,
   X,
@@ -49,7 +48,6 @@ const navigationGroups = [
       { label: "Sales", href: "/dashboard/sales", icon: Columns3 },
       { label: "Website Builder", href: "/dashboard/sales/factory", icon: PanelsTopLeft },
       { label: "Smart Cards", href: "/dashboard/smart-cards", icon: ContactRound },
-      { label: "Calling lists", href: "/dashboard/sales/imports", icon: ListFilter },
     ],
   },
   {
