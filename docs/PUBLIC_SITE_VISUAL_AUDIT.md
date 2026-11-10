@@ -87,4 +87,9 @@ Validate this design with the same people who disliked the previous version. Ask
 - Final isolated production build (`next build --webpack`): **passed**, including TypeScript and 35 generated static pages. Shared-checkout limitations are documented above.
 - One shared-output test run lost trace files when another test process cleared the directory; the final run used its own output folder and passed. This was not waived as a page failure.
 - No real inquiries, emails, texts, or paid-provider requests were sent during testing.
-- Render deployment and public verification: pending at this commit; a deployment follow-up will record the observed release result.
+- Website implementation: `da49e00180ec129137f56dd1821314d44b79d81e`, pushed to `main`.
+- Its initial Render build was superseded by the next main commit, `edc8cc588bbaa396061d94c29af009c57a45741e`, which includes these website changes. Render deployment `7691645222` reported **success on November 10, 2026 at 2:12 PM Eastern**.
+- Production HTTP checks: **all 19 routes returned 200**. The 17 standard routes use the new public layout; the two intentionally unchanged campaigns retain their separate layout.
+- The published homepage and Solutions examples were exercised in the browser; the phone navigation opened correctly. The actual new homepage was visually verified and the viewport override was reset afterward.
+- Public link-preview image: **200, PNG, 1200×630**. No field Core Web Vitals measurement or actual lead submission was performed.
+- Desktop/phone screenshots and the production route-check JSON are saved locally under `C:/Users/xenon/.codex/visualizations/2026/10/21/01a1601f-9a15-7062-94b2-c97c7609469b/public-audit/` (not committed).
