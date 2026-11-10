@@ -13,6 +13,7 @@ test('employee enables native chat, completes a tool action, and resumes private
  await chat.getByLabel('Research the public web and run sandbox calculations').check();
  await chat.getByLabel('Run recurring work while I’m away').check();
  await chat.getByLabel('Prepare emails for my exact review before sending').check();
+ await chat.getByLabel('Authorize these permissions for 30 days, including after I sign out').check();
  await chat.getByRole('button',{name:/Enable my assistant|Update my access/}).click();
  await expect(chat.getByText(/Direct actions enabled/)).toBeVisible();
  await expect(chat.getByRole('heading',{name:'Private memory',exact:true})).toBeVisible();
@@ -29,6 +30,8 @@ test('employee enables native chat, completes a tool action, and resumes private
  await expect(chat.getByLabel('Research the public web and run sandbox calculations')).toBeChecked();
  await expect(chat.getByLabel('Run recurring work while I’m away')).toBeChecked();
  await expect(chat.getByLabel('Prepare emails for my exact review before sending')).toBeChecked();
+ await expect(chat.getByLabel('Authorize these permissions for 30 days, including after I sign out')).toBeChecked();
+ expect((await (await page.request.get('/api/assistant/chat')).json()).connection.background).toBe(true);
  await chat.getByRole('button',{name:'Chat settings',exact:true}).click();
  await chat.getByRole('button',{name:'Save a goal to finish agent onboarding.',exact:true}).first().click();
  await expect(chat.getByText('Your onboarding goal is saved.',{exact:true})).toBeVisible();

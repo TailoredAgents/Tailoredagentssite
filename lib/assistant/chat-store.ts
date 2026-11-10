@@ -11,16 +11,17 @@ import {requireSmsNumber} from '@/lib/sms/data';
 import {searchMemories} from './memory';
 import {listRoutines} from './routines';
 import {listBookingNotifications} from './booking-notifications';
+import {BACKGROUND_CLIENT,authorizeBackgroundIdentity,releaseBackgroundIdentity,revokeBackgroundIdentity,type BackgroundIdentity} from './background-identity';
 
 export const NATIVE_CLIENT='ta_native_dashboard';
 const owner=(c:DashboardContext)=>[c.workspace.id,c.user.id];
 const unavailable=()=>new AssistantError('not_found','This conversation is unavailable.',404);
 export async function nativePrincipal(c:DashboardContext,sessionId:string):Promise<Principal>{
- const row=(await getDatabasePool().query(`SELECT * FROM assistant_grants WHERE workspace_id=$1 AND user_id=$2 AND session_id=$3 AND client_id=$4 AND revoked_at IS NULL`,[...owner(c),sessionId,NATIVE_CLIENT])).rows[0];
+ const row=(await getDatabasePool().query(`SELECT * FROM assistant_grants WHERE workspace_id=$1 AND user_id=$2 AND ((session_id=$3 AND client_id=$4) OR (authority='background' AND client_id=$5)) AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1`,[...owner(c),sessionId,NATIVE_CLIENT,BACKGROUND_CLIENT])).rows[0];
  if(!row)throw new AssistantError('connect_required','Enable your dashboard assistant to start chatting.',403);
  return principal(row);
 }
-export async function connectNative(c:DashboardContext,sessionId:string,mode:'read'|'review'|'direct',conversations:boolean,options:{meetings?:boolean;research?:boolean;sms?:boolean;email?:boolean;calls?:boolean;routines?:boolean;notificationNumberId?:string}={}){
+export async function connectNative(c:DashboardContext,sessionId:string,mode:'read'|'review'|'direct',conversations:boolean,options:{background?:boolean;meetings?:boolean;research?:boolean;sms?:boolean;email?:boolean;calls?:boolean;routines?:boolean;notificationNumberId?:string}={}){
  if(c.role==='viewer'&&mode!=='read')throw new AssistantError('read_only','Your account is read-only.',403);
  const scopes:AssistantScope[]=['operations:read','personal:read','memory:read','routines:read'];
  if(conversations)scopes.push('conversations:read');
@@ -34,24 +35,27 @@ export async function connectNative(c:DashboardContext,sessionId:string,mode:'re
   if(options.calls&&conversations)scopes.push('voice:send');
   if(options.routines)scopes.push('routines:write');
  }
- const db=await getDatabasePool().connect();
+ const db=await getDatabasePool().connect();let identity:BackgroundIdentity|undefined;const grantId=randomUUID();
  try{
   await db.query('BEGIN');
   await db.query("INSERT INTO assistant_clients(id,name,redirect_uris) VALUES($1,'Dashboard assistant','[]') ON CONFLICT DO NOTHING",[NATIVE_CLIENT]);
   // Serialize explicit reconnects. A revoked connection is only replaced by this human action.
-  await db.query('SELECT pg_advisory_xact_lock(hashtext($1))',[`${c.workspace.id}:${c.user.id}:${sessionId}:native`]);
-  await db.query(`UPDATE assistant_grants SET revoked_at=now() WHERE workspace_id=$1 AND user_id=$2 AND session_id=$3 AND client_id=$4 AND revoked_at IS NULL`,[...owner(c),sessionId,NATIVE_CLIENT]);
-  const inserted=await db.query(`INSERT INTO assistant_grants(id,client_id,workspace_id,user_id,session_id,scopes,resource,expires_at,direct_actions)
+  await db.query('SELECT pg_advisory_xact_lock(hashtext($1))',[`${c.workspace.id}:${c.user.id}:native`]);
+  const retired=await db.query(`UPDATE assistant_grants SET revoked_at=now() WHERE workspace_id=$1 AND user_id=$2 AND ((session_id=$3 AND client_id=$4) OR client_id=$5) AND revoked_at IS NULL RETURNING id`,[...owner(c),sessionId,NATIVE_CLIENT,BACKGROUND_CLIENT]);
+  if(options.background)identity=await authorizeBackgroundIdentity(c,sessionId,grantId,scopes,db);
+  const inserted=identity?await db.query(`INSERT INTO assistant_grants(id,client_id,workspace_id,user_id,session_id,scopes,resource,expires_at,direct_actions,authority,identity_kind,identity_credential,consented_session_id)
+   SELECT $1,$2,$3,$4,NULL,$6,$7,$8,$9,'background',$10,$11,s.id FROM "session" s JOIN workspace_memberships m ON m.user_id=s."userId" AND m.workspace_id=$3 AND m.status='active' JOIN workspaces w ON w.id=m.workspace_id AND w.status='active' WHERE s.id=$5 AND s."userId"=$4 AND s."expiresAt">now() AND (m.role<>'viewer' OR $12='read') RETURNING *`,[grantId,BACKGROUND_CLIENT,...owner(c),sessionId,scopes,resourceUri(),identity.expires_at,mode==='direct',identity.identity_kind,identity.identity_credential,mode]):await db.query(`INSERT INTO assistant_grants(id,client_id,workspace_id,user_id,session_id,scopes,resource,expires_at,direct_actions)
    SELECT $1,$2,$3,$4,s.id,$6,$7,s."expiresAt",$8 FROM "session" s
    JOIN workspace_memberships m ON m.user_id=s."userId" AND m.workspace_id=$3 AND m.status='active'
    JOIN workspaces w ON w.id=m.workspace_id AND w.status='active'
    WHERE s.id=$5 AND s."userId"=$4 AND s."expiresAt">now() AND (m.role<>'viewer' OR $9='read') RETURNING *`,
-   [randomUUID(),NATIVE_CLIENT,...owner(c),sessionId,scopes,resourceUri(),mode==='direct',mode]);
+   [grantId,NATIVE_CLIENT,...owner(c),sessionId,scopes,resourceUri(),mode==='direct',mode]);
   if(!inserted.rows[0])throw unavailable();
   await principal(inserted.rows[0],db);
   await db.query('UPDATE assistant_grants SET notification_number_id=$2 WHERE id=$1',[inserted.rows[0].id,options.notificationNumberId||null]);
   await db.query('COMMIT');
- }catch(e){await db.query('ROLLBACK');throw e;}finally{db.release();}
+  for(const g of retired.rows)await revokeBackgroundIdentity(g.id,c).catch(()=>{});
+ }catch(e){await db.query('ROLLBACK');if(identity)await releaseBackgroundIdentity(identity).catch(()=>{});throw e;}finally{db.release();}
 }
 export async function saveChatBudget(c:DashboardContext,dollars:number){
  const r=await getDatabasePool().query(`INSERT INTO assistant_chat_settings(workspace_id,monthly_limit_micros,updated_by)
@@ -77,7 +81,8 @@ export async function chatState(c:DashboardContext,sessionId:string,threadId?:st
  const [memories,routines,notifications]=connection?await Promise.all([searchMemories(connection),listRoutines(connection),connection.scopes.includes('conversations:read')?listBookingNotifications(connection):{items:[]}]):[{items:[]},{items:[]},{items:[]}];
  const notificationNumberId=connection?(await db.query('SELECT notification_number_id FROM assistant_grants WHERE id=$1',[connection.grantId])).rows[0]?.notification_number_id??'':'';
  return {numbers,memories:memories.items,routines:routines.items,notifications:notifications.items,threads:threads.rows.slice(0,100),hasMore:threads.rows.length>100,turns:turns.slice(0,100).reverse(),historyLimited:turns.length>100,
-  connection:connection?{mode:connection.directActions?'direct':connection.scopes.includes('operations:write')?'review':'read',paused:connection.writesPaused,conversations:connection.scopes.includes('conversations:read'),meetings:connection.scopes.includes('meetings:read'),research:connection.scopes.includes('research:use'),sms:connection.scopes.includes('conversations:send'),email:connection.scopes.includes('mail:send'),calls:connection.scopes.includes('voice:send'),routines:connection.scopes.includes('routines:write'),notificationNumberId}:null,
+  backgroundAvailable:process.env.ASSISTANT_BACKGROUND_ENABLED==='true',
+  connection:connection?{background:connection.authority==='background',expiresAt:connection.expiresAt.toISOString(),mode:connection.directActions?'direct':connection.scopes.includes('operations:write')?'review':'read',paused:connection.writesPaused,conversations:connection.scopes.includes('conversations:read'),meetings:connection.scopes.includes('meetings:read'),research:connection.scopes.includes('research:use'),sms:connection.scopes.includes('conversations:send'),email:connection.scopes.includes('mail:send'),calls:connection.scopes.includes('voice:send'),routines:connection.scopes.includes('routines:write'),notificationNumberId}:null,
   configured:!!process.env.OPENAI_API_KEY?.trim()&&process.env.ASSISTANT_CHAT_ENABLED!=='false'&&process.env.OPERATIONS_ASSISTANT_ENABLED!=='false',
   monthlyLimit:Number(settings.rows[0]?.monthly_limit_micros??0)/1000000,monthlyUsed:Number(settings.rows[0]?.used??0)/1000000,canManageBudget:['owner','admin'].includes(c.role),viewer:c.role==='viewer'};
 }

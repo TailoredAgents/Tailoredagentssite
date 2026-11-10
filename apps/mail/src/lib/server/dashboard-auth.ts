@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { checkRateLimit, getUserByEmail } from './auth';
 import { createSessionToken, hashToken, verifyPassword } from './crypto';
 import { BodyLimitError, readLimitedText } from './request-body';
+import { backgroundGrantRequest } from './background-grants';
 
 const LIFETIME_SECONDS = 60 * 60 * 24 * 14;
 const headers = { 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff' };
@@ -68,6 +69,7 @@ export async function handleDashboardAuth(request: Request, db: D1Database, secr
     return reply({ ...identityResponse(current), token });
   }
   if (typeof body.token !== 'string' || !/^[A-Za-z0-9_-]{32,128}$/.test(body.token)) return reply({ error: 'invalid_request' }, 400);
+  if(['delegate','inspect_background','revoke_background'].includes(String(body.action))){const result=await backgroundGrantRequest(db,body);return reply(result.data,result.status);}
   if (body.action === 'inspect') {
     const current = await inspectDashboardGrant(db, body.token);
     return current ? reply(identityResponse(current)) : reply({ error: 'session_expired' }, 401);

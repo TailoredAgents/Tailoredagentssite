@@ -4,6 +4,7 @@ import {getDatabasePool} from '@/lib/dashboard/db';
 import {getTwilioConfiguration} from '@/lib/twilio/config';
 import {createSms,TwilioProviderError} from '@/lib/twilio/provider';
 import {suppressEmployeeSms} from './employee-notifications';
+import {principal} from './oauth';
 
 export async function runEmployeeNotificationWorker(limit=3){
  const config=getTwilioConfiguration();if(!config.enabled||process.env.ASSISTANT_NOTIFICATIONS_ENABLED==='false')return {checked:0,failed:0,more:false};
@@ -11,12 +12,12 @@ export async function runEmployeeNotificationWorker(limit=3){
  await pool.query("UPDATE assistant_notification_deliveries SET status='unknown',updated_at=now() WHERE status='sending' AND created_at<now()-interval '2 minutes'");
  await pool.query("UPDATE assistant_employee_notifications n SET resolved_at=now() WHERE n.resolved_at IS NULL AND n.source_type='action' AND NOT EXISTS(SELECT 1 FROM assistant_actions a JOIN assistant_grants g ON g.id=a.grant_id WHERE a.id=n.source_id AND a.status='awaiting_approval' AND a.expires_at>now() AND g.revoked_at IS NULL AND g.expires_at>now())");
  for(let i=0;i<Math.min(limit,10);i++){
-  const db=await pool.connect();let job:{id:string;phone:string;workspace_id:string;user_id:string;revision:number}|undefined;const attempt=randomUUID();
+  const db=await pool.connect();let job:{id:string;phone:string;workspace_id:string;user_id:string;grant_id:string|null;revision:number}|undefined;const attempt=randomUUID();
   try{
    await db.query('BEGIN');
    // The short global claim lock makes workspace and employee caps exact under concurrent workers.
    await db.query('SELECT pg_advisory_xact_lock(8129130053)');
-   job=(await db.query(`SELECT n.id,p.phone,n.workspace_id,n.user_id,p.revision FROM assistant_employee_notifications n
+   job=(await db.query(`SELECT n.id,p.phone,n.workspace_id,n.user_id,n.grant_id,p.revision FROM assistant_employee_notifications n
     JOIN assistant_notification_preferences p ON p.workspace_id=n.workspace_id AND p.user_id=n.user_id AND p.sms_enabled AND p.verified_at IS NOT NULL
     JOIN workspace_memberships m ON m.workspace_id=n.workspace_id AND m.user_id=n.user_id AND m.status='active'
     JOIN workspaces w ON w.id=n.workspace_id AND w.status='active'
@@ -35,7 +36,8 @@ export async function runEmployeeNotificationWorker(limit=3){
   }catch(e){await db.query('ROLLBACK');throw e;}finally{db.release();}
   if(!job)break;
   // Recheck preferences, membership, resolution and opt-out after claiming, immediately before sending.
-  const allowed=(await pool.query(`SELECT 1 FROM assistant_notification_preferences p JOIN workspace_memberships m ON m.workspace_id=p.workspace_id AND m.user_id=p.user_id AND m.status='active' JOIN workspaces w ON w.id=p.workspace_id AND w.status='active' JOIN assistant_employee_notifications n ON n.id=$4 AND n.workspace_id=p.workspace_id AND n.user_id=p.user_id WHERE p.workspace_id=$1 AND p.user_id=$2 AND p.phone=$3 AND p.sms_enabled AND p.revision=$5 AND n.read_at IS NULL AND n.resolved_at IS NULL AND n.expires_at>now() AND NOT EXISTS(SELECT 1 FROM crm_channel_preferences c WHERE c.workspace_id=p.workspace_id AND c.channel='sms' AND c.normalized_address=p.phone AND c.status='blocked')`,[job.workspace_id,job.user_id,job.phone,job.id,job.revision])).rowCount;
+  let allowed=!!(await pool.query(`SELECT 1 FROM assistant_notification_preferences p JOIN workspace_memberships m ON m.workspace_id=p.workspace_id AND m.user_id=p.user_id AND m.status='active' JOIN workspaces w ON w.id=p.workspace_id AND w.status='active' JOIN assistant_employee_notifications n ON n.id=$4 AND n.workspace_id=p.workspace_id AND n.user_id=p.user_id WHERE p.workspace_id=$1 AND p.user_id=$2 AND p.phone=$3 AND p.sms_enabled AND p.revision=$5 AND n.read_at IS NULL AND n.resolved_at IS NULL AND n.expires_at>now() AND NOT EXISTS(SELECT 1 FROM crm_channel_preferences c WHERE c.workspace_id=p.workspace_id AND c.channel='sms' AND c.normalized_address=p.phone AND c.status='blocked')`,[job.workspace_id,job.user_id,job.phone,job.id,job.revision])).rowCount;
+  if(allowed&&job.grant_id){try{const p=await principal((await pool.query('SELECT * FROM assistant_grants WHERE id=$1',[job.grant_id])).rows[0]);allowed=p.context.user.id===job.user_id&&p.context.workspace.id===job.workspace_id;}catch{allowed=false;}}
   if(!allowed){await pool.query("UPDATE assistant_notification_deliveries SET status='suppressed',updated_at=now() WHERE id=$1",[attempt]);continue;}
   checked++;
   try{

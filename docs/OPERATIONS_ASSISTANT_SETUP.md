@@ -168,3 +168,16 @@ Verification: 65 Operations/SMS tests passed, including actual MCP direct execut
 ## Next work
 
 Follow milestones A–H in [the current employee-assistant plan](OPERATIONS_ASSISTANT_PLAN.md). It supersedes the older phase numbering and reconciles the background/routine features already implemented above with the remaining work. Keep the code-derived inventory and these release notes synchronized with verified implementation. Real ChatGPT discovery, consent and account reading are accepted; direct writes, renewal and revocation still need real-client acceptance. Preserve the existing approval policies, session restrictions until real background delegation is implemented, and the shared $25/month AI allowance.
+
+
+## November 10: explicit background authority
+
+The next increment adds a separate, opt-in 30-day background grant. Chat settings shows the expiry and selected scopes. Ordinary sign-out may leave this explicitly delegated work active; Disconnect, password changes, suspended membership, expiry and the server kill switch stop further access. Renewing requires a real signed-in employee; neither a model nor a background credential can renew itself. Existing OAuth/MCP and ordinary native session grants retain their original lifetime.
+
+Mail has its own hashed, scoped background credentials, issued only through a live dashboard login and the authenticated server bridge. The website stores their ciphertext, introspects identity on each step, and Mail checks current mailbox grants again before provider delivery. These credentials cannot sign into either app. Revocation during outbox preparation is covered by a provider-boundary test. Local revocation is immediate even if remote cleanup fails; the remote credential still expires.
+
+Activation order: apply Mail migration `0039_assistant_background_grants.sql` and deploy Mail's bridge; apply website migration `0054_assistant_background_authority.sql` and deploy; then set `ASSISTANT_BACKGROUND_ENABLED=true`. Existing employees must deliberately opt in through Chat settings. No existing grant is expanded. Turning the flag off stops background work without deleting evidence. After renewing, explicitly resume desired routines; old work is not silently reassigned to a new grant.
+
+Verification: 41 focused website chat/transport tests, 15 employee notification tests, all 436 Mail tests, Mail type/Svelte check, website typecheck/lint, and two desktop/phone browser journeys passed using synthetic accounts/providers. The tests cover sign-out survival, restricted scopes, password and membership revocation, paused/expired authority, real Mail authorization at send time, and the persisted opt-in/expiry UI. The isolated website regression run passed 801 tests with 560 environment-dependent tests skipped; both website and Mail production builds passed. These are local acceptance results, not evidence of production activation.
+
+Austin confirmed that the company currently has only a free Apple account. Native push activation therefore remains pending Developer Program enrollment, signing/provisioning, server APNs configuration and physical-device acceptance. SMS remains the initial employee channel. Apple documents push and signing resources in [program membership](https://developer.apple.com/programs/whats-included).

@@ -9,6 +9,7 @@ import {asAssistant,requireScopes} from './access';
 import {reviewContext} from './review-context';
 import {findChange} from './tools/changes';
 import {assistantExecution} from './execution-context';
+import {revokeBackgroundIdentity} from './background-identity';
 // Hash canonical, parsed values. Unknown fields cannot become authority or approvals.
 export function canonical(value:unknown):string{
  if(value===undefined)return 'null';
@@ -111,6 +112,7 @@ export async function manageConnection(context:DashboardContext,id:string,operat
  }
  const sql=operation==='revoke'?'revoked_at=now()':operation==='pause'?'writes_paused=true':'writes_paused=false';
  await getDatabasePool().query(`UPDATE assistant_grants SET ${sql} WHERE id=$1 AND user_id=$2 AND workspace_id=$3`,[z.uuid().parse(id),context.user.id,context.workspace.id]);
+ if(operation==='revoke')await revokeBackgroundIdentity(id,context).catch(()=>{/* Local revocation already stops every future use. Remote credentials also expire. */});
 }
 export async function stopAllWrites(context:DashboardContext){
  await getDatabasePool().query('UPDATE assistant_grants SET writes_paused=true WHERE user_id=$1 AND workspace_id=$2',[context.user.id,context.workspace.id]);

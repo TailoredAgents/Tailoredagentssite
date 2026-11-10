@@ -1,5 +1,6 @@
 import "server-only";
 import {assistantExecution} from '@/lib/assistant/execution-context';
+import {backgroundMailToken} from '@/lib/assistant/background-identity';
 import { getDatabasePool } from "@/lib/dashboard/db";
 import { headers } from "next/headers";
 import { z } from "zod";
@@ -213,10 +214,9 @@ async function request(
       "grant_required",
       "Sign in again to open approved mailboxes.",
     );
-  const token = await readMailDashboardToken(
-    session.session.id,
-    context.user.id,
-  );
+  const token = delegated?.authority==='background'
+    ? await backgroundMailToken(delegated.grantId,context)
+    : session.session.id ? await readMailDashboardToken(session.session.id,context.user.id) : null;
   if (!token)
     throw new MailProviderError(
       "grant_required",
@@ -230,7 +230,7 @@ async function request(
         authorization: `Bearer ${config.secret}`,
         "content-type": "application/json",
       },
-      body: JSON.stringify({ ...body, token }),
+      body: JSON.stringify({ ...body, token,...(delegated?.authority==='background'?{authority:'background'}:{}) }),
       cache: "no-store",
       redirect: "error",
       signal: AbortSignal.timeout(body.action === "send" ? 25_000 : 12_000),

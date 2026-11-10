@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createTestDb, insertTestUser } from "../src/lib/server/test-db";
 import { hashToken } from "../src/lib/server/crypto";
 import { handleCrmMail } from "../src/lib/server/crm-mail";
+import {backgroundGrantRequest} from '../src/lib/server/background-grants';
 import {
   changeCrmGrant,
   requireCrmMailboxGrant,
@@ -217,6 +218,36 @@ async function fixture() {
     inbound,
   };
 }
+
+test('Mail-issued background credentials require their own scope and current mailbox permission after sign-out',async()=>{
+ const f=await fixture(),backgroundToken='b'.repeat(48);
+ const delegate=await backgroundGrantRequest(f.db,{action:'delegate',token,delegationId:crypto.randomUUID(),delegationToken:backgroundToken,scopes:['identity','mail:read','mail:send'],expiresAt:new Date(Date.now()+86400000).toISOString()});assert.equal(delegate.status,200);
+ f.sqlite.exec("DELETE FROM sessions");
+ const read={action:'mailboxes',token:backgroundToken,authority:'background'};
+ assert.equal((await f.call({...read,authority:'session'})).status,401);
+ assert.deepEqual(await (await f.call(read)).json(),{mailboxes:[]});
+ const send={...read,action:'send',mailboxId:'sales',fromAddressId:'sales',to:'customer@example.test',subject:'Reviewed message',text:'Exact reviewed content',idempotencyKey:crypto.randomUUID()};
+ assert.equal((await f.call(send)).status,403);await f.approve(true);
+ assert.equal((await f.call(send)).status,200);assert.equal((await f.call(send)).status,200);assert.equal(f.sent.length,1);
+ await f.approve(false);assert.equal((await f.call({...send,idempotencyKey:crypto.randomUUID()})).status,403);assert.equal(f.sent.length,1);
+ await backgroundGrantRequest(f.db,{action:'revoke_background',token:backgroundToken});assert.equal((await f.call(read)).status,401);
+});
+
+test('a read-only background credential cannot send even through an approved shared sender',async()=>{
+ const f=await fixture(),backgroundToken='c'.repeat(48);await f.approve(true);
+ assert.equal((await backgroundGrantRequest(f.db,{action:'delegate',token,delegationId:crypto.randomUUID(),delegationToken:backgroundToken,scopes:['identity','mail:read'],expiresAt:new Date(Date.now()+86400000).toISOString()})).status,200);
+ assert.equal((await f.call({action:'mailboxes',token:backgroundToken,authority:'background'})).status,200);
+ assert.equal((await f.call({action:'send',token:backgroundToken,authority:'background',mailboxId:'sales',fromAddressId:'sales',to:'customer@example.test',subject:'Message',text:'Text',idempotencyKey:crypto.randomUUID()})).status,401);assert.equal(f.sent.length,0);
+});
+
+test('revoking a background identity during outbox preparation blocks provider delivery',async()=>{
+ const f=await fixture(),backgroundToken='d'.repeat(48);await f.approve(true);
+ await backgroundGrantRequest(f.db,{action:'delegate',token,delegationId:crypto.randomUUID(),delegationToken:backgroundToken,scopes:['identity','mail:read','mail:send'],expiresAt:new Date(Date.now()+86400000).toISOString()});
+ const put=f.bucket.put.bind(f.bucket);
+ f.bucket.put=(async(key:string,value:unknown)=>{const result=await put(key,value as string);if(key.startsWith('outgoing/'))await backgroundGrantRequest(f.db,{action:'revoke_background',token:backgroundToken});return result;}) as typeof f.bucket.put;
+ const response=await f.call({action:'send',authority:'background',token:backgroundToken,mailboxId:'sales',fromAddressId:'sales',to:'customer@example.test',subject:'Message',text:'Text',idempotencyKey:crypto.randomUUID()});
+ assert.ok([401,422].includes(response.status));assert.equal(f.sent.length,0);
+});
 
 test("service secret, body limits and dashboard grant are independently required", async () => {
   const f = await fixture();

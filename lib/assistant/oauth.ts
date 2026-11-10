@@ -7,14 +7,22 @@ import type {DashboardContext} from '@/lib/dashboard/data';
 import {isAllowedDashboardEmail,resolveDashboardConfiguration} from '@/lib/dashboard/config';
 import {verifyMailDashboardSession} from '@/lib/dashboard/mail-identity';
 import {AssistantError,isWriteScope,assistantOrigin,parseScopes,resourceUri,validRedirect,type AssistantScope} from './config';
+import {BACKGROUND_CLIENT,verifyBackgroundIdentity,type BackgroundIdentity} from './background-identity';
 
 export const hash=(value:string)=>createHash('sha256').update(value).digest('hex');
 const secret=()=>randomBytes(32).toString('base64url');
 const invalid=()=>new AssistantError('invalid_grant','This connection expired or changed. Connect again.',401);
-export type Principal={context:DashboardContext;grantId:string;clientId:string;sessionId:string;scopes:AssistantScope[];writesPaused:boolean;directActions:boolean;expiresAt:Date};
-type Grant={id:string;client_id:string;user_id:string;workspace_id:string;session_id:string|null;scopes:AssistantScope[];resource:string;expires_at:Date;revoked_at:Date|null;writes_paused:boolean;direct_actions:boolean};
+export type Principal={context:DashboardContext;grantId:string;clientId:string;sessionId:string|null;authority?:'session'|'background';scopes:AssistantScope[];writesPaused:boolean;directActions:boolean;expiresAt:Date};
+type Grant={id:string;client_id:string;user_id:string;workspace_id:string;session_id:string|null;scopes:AssistantScope[];resource:string;expires_at:Date;revoked_at:Date|null;writes_paused:boolean;direct_actions:boolean;authority?:'session'|'background';identity_kind?:'mail'|'password';identity_credential?:string};
 export async function principal(grant:Grant,db:Pick<PoolClient,'query'>=getDatabasePool()):Promise<Principal>{
- if(grant.revoked_at||!grant.session_id||grant.expires_at.getTime()<=Date.now()||grant.resource!==resourceUri())throw invalid();
+ if(!grant||grant.revoked_at||grant.expires_at.getTime()<=Date.now()||grant.resource!==resourceUri())throw invalid();
+ if(grant.authority==='background'){
+  if(grant.client_id!==BACKGROUND_CLIENT||grant.session_id||!grant.identity_kind||!grant.identity_credential)throw invalid();
+  const r=(await db.query<{name:string;email:string;workspace_name:string;slug:string;role:DashboardContext['role']}>(`SELECT u.name,u.email,w.name workspace_name,w.slug,m.role FROM "user" u JOIN workspace_memberships m ON m.user_id=u.id JOIN workspaces w ON w.id=m.workspace_id WHERE u.id=$1 AND w.id=$2 AND m.status='active' AND w.status='active'`,[grant.user_id,grant.workspace_id])).rows[0];
+  if(!r)throw invalid();await verifyBackgroundIdentity(grant as Grant&BackgroundIdentity,r.email,db);
+  return {context:{user:{id:grant.user_id,name:r.name,email:r.email},workspace:{id:grant.workspace_id,name:r.workspace_name,slug:r.slug},role:r.role},grantId:grant.id,clientId:grant.client_id,sessionId:null,authority:'background',scopes:grant.scopes,writesPaused:grant.writes_paused,directActions:grant.direct_actions===true,expiresAt:grant.expires_at};
+ }
+ if(!grant.session_id)throw invalid();
  const r=(await db.query<{name:string;email:string;workspace_name:string;slug:string;role:DashboardContext['role']}>(
   `SELECT u.name,u.email,w.name workspace_name,w.slug,m.role FROM "user" u
    JOIN workspace_memberships m ON m.user_id=u.id JOIN workspaces w ON w.id=m.workspace_id

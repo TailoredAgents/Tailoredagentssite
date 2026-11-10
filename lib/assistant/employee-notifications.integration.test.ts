@@ -106,6 +106,10 @@ describe.skipIf(!url)('Employee notification database and delivery',()=>{
  it('does not send when disabled and does not treat provider acceptance as delivery',async()=>{
   await enable();await turn();vi.stubEnv('ASSISTANT_NOTIFICATIONS_ENABLED','false');await runEmployeeNotificationWorker();expect(gateway.create).not.toHaveBeenCalled();vi.stubEnv('ASSISTANT_NOTIFICATIONS_ENABLED','true');await runEmployeeNotificationWorker();expect((await employeeWorkState(employee)).notifications[0].delivery).toBe('accepted');
  });
+ it('suppresses an external alert when its authorizing connection was revoked',async()=>{
+  await enable();const t=await turn(),grant=randomUUID();await db.query("INSERT INTO assistant_grants(id,client_id,user_id,workspace_id,scopes,resource,expires_at,revoked_at) VALUES($1,'ta_native_dashboard',$2,$3,ARRAY['operations:read'],'http://localhost:3162/api/mcp/operations',now()+interval '1 hour',now())",[grant,employee.user.id,ws]);
+  await db.query('UPDATE assistant_employee_notifications SET grant_id=$1 WHERE source_id=$2',[grant,t.id]);await runEmployeeNotificationWorker();expect(gateway.create).not.toHaveBeenCalled();expect((await employeeWorkState(employee)).notifications[0].delivery).toBe('suppressed');
+ });
  it('enforces the employee rolling-day cap without discarding the feed',async()=>{
   await enable();
   for(let i=0;i<10;i++){const t=await turn();await db.query("INSERT INTO assistant_notification_deliveries(id,notification_id,channel,status,recipient,created_at) SELECT $1,id,'sms','accepted',$2,now()-interval '10 minutes' FROM assistant_employee_notifications WHERE source_id=$3",[randomUUID(),phone,t.id]);}

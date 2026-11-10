@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import type { D1Database, R2Bucket } from "@cloudflare/workers-types";
 import { checkRateLimit, getUserById } from "./auth";
 import { inspectDashboardGrant } from "./dashboard-auth";
+import {inspectBackgroundGrant} from './background-grants';
 import { BodyLimitError, readLimitedText } from "./request-body";
 import { getAddressForUser } from "./domains";
 import {
@@ -91,7 +92,8 @@ export async function handleCrmMail(
     !/^[A-Za-z0-9_-]{32,128}$/.test(body.token)
   )
     return json({ error: "invalid_request" }, 400);
-  const actor = await inspectDashboardGrant(env.DB, body.token);
+  const inspectActor=()=>body.authority==='background'?inspectBackgroundGrant(env.DB,body.token as string,body.action==='send'?'mail:send':'mail:read'):inspectDashboardGrant(env.DB,body.token as string);
+  const actor = await inspectActor();
   if (!actor) return json({ error: "session_expired" }, 401);
   if (!(await checkRateLimit(env.DB, `crm-mail:${actor.id}`, 180, 60)))
     return json({ error: "rate_limited" }, 429);
@@ -340,10 +342,7 @@ export async function handleCrmMail(
       }
       // Recheck after all reads, then again immediately before provider delivery.
       const authorize = async () => {
-        const current = await inspectDashboardGrant(
-          env.DB,
-          body.token as string,
-        );
+        const current = await inspectActor();
         if (!current || current.id !== actor.id)
           throw new CrmMailAccessError(401, "session_expired");
         await requireCrmMailboxGrant(env.DB, actor.id, mailboxId, true);

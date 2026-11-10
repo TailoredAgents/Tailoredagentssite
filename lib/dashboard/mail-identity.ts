@@ -54,6 +54,14 @@ async function identityRequest(body: Record<string, unknown>) {
   }
 }
 
+/** These credentials are separate from sign-in sessions and cannot log into Mail. */
+export async function createMailBackgroundGrant(sessionToken:string,delegationId:string,delegationToken:string,scopes:string[],expiresAt:Date){
+ const parsed=identitySchema.parse(await identityRequest({action:'delegate',token:sessionToken,delegationId,delegationToken,scopes,expiresAt:expiresAt.toISOString()}));
+ return parsed;
+}
+export async function inspectMailBackgroundGrant(token:string){return identitySchema.parse(await identityRequest({action:'inspect_background',token}));}
+export async function revokeMailBackgroundGrant(token:string){await identityRequest({action:'revoke_background',token});}
+
 export async function authenticateMailAccount(email: string, password: string, clientIp: string) {
   const result = identitySchema.safeParse(await identityRequest({ action: "login", email, password, clientIp }));
   if (!result.success || !result.data.token || result.data.user.email.toLowerCase() !== email || Date.parse(result.data.expiresAt) <= Date.now()) throw new MailIdentityError("unavailable", 503);

@@ -18,6 +18,7 @@ import {saveRoutine,nextRoutineTime,setRoutineEnabled} from './routines';
 import {availableSlots} from '@/lib/booking/calendar';
 import {getCalendarEntry} from '@/lib/booking/staff';
 import {runBookingNotificationWorker} from './booking-notifications';
+import {refreshPrincipal} from './oauth';
 const url=process.env.ASSISTANT_CHAT_TEST_DATABASE_URL;
 const ws='00000000-0000-4000-8000-000000000001';
 const owner={user:{id:'chat-owner',name:'Owner',email:'chat-owner@example.test'},workspace:{id:ws,name:'Tailored Agents',slug:'tailored-agents'},role:'owner' as const};
@@ -27,6 +28,11 @@ const answer=(text='Done.')=>({status:'completed',output:[{type:'message',role:'
 const call=(name:string,args:unknown)=>({...answer(),output:[{type:'function_call',call_id:randomUUID(),name,arguments:JSON.stringify(args)}]});
 async function connection(mode:'read'|'review'|'direct'='direct',conversations=true){await connectNative(owner,'chat-session',mode,conversations);return nativePrincipal(owner,'chat-session');}
 async function turn(){const p=await connection(),id=randomUUID(),thread=randomUUID();await beginChatTurn(p,thread,id,'Help with my work.');return{p,id,thread};}
+async function background(){
+ vi.stubEnv('ASSISTANT_BACKGROUND_ENABLED','true');
+ await pool.query(`INSERT INTO "account"(id,"accountId","providerId","userId",password) VALUES('chat-password','chat-owner','credential',$1,'synthetic-password-hash') ON CONFLICT(id) DO UPDATE SET password=EXCLUDED.password`,[owner.user.id]);
+ await connectNative(owner,'chat-session','direct',false,{background:true,routines:true});return nativePrincipal(owner,'chat-session');
+}
 describe.skipIf(!url)('Native employee assistant integration',()=>{
  beforeAll(async()=>{
   const target=new URL(url!);if(!['localhost','127.0.0.1'].includes(target.hostname)||target.pathname!=='/ta_assistant_chat_test')throw Error('Use the dedicated local disposable chat database.');
@@ -42,6 +48,7 @@ describe.skipIf(!url)('Native employee assistant integration',()=>{
   await pool.query(`INSERT INTO "session"(id,"userId",token,"expiresAt") VALUES('chat-session',$1,'synthetic-chat-session',now()+interval '2 days'),('other-session',$2,'synthetic-other-session',now()+interval '2 days') ON CONFLICT(id) DO UPDATE SET "expiresAt"=EXCLUDED."expiresAt"`,[owner.user.id,other.user.id]);
   vi.stubGlobal('fetch',vi.fn().mockRejectedValue(new Error('Unexpected provider call in test')));
   smsGateway.create.mockReset();
+  vi.stubEnv('ASSISTANT_BACKGROUND_ENABLED','false');
  });
  afterAll(async()=>{await pool?.end();delete (globalThis as {tailoredAgentsDatabasePool?:Pool}).tailoredAgentsDatabasePool;vi.unstubAllEnvs();vi.unstubAllGlobals();});
  it('keeps chats private across employees and workspaces and rejects forged session ownership',async()=>{
@@ -79,6 +86,38 @@ describe.skipIf(!url)('Native employee assistant integration',()=>{
   await expect(beginChatTurn(p,thread,randomUUID(),'Overlapping')).rejects.toThrow('Wait');
   await stopChatTurn(owner,thread,id);await expect(assertTurnActive(p,id)).rejects.toThrow('stopped');
   expect(await beginChatTurn(p,thread,randomUUID(),'Next')).toBe(true);
+ });
+ it('continues explicit background work after sign-out and preserves selected scopes',async()=>{
+  const p=await background();expect(p.authority).toBe('background');expect(p.sessionId).toBeNull();expect(p.scopes).not.toContain('mail:send');
+  expect(p.expiresAt.getTime()-Date.now()).toBeLessThan(30*86400000);expect(p.expiresAt.getTime()-Date.now()).toBeGreaterThan(29*86400000);
+  await pool.query('DELETE FROM "session" WHERE id=\'chat-session\'');
+  const id=randomUUID();await beginChatTurn(p,randomUUID(),id,'Save my goal while away');
+  const r=await invokeNativeTool(p,id,'save_goal','{"title":"Background result"}') as {status:string};expect(r.status).toBe('succeeded');
+  await expect(invokeNativeTool(p,id,'send_sms','{}')).rejects.toThrow();
+  await expect(connectNative(owner,'chat-session','direct',false,{background:true})).rejects.toThrow();
+  expect((await refreshPrincipal(p)).grantId).toBe(p.grantId);
+ });
+ it('permanently revokes background access on a password change even if restored',async()=>{
+  const p=await background();await pool.query('UPDATE "account" SET password=\'changed\' WHERE id=\'chat-password\'');
+  await pool.query('UPDATE "account" SET password=\'synthetic-password-hash\' WHERE id=\'chat-password\'');
+  await expect(refreshPrincipal(p)).rejects.toThrow();
+ });
+ it('permanently revokes background access when membership is suspended',async()=>{
+  const p=await background();await pool.query("UPDATE workspace_memberships SET status='suspended' WHERE user_id=$1",[owner.user.id]);
+  await pool.query("UPDATE workspace_memberships SET status='active' WHERE user_id=$1",[owner.user.id]);await expect(refreshPrincipal(p)).rejects.toThrow();
+ });
+ it('honors background pause, expiry, explicit disconnect and the server switch',async()=>{
+  const p=await background(),id=randomUUID();await beginChatTurn(p,randomUUID(),id,'Wait for my next action');
+  await manageConnection(owner,p.grantId,'pause');await expect(invokeNativeTool(p,id,'save_goal','{"title":"Paused"}')).rejects.toThrow('paused');
+  await manageConnection(owner,p.grantId,'resume');vi.stubEnv('ASSISTANT_BACKGROUND_ENABLED','false');await expect(refreshPrincipal(p)).rejects.toThrow();vi.stubEnv('ASSISTANT_BACKGROUND_ENABLED','true');
+  await manageConnection(other,p.grantId,'revoke');expect((await refreshPrincipal(p)).grantId).toBe(p.grantId);
+  await pool.query("UPDATE assistant_grants SET expires_at=now()-interval '1 second' WHERE id=$1",[p.grantId]);await expect(refreshPrincipal(p)).rejects.toThrow();
+  const renewed=await background();await manageConnection(owner,renewed.grantId,'revoke');await expect(refreshPrincipal(renewed)).rejects.toThrow();
+ });
+ it('switching back to session access ends background work without silently moving routines',async()=>{
+  const p=await background();const r=await saveRoutine(p,{title:'Morning priorities',instruction:'Summarize priorities',cadence:'daily',time:'09:00'});
+  await connectNative(owner,'chat-session','read',false);await expect(refreshPrincipal(p)).rejects.toThrow();
+  expect((await nativePrincipal(owner,'chat-session')).sessionId).toBe('chat-session');expect((await pool.query('SELECT grant_id FROM assistant_routines WHERE id=$1',[r.id])).rows[0].grant_id).toBe(p.grantId);
  });
  it('supports reviewed and direct actions with real receipts, once per parsed intent',async()=>{
   const p=await connection('review'),thread=randomUUID(),id=randomUUID();await beginChatTurn(p,thread,id,'Save my goal');
