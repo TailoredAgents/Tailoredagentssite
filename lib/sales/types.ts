@@ -11,7 +11,7 @@ export const salesStages = [
 ] as const;
 export type SalesStage = (typeof salesStages)[number];
 export const stageLabels: Record<SalesStage, string> = {
-  prospect: "Cold prospect",
+  prospect: "Prospect",
   contacted: "Contacted",
   interested: "Interested",
   discovery: "Discovery",

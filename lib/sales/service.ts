@@ -769,7 +769,7 @@ export async function linkInquiry(context: DashboardContext, leadId: string) {
         phone: l.phone ?? undefined,
       }),
       id = await insertOpportunity(db, context, business, contactId, {
-        title: `${l.source === "manual" ? "Lead" : "Website inquiry"} — ${leadDisplayName(l)}`,
+        title: `Opportunity — ${leadDisplayName(l)}`,
         stage:
           l.status === "won"
             ? "won"
@@ -957,7 +957,7 @@ export async function importSalesCsv(
         if (!id) {
           const contactId = await ensureContact(db, context, business, row);
           id = await insertOpportunity(db, context, business, contactId, {
-            title: `Website — ${business.name}`,
+            title: `Business opportunity — ${business.name}`,
             ownerUserId: input.ownerUserId,
             source: "research",
           });

@@ -447,7 +447,7 @@ describe.skipIf(!databaseUrl)(
       const opportunityId = await linkInquiry(member, leadId);
       const linked = await record(opportunityId);
       expect(linked.business.name).toBe("Jordan Referral");
-      expect(linked.title).toBe("Lead — Jordan Referral");
+      expect(linked.title).toBe("Opportunity — Jordan Referral");
     });
 
     it("keeps a phone-only lead identifiable without inventing a business name", async () => {
@@ -711,6 +711,7 @@ describe.skipIf(!databaseUrl)(
         issues: [],
       });
       const saved = (await getSalesWorkspace(owner)).items[0];
+      expect(saved.title).toBe('Business opportunity — Acme, "Studio"');
       expect(saved.business).toMatchObject({
         name: 'Acme, "Studio"',
         phone: "+12125550100",
@@ -1226,17 +1227,22 @@ describe.skipIf(!databaseUrl)(
       expect(await count("crm_opportunities")).toBe(2);
     });
 
-    it("links existing website inquiries once and carries their sale into the original lead", async () => {
+    it.each(["website", "facebook", "manual"])("links %s inquiries without assuming a website sale or renaming an existing opportunity", async (source) => {
       const leadId = randomUUID();
       await pool.query(
         "INSERT INTO leads(id,workspace_id,name,organization,email,phone,description,next_action,next_action_at) VALUES($1,$2,'Fixture Contact','Website inquiry fixture','inquiry@fixture.example.test','2125550100','Requested a website and local visibility review.','Confirm discovery',now())",
         [leadId, workspaceId],
       );
+      await pool.query("UPDATE leads SET source=$2 WHERE id=$1", [leadId, source]);
       const id = await linkInquiry(member, leadId);
+      expect((await record(id)).title).toBe("Opportunity — Fixture Contact");
+      expect((await record(id)).source).toBe(source);
+      await pool.query("UPDATE crm_opportunities SET title='Existing agreed website scope' WHERE id=$1", [id]);
       expect(await linkInquiry(owner, leadId)).toBe(id);
+      expect((await record(id)).title).toBe("Existing agreed website scope");
       expect(await count("crm_opportunities")).toBe(1);
       expect(await record(id)).toMatchObject({
-        source: "website",
+        source,
         leadId,
         stage: "interested",
       });

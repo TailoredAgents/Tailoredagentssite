@@ -96,7 +96,7 @@ export function ManualLeadForm() {
           <Plus size={17} aria-hidden="true" />
           Add prospect
         </button>
-        <p>Quickly add a prospect, referral, or call-in.</p>
+        <p>Add someone you met, a referral, or an incoming inquiry.</p>
       </div>
 
       {open ? (
@@ -214,7 +214,7 @@ export function ManualLeadForm() {
                     <input
                       {...fieldProps("interest")}
                       maxLength={160}
-                      placeholder="Website redesign, AI agent, SEO…"
+                      placeholder="AI agents, automation, integrations, websites, SEO…"
                     />
                     {fieldError("interest")}
                   </label>
@@ -224,7 +224,7 @@ export function ManualLeadForm() {
                       {...fieldProps("description")}
                       maxLength={3000}
                       rows={3}
-                      placeholder="How you found them, what they need, or anything useful for the next conversation"
+                      placeholder="Where we met or who introduced us; their business problems, software, and what we promised next."
                     />
                     {fieldError("description")}
                   </label>

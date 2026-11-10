@@ -93,11 +93,12 @@ test("reviewed prospect import, scheduled sales and mockup handoff convert into 
   await expect(opportunity.getByRole("combobox", { name: "Stage", exact: true })).toHaveValue("interested");
   await expect(opportunity.getByRole("combobox", { name: "Offer type", exact: true })).toHaveValue("promotion");
   await expect(opportunity.getByLabel("Value (USD)", { exact: true })).toHaveValue("800");
-  await expect(page.getByText(/Calls and messages in this phase are logged from BatchDialer/)).toBeVisible();
+  await expect(page.getByText("Use Inbox for live calls and messages.", {exact:false})).toBeVisible();
   expect(await page.getByRole("button", { name: /^(Send email|Send text|Start call|Call now)$/i }).count()).toBe(0);
 
   const log = page.getByRole("form", { name: "Log activity", exact: true });
   await log.getByRole("combobox", { name: "Activity type", exact: true }).selectOption("call");
+  await log.getByRole("combobox", { name: "Direction", exact: true }).selectOption("outbound");
   await log.getByLabel("Outcome", { exact: true }).fill("Interested after BatchDialer call");
   await log.getByLabel("What happened? *", { exact: true }).fill(`Manual call history ${info.project.name}: prospect asked for a personalized website preview.`);
   await log.getByRole("button", { name: "Log activity", exact: true }).click();
@@ -169,6 +170,59 @@ test("reviewed prospect import, scheduled sales and mockup handoff convert into 
   await expect(page.getByRole("form", { name: "Mark won & create project", exact: true })).toHaveCount(0);
   expect(await rows("SELECT id FROM projects WHERE client_id=$1", [converted.client_id])).toHaveLength(1);
   expect(errors).toEqual([]);
+});
+
+test("a networking opportunity keeps discovery notes and becomes a non-website client project", async ({ page }, info) => {
+  test.setTimeout(120000);
+  const business = `Discovery QA ${info.project.name} ${run}`;
+  await signIn(page);
+  await page.goto("/dashboard/sales");
+  await page.getByRole("link", { name: "New opportunity", exact: true }).click();
+  const create = page.getByRole("form", { name: "Create opportunity", exact: true });
+  await expect(create.getByLabel("Opportunity title", { exact: true })).toHaveValue("Business opportunity");
+  await create.getByLabel("Business name *", { exact: true }).fill(business);
+  await create.getByLabel("Contact name", { exact: true }).fill("Jamie Owner");
+  await create.getByLabel("Email", { exact: true }).fill(`discovery-${info.project.name}-${run}@example.test`);
+  await create.getByLabel("Opportunity title", { exact: true }).fill("Document intake automation");
+  await create.getByRole("combobox", { name: "Sales owner", exact: true }).selectOption("preview-owner");
+  await create.getByText("Discovery prompts (optional)", { exact: true }).click();
+  await expect(create.getByText("Introduced by:", { exact: true })).toBeVisible();
+  const initialNotes = "Met at the local business meetup. Introduced by Pat at Example Partners. Jamie owns the business. Existing tool: spreadsheets.";
+  await create.getByLabel("Relationship & discovery notes", { exact: true }).fill(initialNotes);
+  await create.getByRole("button", { name: "Create opportunity", exact: true }).click();
+  await expect(page).toHaveURL(/\/dashboard\/sales\/[a-f0-9-]+$/);
+  const id = await recordId(business);
+  const activity = page.getByRole("form", { name: "Log activity", exact: true });
+  await expect(activity.getByRole("combobox", { name: "Activity type", exact: true })).toHaveValue("note");
+  await expect(activity.getByRole("combobox", { name: "Direction", exact: true })).toHaveValue("internal");
+  await activity.getByText("Discovery prompts (optional)", { exact: true }).click();
+  await expect(activity.getByText("Current workflow:", { exact: true })).toBeVisible();
+  const discovery = "Jamie confirmed that invoice re-entry takes two hours each week. Wants document extraction. We promised a solution outline by Friday; Jeffrey will prepare it.";
+  await activity.getByLabel("What happened? *", { exact: true }).fill(discovery);
+  await activity.getByRole("button", { name: "Log activity", exact: true }).click();
+  await expect(activity.getByRole("status")).toContainText("Activity recorded.");
+  await page.reload();
+  await expect(page.locator(".sales-record-notes")).toHaveText(initialNotes);
+  await expect(page.locator(".sales-activity-list")).toContainText(discovery);
+  expect(await rows("SELECT kind,direction,body FROM crm_activities WHERE opportunity_id=$1", [id])).toEqual([
+    { kind: "note", direction: "internal", body: discovery },
+  ]);
+  expect(await rows("SELECT id FROM crm_tasks WHERE opportunity_id=$1", [id])).toHaveLength(0);
+  expect(await rows("SELECT id FROM crm_mockups WHERE opportunity_id=$1", [id])).toHaveLength(0);
+  await activity.getByText("Discovery prompts (optional)", { exact: true }).click();
+  await activity.getByRole("link", { name: "assign and schedule the next step" }).click();
+  await expect(page).toHaveURL(/#sales-follow-ups$/);
+  const a11y = await new AxeBuilder({ page }).include("#sales-history").withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+  expect(a11y.violations).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  await page.locator("#sales-history").screenshot({ path: info.outputPath("discovery-notes.png") });
+  const handoff = page.getByRole("form", { name: "Mark won & create project", exact: true });
+  await expect(handoff.getByLabel("Project name *", { exact: true })).toHaveValue("Document intake automation");
+  await handoff.getByRole("button", { name: "Mark won & create project", exact: true }).click();
+  await expect(page).toHaveURL(/\/dashboard\/projects\/[a-f0-9-]+$/);
+  await expect(page.getByRole("heading", { name: "Document intake automation", exact: true })).toBeVisible();
+  const saved = await rows("SELECT o.title,o.stage,p.name,p.site_id FROM crm_opportunities o JOIN projects p ON p.id=o.project_id WHERE o.id=$1", [id]);
+  expect(saved).toEqual([{ title: "Document intake automation", stage: "won", name: "Document intake automation", site_id: null }]);
 });
 
 test("BatchDialer results reuse prospects, preserve opt-outs and deduplicate repeat imports", async ({ page }, info) => {
