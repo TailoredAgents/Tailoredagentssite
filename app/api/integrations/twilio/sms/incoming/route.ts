@@ -1,5 +1,6 @@
 import { after } from "next/server";
 import { runIncomingSmsAlertWorker } from "@/lib/sms/alerts";
+import { receiveEmployeeAlertReply } from "@/lib/assistant/employee-notifications";
 import { ZodError } from "zod";
 import { handleSmsWebhook, TwilioWebhookError } from "@/lib/twilio/webhook";
 import { receiveSmsWebhook, SmsInputError } from "@/lib/sms/service";
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   return handleSmsWebhook(request, "incoming", async (params) => {
     try {
+      if (await receiveEmployeeAlertReply(params)) return;
       const result = await receiveSmsWebhook(params);
       after(async () => {
         try { await runIncomingSmsAlertWorker(); } catch { console.error("incoming_sms_alert_worker_failed"); }

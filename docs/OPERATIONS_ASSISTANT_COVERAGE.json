@@ -25,6 +25,20 @@
       "reason": "Authenticated owner control or MCP transport; deliberately not callable as an approval tool."
     },
     {
+      "file": "app/api/assistant/work/route.ts",
+      "export": "GET",
+      "status": "control",
+      "tools": [],
+      "reason": "Authenticated owner control or MCP transport; deliberately not callable as an approval tool."
+    },
+    {
+      "file": "app/api/assistant/work/route.ts",
+      "export": "POST",
+      "status": "control",
+      "tools": [],
+      "reason": "Authenticated owner control or MCP transport; deliberately not callable as an approval tool."
+    },
+    {
       "file": "app/api/auth/[...all]/route.ts",
       "export": "GET",
       "status": "transport_review",
@@ -47,6 +61,13 @@
     },
     {
       "file": "app/api/cron/factory/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/cron/meetings/route.ts",
       "export": "POST",
       "status": "transport_review",
       "tools": [],
@@ -166,6 +187,13 @@
     },
     {
       "file": "app/api/integrations/meta/leads/route.ts",
+      "export": "POST",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/integrations/omi/audio/route.ts",
       "export": "POST",
       "status": "transport_review",
       "tools": [],
@@ -328,6 +356,34 @@
     {
       "file": "app/api/mcp/operations/route.ts",
       "export": "DELETE",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/meetings/[id]/audio/route.ts",
+      "export": "GET",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/meetings/[id]/upload/route.ts",
+      "export": "PUT",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/meetings/route.ts",
+      "export": "GET",
+      "status": "transport_review",
+      "tools": [],
+      "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
+    },
+    {
+      "file": "app/api/meetings/route.ts",
+      "export": "POST",
       "status": "transport_review",
       "tools": [],
       "reason": "HTTP transport inventory; classify staff capability versus public webhook/worker before adding a tool. This endpoint is not exposed generically."
@@ -742,6 +798,13 @@
         "prepare_add_project_record"
       ],
       "reason": "Shared domain service behind delegated access; changes require dashboard review."
+    },
+    {
+      "file": "lib/relationships/actions.ts",
+      "export": "relationshipAction",
+      "status": "pending",
+      "tools": [],
+      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
     },
     {
       "file": "lib/sales/actions.ts",

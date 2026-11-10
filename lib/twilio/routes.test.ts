@@ -6,6 +6,8 @@ vi.mock("next/server", () => ({after:vi.fn()}));
 vi.mock("@/lib/sms/alerts", () => ({runIncomingSmsAlertWorker:vi.fn(),receiveIncomingSmsAlertStatus:vi.fn().mockResolvedValue(false)}));
 vi.mock("@/lib/meta/lead-alerts", () => ({receiveLeadAlertStatus:vi.fn().mockResolvedValue(false)}));
 const handlers = vi.hoisted(() => ({ incoming: vi.fn(), status: vi.fn() }));
+const employeeHandlers = vi.hoisted(() => ({ incoming: vi.fn(), status: vi.fn() }));
+vi.mock("@/lib/assistant/employee-notifications", () => ({receiveEmployeeAlertReply:employeeHandlers.incoming,receiveEmployeeNotificationStatus:employeeHandlers.status}));
 vi.mock("@/lib/sms/service", () => ({
   receiveSmsWebhook: handlers.incoming,
   receiveSmsStatus: handlers.status,
@@ -51,6 +53,8 @@ describe("Twilio webhook route boundaries", () => {
   beforeEach(() => {
     handlers.incoming.mockReset().mockResolvedValue({});
     handlers.status.mockReset().mockResolvedValue({});
+    employeeHandlers.incoming.mockReset().mockResolvedValue(false);
+    employeeHandlers.status.mockReset().mockResolvedValue(false);
     for (const [key, value] of Object.entries({
       TWILIO_ACCOUNT_SID: accountSid,
       TWILIO_AUTH_TOKEN: authToken,
@@ -72,6 +76,8 @@ describe("Twilio webhook route boundaries", () => {
     expect((await status(request("status", "invalid"))).status).toBe(401);
     expect(handlers.incoming).not.toHaveBeenCalled();
     expect(handlers.status).not.toHaveBeenCalled();
+    expect(employeeHandlers.incoming).not.toHaveBeenCalled();
+    expect(employeeHandlers.status).not.toHaveBeenCalled();
   });
   it("routes the signed callback attempt exactly and sends empty incoming TwiML", async () => {
     const received = await incoming(request("incoming"));
@@ -80,6 +86,16 @@ describe("Twilio webhook route boundaries", () => {
     expect((await status(request("status"))).status).toBe(204);
     expect(handlers.incoming).toHaveBeenCalledExactlyOnceWith(params);
     expect(handlers.status).toHaveBeenCalledExactlyOnceWith(attempt, params);
+  });
+  it('keeps verified employee alerts out of customer messaging handlers',async()=>{
+    employeeHandlers.incoming.mockResolvedValueOnce(true);
+    employeeHandlers.status.mockResolvedValueOnce(true);
+    expect((await incoming(request('incoming'))).status).toBe(200);
+    expect((await status(request('status'))).status).toBe(204);
+    expect(employeeHandlers.incoming).toHaveBeenCalledExactlyOnceWith(params);
+    expect(employeeHandlers.status).toHaveBeenCalledExactlyOnceWith(attempt,params);
+    expect(handlers.incoming).not.toHaveBeenCalled();
+    expect(handlers.status).not.toHaveBeenCalled();
   });
   it.each(["incoming", "status"] as const)(
     "returns permanent %s input/permission errors without leaking details",

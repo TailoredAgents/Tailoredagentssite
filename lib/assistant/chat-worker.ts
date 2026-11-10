@@ -8,6 +8,7 @@ import {advanceChatTurn,type ChatEngine} from './chat-runner';
 import {nextRoutineTime} from './routines';
 import {finishChatTurn} from './chat-store';
 import {runBookingNotificationWorker} from './booking-notifications';
+import {runEmployeeNotificationWorker} from './notification-worker';
 export async function enqueueDueRoutine(){
  const db=await getDatabasePool().connect();
  try{
@@ -41,5 +42,6 @@ export async function runAssistantWorker(turnId?:string,limit=1){
  }
  const more=!!(await getDatabasePool().query("SELECT id FROM assistant_chat_turns WHERE status IN ('queued','running') AND (lease_until IS NULL OR lease_until<now()) LIMIT 1")).rowCount;
  const notifications=await runBookingNotificationWorker();
- return {checked,failed,more:more||notifications.more};
+ const employeeNotifications=await runEmployeeNotificationWorker();
+ return {checked,failed,more:more||notifications.more||employeeNotifications.more};
 }

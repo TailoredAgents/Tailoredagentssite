@@ -233,6 +233,8 @@ Roll out to Austin with controlled employee test destinations, then Devon and Je
 
 ## Completion checklist for this one goal
 
+November 10 progress: the first implementation increment adds the employee work list, durable notification feed and opted-in SMS with verification, quiet hours and receipts. See [the release notes](OPERATIONS_ASSISTANT_SETUP.md) for evidence. Milestone B remains open for independent background delegation and the rest of assignment execution; native push and milestones D–H are not complete.
+
 - [ ] A: Baseline health and current production acceptance recorded.
 - [ ] B: Durable assignments, independent scoped delegation, work list and employee SMS pass acceptance.
 - [ ] C: Existing iPhone app supports native push, with signed physical-device delivery and fallback verified.

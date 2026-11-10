@@ -4,6 +4,16 @@ This is an implementation checkpoint, not the completion of the full owner-assis
 
 The next delivery goal is defined in the [current employee-assistant plan](OPERATIONS_ASSISTANT_PLAN.md): reliable assignments and employee SMS, native iPhone push, documents, shared knowledge, proactive follow-up and complete chat communications. Those planned additions are not enabled by this documentation update. External application integrations are deferred.
 
+## Employee work and SMS alerts — November 10 implementation increment
+
+Migration `0053_employee_notifications.sql` adds the private **My work & alerts** area, atomic completion/failure/review events, employee phone verification, opt-in SMS, quiet hours and delivery receipts. This is the first increment of the new goal; independent background delegation, native push, documents, shared knowledge, event routines and enhanced communications remain in progress.
+
+Every employee verifies their own US/Canadian mobile number and separately enables texts in Notification settings. Verification is limited to three attempts per hour and five guesses per code. SMS defaults off. Work requiring review or attention can trigger a short generic alert; completion alerts are optional. Quiet hours default to 9 PM–8 AM Eastern and are editable. Notifications are grouped and capped at ten employee/fifty workspace text attempts in a rolling 24 hours. Queued alerts expire after a day and remain in the in-app feed. Source content is never copied into an alert. Staff replies do not approve actions or create customer conversations. STOP disables alerts; START clears provider opt-out but does not re-enable the employee's subscription automatically.
+
+The existing assistant worker advances alerts after chat and through its recovery cron. Signed Twilio callbacks use the shared SMS endpoint, check provider identity and preserve terminal status. Unknown sends are retained rather than retried. `ASSISTANT_NOTIFICATIONS_ENABLED=false` stops new SMS verification/delivery; preferences and the private work feed remain available. Existing SMS/customer booking capabilities are separate. No real employee is subscribed merely by installing this migration.
+
+Verification: 14 isolated database/contract tests pass, including verification, atomic events, privacy, opt-out replay, concurrent delivery, caps and lost-response/callback recovery. Desktop and phone browser journeys pass, including settings, notification links and sign-in/origin checks. A browser check found that refreshing settings could replace an unsaved time; separate draft state fixes it. The full regression run passes 814 tests (541 environment-dependent cases skipped); the six Twilio route boundary tests include authenticated employee routing. TypeScript, lint and an isolated production build pass. These checks use synthetic providers and disposable local databases; real SMS receipt and production deployment have not been claimed.
+
 ## Native employee operations — November 10
 
 The dashboard assistant serves company operations: customer work, planning, research, scheduling and communications. Austin builds custom client AI systems and automation workflows; the assistant is explicitly instructed not to program, construct or deploy those systems.

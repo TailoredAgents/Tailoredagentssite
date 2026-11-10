@@ -35,8 +35,26 @@ test('employee enables native chat, completes a tool action, and resumes private
  await expect(chat.getByRole('button',{name:'Send',exact:true})).toBeDisabled();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await page.screenshot({path:testInfo.outputPath('native-chat.png'),fullPage:false});
+ const work=page.getByRole('region',{name:'My assistant work'});
+ await work.getByRole('button',{name:'Refresh work',exact:true}).click();
+ await expect(work.getByRole('link',{name:'Your assistant finished working'}).first()).toBeVisible();
+ await work.getByRole('button',{name:'Notification settings',exact:true}).click();
+ await expect(work.getByLabel('Text me when my assistant needs review or attention')).toBeDisabled();
+ await work.getByLabel('Quiet hours start').fill('22:00');
+ await work.getByRole('button',{name:'Save notification settings',exact:true}).click();
+ await expect(work.getByText('Saved.',{exact:true})).toBeVisible();
+ await expect(work.getByLabel('Quiet hours start')).toHaveValue('22:00');
+ expect((await (await page.request.get('/api/assistant/work')).json()).preferences.quietStart).toBe('22:00');
+ await work.scrollIntoViewIfNeeded();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.screenshot({path:testInfo.outputPath('assistant-work.png'),fullPage:false});
+ await work.getByRole('link',{name:'Your assistant finished working'}).first().click();
+ await expect(page).toHaveURL(/thread=/);
+ await expect(chat.getByText('Your onboarding goal is saved.',{exact:true})).toBeVisible();
  // Both browser cookie authentication and same-origin writes are enforced.
  const denied=await page.request.post(baseURL+'/api/assistant/chat',{headers:{origin:'https://untrusted.example'},data:{operation:'budget',dollars:1000}});
  expect(denied.status()).toBe(403);
  expect((await request.get('/api/assistant/chat')).status()).toBe(401);
+ expect((await request.get('/api/assistant/work')).status()).toBe(401);
+ expect((await page.request.post(baseURL+'/api/assistant/work',{headers:{origin:'https://untrusted.example'},data:{operation:'preferences',preferences:{}}})).status()).toBe(403);
 });

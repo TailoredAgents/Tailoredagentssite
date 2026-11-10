@@ -1,0 +1,36 @@
+'use client';
+import {useCallback,useEffect,useState,type FormEvent} from 'react';
+import type {WorkState} from '@/lib/assistant/notification-contract';
+
+async function request(payload?:unknown){
+ const r=await fetch('/api/assistant/work',payload?{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}:{cache:'no-store'});
+ const data=await r.json();if(!r.ok)throw Error(data.error_description??'Your work is unavailable.');return data;
+}
+export function AssistantWork(){
+ const [state,setState]=useState<WorkState|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[settings,setSettings]=useState(false);
+ const [draft,setDraft]=useState<WorkState['preferences']|null>(null);
+ const [phone,setPhone]=useState(''),[consent,setConsent]=useState(false),[challenge,setChallenge]=useState(''),[code,setCode]=useState(''),[notice,setNotice]=useState('');
+ const load=useCallback(async()=>{try{setState(await request());setError('');}catch(e){setError(e instanceof Error?e.message:'Your work is unavailable.');}},[]);
+ useEffect(()=>{void load();},[load]);
+ useEffect(()=>{const timer=setInterval(()=>{if(!document.hidden&&!settings)void load();},15000);return()=>clearInterval(timer);},[load,settings]);
+ async function control(payload:unknown){setBusy(true);setError('');setNotice('');try{const result=await request(payload);if(result.challengeId){setChallenge(result.challengeId);setNotice(result.message);}else{setState(result);setNotice('Saved.');}}catch(e){setError(e instanceof Error?e.message:'Unable to save.');}finally{setBusy(false);}}
+ async function save(e:FormEvent){e.preventDefault();if(!state)return;const {smsEnabled,completions,pushEnabled,timezone,quietStart,quietEnd}=draft??state.preferences;await control({operation:'preferences',preferences:{smsEnabled,completions,pushEnabled,timezone,quietStart,quietEnd}});}
+ function preference<K extends keyof WorkState['preferences']>(key:K,value:WorkState['preferences'][K]){setDraft(s=>({...s??state!.preferences,[key]:value}));}
+ const preferences=draft??state?.preferences;
+ return <section id="my-work" className="assistant-panel assistant-work" aria-label="My assistant work">
+  <div className="assistant-heading"><div><h2>My work & alerts</h2><p>Keep track of work after you leave chat.</p></div><div className="assistant-controls"><button className="dashboard-secondary-button" onClick={()=>void load()} disabled={busy}>Refresh work</button><button className="dashboard-secondary-button" onClick={()=>{setDraft(settings?null:state?.preferences??null);setSettings(!settings);}} aria-expanded={settings}>Notification settings</button></div></div>
+  {error&&<p role="alert" className="assistant-notice">{error}</p>}{notice&&<p role="status">{notice}</p>}
+  {!state&&!error&&<p>Loading your work…</p>}
+  {state&&<>{settings&&<div className="assistant-chat-settings assistant-work-settings">
+   <section><h3>Your mobile number</h3><p>Employee alerts are separate from customer texts. Standard SMS charges apply.</p>{state.preferences.verified&&<p>Verified: {state.preferences.phone}</p>}
+    <form onSubmit={e=>{e.preventDefault();void control({operation:'verify_phone',phone,consent});}}><label>Personal mobile number<input type="tel" autoComplete="tel" value={phone} placeholder="+15551234567" onChange={e=>setPhone(e.target.value)} required/></label><label className="assistant-chat-check"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} required/>Send a verification code to my number. I can enable alerts after verifying.</label><button type="submit" className="dashboard-secondary-button" disabled={busy||!consent||!state.smsAvailable}>Text verification code</button></form>
+    {challenge&&<form onSubmit={e=>{e.preventDefault();void control({operation:'confirm_phone',id:challenge,code});}}><label>Six-digit code<input inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={e=>setCode(e.target.value)} required/></label><button type="submit" className="dashboard-secondary-button" disabled={busy}>Verify number</button></form>}
+    {!state.smsAvailable&&<p>SMS alerts need the business messaging connection enabled.</p>}
+   </section>
+   <form onSubmit={save}><h3>When to notify me</h3><label className="assistant-chat-check"><input type="checkbox" checked={preferences!.smsEnabled} disabled={!state.preferences.verified||!state.smsAvailable} onChange={e=>preference('smsEnabled',e.target.checked)}/>Text me when my assistant needs review or attention</label><label className="assistant-chat-check"><input type="checkbox" checked={preferences!.completions} onChange={e=>preference('completions',e.target.checked)}/>Include completed work</label><label>Time zone<input value={preferences!.timezone} onChange={e=>preference('timezone',e.target.value)} placeholder="America/New_York" required/></label><label>Quiet hours start<input type="time" value={preferences!.quietStart} onChange={e=>preference('quietStart',e.target.value)} required/></label><label>Quiet hours end<input type="time" value={preferences!.quietEnd} onChange={e=>preference('quietEnd',e.target.value)} required/></label><p>Matching start and end times disables quiet hours. Alerts are grouped, with at most 10 texts per employee and 50 company-wide in 24 hours. All updates stay here. Reply STOP to opt out; SMS replies do not control the assistant.</p><button type="submit" className="dashboard-primary-button" disabled={busy}>Save notification settings</button></form>
+  </div>}
+  <div className="assistant-chat-settings"><section><h3>Recent assignments</h3>{!state.work.length?<p>No assignments yet. Start a conversation above.</p>:state.work.map(w=><article className="assistant-item" key={w.id}><h4><a href={'/dashboard/assistant?thread='+w.threadId}>{w.title}</a></h4><p>{w.status.replaceAll('_',' ')} · {new Date(w.createdAt).toLocaleString()}</p>{w.reviewUrl&&<a href={w.reviewUrl}>Review proposed change</a>}{['queued','running'].includes(w.status)&&<button className="dashboard-secondary-button" disabled={busy} onClick={()=>void control({operation:'stop',id:w.id,threadId:w.threadId})}>Stop work</button>}</article>)}</section>
+   <section><h3>Notifications</h3>{!state.notifications.length?<p>Updates will appear here when work finishes or needs your review.</p>:state.notifications.map(n=><article className="assistant-item" key={n.id}><h4><a href={n.url} onClick={()=>void request({operation:'read',id:n.id}).catch(()=>undefined)}>{n.title}</a></h4><p>{n.resolved?'Resolved':n.read?'Read':'New'} · {new Date(n.createdAt).toLocaleString()}{n.delivery?' · '+(n.delivery==='suppressed'?'Included in grouped alert or suppressed':n.delivery):''}</p>{!n.read&&<button className="dashboard-secondary-button" disabled={busy} onClick={()=>void control({operation:'read',id:n.id})}>Mark read</button>}</article>)}<p>Accepted means the provider accepted the alert; it does not confirm you read it. Uncertain sends are not repeated automatically.</p></section></div>
+  </>}
+ </section>;
+}
