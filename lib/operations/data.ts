@@ -49,7 +49,7 @@ export async function listLeads(
   const requestedSource = Array.isArray(input.source) ? input.source[0] : input.source;
   const source = ["facebook", "website", "manual", "smart_card"].includes(requestedSource || "") ? requestedSource! : "all";
   const requestedStatus = Array.isArray(input.status) ? input.status[0] : input.status;
-  const status = leadStatuses.includes(requestedStatus as (typeof leadStatuses)[number]) ? requestedStatus! : "all";
+  const status = requestedStatus === "active" || leadStatuses.includes(requestedStatus as (typeof leadStatuses)[number]) ? requestedStatus! : "all";
   const page = pageNumber(input.page);
   const offset = (page - 1) * PAGE_SIZE;
   const values: unknown[] = [context.workspace.id];
@@ -57,7 +57,9 @@ export async function listLeads(
 
   if (source !== "all") { values.push(source); conditions.push(`lead.source = $${values.length}`); }
 
-  if (status !== "all") {
+  if (status === "active") {
+    conditions.push("lead.status IN ('new', 'qualified', 'proposal')");
+  } else if (status !== "all") {
     values.push(status);
     conditions.push(`lead.status = $${values.length}`);
   }

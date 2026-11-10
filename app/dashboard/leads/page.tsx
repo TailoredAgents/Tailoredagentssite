@@ -29,7 +29,8 @@ export default async function LeadsPage({
   }>;
 }) {
   const context = await requireDashboardContext();
-  const leads = await listLeads(context, await searchParams);
+  const filters = await searchParams;
+  const leads = await listLeads(context, { ...filters, status: filters.status ?? "active" });
 
   return (
     <>
@@ -83,6 +84,7 @@ export default async function LeadsPage({
               name="status"
               defaultValue={leads.status}
             >
+              <option value="active">Active prospects</option>
               <option value="all">All statuses</option>
               {leadStatuses.map((status) => (
                 <option value={status} key={status}>
@@ -93,7 +95,7 @@ export default async function LeadsPage({
           </label>
           <label><Filter size={15} /><select aria-label="Filter prospects by source" name="source" defaultValue={leads.source}><option value="all">All sources</option><option value="facebook">Facebook / Instagram</option><option value="website">Website</option><option value="manual">Added manually</option><option value="smart_card">Smart Cards</option></select></label>
           <button type="submit">Apply filters</button>
-          {leads.q || leads.status !== "all" || leads.source !== "all" ? (
+          {leads.q || leads.status !== "active" || leads.source !== "all" ? (
             <Link href="/dashboard/leads">Clear</Link>
           ) : null}
         </form>
@@ -104,7 +106,7 @@ export default async function LeadsPage({
               <UsersRound size={15} />
               {leads.total} prospect{leads.total === 1 ? "" : "s"}
             </span>
-            <small>Newest first</small>
+            <small>{leads.status === "active" ? "New, Qualified, and Proposal · Newest first" : "Newest first"}</small>
           </div>
           <div className="dashboard-data-table dashboard-leads-table">
             <div className="dashboard-data-head">
@@ -167,7 +169,9 @@ export default async function LeadsPage({
                 <UsersRound size={21} />
                 <strong>No prospects match this view</strong>
                 <p>
-                  {context.role === "viewer"
+                  {leads.status === "active"
+                    ? "Choose All statuses to include Won, Lost, and Archived records."
+                    : context.role === "viewer"
                     ? "Prospects from referrals, connections, outreach, and inquiries will appear here."
                     : "Add a prospect above, whether you met them through a connection, referral, or inquiry."}
                 </p>
