@@ -1,3 +1,4 @@
+import { DiscoveryPanel } from "@/components/relationships/discovery-panel";
 import { RecordFacts } from "@/components/dashboard/record-facts";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -29,6 +30,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
         <nav className="workspace-section-links" aria-label="Client sections"><a href="#client-contacts">Contacts</a><a href="#client-assets">Sites & projects</a><a href="#client-settings">Account details</a></nav>
         <div className="dashboard-record-grid">
           <div className="dashboard-record-main">
+            <DiscoveryPanel context={context} target={{kind:"client",id}} />
             <section id="client-contacts" className="dashboard-panel">
               <div className="dashboard-panel-heading"><div><span>People</span><h2>Contacts</h2></div><small>{client.contacts.length}</small></div>
               <div className="dashboard-card-list">

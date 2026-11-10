@@ -4,7 +4,7 @@ import {factoryStorageConfiguration} from "./build-config";
 
 export type FactoryStorage={put(key:string,bytes:Uint8Array,contentType:string):Promise<void>;get(key:string,maximumBytes?:number):Promise<Uint8Array>;deletePrefix(prefix:string):Promise<void>};
 const maximumArtifactBytes=64_000_000;
-const keyPattern=/^factory\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/[a-zA-Z0-9_./-]+$/;
+const keyPattern=/^(?:factory\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/[a-zA-Z0-9_./-]+|meetings\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/audio\/(?:recording\.(?:wav|mp3|m4a|webm))?)$/;
 export function validFactoryObjectKey(key:string){
   if(!keyPattern.test(key)||key.length>500||key.includes("//")||key.split("/").some(p=>p==="."||p===".."))throw new Error("Invalid website storage path.");
   return key;
@@ -12,7 +12,7 @@ export function validFactoryObjectKey(key:string){
 function validCleanupScope(prefix:string){
   validFactoryObjectKey(prefix);
   // Only a complete build directory or an exact uploaded image may be removed.
-  if(!/^factory\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/(?:[0-9a-f-]{36}\/|uploads\/[0-9a-f-]{36}\.(?:png|jpg|webp))$/.test(prefix))throw new Error("Invalid website cleanup scope.");
+  if(!/^(?:factory\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/(?:[0-9a-f-]{36}\/|uploads\/[0-9a-f-]{36}\.(?:png|jpg|webp))|meetings\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/audio\/)$/.test(prefix))throw new Error("Invalid website cleanup scope.");
 }
 function validMaximumBytes(value:number){
   if(!Number.isSafeInteger(value)||value<1||value>maximumArtifactBytes)throw new Error("Invalid website artifact size limit.");

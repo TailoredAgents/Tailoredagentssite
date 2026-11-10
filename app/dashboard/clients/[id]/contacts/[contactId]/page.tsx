@@ -1,3 +1,4 @@
+import { DiscoveryPanel } from "@/components/relationships/discovery-panel";
 import { PhoneNumbers } from "@/components/conversations/phone-numbers";
 import { getConversationRecipient } from "@/lib/conversations/recipients";
 import type { Metadata } from "next";
@@ -26,6 +27,7 @@ export default async function ContactPage({ params }: { params: Promise<{ id: st
         <Link className="dashboard-back-link" href={`/dashboard/clients/${id}`}><ArrowLeft size={14} />Back to client</Link>
         <section className="dashboard-page-heading dashboard-page-heading-compact"><div><span>Contact record</span><h1>{contact.name}</h1><p>Update the relationship details stored for this client contact.</p></div></section>
         <section className="dashboard-panel"><div className="dashboard-panel-heading"><div><span>Contact</span><h2>Profile details</h2></div></div><OperationForm disabled={!mutable} action={saveContactAction} submitLabel="Save contact"><fieldset disabled={!mutable} className="dashboard-form-grid dashboard-form-grid-two"><input type="hidden" name="contactId" value={contact.id} /><input type="hidden" name="clientId" value={contact.client_id} /><label className="dashboard-field"><span>Name</span><input name="name" defaultValue={contact.name} required minLength={2} maxLength={140} /></label><label className="dashboard-field"><span>Title</span><input name="title" defaultValue={contact.title || ""} maxLength={120} /></label><label className="dashboard-field"><span>Email</span><input name="email" type="email" defaultValue={contact.email || ""} maxLength={254} /></label><label className="dashboard-field"><span>Phone</span><input name="phone" type="tel" defaultValue={contact.phone || ""} maxLength={40} /></label><label className="dashboard-check"><input type="checkbox" name="isPrimary" defaultChecked={contact.is_primary} /><span>Primary contact</span></label></fieldset></OperationForm></section>
+        <DiscoveryPanel context={context} target={{kind:"contact",id:contactId}}/>
         {phoneRecipient ? <section className="dashboard-panel dashboard-detail-card"><PhoneNumbers recipient={phoneRecipient} readOnly={!mutable}/></section> : null}
       </div>
     </>

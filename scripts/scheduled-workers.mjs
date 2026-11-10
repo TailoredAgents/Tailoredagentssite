@@ -26,6 +26,9 @@ export async function runScheduledWorkers(env, { fetcher = fetch, now = Date.now
     if (failed) throw new Error(`${name}: some work needs review; see the dashboard.`);
   }
   const tasks = [lane("Reporting", env.SEARCH_CONSOLE_SYNC_URL?.trim(), env.SEARCH_CONSOLE_SYNC_SECRET?.trim(), "/api/cron/search-console", 110_000)];
+  // Reuse the existing scheduled job and private worker credential. Meeting
+  // payments remain off until an owner sets a database allowance.
+  if (env.MEETING_WORKER_ENABLED !== "false") tasks.push(lane("Meetings", "https://www.tailoredagents.com/api/cron/meetings", env.SEARCH_CONSOLE_SYNC_SECRET?.trim(), "/api/cron/meetings", 175_000));
   // Omit only the SEO URL to pause this lane during rollback; reporting continues.
   if (env.SEO_WORKER_URL?.trim()) tasks.push(lane("SEO", env.SEO_WORKER_URL.trim(), env.SEO_WORKER_SECRET?.trim(), "/api/cron/seo", 90_000));
   // Factory planning is independent of reporting/SEO. Omitting its URL pauses

@@ -1,6 +1,6 @@
 import {it,expect,vi} from "vitest";
 import {runScheduledWorkers} from "../../scripts/scheduled-workers.mjs";
-const env={SEARCH_CONSOLE_SYNC_URL:"https://www.tailoredagents.com/api/cron/search-console",SEARCH_CONSOLE_SYNC_SECRET:"r".repeat(32),SEO_WORKER_URL:"https://www.tailoredagents.com/api/cron/seo",SEO_WORKER_SECRET:"s".repeat(32)};
+const env={MEETING_WORKER_ENABLED:"false",SEARCH_CONSOLE_SYNC_URL:"https://www.tailoredagents.com/api/cron/search-console",SEARCH_CONSOLE_SYNC_SECRET:"r".repeat(32),SEO_WORKER_URL:"https://www.tailoredagents.com/api/cron/seo",SEO_WORKER_SECRET:"s".repeat(32)};
 it("attempts SEO even when reporting fails and retains redirect refusal",async()=>{
   const fetcher=vi.fn(async (url: URL, _options: RequestInit)=>new Response(JSON.stringify({ok:true,more:false}),{status:url.pathname.endsWith('/seo')?200:302}));
   expect(await runScheduledWorkers(env,{fetcher,log:()=>{}})).toBe(false);
@@ -48,4 +48,10 @@ it("uses the shared cron secret for planning and refuses other destinations", as
   fetcher.mockClear();
   expect(await runScheduledWorkers({...env, FACTORY_WORKER_URL:"https://example.test/api/cron/factory"}, {fetcher,log})).toBe(false);
   expect(fetcher).toHaveBeenCalledTimes(2);
+});
+
+it("runs the authenticated meeting lane independently and can pause it",async()=>{
+ const fetcher=vi.fn(async()=>Response.json({ok:true,more:false}));
+ expect(await runScheduledWorkers({...env,MEETING_WORKER_ENABLED:undefined},{fetcher,log:()=>{}})).toBe(true);
+ expect(fetcher).toHaveBeenCalledTimes(3);
 });

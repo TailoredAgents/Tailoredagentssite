@@ -18,16 +18,16 @@ export function AssistantChat(){
  const router=useRouter();
  const [state,setState]=useState<ChatState|null>(null),[thread,setThread]=useState<string>(),[message,setMessage]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
  const [mode,setMode]=useState('review'),[conversations,setConversations]=useState(true),[budget,setBudget]=useState('25'),[settings,setSettings]=useState(false);
- const [capabilities,setCapabilities]=useState<ChatCapabilities>({research:false,sms:false,email:false,calls:false,routines:false,notificationNumberId:''});
+ const [capabilities,setCapabilities]=useState<ChatCapabilities>({meetings:false,research:false,sms:false,email:false,calls:false,routines:false,notificationNumberId:''});
  const currentThread=useRef<string|undefined>(undefined),bottom=useRef<HTMLDivElement>(null);
  const load=useCallback(async(id?:string)=>{
   try{const next=await request(undefined,id);if(currentThread.current===id){setState(next);setError('');}}
   catch(e){if(currentThread.current===id)setError(e instanceof Error?e.message:'Unable to load chat.');}
   finally{if(currentThread.current===id)setLoading(false);}
  },[]);
- useEffect(()=>{void load();},[load]);
+ useEffect(()=>{const id=new URLSearchParams(window.location.search).get('thread');if(id&&/^[0-9a-f-]{36}$/i.test(id)){currentThread.current=id;setThread(id);void load(id);}else void load();},[load]);
  const accessKey=JSON.stringify(state?.connection);
- useEffect(()=>{if(state?.connection){setMode(state.connection.mode);setConversations(state.connection.conversations);setCapabilities({research:state.connection.research,sms:state.connection.sms,email:state.connection.email,calls:state.connection.calls,routines:state.connection.routines,notificationNumberId:state.connection.notificationNumberId});}},[accessKey]);
+ useEffect(()=>{if(state?.connection){setMode(state.connection.mode);setConversations(state.connection.conversations);setCapabilities({meetings:state.connection.meetings??false,research:state.connection.research,sms:state.connection.sms,email:state.connection.email,calls:state.connection.calls,routines:state.connection.routines,notificationNumberId:state.connection.notificationNumberId});}},[accessKey]);
  useEffect(()=>{if(state)setBudget(String(state.monthlyLimit||25));},[state?.monthlyLimit]);
  const running=state?.turns.find(t=>t.status==='running'||t.status==='queued');
  useEffect(()=>{if(!thread||(!running&&!busy))return;const timer=setInterval(()=>void load(thread),2500);return()=>clearInterval(timer);},[thread,running?.id,busy,load]);
@@ -55,6 +55,7 @@ export function AssistantChat(){
    <form onSubmit={e=>{e.preventDefault();void control({operation:'connect',mode:state.viewer?'read':mode,conversations,...capabilities,notificationNumberId:mode!=='read'&&conversations&&capabilities.sms?capabilities.notificationNumberId:''});}}>
     <h3>Your access</h3><label>How should the assistant work?<select value={state.viewer?'read':mode} disabled={state.viewer||busy} onChange={e=>setMode(e.target.value)}><option value="read">Read and plan only</option><option value="review">Prepare changes for my review</option><option value="direct">Make changes when I ask</option></select></label>
     <label className="assistant-chat-check"><input type="checkbox" checked={conversations} onChange={e=>setConversations(e.target.checked)}/>Use customer conversations I’m allowed to access</label>
+    <label className="assistant-chat-check"><input type="checkbox" checked={capabilities.meetings??false} onChange={e=>setCapabilities(c=>({...c,meetings:e.target.checked}))}/>Read my private meetings and team-shared meeting transcripts</label>
     {([['research','Research the public web and run sandbox calculations'],['sms','Send customer texts (standard SMS charges)'],['email','Prepare emails for my exact review before sending'],['calls','Connect calls through my saved employee phone (standard calling charges)'],['routines','Run recurring work while I’m away']] as const).map(([key,label])=><label key={key} className="assistant-chat-check"><input type="checkbox" checked={capabilities[key]} disabled={key!=='research'&&(state.viewer||mode==='read'||(['sms','email','calls'].includes(key)&&!conversations))} onChange={e=>setCapabilities(c=>({...c,[key]:e.target.checked}))}/>{label}</label>)}
     {capabilities.sms&&conversations&&mode!=='read'&&<label>Automatically text customers when the assistant books, moves or cancels a consultation<select value={capabilities.notificationNumberId} onChange={e=>setCapabilities(c=>({...c,notificationNumberId:e.target.value}))}><option value="">Choose a sending number</option>{state.numbers.map(n=><option key={n.id} value={n.id}>{n.phone}</option>)}</select><small>Required for assistant booking changes. Calendar’s other manual changes do not send these texts.</small></label>}
     <p>Work continues after you close the page. Access lasts for this sign-in; expired or revoked access pauses routines. Reconnect, then resume them below. External apps need individual connections and are not enabled yet.</p>

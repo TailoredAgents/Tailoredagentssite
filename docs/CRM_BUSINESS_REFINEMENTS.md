@@ -106,3 +106,11 @@ npm run typecheck
 ```
 
 Build and test in a clean verification checkout without production `.env` files; keep OpenAI/Resend credentials absent and SMS/call analysis disabled. The seed command resets only the named test database. This record establishes local readiness, not production acceptance; verify the exact commit's Render deployment after pushing. Meeting Inbox, structured attribution and Omi remain planned, not deployed capabilities.
+
+## Second increment — Meeting Intelligence and structured relationships
+
+November 10, 2026: Austin authorized the complete implementation and a separate **$10/month** OpenAI meeting allowance. The first-increment/deferred sections above describe the earlier release; this increment implements structured discovery, persistent introductions, separate client account management, independent Meeting Inbox, authenticated Omi intake and explicitly permissioned assistant meeting reads.
+
+See [Meeting Intelligence implementation, deployment and acceptance record](MEETING_INTELLIGENCE.md) for the current source of truth. Manual audio upload, privacy, review, linking/unlinking, deliberate sparse prospect creation, retention and deletion are implemented. Uploads are sent in bounded 1 MB requests; finalization assembles at most 24 MB. Private audio reuses the existing storage service's authenticated object endpoint, never the public preview resolver. AI records retained request reservations and stage attempts; this initial release does not offer word timestamps, speaker diarization or provider invoice reconciliation.
+
+Physical Omi/free-plan/background/offline behavior and live OpenAI accuracy remain explicit acceptance checks. Neither a synthetic webhook test nor a deployment makes those complete. Assistant reads need a new `meetings:read` consent; communication and CRM mutation permissions stay unchanged. No commission or revenue-share calculation is implemented.

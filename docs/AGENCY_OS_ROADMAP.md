@@ -4,6 +4,8 @@ Updated October 24, 2026. This is the active implementation sequence authorized 
 
 ## Current development resume point
 
+**Meeting Intelligence and relationships, November 10:** Structured discovery, referral introductions, separate client account management, private independent recording review, authenticated Omi raw-audio intake and optional assistant meeting reads are implemented in the second CRM increment. Austin approved a separate **$10/month** meeting allowance. Deployment/activation evidence and physical-device acceptance are tracked in [the meeting runbook](MEETING_INTELLIGENCE.md); do not infer physical Omi or live transcription acceptance from software tests. Existing communications, website approvals and commission boundaries remain unchanged.
+
 **Business direction, November 10:** Tailored Agents is prioritizing custom AI agents, workflow automation, integrations and ongoing managed support, based in Georgia. Commercial insurance and freight brokerages/3PL are the first campaign focuses. Website creation remains an optional service and sales tool.
 
 **Relationship-led CRM refinement, November 10:** The first increment updates sales wording, new opportunity/project defaults and optional discovery-note guidance within the existing screens and schema. Preserve all stages, existing records, website/SEO capabilities and concurrent assistant work. [Assessment and phased plan](CRM_BUSINESS_REFINEMENTS.md) separates these small changes from structured discovery, durable referral attribution, distinct sales/account responsibilities, an independent manual Meeting Inbox, and later verified Omi/assistant integration. Referral notes do not establish compensation; Omi ingestion and meeting processing are not implemented or enabled by this increment.

@@ -11,6 +11,7 @@ import "./dashboard.css";
 import "./inbox/voice.css";
 import "./polish.css";
 import "./theme.css";
+import "./meetings.css";
 
 export const metadata: Metadata = {
   title: { default: "Dashboard", template: "%s — Tailored Agents Dashboard" },

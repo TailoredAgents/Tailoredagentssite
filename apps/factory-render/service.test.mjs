@@ -62,6 +62,20 @@ test("actual HTTP roundtrip preserves bytes, maximum bounds, empty files and mis
   assert.equal(await (await fetch(f.object(`${prefix}empty.txt`, 0), { headers: bearer })).text(), "");
 });
 
+test("meeting audio stays private and cannot enter the public preview namespace", async t => {
+  const f = await fixture(t);
+  const audioPrefix = `meetings/${workspace}/${project}/audio/`;
+  const audioKey = `${audioPrefix}recording.wav`;
+  assert.equal((await f.put("private meeting", audioKey)).status, 204);
+  assert.equal((await fetch(f.object(audioKey))).status, 401);
+  assert.equal(await (await fetch(f.object(audioKey), { headers: bearer })).text(), "private meeting");
+  for (const publicPath of [`/${audioKey}`, `/p/${token}/recording.wav`, `/p/${token}/../../${audioKey}`]) assert.equal((await fetch(f.origin + publicPath)).status, 404);
+  assert.equal((await f.remove(`meetings/${workspace}/${project}/`)).status, 400);
+  assert.equal((await f.put("not audio", `${audioPrefix}index.html`)).status, 400);
+  assert.equal((await f.remove(audioPrefix)).status, 204);
+  assert.equal((await fetch(f.object(audioKey), { headers: bearer })).status, 404);
+});
+
 test("rejects traversal, malformed keys and overly broad cleanup without touching neighbors", async t => {
   const f = await fixture(t);
   await f.put();

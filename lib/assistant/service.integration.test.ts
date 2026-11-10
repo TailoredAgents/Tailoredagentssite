@@ -53,6 +53,19 @@ describe.skipIf(!url)('Operations OAuth and execution integration',()=>{
   await pool.query("UPDATE workspace_memberships SET role='owner',status='active' WHERE user_id=$1",[owner.user.id]);
   await pool.query(`INSERT INTO "session"(id,"userId",token,"expiresAt") VALUES('owner-session',$1,'synthetic-session-token',now()+interval '2 days') ON CONFLICT(id) DO UPDATE SET "expiresAt"=EXCLUDED."expiresAt"`,[owner.user.id]);
  });
+ it('requires separate meeting consent, filters tools and enforces private meeting ownership',async()=>{
+  const id=randomUUID();await pool.query("INSERT INTO meetings(id,workspace_id,owner_user_id,title,source,status,transcript) VALUES($1,$2,$3,'Private discovery','upload','review','Private fixture transcript')",[id,workspace,other.user.id]);
+  const ordinary=await connection(['operations:read']);
+  const denied=await rpc(ordinary.tokens.access_token,'tools/call',{name:'get_meeting',arguments:{id}});expect(await denied.text()).not.toContain('Private fixture transcript');
+  const granted=await connection(['operations:read','meetings:read']);
+  const tool=readTools.find(t=>t.name==='get_meeting_transcript')!;expect(tool.scopes).toEqual(['meetings:read']);
+  await expect(tool.run(granted.p,{id,offset:0})).rejects.toThrow('unavailable');
+  await pool.query("UPDATE meetings SET visibility='team' WHERE id=$1",[id]);
+  const before=(await pool.query('SELECT updated_at FROM meetings WHERE id=$1',[id])).rows[0].updated_at;
+  expect(await tool.run(granted.p,{id,offset:0})).toMatchObject({text:'Private fixture transcript',complete:true,nextOffset:null});
+  expect((await pool.query('SELECT updated_at FROM meetings WHERE id=$1',[id])).rows[0].updated_at).toEqual(before);
+  await pool.query('DELETE FROM meetings WHERE id=$1',[id]);
+ });
  afterAll(async()=>{await pool?.end();delete (globalThis as {tailoredAgentsDatabasePool?:Pool}).tailoredAgentsDatabasePool;vi.unstubAllEnvs();});
  it('binds OAuth to exact callback, resource, identity and scopes; stores only token hashes',async()=>{
   const c=await connection();expect(c.location.searchParams.get('state')).toBe('test-state');expect(c.p.context.user.id).toBe(owner.user.id);expect(c.p.scopes).toEqual(allScopes);

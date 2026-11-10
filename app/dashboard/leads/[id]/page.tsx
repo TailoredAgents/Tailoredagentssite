@@ -1,3 +1,4 @@
+import { DiscoveryPanel } from "@/components/relationships/discovery-panel";
 import { PhoneNumbers } from "@/components/conversations/phone-numbers";
 import { getConversationRecipient } from "@/lib/conversations/recipients";
 import { leadDisplayName, leadCompanyName, leadBusinessName } from "@/lib/operations/format";
@@ -98,7 +99,8 @@ export default async function LeadPage({
         <div className="dashboard-record-contact-action" style={{ display: "flex", flexWrap: "wrap", gap: ".65rem" }}><Link className="dashboard-primary-button" href={`/dashboard/inbox?lead=${lead.id}`}><MessageSquareText size={16} aria-hidden="true" />Contact prospect</Link>{websitePlan ? <Link className="dashboard-secondary-button" href={`/dashboard/sales/factory/${websitePlan.id}`}><Sparkles size={16} aria-hidden="true" />Open website project</Link> : mutable ? <StartFactoryButton leadId={lead.id} /> : null}{websitePlan?.latestBuild?.previewUrl ? <a className="dashboard-secondary-button" href={websitePlan.latestBuild.previewUrl} target="_blank" rel="noreferrer">View website</a> : null}</div>
         <RecordFacts facts={[{label:"Prospect owner",value:lead.ownerName || "Unassigned"},{label:"Service interest",value:lead.interest || "General inquiry"},{label:"Follow-up",value:lead.nextActionAt ? formatOperationalDate(lead.nextActionAt,{dateOnly:true}) : "Not scheduled"}]} />
         <div className="dashboard-record-grid">
-          <div className="dashboard-record-main">{phoneRecipient ? <section className="dashboard-panel dashboard-detail-card"><PhoneNumbers recipient={phoneRecipient} readOnly={!mutable}/></section> : null}
+          <div className="dashboard-record-main">
+            <DiscoveryPanel context={context} target={{kind:"lead",id}} />{phoneRecipient ? <section className="dashboard-panel dashboard-detail-card"><PhoneNumbers recipient={phoneRecipient} readOnly={!mutable}/></section> : null}
             <section className="dashboard-panel dashboard-detail-card">
               <div className="dashboard-panel-heading">
                 <div>

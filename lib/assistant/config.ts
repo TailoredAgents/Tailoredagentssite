@@ -4,6 +4,7 @@ export const scopeLabels = {
  'operations:read': 'Read business records, calendar, reporting and integration status',
  'operations:write': 'Change business records, tasks, calendar and supported settings',
  'conversations:read': 'Read permitted customer conversations and call history',
+ 'meetings:read': 'Read your private meetings and meetings explicitly shared with your team',
  'conversations:send': 'Send text messages (standard messaging charges apply)',
  'mail:send': 'Prepare email sends for your review',
  'voice:send': 'Connect calls to your saved employee phone (calling charges apply)',

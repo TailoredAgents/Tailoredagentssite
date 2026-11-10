@@ -9,7 +9,7 @@ function run(url: string, responseStatus = 200) {
   return spawnSync(process.execPath, ["--input-type=module", "--eval", `
     import assert from "node:assert/strict";
     globalThis.fetch = async (url, options) => {
-      assert.equal(String(url), ${JSON.stringify(endpoint)});
+      assert.ok([${JSON.stringify(endpoint)}, "https://www.tailoredagents.com/api/cron/meetings"].includes(String(url)));
       assert.equal(options.method, "POST");
       assert.equal(options.redirect, "manual");
       assert.equal(options.headers.Authorization, "Bearer " + process.env.SEARCH_CONSOLE_SYNC_SECRET);
@@ -34,6 +34,7 @@ describe("deployed reporting command", () => {
     const result = run(endpoint);
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("Reporting: 0 checked; 0 need review.");
+    expect(result.stdout).toContain("Meetings: 0 checked; 0 need review.");
   });
 
   it("rejects an apex job URL before making a network request", () => {

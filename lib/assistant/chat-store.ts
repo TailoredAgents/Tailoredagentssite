@@ -20,10 +20,11 @@ export async function nativePrincipal(c:DashboardContext,sessionId:string):Promi
  if(!row)throw new AssistantError('connect_required','Enable your dashboard assistant to start chatting.',403);
  return principal(row);
 }
-export async function connectNative(c:DashboardContext,sessionId:string,mode:'read'|'review'|'direct',conversations:boolean,options:{research?:boolean;sms?:boolean;email?:boolean;calls?:boolean;routines?:boolean;notificationNumberId?:string}={}){
+export async function connectNative(c:DashboardContext,sessionId:string,mode:'read'|'review'|'direct',conversations:boolean,options:{meetings?:boolean;research?:boolean;sms?:boolean;email?:boolean;calls?:boolean;routines?:boolean;notificationNumberId?:string}={}){
  if(c.role==='viewer'&&mode!=='read')throw new AssistantError('read_only','Your account is read-only.',403);
  const scopes:AssistantScope[]=['operations:read','personal:read','memory:read','routines:read'];
  if(conversations)scopes.push('conversations:read');
+ if(options.meetings)scopes.push('meetings:read');
  if(mode!=='read')scopes.push('operations:write','personal:write','memory:write');
  if(options.research)scopes.push('research:use');
  if(options.notificationNumberId){if(mode==='read'||!options.sms||!conversations)throw new AssistantError('notification_setup','Enable text sending to use booking notifications.',409);await requireSmsNumber(c,options.notificationNumberId,true);}
@@ -76,7 +77,7 @@ export async function chatState(c:DashboardContext,sessionId:string,threadId?:st
  const [memories,routines,notifications]=connection?await Promise.all([searchMemories(connection),listRoutines(connection),connection.scopes.includes('conversations:read')?listBookingNotifications(connection):{items:[]}]):[{items:[]},{items:[]},{items:[]}];
  const notificationNumberId=connection?(await db.query('SELECT notification_number_id FROM assistant_grants WHERE id=$1',[connection.grantId])).rows[0]?.notification_number_id??'':'';
  return {numbers,memories:memories.items,routines:routines.items,notifications:notifications.items,threads:threads.rows.slice(0,100),hasMore:threads.rows.length>100,turns:turns.slice(0,100).reverse(),historyLimited:turns.length>100,
-  connection:connection?{mode:connection.directActions?'direct':connection.scopes.includes('operations:write')?'review':'read',paused:connection.writesPaused,conversations:connection.scopes.includes('conversations:read'),research:connection.scopes.includes('research:use'),sms:connection.scopes.includes('conversations:send'),email:connection.scopes.includes('mail:send'),calls:connection.scopes.includes('voice:send'),routines:connection.scopes.includes('routines:write'),notificationNumberId}:null,
+  connection:connection?{mode:connection.directActions?'direct':connection.scopes.includes('operations:write')?'review':'read',paused:connection.writesPaused,conversations:connection.scopes.includes('conversations:read'),meetings:connection.scopes.includes('meetings:read'),research:connection.scopes.includes('research:use'),sms:connection.scopes.includes('conversations:send'),email:connection.scopes.includes('mail:send'),calls:connection.scopes.includes('voice:send'),routines:connection.scopes.includes('routines:write'),notificationNumberId}:null,
   configured:!!process.env.OPENAI_API_KEY?.trim()&&process.env.ASSISTANT_CHAT_ENABLED!=='false'&&process.env.OPERATIONS_ASSISTANT_ENABLED!=='false',
   monthlyLimit:Number(settings.rows[0]?.monthly_limit_micros??0)/1000000,monthlyUsed:Number(settings.rows[0]?.used??0)/1000000,canManageBudget:['owner','admin'].includes(c.role),viewer:c.role==='viewer'};
 }
