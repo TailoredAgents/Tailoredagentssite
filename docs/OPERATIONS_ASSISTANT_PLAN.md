@@ -1,298 +1,257 @@
-# Tailored Agents Operations assistant — full implementation plan
+# Employee assistant: one delivery goal
 
-Status: **Implementation in progress. Connection, read tools, reviewed proposals, opt-in direct execution and private goals implemented; full phases 0–7 are not complete. Real ChatGPT connection and account reading are accepted; direct writes and renewal still need acceptance. No new routine or autonomous sending enabled.**
-Owner: Austin. Prepared November 2, 2026, America/New_York.
-Baseline reviewed: main `19daac8`, including the November 1 Mail and Eastern-time releases.
+Prepared November 10, 2026 for Austin, Devon, Jeffrey and the rest of Tailored Agents.
 
-## Current scope correction — November 10
+**Status: implementation plan. The work below is not delivered by this document.** This replaces the earlier overlapping phase lists; [the previous plan is archived](OPERATIONS_ASSISTANT_PLAN_ARCHIVE.md). Implemented behavior and verification remain in [setup and release notes](OPERATIONS_ASSISTANT_SETUP.md). The reviewed committed baseline is main `63dac95`, including assistant release `fab93f3`. Separate, uncommitted relationship and Meeting Inbox work was present during planning; coordinate with it rather than treating it as released or duplicating it.
 
-Austin explicitly excludes building/programming/deploying custom client AI systems and automation workflows. Those remain his work. This correction supersedes any broader delivery-automation ambitions below. The assistant handles company operations and operational research/calculations.
+## The single goal
 
-The current release adds durable queued chat, saved step recovery, explicit daily/weekday/weekly routines, searchable private memory/history, public web research, sandbox calculations, opted-in SMS, exactly reviewed new email, employee-connected phone calls, and automatic consultation texts with outbox receipts. See `OPERATIONS_ASSISTANT_SETUP.md` for implemented limits and verification. Session-bound authorization still expires; arbitrary external apps, uploaded-document execution, permanent recall and autonomous AI voice calls are not implemented. No routine or customer communication is activated merely by shipping these capabilities.
+Give every employee a dependable company assistant that can take an authorized assignment, keep working after the employee leaves, use permitted company information and documents, prepare useful files and communications, and notify the right employee when work finishes or needs attention.
 
-The older phased plan below is retained as historical planning, not a statement of current scope or availability.
+Deliver recommendations **1–5** under this goal. Employee **SMS alerts ship first** while the mobile app is not ready for push. Extend the existing iPhone app with native push, then make push the preferred channel for employees with a verified setup. SMS remains an explicitly selected fallback. Recommendation **6, external apps**, waits for Austin to identify the applications and tasks.
 
-## Updated owner direction — November 10: company-wide employee assistant
+The assistant supports selling and servicing AI agents, document automation and websites. Austin remains responsible for designing, programming and deploying custom client AI systems and workflows. The assistant may organize requirements, prepare documents and coordinate the work; it does not build those client systems.
 
-Austin's primary services are now AI agents and document automation, with websites as an additional service. The assistant must support the whole company and all permitted service types. Website Builder and SEO remain useful integrations, but completing their tool coverage is not a prerequisite for the core employee experience.
+The shared company AI allowance remains **$25/month**. Ordinary SMS/call charges remain separate. Existing grants, customer opt-outs, exact email approval, employee-connected calling, Website Builder approvals and independent budgets stay in force.
 
-The requested experience is for Austin, Devon, Jeffrey and other employees to sign in to their own dashboard profile and talk to an assistant that understands their work, plans with them and carries out authorized tasks. The implementation target is a native dashboard conversation surface; retain the external Operations connection as another way to reach the same business services. This section supersedes the website-first delivery priority and external-chat-only starting point below. It does not claim these new capabilities already exist.
+## What employees should experience
 
-### Current foundation and gaps
+An employee asks: “Review these discovery notes and documents, prepare a client brief and follow-up draft, and remind me if I have not acted tomorrow.”
 
-November 10 delivery: native dashboard chat, private saved conversations, explicit employee access, the existing business tools, action receipts, bounded multi-step turns and a separate $25/month shared allowance are implemented. Local database and browser verification are recorded in `OPERATIONS_ASSISTANT_SETUP.md`. Durable background jobs, editable long-term knowledge, uploaded-document execution and recurring routines remain outstanding; request-driven chat does not complete those phases.
+The assistant shows the saved assignment and its progress. It processes permitted files, cites the evidence, creates the brief as a downloadable file, and prepares the reply in the correct conversation. The employee can close the app. A short SMS, and later a push notification, links back to the work when review is needed. The employee reviews the exact recipients, message and attachment before sending. The assistant records the actual outcome and creates a real follow-up task when requested.
 
-- Existing: native employee chat and saved conversation history, account-scoped Operations tools, selected permissions, live identity checks, direct/reviewed actions, receipts, private goals, bounded turn progress/stop and a dashboard for connection controls.
-- Missing: editable personal preferences and shared company knowledge; durable multi-step delegated background work; uploaded-document analysis (custom client-system development is excluded).
-- Existing customer records, projects, tasks and permitted conversations can supply context. Private goals and channel permissions must remain private. Shared company knowledge must be deliberately shared rather than inferred from another employee's private chat.
-- Current Operations grants expire with their authorizing dashboard session. A background run must not silently bypass that expiration. Durable background authority needs its own explicit, revocable delegation, bounded permissions and live membership checks.
+Every employee has their own conversations, preferences and delegations. Shared company knowledge is deliberately published and permissioned. Changing a CRM association does not automatically share a private chat, recording or document.
 
-### Revised delivery order
+## Build on what exists
 
-1. **Talk to it inside the dashboard.** Add saved employee conversations, clear source links and existing operational tools under the signed-in employee's permissions. Preserve direct execution for authorized routine work and receipts showing actual outcomes. Do not require each employee to maintain an external ChatGPT connection for native chat.
-2. **Give it useful memory and planning.** Add editable personal preferences, explicit company/client knowledge, document attachments and saved task plans. Each plan records steps, owner, dependencies, progress and the evidence for completion. Distinguish a proposed task from an assigned task.
-3. **Let delegated work continue.** Add durable jobs with checkpoints, bounded retries, progress, stop/pause and cost accounting. Closing the page must not lose a job or duplicate an action. Expired or withdrawn authority must stop future side effects. Report uncertain outcomes instead of claiming success or retrying a send blindly.
-4. **Expand company delivery capabilities.** Support AI-agent discovery, requirements, implementation handoffs, testing and support; document extraction, field validation, output preparation and exception review; and existing website work. Actual document processing, code execution or agent deployment needs an implemented connector/runtime and tested results, not just generated instructions.
-5. **Add explicitly configured routines.** Daily preparation, project checks, follow-up queues and completion summaries can run on saved schedules or business events. Activate each with an owner, allowed actions, frequency and allowance. Preserve existing outbound-channel policies. Routine capability development does not itself authorize a new scheduled run.
-
-### Employee experience acceptance
-
-- Each employee can open Assistant in their dashboard, resume their own conversation and ask for a daily or customer brief with links to real records.
-- Tests prove that one employee cannot retrieve another employee's private chats, goals or restricted messages; shared client/project context follows existing workspace permissions.
-- A request such as "Create an onboarding plan for this AI-agent client and assign Devon the discovery follow-up" produces a saved, inspectable result with the correct owner and no duplicate tasks after retry.
-- A document workflow identifies the input version, extracted fields, uncertainties and resulting artifact; it does not invent missing values or claim a downstream system was updated without a receipt.
-- A background job survives a browser close and worker restart, checks current authority before further actions, respects its allowance, and can be stopped without blindly replaying work.
-- The UI distinguishes planning, working, waiting for input, completed, failed and uncertain outcomes. Employees can see what changed and why a task stopped.
-
-The first deliverable is native chat using the existing business services, not an unrestricted shell/browser account. Broader engineering and external application work should use scoped execution environments and explicit connectors. Provider/model selection and a new assistant reasoning allowance remain implementation/activation decisions; no new spend or unattended work is enabled by this document.
-
-## Updated owner direction — November 2
-
-Austin explicitly requested that the bot perform work without per-action approval. Implemented an opt-in direct execution mode, enabled once by the signed-in owner for a particular connection and its selected scopes. This supersedes this document’s default requirement to visit the dashboard for every supported mutation. Keep reviewed proposals available as an option, and keep scope/role/channel checks, stale-state checks, spending limits, idempotency, receipts and pause/revoke. Existing grants were consented for proposals and must not be silently upgraded. Direct mode does not waive approval requirements imposed by the external ChatGPT host or the separate Mail connection.
-
-## November 2 implementation checkpoint
-
-The first implementation adds `/api/mcp/operations` and `/dashboard/assistant`. Austin selected the existing ChatGPT bot connected to Tailored Agents Mail as the first client. Operations is a separate OAuth connection; it does not replace Mail or expand Mail permissions.
-
-Implemented in this increment:
-
-- Resource-bound OAuth authorization-code flow, S256 PKCE, dynamic client registration, rotating hashed refresh tokens, replay-family revocation, explicit scopes and live membership/account checks.
-- Business read tools across leads, clients, contacts, sites, projects, sales, permitted Inbox/call history, calendar, Smart Cards, Builder, sanitized SEO and integration/reporting data. Responses expose collection limits and source availability; oversized records fail explicitly instead of silently truncating.
-- Eight reviewed proposal types: private goals, create/update opportunities, internal sales notes, new follow-ups, mockup requests, conversation notes and time blocks. The bot cannot approve its own proposal. Exact content hashing, idempotency keys, owner-only review, expiry and receipts prevent duplicate execution; uncertain attempts are never automatically retried.
-- Private goals with owner/workspace isolation and revision checks; a phone-friendly Assistant page for connections, pause/revoke, review, receipts, read activity and goals.
-- Code-derived action/transport inventory in [OPERATIONS_ASSISTANT_COVERAGE.json](OPERATIONS_ASSISTANT_COVERAGE.json). Pending and partial rows remain real work, not completed handoffs. Run `node scripts/assistant/coverage.mjs --check` to detect inventory drift.
-- Audit metadata and retention. Customer content is removed from old action receipts after 90 days; receipt metadata remains for one year. Used refresh hashes remain until expiration to detect replay.
-
-Temporary connection constraint: Operations deliberately binds to the real dashboard sign-in used at consent and expires with it (currently up to 14 days). Sign-out, lost Mail identity access or suspended membership stops access. A separate long-lived identity delegation requires a reviewed Mail-side addition; no service credential may be used to impersonate a user. That work is still outstanding, and renewal acceptance remains outstanding. Austin confirmed the actual ChatGPT connection and account check worked after the consent fix. The Assistant UI states this limitation.
-
-The next increment extracts ten CRM/project mutations into shared services with live membership checks, revision-locked edits and human-readable review targets. Both dashboard forms and assistant tools use those services. Lead conversion/deletion remain separate.
-
-Calendar/task increment adds revision-checked task edits/completion, staff booking/rescheduling/cancellation, extra openings and block removal; public/staff races and sales appointment overlaps are tested.
-
-Communication increment adds separately consented, human-reviewed SMS with provider status receipts and revision-checked shared Inbox follow-up updates. Existing connections do not gain sending permission automatically.
-
-Call-task increment adds read/create/edit/complete proposals for transcript-backed follow-ups, preserving line access, eligible assignees and revision checks.
-
-Smart Card increment adds current-record reads and reviewed public profile edits, permanent link creation/reassignment/pause, and public-agent pause/resume without changing its allowance.
-
-Draft increment adds owned CRM email/text draft reads and reviewed saves, protecting newer edits from another device. Separate Mail app drafts remain in the Mail connection.
-
-Still pending: remaining settings and task coverage; reviewed shared Mail; call controls; full Builder/SEO mutations and portrait-upload tooling; personal preferences/commitments; durable routines; complete exports/reports and parity checks. Existing Mail sends, channel grants, build approvals and spend limits remain unchanged. See the coverage inventory and phases below.
-
-Verification and live deployment evidence are recorded in [Operations setup](OPERATIONS_ASSISTANT_SETUP.md). This checkpoint does not declare any phase with unmet live acceptance gates complete.
-
-## Product mandate
-
-Austin requested a fully built-out bot that can work across the business on his behalf, rather than a small read-only CRM integration. Build account-wide operational coverage: understand context, maintain records, coordinate people and projects, manage scheduling, prepare and execute authorized communications, operate existing website/SEO workflows, monitor failures, and track personal goals. Deliver it in verified increments without treating the first increment as the completed product.
-
-“Act as me” means a revocable delegate of the signed-in person. It never means a fabricated human identity, using another teammate's credentials, ignoring existing channel grants, or claiming work happened when it only produced a draft. Audit records must preserve both the authorizing user and the assistant that acted. Existing provider restrictions and host-client approval requirements still apply.
-
-This document is the implementation backlog. It does not grant new OAuth permissions, enable unattended sends, approve a particular website plan, spend additional money, or create scheduled jobs. No new runtime feature is claimed by this planning commit.
-
-## What is already available to build on
-
-| Area | Source of truth | Existing foundation / required adaptation |
+| Foundation | Current implementation | Remaining work in this goal |
 | --- | --- | --- |
-| Identity and roles | `lib/dashboard/data.ts`, `lib/dashboard/mail-identity.ts`, workspace memberships | Browser sessions and Mail-backed account checks exist. Add bearer-token delegated identity without manufacturing a browser session. |
-| Mail MCP | `apps/mail/src/lib/server/mcp*.ts`, `apps/mail/MCP_SETUP.md` | OAuth, owned-mail read/send/manage, drafts, attachment chunks, revocation and atomic sending limits. Preserve the separate Worker and ownership-only Mail MCP scope. Shared CRM mail has separate grants. |
-| Leads, clients, contacts, sites, projects | `lib/operations/data.ts`, `lib/operations/actions.ts` | Existing CRUD, project milestones, decisions and deliverables. Much mutation logic is embedded in browser server actions: extract shared, authorized services before exposing tools. |
-| Sales and calling lists | `lib/sales/data.ts`, `lib/sales/service.ts` | Opportunities, tasks, activity, imports, channel preferences, mockup queue and conversion. Add exhaustive cursor-based reads and typed adapters; don't turn capped dashboard lists into business-wide reports. |
-| Unified Inbox and customer memory | `lib/conversations/`, `lib/inbox/` | Channel-aware history, assignment, notes, source-backed briefs and drafts. Preserve per-mailbox/line grants and explicitly report unavailable sources. |
-| SMS and calls | `lib/sms/`, `lib/voice/` | Messaging, call control, voicemail, recordings, analysis and evidence-backed follow-up tasks. Provider state, consent, delivery outcomes and call-device prerequisites remain authoritative. |
-| Central calendar | `lib/booking/`, `lib/time.ts` | Daily 8 AM–7 PM Eastern availability, half-hour slots, two-hour notice, booked slots and CRM appointment conflicts. Add staff booking/rescheduling APIs through one shared transaction path. |
-| Smart Cards | `lib/smart-cards/`, `components/smart-cards/dashboard.tsx` | Profiles, permanent redirects, QR/artwork, inquiries, engagement and AI allowance. Extract settings mutations and add reporting with documented attribution. |
-| Website Builder | `lib/factory/`, `docs/WEBSITE_BUILDER_STANDARDS.md` | Planning/chat, exact human approval, bounded builds/repairs, previews, draft edits, artifacts and diagnostics. Expose staff operations, not internal worker claim/finish/lease APIs. |
-| SEO and reporting | `lib/seo/`, `lib/reporting/`, `lib/search-console/` | Reports, sync state, bounded SEO runs, reviewed metadata publication and rollback. Broader content publishing is not implemented merely by adding MCP. |
-| Integrations and introductions | `lib/meta/`, `lib/lead-intro/`, dashboard settings | Import status/retry, introductory-message queue and configuration. Report actual configured/live/disabled states; never activate a dormant campaign implicitly. |
-| Mobile access | `apps/ios/README.md` | Existing private companion is a possible dashboard surface. Verify approval links work there; it is not proof that the user's conversational bot supports this connection. |
-| New product work | No existing general goals/delegation/workflow subsystem established by this review | Add private goals, durable commitments, assistant preferences, permission policies, action receipts, scheduled workflows and the Assistant dashboard. |
+| Background chat | PostgreSQL queue, leases, saved responses, tool checkpoints; recovery through the existing five-minute cron; bounded turns | Durable assignments spanning bounded turns, explicit authority independent of browser sign-in, a work list, employee alerts and operational visibility |
+| Routines | Explicit daily/weekday/weekly schedules, pause/resume, private results | Longer-lived scoped delegation, event-triggered follow-up, useful templates and notifications |
+| Knowledge | Private saved facts and search across retained personal chats; permissioned business record tools | Uploaded document retrieval, published company knowledge, versioned sources and correction/removal |
+| Communications | Opted-in SMS, exactly reviewed new email, employee callback calls; existing Inbox has thread logic | Native chat replies, attachments, inline review, unified outcome display and short voice dictation |
+| Booking notices | Native assistant consultation changes atomically enqueue customer SMS | Reuse delivery discipline for employee alerts; retain the explicit limits of the current booking feature |
+| iPhone | Existing UIKit/WebKit app with Mail/Dashboard tabs and authenticated downloads | Native APNs registration, account/device binding, push handling, signing and physical-device validation |
+| Mail push | Separate Cloudflare Mail service has web-push subscriptions | Preserve it; web push is not proof that the native iPhone app supports APNs |
 
-## End-state coverage and authority
+Primary code: [assistant services](../lib/assistant/), [assistant UI](../components/assistant-chat.tsx), [Inbox](../lib/inbox/), [employee SMS alerts](../lib/sms/alerts.ts), [iPhone app](../apps/ios/README.md), [Mail push](../apps/mail/src/lib/server/push-notifications.ts). Keep the [code-derived capability inventory](OPERATIONS_ASSISTANT_COVERAGE.json) truthful as implementation changes.
 
-Every dashboard feature must appear in a maintained coverage manifest with one of: implemented tool, existing Mail tool, human handoff, separately scoped provider integration, or explicit product gap. No silent omissions and no generic SQL/shell/HTTP escape hatch in place of missing tools.
+## Delivery order
 
-| Work | Bot behavior to implement | Approval boundary |
-| --- | --- | --- |
-| Read/search/brief | Read all records the connected user can access, search across sources, prepare meeting/customer/project briefs | Delegated read scope; no repeated approval for each authorized read. Bulk export is separately controlled. |
-| Routine internal work | Create/update leads, contacts, notes, tasks, milestone records, drafts and user preferences; assign eligible teammates; mark work complete with a real outcome | Execute a clear user instruction within granted scope. Background changes require a saved, bounded workflow policy. Never turn inferred suggestions into commitments silently. |
-| Calendar | Inspect free/busy; book/reschedule/cancel; block time; show proposed changes in Eastern | Clear direct instruction can authorize a specific internal change. Ambiguous attendee/time or externally communicated commitments require concrete review. Sending a notification is a separate recorded action. |
-| Email/SMS | Draft/reply/forward, read attachments, maintain conversation work state; send reviewed content using an allowed identity | Preserve Mail's current approval-before-every-send and client write approval. Apply reviewed recipient/body/attachment binding to SMS. No wider autonomous outreach inferred from this plan. |
-| Calling | Prepare calls; initiate an authorized call on an available supported staff device; inspect/end own call; read permitted recordings/transcripts | Confirm recipient and initiating-device behavior. This is staff call control, not an AI voice impersonating Austin; autonomous voice conversations are a separate product. |
-| Website/SEO work | Research, plan, revise, inspect, queue eligible work, fetch artifacts, publish/rollback supported changes | Preserve exact human plan/version approval, cost ceilings, publication controls and bounded retry rules. One valid approval can cover its exact operation; don't ask again for identical approved content. |
-| Settings/admin | Inspect health/configuration; change ordinary preferences; prepare owner settings changes | Access expansion, credential handling, security controls, permanent deletion and changes to spending limits require the corresponding human action/review. Secrets never appear in tool output. |
-| Personal goals | Save goals, weekly targets, focus blocks, progress and preferences; link business work to goals | Private to the owner by default, even inside a shared workspace. Only explicitly shared goals enter team views. |
-| Recurring work | Check replies, deadlines, bookings, stalled leads, delivery blockers, imports and build failures | Explicitly saved schedule, scope, actions, limits and notification destination. Quiet when unchanged; no monitor created merely because a plan lists it. |
+These are milestones within one goal, not independent products or new agents.
 
-The assistant must explain when information or an operation is unavailable. It must not imply that owner status alone grants every teammate's private mail, that a generated draft was sent, or that an accepted provider request proves delivery.
-
-## Architecture decisions
-
-### Separate Operations resource, shared business services
-
-- Add a Node-runtime Streamable HTTP MCP endpoint to the existing Render application, proposed canonical resource `https://www.tailoredagents.com/api/mcp/operations`. Keep Mail MCP at its existing separate Worker endpoint. Final discovery URLs must match the deployed routing exactly.
-- Use the supported MCP SDK and schema library; inspect installed Next.js route documentation before implementation. No long-running execution inside an MCP HTTP request.
-- Proposed files: `lib/assistant/{auth,policy,registry,results,actions,audit}.ts`, `lib/assistant/tools/`, `app/api/mcp/operations/route.ts`, OAuth/discovery routes and `app/dashboard/assistant/`. Domain rules remain in their existing modules.
-- Browser actions and MCP adapters call the same context-aware services. Extract mutations from `lib/operations/actions.ts`, Smart Cards actions and other session-only entrypoints. Each service authorizes current membership, channel access and the object being changed; a TypeScript context type is not proof of authorization.
-- Existing public Smart Card AI stays isolated. Never give anonymous visitors internal Operations tools, private goals, staff credentials or unrestricted CRM search.
-- Every tool has a narrow input schema, useful description, explicit read/write/destructive annotations, output schema, structured content and a compatible text representation. Advertise only permitted capabilities. Hints assist clients; they do not enforce authorization.
-- Use domain-specific tools and small composite brief/report tools. Keep related families discoverable without dumping every record and every tool into every model request. Test actual client discovery rather than assuming tool filtering works identically across products.
-
-### Delegated authentication
-
-Implement resource-specific Operations OAuth in the Render/PostgreSQL app using the established Mail protocol design and existing dashboard login for consent. This avoids forwarding a Mail bearer token into a different resource or broadening Mail's existing grants. Share reviewed pure protocol utilities where appropriate; do not blindly copy a D1 implementation into PostgreSQL.
-
-Requirements:
-
-1. Protected-resource metadata, authorization-server metadata and canonical HTTPS resource/issuer; authorization code + PKCE S256; exact registered redirect URIs; explicit scopes and selected workspace on consent.
-2. DCR or explicitly registered clients using the path proven by the existing Mail client. Do not enable arbitrary CIMD URL fetching without a separately verified safe implementation. Follow the exact callback shown by the real client.
-3. Hashed bearer/refresh credentials; short-lived access tokens, rotating refresh tokens, replay detection and revocable grant families. No pasted owner API key or raw database credentials in a bot conversation.
-4. Bind immutable subject, workspace, resource, client and grant; resolve the existing verified Mail/dashboard identity. Never trust a model-supplied user ID/email/role as authority or auto-provision privileged membership.
-5. Recheck revocation, current active identity/membership, scopes and object/channel grants on every call and immediately before queued side effects. Define a bounded, fail-closed Mail account-state check for this non-browser path; revoked/disabled accounts cannot retain stale delegated access.
-6. OAuth scopes by domain: core read/search, CRM write, conversations read/manage/send, calendar read/write, projects read/write, cards read/write, builder read/write/execute, SEO read/write/publish, reports read/export, goals read/write, workflows manage, settings read/write. Privileged approvals are distinct from granting a write scope.
-7. Preserve the existing Mail connection, 100-per-user-per-Eastern-day assistant send limit and its send/manage consent. No historical tokens silently gain Operations or shared-mail access.
-8. Austin can disconnect one assistant, revoke a domain or stop all assistant writes immediately. Jeffrey and Devon get independently consented identities and their own effective permissions when they connect.
-
-Official references reviewed: [OpenAI MCP authentication](https://developers.openai.com/plugins/build/auth) and [MCP connections through the Responses API](https://developers.openai.com/api/docs/guides/tools-connectors-mcp). The API guide supports transport, tool filtering and approval design; it does not prove the user's current phone/chat surface supports every tool. Validate the actual connected bot early.
-
-### Action receipts and durable execution
-
-- Reads return canonical IDs/links, source dates, fetched time, timezone, completeness/cursor and unavailable-source reasons. Bounded text/attachment chunks must indicate continuation and missing content explicitly.
-- Mutations require a stable idempotency key, an expected record revision where relevant, validation and a saved result receipt. Retrying cannot duplicate a task, booking, email, paid build or import.
-- For reviewed actions, prepare the exact proposal first: actor, recipients, content, attachment hashes, objects/revisions, cost ceiling and expiry. A human-authenticated approval records those details. Model-supplied `approved:true` is never proof. Approval consumption and execution must be atomic or durably reconciled.
-- Initially use authenticated dashboard approval links when the client cannot supply verifiable approval evidence. Support host approvals where the implementation can verify and bind them. Do not force a second approval when a valid exact receipt already exists.
-- Maintain `prepared / awaiting_approval / queued / running / succeeded / failed / outcome_unknown / cancelled` states. If a provider times out after accepting a send, reconcile its identifier; never blindly retry an uncertain side effect.
-- Resolve recipient/contact ambiguity before execution. Revalidate a conversation's latest message, opt-outs, current grants, appointment availability and approved build version at execution time.
-- Cross-system workflows are a series of linked receipts, not a pretend database transaction across Mail, PostgreSQL and providers. Report partial completion and compensate only where the operation is reversible and authorized.
-- Evidence embedded in email, imported notes, transcripts, documents or websites is untrusted content, not instructions or authorization. Preserve source attribution and avoid carrying private notes into customer-visible output by default.
-- Logs record intent, actor, tool, policy, resource IDs, result and correlation ID with appropriate redaction. Do not store raw tokens, duplicate entire mailboxes in audit, or leak private goal text through workspace activity.
-
-## Tool catalog to deliver
-
-Names below are proposed contracts, not live tools. Split tools further when access or approval semantics differ; do not expose an unrestricted `execute(action)` dispatcher.
-
-| Family | Read / prepare | Write / execution | Important edge |
+| Milestone | Employee benefit | Depends on | Exit evidence |
 | --- | --- | --- | --- |
-| Identity/discovery | `whoami`, `list_capabilities`, `get_limits`, `search_workspace`, `get_record` (enumerated types) | Consent/disconnect handled through trusted UI | Searches honor grants and return disambiguation candidates. |
-| Leads/clients | `search_leads`, `get_lead`, `search_clients`, `get_client`, `get_contact`, `list_sites` | `create_lead`, `update_lead`, `add_lead_note`, `save_client`, `save_contact`, `save_site`, `convert_lead`, `prepare_lead_deletion` | Preserve canonical identity, retention and existing linked history. |
-| Sales/lists | `search_opportunities`, `get_opportunity`, `get_daily_priorities`, `list_calling_lists`, `preview_import` | `create_opportunity`, `update_opportunity`, `log_activity`, `save_follow_up`, `complete_task`, `commit_import`, `set_channel_preference` | No inferred permission to contact; safe CSV export, source attribution and repeat protection. |
-| Conversations | `search_conversations`, `get_conversation`, `get_source_history`, `get_customer_brief`, `get_attachment` | `save_conversation_work`, `add_note`, `save_reply_draft`, `update_customer_fact`, `prepare_conversation_link`, `prepare_conversation_merge` | Merge/link needs explicit identity review. Marking done is internal work state, not deleting the conversation. |
-| Communications | Existing owned-Mail tools; `get_allowed_senders`, `get_sms_delivery`, `prepare_sms`, shared-mail read/draft through CRM | `send_reviewed_sms`, `send_reviewed_shared_mail`; existing Mail send/reply/forward remain canonical for owned mail | Never route through a second sender to bypass an approval, limit or channel denial. Shared-mail integration must explicitly cover permissions and assistant limits before enabling sends. |
-| Calls | `list_calls`, `get_call`, `get_voicemail`, `get_transcript`, `prepare_call_brief`, `get_call_follow_ups` | `start_staff_call`, `end_own_call`, `request_call_analysis`, `create_call_follow_up`, reviewed recording deletion | Audio/analysis requires actual provider and device readiness. No export of browser voice tokens to a language model. |
-| Calendar | `list_calendar_events`, `get_availability`, `prepare_booking_change` | `book_consultation`, `reschedule_appointment`, `cancel_appointment`, `block_time`, `remove_time_block` | All booking entrypoints share locking/conflict checks; appointment and notification results reported separately. |
-| Projects | `list_projects`, `get_project`, `get_delivery_brief`, `list_waiting_items` | `save_project`, `save_milestone`, `add_project_record`, `update_milestone`, `save_waiting_item` | Explicit client-vs-team dependency records may require new fields/tables; do not infer completion from a draft or message. |
-| Mockups/Builder | `list_mockups`, `get_factory_project`, `get_plan`, `get_build_status`, `get_build_findings`, `get_artifact` | `request_mockup`, `save_mockup`, `start_planning`, `revise_plan`, `prepare_build_approval`, `queue_approved_build`, `revise_draft`, eligible stage recovery and sharing controls | Approval binds exact plan/assets/version; failed QA is not bypassed; artifacts distinguish draft, preview and production. |
-| Smart Cards | `list_cards`, `get_profile`, `get_card_links`, `get_card_engagement`, `list_card_inquiries` | `save_card_profile`, `create_card_batch`, `set_card_destination`, `set_card_active`, reviewed portrait update | Preserve permanent links; anonymous taps cannot identify people. URLs/uploads must pass existing media/URL checks. |
-| Reporting | `get_sales_report`, `get_acquisition_report`, `get_booking_report`, `get_site_report`, `get_search_report`, `prepare_export` | Authorized bounded export jobs | Metric definitions, date basis, freshness, pagination and incomplete sources explicit. Won value is not collected revenue. |
-| SEO/integrations | `get_seo_status`, `get_seo_change`, `get_integration_health`, `get_import_failures`, `get_intro_queue` | Queue approved runs, publish/reject/rollback supported SEO changes, retry eligible imports, pause automation, save reviewed settings | Respect separate allowances and disabled states. Do not expose webhook ingestion or cron secrets as generic tools. |
-| Goals/preferences | `list_goals`, `get_goal`, `get_weekly_review`, `get_assistant_preferences` | `save_goal`, `record_progress`, `link_goal_task`, `save_preferences`, `save_commitment` | Private/user-owned by default; editable facts separate from inferred suggestions. |
-| Workflows/control | `list_workflows`, `get_run`, `list_pending_actions`, `get_action_receipt`, `get_assistant_activity` | `prepare_workflow`, `save_approved_workflow`, `pause_workflow`, `cancel_action`, safe retry | Bound scope, cadence, destinations and spend; revoked access halts queued work. |
-| Administration | `get_effective_permissions`, sanitized settings, audit and health | Ordinary preferences; prepare sensitive admin changes and secure handoff | Membership/credentials/security and destructive actions retain human-controlled flows. |
-| Development operations | Registered repository/deployment status, recent changes, linked issues and failure summaries | Create an internal engineering task or reviewed issue; separately authorized provider actions | Optional official GitHub/Render integration. No arbitrary shell, secrets, force-push, migrations or production deploy endpoint masquerading as an Operations tool. |
+| A. Confirm the baseline | Existing capabilities remain dependable | Current assistant release | Exact deployed versions, worker health, permission and budget checks recorded |
+| B. Reliable assignments and SMS | Work continues, progress is visible, employee gets useful alerts | A | Browser-close/restart recovery, scoped delegation, private notifications, tested staff SMS |
+| C. Mobile push | Alerts open the correct assignment on iPhone | B notification contracts | Native code, signed build, real-device receipt/navigation and fallback tests |
+| D. Documents and finished files | Upload material and receive useful downloadable outputs | B queue/storage/access contracts | Representative file fixtures, citations, rendered outputs, failure/cost/deletion checks |
+| E. Company knowledge | Reliable shared answers alongside private employee memory | D ingestion and source permissions | Published source versions, citations, correction and cross-user access tests |
+| F. Proactive follow-up | Relevant work is surfaced without repeated prompting | B; E for knowledge-backed briefs | Event deduplication, useful brief/follow-up flows, cancellation and quiet-hours tests |
+| G. Complete chat communications | Reply, attach, review, send and see outcomes in chat | B and D; existing Mail services | Thread/attachment approval, send recovery, voice-note and callback acceptance |
+| H. Team rollout | Austin, Devon and Jeffrey can use the whole experience | B, D, E, F, G; C for push activation | End-to-end employee journeys and release record |
 
-## Data additions and execution infrastructure
+Implement B before adding more tools. Build C against the existing app, but do not hold document, knowledge or communication development while waiting for Apple signing/device access. H can release with SMS while C's activation gate is pending; the **full push milestone remains open** until verified.
 
-Use additive, versioned migrations; allocate numbers from the current branch at implementation time. Inventory includes:
+### A. Establish a trustworthy baseline
 
-- `assistant_oauth_clients`, codes, hashed tokens and grant families, with subject/workspace/resource binding, expirations, revoke timestamps and retention.
-- `assistant_policies`: grant-specific domains, routine actions, bounded autonomous rules, budgets and allowed destinations; revisioned and visible to the owner.
-- `assistant_actions` / `assistant_approvals`: intent hash, revision dependencies, idempotency key, approval evidence, attempt state, provider receipt and result link; unique keys and transaction boundaries documented.
-- `assistant_workflows`, runs and step receipts: schedules/events, checkpoints, leases, heartbeat, next attempt, bounded retries, deduplication and dead-letter state. No overlapping run for the same workflow/window.
-- `personal_goals`, progress, task links and preferences with owner-only access. Team goals use explicit sharing. New general personal tasks must not require inventing a sales opportunity.
-- Explicit commitments/waiting items linked to customer/project/message evidence, owner, due date, confirmation status and resolution. Reuse CRM tasks where appropriate; avoid duplicating the same commitment across three queues.
-- Grant-filtered search initially composes existing queries; introduce an index only if measured query latency requires it. If added, update/delete/revoke propagation must prevent stale data exposure.
-- Allow safe files through typed attachment/artifact APIs with size/type checks, malware handling where relevant, short-lived scoped downloads and redacted logs. A general filesystem or arbitrary URL fetch tool is outside the design.
+Confirm the current Render release, migrations, cron invocation and Mail deployment against their exact commits. Existing local tests establish readiness; they do not establish live provider delivery or native push.
 
-Business dates use `lib/time.ts` and the established [Eastern-time policy](BUSINESS_TIME.md). Store instants as UTC, label user-visible times Eastern, preserve date-only deadlines, and retain provider-specific report calendars such as Search Console Pacific dates. Calendar changes must cover DST and concurrent booking races.
+Record queue age, failed/unknown work, active workers, AI allowance/reservations and provider configuration without logging private message bodies or secrets. Exercise representative existing chat, routine, review and booking paths in isolated fixtures before extending them. Use designated employee test destinations for any subsequent live messaging acceptance; never use a real prospect merely to generate a test event.
 
-## Recurring assistant work
+Recheck the shared tree before each migration or commit. Coordinate migration numbering with the active relationship/Meeting Inbox work. Read the relevant installed Next.js documentation before modifying its routes, lifecycle or caching behavior.
 
-Build a server-side workflow engine for reliability when the chat is closed. Reuse a suitable existing scheduler entrypoint or add a narrowly scoped Render worker after assessing capacity; do not assume MCP itself runs schedules. Basic checks should use deterministic queries before paying for model reasoning.
+### B. Reliable assignments, authority and employee SMS
 
-Offer these templates, initially disabled until the owner saves their actual cadence and scope:
+#### One saved assignment and work list
 
-1. Daily personal/team brief: bookings, important replies, overdue commitments, next sales actions and blocked deliverables.
-2. Waiting-for-reply monitor: only user-selected conversations or explicit saved rules; deduplicate by last relevant message and never mark read.
-3. Appointment preparation: source-linked customer brief before a booked call; changes/cancellations suppress obsolete preparation.
-4. Post-call review: derive suggested notes/tasks from permitted transcript evidence; explicit policy controls which internal drafts/tasks may be saved.
-5. Weekly goal review: real progress, carried work, proposed priorities and requested decisions; no fabricated completion.
-6. Project/client dependency review: waiting on us versus waiting on them, with a draft progress update.
-7. Integration/build health: sustained failures, stale imports, stuck jobs, failed QA, disabled providers and budget limits; notify only on meaningful change/recovery or required action.
+Extend the existing queue rather than introduce another scheduler. Each assignment records its owner/workspace, original request, bounded plan, dependencies, current step, checkpoints, outputs, authority, cost ceiling, cancellation state and action receipts.
 
-Preserve Austin's existing Mail monitor. Do not install a second monitor that duplicates its notifications. Choose one owner for each schedule; record whether execution belongs to the external bot or our server.
+Provide a phone-friendly **My work** list beside chat: queued, working, waiting for input, waiting for review, blocked by access or allowance, paused, completed, failed and outcome unknown. Show the reason and the next useful action. “Completed” requires an actual result or receipt; generating a plan alone does not complete an execution request.
 
-New model-backed monitoring gets a separate explicitly set budget. Never borrow the Smart Card, SEO or Factory allowances, and do not assume a chat subscription funds server API work. Notifications need an approved channel and recipient; a default internal dashboard notice can be available without silently sending email/SMS. A scheduler is not permission to make external commitments.
+Continue long work through bounded turns under a single assignment ceiling. Do not bypass the current step limit by giving each continuation a new unlimited budget. Serialize conflicting work for the same record, keep fair employee scheduling and bound workspace concurrency. Start with the existing queue, quick request-driven advancement and five-minute recovery cron. Measure backlog before adding another hosting service or promising faster recovery.
 
-## Assistant dashboard
+Stop/pause prevents future steps; already-issued provider actions may finish. Preserve their receipts. Restart resumes from the last confirmed checkpoint. Unknown paid requests and uncertain sends/calls require reconciliation, never blind replay. Alert once when intervention is needed.
 
-Build a plain-language, phone-friendly workspace under Assistant:
+#### Explicit background delegation
 
-- **Today:** brief, next actions, private goals and relevant team work with source links.
-- **Waiting for you:** exact send/booking/build/publication/admin proposals with approve/reject/edit and expiry. Changed content requires new review.
-- **Activity:** requested, queued, completed, failed and uncertain work with receipts, source records and undo where supported.
-- **Routines:** schedules, last result, next run, allowed actions, limits, notification destination, pause and run-now.
-- **Connections & permissions:** effective scopes, current restrictions, source freshness, reconnect/revoke, and stop-all-writes.
-- **Preferences:** writing tone, known business facts, private objectives, desired digest format and editable memory. Credentials and MFA remain in their existing secure flows.
+Current authority expires with the real dashboard session. Add a purpose-specific, employee-approved background delegation rather than removing those checks or inventing a browser session.
 
-## Delivery sequence and acceptance gates
+Store owner, workspace, selected scopes/actions, resource restrictions, expiry, revision and revocation. Proposed initial consent duration: **30 days**, visible and renewable by the employee. This is a product default to verify during implementation, not an existing permission. Recheck active membership, current source access and current delegation before every step. An employee can revoke one assignment, all background work or the underlying grant. Account suspension/password-reset policy must revoke dependent authority.
 
-Each phase is a focused implementation/check/commit/push on main, preserving collaborators' work. Update this document with real verification evidence after each delivery. No phase may claim live operation from source tests alone.
+Make sign-out behavior clear: only explicitly authorized background work may survive ordinary browser sign-out; **stop all background access** must remain available. Revocation or expiry blocks future work and suppresses private outbound alerts, except a generic reconnect notice where policy permits.
 
-| Phase | Deliverable | Exit evidence |
-| --- | --- | --- |
-| 0 — Coverage and client contract | Enumerate every dashboard/server action, map to a service/tool/handoff, verify the user's actual bot's connection and approval surface; document identity and Mail boundary | Machine-readable coverage manifest plus reviewed auth/approval contract; no unsupported claims about the phone/chat client. |
-| 1 — Connection and controls | OAuth, scopes, delegated principal, revocation, typed results, audit, rate limits, feature flags, `whoami` and search/read framework; initial Assistant settings | Local HTTP/OAuth end-to-end checks including revocation, wrong resource, wrong tenant and disabled identity; real client can connect, read identity and disconnect. |
-| 2 — Complete operational reading | Leads, opportunities, lists, clients, sites, projects, conversations/calls, calendar, cards, Builder, SEO, reporting and sanitized integrations | Known fixture data reconciles across pagination; channel denial and missing-source reporting work; actual bot produces accurate customer and daily briefs with links. |
-| 3 — Internal work, calendar and goals | Shared service extraction; notes, tasks, CRM updates, assignments, project records, private goals, preferences, time blocks and staff booking/rescheduling | Browser regression checks; stale-edit/retry tests; concurrent bookings have one winner; all calendar entrypoints agree; personal data never appears in team views. |
-| 4 — Reviewed communications | Drafts, attachments, shared/owned sender routing, SMS, staff call controls, concrete approvals and provider receipts | Real client preview/approval succeeds; stale conversation/recipient or changed attachments invalidate review; no duplicate send on retry. Production sends/calls use separately authorized test recipients only. |
-| 5 — Builder, SEO and business controls | Full supported plan/build/draft/artifact/share/SEO flow, Smart Card maintenance, eligible integration retries and settings handoffs | Exact human approval and spend limits survive MCP; no bypass of QA attempts; disabled providers stay disabled; scope/permission regression tests pass. |
-| 6 — Reliable routines | Durable workflows, private weekly reviews, briefs, waiting-item monitors, integration alerts, mobile approvals and kill switch | Observe real scheduled runs and one failure/recovery cycle; deduplication, missed-run catch-up, DST, revocation and lease recovery verified; unchanged runs remain quiet. |
-| 7 — Full parity and release | Close coverage-manifest gaps, operational reports/exports, optional repository/deployment status connector, runbook and recovery | Every current feature has a verified tool or clearly justified handoff; no unexplained missing module. Austin can complete the owner workflows below using the real connected bot. |
-| 8 — Adjacent product completion | Proposals/scopes, onboarding, renewals, support and financial records where desired; connect real billing/ad-spend providers under separately selected scopes | Add actual product workflows before exposing them. No invoice/payment/ROAS claims until source integration is verified. Financial transactions/signatures retain human completion. |
+Mail steps need a real Mail-issued, scoped background credential with introspection/revocation. Extend the separate Mail service deliberately. Never substitute a service credential for an employee or fabricate the session-bound Mail identity. Until that contract exists, block only the affected Mail step and show reconnect/review instructions. Preserve the existing external MCP connection semantics unless separately migrated with consent.
 
-Phases are sequencing, not permission to stop after a read-only pilot. Phases 0–7 define full coverage of the existing platform plus the personal/workflow functions requested. Phase 8 records genuine new business-system features rather than pretending MCP creates them. No dates or total cost are promised before Phase 0 resolves integration dependencies.
+#### One notification record, multiple delivery channels
 
-## Owner workflows that define completion
+Introduce a shared employee notification service. Producers save an event in the same transaction as the relevant assignment/domain change, then a worker delivers it. Customer booking notices and customer messages retain their separate purposes and permissions.
 
-- “Plan my day and show what Devon and Jeffrey need from me.” Correct Eastern bookings, tasks, pending decisions and evidence; distinguish mine/team scopes.
-- “Prepare me for this customer.” Relevant allowed emails, SMS, calls, project context, needs and promises; inaccessible sources explicitly listed.
-- “Save these notes and give Devon a follow-up for Friday.” Right identity/owner/date; one task after retries; dashboard reflects it.
-- “Move my consultation to tomorrow at 10.” Disambiguate the appointment, recheck conflicts, update both calendar views, show whether anyone was notified.
-- “Reply to this person with our next steps.” Exact sender/recipient/thread, editable content, requested approval and confirmed outcome; incoming replies invalidate stale drafts appropriately.
-- “What are we waiting on from each client?” Real dependencies and dates; no invented obligations; draft status updates remain drafts until approved.
-- “Build this prospect's website.” Preserve sparse input support, reviewable plan and exact human approval; bounded costs and quality checks; report saved failures honestly.
-- “What did our cards and Facebook leads produce?” Reconciled inquiries, conversations, appointments and sales with transparent attribution, freshness and missing cost data.
-- “Track my weekly goals and tell me when I drift.” Saved private targets, actual progress evidence, authorized routine and quiet unchanged checks.
-- “Check the project for things to do.” Read registered repo/deployment health and open work, prepare an engineering task, distinguish code observation from live diagnosis; no implicit production changes.
-- “Stop working for me.” Revocation/pause halts queued future side effects, confirms in-flight outcomes and preserves the audit trail.
+Proposed records:
 
-## Verification and release requirements
+| Record | Required ownership and state |
+| --- | --- |
+| Assignment | Workspace, authorizing employee, versioned plan/steps, bounded allowance, delegation, state and receipts |
+| Employee notification | Workspace/recipient, event/source/version, safe summary, trusted destination, category, expiry, read/resolved state and deduplication key |
+| Delivery attempt | Notification, channel/device, claim/lease, stable request identity, provider ID, attempts and accepted/delivered/failed/unknown state |
+| Employee preferences | Verified phone, SMS opt-in, categories, time zone, quiet hours, digest and fallback choices |
+| Push device | Employee/workspace, installation binding, app/environment, protected token, permission/registration state, last verification and revocation |
 
-- Unit/schema tests for normalization, permissions, revisions, limits and dates; PostgreSQL integration tests for tenant/channel isolation, approvals, races and idempotency; mocked providers for failure and unknown-outcome handling.
-- Real local MCP HTTP tests for discovery, structured results, chunking, tool schemas and protocol errors. Test client compatibility early, including login/refresh, write confirmation and long-running job polling.
-- Browser checks for existing dashboard flows affected by service extraction and the new Assistant controls on desktop/phone. Assess accessibility and readable approval details, not only API success.
-- Negative cases: forged actor, same-name contacts, wrong workspace, changed mailbox/line grant, disabled account, revoked token, expired approval, replay, hostile email instructions, arbitrary URL/file paths, oversized attachments, opt-out, budget exhausted, midnight/DST, deleted source evidence and source unavailability.
-- Query performance and bounded exports; source timestamps and cursors; no unreported truncation. Prefer deterministic totals over model-generated arithmetic.
-- Preserve historical records, customer previews, existing grants, mail monitors and allowances. Add migrations with verified backup/rollback procedures before production schema changes.
-- Render and Mail deploy separately. Only deploy Mail if a reviewed Mail change is part of the phase. A documentation-only commit does not activate either feature.
-- Real production acceptance starts read-only in Austin's authenticated client. Record provider-backed writes only with a specific authorized test and mark anything else UNTESTED. Never send a customer message, call a prospect or launch a paid build as an unapproved test.
-- Record source commit, deployment IDs, migration versions, actual tool discovery, test counts, known limitations and rollback controls. Release behind domain flags; disabling assistant access leaves normal website/dashboard operation intact.
+Names are architectural proposals, not a reserved migration number. Keep domain transactions small; provider calls occur after durable claims.
 
-## Decisions to resolve at the relevant phase
+**Initial alert policy:**
 
-Proceed with the architecture and existing Eastern calendar without asking Austin to decide routine implementation details. Obtain only missing activation choices when they become concrete:
+- Keep an in-app notification feed regardless of external delivery.
+- Send SMS for review/input needed, failed work requiring attention and explicitly requested completion notices. Group routine completions into a digest; do not text every reasoning step.
+- Each employee opts in and verifies their own phone. An existing call callback number may be offered for selection but must not silently become an alert subscription.
+- Start with configurable quiet hours of **9 PM–8 AM in the employee's time zone**, initially America/New_York. Allow explicitly selected urgent categories; delayed notices must still be relevant at dispatch.
+- Proposed starting caps: ten immediate alerts per employee per day and fifty per workspace, with overflow summarized in the feed/digest. Verification attempts also need rate limits. These caps control volume, not a guaranteed dollar cost; track segments and provider charges separately.
+- Use concise, preferably single-segment templates such as “Your assistant needs review. Open Tailored Agents: …”. Do not place customer messages, documents, secrets or financial details on a lock screen.
+- Links open an authenticated, authorized dashboard record. They are not bearer approval tokens. Expired sessions sign in first; revoked record access denies the target.
+- Coalesce repeated events, suppress superseded/resolved work and avoid loops from the assistant's own actions. Coordinate with existing incoming-SMS/lead alert settings so one event does not produce competing alerts.
+- Honor employee notification opt-out and provider suppression. Route STOP/START correctly without creating a customer prospect or treating a staff reply as an assistant instruction. A staff SMS reply is not approval to send a customer email.
 
-- Exact bot/client surface for connection testing and whether it exposes Operations alongside Mail; verify instead of assuming all chat/phone modes share capabilities.
-- Which recurring routines to activate, their cadence/destination, and any new paid reasoning budget. Existing Mail monitor stays intact.
-- Which routine internal background actions Austin wants delegated automatically, and whether any future outbound autonomy should be proposed. Current Mail send approvals remain in force.
-- Any additional teammate private-mail grants, external calendars, GitHub/Render provider credentials, advertising-spend or billing integrations. Request narrow access only when the corresponding adapter is ready.
+Reuse the durable delivery and signed-callback patterns in `lib/sms/alerts.ts`; its existing single-recipient configuration is not a per-employee notification system. Avoid routing staff alerts through customer conversation/lead-introduction code.
 
-## Resume checklist
+Validate Twilio callbacks against the expected account, sender, recipient and provider message ID. Track out-of-order callbacks and uncertain submission. Provider acceptance, delivery and human reading are different states; SMS can be billed in multiple segments. [Twilio Message resource](https://www.twilio.com/docs/messaging/api/message-resource).
 
-- [x] Sync current main and review existing modules, Mail acceptance, calendar and time policy.
-- [x] Save full product scope, architecture, tool families, authority boundaries, phases and exit checks.
-- [ ] Phase 0: create the code-derived capability manifest and resolve the actual client connection contract.
-- [ ] Phase 1: implement delegated authentication and the first real identity/read call end to end.
-- [ ] Complete phases 2–7; document each deployment and remaining capability gaps here.
-- [ ] Scope phase 8 integrations from real business/provider needs without mislabeling them as existing capabilities.
+**B acceptance:** closing the browser and restarting the worker preserves progress; revocation stops subsequent effects; duplicate events/retries do not duplicate alerts or actions; a stale review request is not texted; quiet hours/DST and STOP work; one employee never receives another's private work. A real opted-in employee receives a test alert and opens the correct authorized assignment.
 
-Related: [Agency roadmap](AGENCY_OS_ROADMAP.md), [Mail MCP](../apps/mail/MCP_SETUP.md), [Unified Inbox](UNIFIED_INBOX.md), [Smart Cards/calendar](SMART_CARDS.md), [Website Builder standards](WEBSITE_BUILDER_STANDARDS.md), [Eastern time](BUSINESS_TIME.md).
+### C. Extend the existing iPhone app with push
+
+Use `apps/ios`, its UIKit/WebKit structure and `com.tailoredagents.workspace`. Keep Mail and Dashboard's separate sign-ins. Preserve authenticated attachments, origin restrictions and the app-switcher privacy cover. Do not replace the app with a new mobile framework.
+
+Add a contextual notification-permission screen, APNs registration/error handling, device-token updates and foreground presentation/tap handling. Bind registration to the actual signed-in Dashboard account through an authenticated, narrowly scoped first-party bridge or endpoint. A user ID supplied by JavaScript is not identity. Reject messages from child frames or untrusted origins. Logout/account switch must remove the old device binding and never show the previous employee's private destination.
+
+APNs requires an enabled app capability/App ID and appropriate signing entitlement; registration returns the app/device token, which may change. Verify the Apple team, provisioning and key setup rather than assuming the existing Sideloadly installation enables push. [Apple registration guidance](https://developer.apple.com/documentation/usernotifications/registering-your-app-with-apns).
+
+Keep provider keys on the server. Implement distinct development/production delivery configuration, bounded expiry and collapse behavior, invalid-token removal and safe error reporting. APNs delivery is best effort; an accepted request does not prove the employee saw it. Keep work and unread state on the server. [Apple APNs request guidance](https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns).
+
+Update `apps/ios/scripts/create-project.py` alongside Swift sources, capabilities and entitlements; regenerate the checked-in Xcode project. Native changes require a signed rebuild and installation. A Git push or web deployment does not update installed iPhones.
+
+**Channel switching:**
+
+- Until push is configured and verified for that employee/device, use opted-in SMS.
+- Once verified, prefer push for selected categories; keep the in-app feed authoritative.
+- Missing permission or a definitively invalid token can use opted-in SMS fallback.
+- Do not send a duplicate SMS merely because an accepted push is unread. Any urgent acknowledgement/escalation policy must be separately selected, delayed, deduplicated and capped.
+- Disabling push or changing accounts updates routing immediately; queued deliveries recheck access and preferences before dispatch.
+
+**C acceptance:** signed app tested on an actual iPhone in foreground, background and closed state; permission allowed/denied; token refresh/reinstall; expired session; wrong account; logout; safe navigation; duplicate/out-of-order provider responses; SMS fallback. Run existing native policy/UI tests on macOS/Xcode. Simulator payload injection alone does not prove APNs delivery. Keep SMS live until this gate passes; record missing signing access as an activation dependency, not as completed push support.
+
+### D. Documents and downloadable work
+
+Add attachments to native assistant chat and a file/result view linked to assignments. Use a dedicated assistant storage namespace with workspace/owner/access metadata, scoped content hashes, versioning and authenticated downloads. `lib/factory/storage.ts` offers storage patterns but its Factory key restrictions and permissions must not be reused as generic document access.
+
+Initial format targets: PDF, DOCX, TXT/Markdown, CSV/XLSX and PNG/JPEG. Validate supported formats against actual parser libraries and fixtures before exposing them. Proposed initial bounds: 25 MB per file, five files per assignment and 100 PDF pages, with separate spreadsheet/image/resource limits. Display final measured limits in the UI.
+
+Processing order: deterministic text/table extraction first, then bounded OCR or AI only when needed and allowed by the remaining company budget. Reject password-protected/unsupported files explicitly; show partial or uncertain extraction. Save source version, page/sheet/cell or image reference and extraction warnings. Treat document instructions as source content, not permission to run commands or contact customers.
+
+Validate content signatures rather than trusting extensions. Bound archive expansion, pages, pixels, rows, parser time and memory. Disable macros, formulas that fetch external data and arbitrary embedded network access. Quarantine unvalidated content and choose a tested malware-screening strategy before allowing external forwarding. Do not execute uploaded programs. Keep parser failures recoverable without charging again for confirmed work.
+
+Produce real versioned **PDF/DOCX briefs and CSV/XLSX tables**, with previews and downloads, using deterministic templates for formatting and calculations where practical. A chat answer alone is not a finished file. Link outputs to source versions and record generation state; review sample renderings and spreadsheet values, including blank/long data. Preserve the iPhone's authenticated download/share-sheet behavior.
+
+Private upload is the default. Explicitly share to an allowed employee/team/project audience; linking a client does not silently widen access. Recheck permission for processing, retrieval, download and attachment sending. Proposed temporary-file retention is 90 days; deliberate published knowledge has its own retention/review policy. Show expiry and allow deletion. Deletion removes or invalidates derived text, indexes, cached results and pending processing; retain only permitted audit metadata. Explain any separately retained original chat/action record.
+
+Consume permitted meeting transcripts through the evolving [Meeting Inbox services](CRM_BUSINESS_REFINEMENTS.md) when available. Do not build a second Meeting Inbox or spend the assistant allowance on long-recording ingestion. Meeting processing and Omi integration have their own scope and activation decisions.
+
+**D acceptance:** representative supported files produce source-linked results and usable downloads; malformed/oversized/hostile files fail safely; private/cross-workspace access is denied; restart does not lose uploads or blindly rebill; deleting a source prevents later retrieval; output checks establish actual usability on desktop and iPhone.
+
+### E. Shared company knowledge with sources
+
+Build a small company knowledge area on D's ingestion and the existing private memory service. Start with service descriptions, approved discovery guidance, operating procedures, reusable document templates and staff-confirmed business facts. Reuse CRM as the source for changing customer/project state.
+
+Each knowledge entry has an owner, audience, source/document version, effective/review date and draft/published/superseded/archived state. Authorized employees publish it explicitly. Do not automatically convert private chats or generated guesses into shared truth. Keep personal preferences editable and separate.
+
+Retrieve only permitted active versions, with access checks before search and before use. Start with indexed text/metadata search and source links; add semantic retrieval only if evaluation shows a material benefit within the allowance. No new external vector service is required by this plan.
+
+Answers cite the source version and location. Approved current guidance takes precedence over old conversational recollections; unresolved contradictions are surfaced instead of silently reconciled. Outdated pricing or policies prompt review. Unknown facts stay unknown. Correction, withdrawal, permission changes and deletion invalidate derived indexes/caches and future answers.
+
+**E acceptance:** two employees can share approved guidance while private notes remain isolated; source citations resolve; conflicting/stale facts are identified; revoked/deleted entries cease appearing; an employee can correct a mistaken preference without it reappearing from a cached summary.
+
+### F. Useful proactive follow-up
+
+Use transactional business events and deterministic due-date queries, not constant model polling. Initial triggers: a permitted customer reply, an overdue assigned task, an approaching or changed meeting, a blocked project/milestone, and an assistant assignment needing intervention.
+
+An employee deliberately enables each routine with scope, schedule/event, permitted actions, notification choice and cost limit. Provide simple templates: morning priorities, meeting preparation, unanswered follow-ups and a weekly work summary. Existing arbitrary saved routines remain available within their permissions.
+
+Persist event ID/source revision and execution identity; debounce related changes, respect time zones and skip stale/resolved conditions. Recheck source access at execution and notification time. Evaluate cheap rules first; reuse a brief only while its source versions and access remain valid. Bound paid analysis per event/day.
+
+Default behavior prepares a draft or recommends a next action. Real CRM tasks use existing assignment services and eligible assignees; a sentence in chat is not an assigned task. Customer messages still follow channel permissions, opt-outs and exact email review. A customer reply, document or transcript cannot expand the routine's authority.
+
+Coordinate with existing staff SMS/lead alerts and booking outboxes. Keep employee work reminders distinct from customer appointment messages. Broader automatic notifications for manual Calendar changes are a separate follow-on unless deliberately added and tested across all booking paths.
+
+**F acceptance:** one event produces one useful run despite replay; completing a task cancels its pending reminder; brief sources match current permissions; noisy events coalesce; no duplicate customer outreach; stopped routines stay stopped; allowance exhaustion yields a clear blocked result and one appropriate alert.
+
+### G. Complete communication inside chat
+
+Reuse existing Inbox/Mail, SMS and call services. Finish the chat experience around those services rather than add a parallel sender.
+
+**Email threads and attachments:** read the current thread, derive permitted sender and actual reply recipients from message identity, and preserve subject/reply headers. Offer reply/reply-all deliberately; never expose hidden recipients or accidentally reply to the employee's own outbound address. Bind review to the message/thread revision, sender, exact To/CC/BCC, subject/body and immutable attachment hashes. Edits or changed thread targets invalidate approval.
+
+Extend the separate Mail transport and attachment contract with scoped file access, size/type checks and idempotency before exposing the feature. Attachment forwarding is included in the exact human review. Never let the model approve its own message. Preserve all per-mailbox and shared-sender grants.
+
+**Inline review and receipts:** show the exact message and files in chat, with edit, approve, cancel and status controls backed by the existing action service. Review endpoints verify the actual user and current revision. Record queued, accepted, delivered where supported, failed and unknown separately. Reconcile through saved provider IDs; checking status must never resend. Display what the provider actually proves.
+
+**Short voice notes:** explicit press-to-record, clear recording indicator, short bounded clips (initial target two minutes), transcription preview/correction and normal Send. Verify spoken names, phone numbers and amounts before action where ambiguous. Include transcription in the $25 allowance and retain/delete clips under a visible policy. This is dictation, not ambient recording, live meeting capture or an AI voice calling customers.
+
+**Calls:** keep the employee-connected call flow: the selected employee answers and presses 1 before the customer connects. Show initiation, connection/failure and the saved receipt in chat. Never switch to autonomous AI voice.
+
+**G acceptance:** correct reply routing from inbound and outbound messages; stale/edited approval rejected; attachments match the reviewed hashes; lost permission blocks send; provider timeout cannot cause duplicate send; voice correction works on desktop/mobile; callback behavior remains unchanged.
+
+## Budget, performance and privacy throughout
+
+Use the existing shared reservation/settlement ledger for all assistant model/tool/OCR/dictation costs. Reserve conservatively before work, reconcile actual usage and retain unknown charges until resolved. Track employee, assignment and feature so the owner can see what used the allowance. A continuation or retry inherits the original ceiling.
+
+Keep notification routing, schedules, template formatting and routine condition checks deterministic. Cache permitted extraction by scoped source/version, not globally accessible file hash. Stop expensive work clearly when allowance is insufficient; keep saved results and cheap reminders available. Do not promise unlimited document processing or daily research for the whole team within $25.
+
+SMS/call spend, storage and any Apple account/distribution costs are separate from AI. Prefer existing infrastructure, expose SMS usage/caps and make any new paid service or limit increase a concrete activation decision. Never treat the AI allowance as permission to enable another paid service.
+
+Minimize notification content and audit payloads. Credentials, device tokens and session secrets never reach the model or client logs. Apply source-level access to artifacts, search, summaries, events and alerts. Preserve existing audit retention while defining retention for the newly added file/device/delivery records.
+
+## Verification and rollout
+
+Use additive migrations and feature flags for delegation, employee SMS, push, document processing, shared knowledge, proactive routines and enhanced communications. Disabled features leave existing chat/CRM/Inbox paths functional. Pause or disable workers without deleting queued evidence; never roll back by replaying uncertain outbound actions.
+
+Test in isolated databases and storage with synthetic providers first. Required cross-cutting cases:
+
+| Risk | Evidence required |
+| --- | --- |
+| Worker crash, duplicate cron, stale lease | One confirmed side effect; resumed work uses saved results and receipt identity |
+| Access revoked during work | Next read/action/download/notification denied; no cross-user or cross-workspace leakage |
+| Provider accepted but response lost | Unknown state retained, reservation held, no automatic resend/rebill |
+| Budget exhausted or concurrent requests | Shared ceiling enforced, fair bounded execution and understandable blocked state |
+| Noisy or stale events | Deduplication, expiry, quiet hours, DST and resolution suppression |
+| Document injection or malicious upload | No permission escalation/external action; bounded parser behavior |
+| Edited review or attachment | Exact approval invalidated; no stale recipients or replacement files |
+| Mobile identity change | Correct account/device binding, private destination denied, SMS routing updated |
+| Source correction/deletion | Retrieval, caches, queued work and generated citations honor current policy |
+
+Run meaningful targeted unit/database/browser tests, then required type/lint/build checks. Run iOS policy/UI/build tests on macOS and physical APNs acceptance separately. Update coverage inventory, setup notes, configuration examples and release evidence for the exact final commit; clearly label simulated versus live checks.
+
+Roll out to Austin with controlled employee test destinations, then Devon and Jeffrey with their own preferences/permissions, then the wider team. Confirm notification usefulness and actual costs before broad activation. Web/Render, Cloudflare Mail and native iOS are separate deployables; record each version and any manual activation gate. Commit focused, verified increments directly to **main**, preserving collaborators' work, then push without rewriting shared history.
+
+## Completion checklist for this one goal
+
+- [ ] A: Baseline health and current production acceptance recorded.
+- [ ] B: Durable assignments, independent scoped delegation, work list and employee SMS pass acceptance.
+- [ ] C: Existing iPhone app supports native push, with signed physical-device delivery and fallback verified.
+- [ ] D: Supported uploads produce useful, source-linked downloadable files.
+- [ ] E: Shared knowledge is published, cited, correctable and permissioned.
+- [ ] F: Opted-in proactive routines are useful, bounded and deduplicated.
+- [ ] G: Replies, attachments, inline review, delivery states and voice dictation work in chat.
+- [ ] H: Employee end-to-end journeys, cost controls and staged rollout are accepted.
+- [ ] Exact changes, deployment state and remaining activation dependencies are recorded; verified commits are pushed to main.
+
+The planning deliverable is this document. Implementation is complete only when the corresponding checklist gates pass; a plan, passing mock, deployed web page or generated unsigned IPA is not a substitute.
+
+## Explicitly deferred
+
+- Recommendation 6: new external application connectors, arbitrary logged-in browser/computer control and any selection of external apps on Austin's behalf.
+- Programming/deploying custom customer AI systems or automation workflows.
+- Autonomous AI voice calls, bulk marketing campaigns, commission/payment automation and widening existing permissions without employee consent.
+- A replacement mobile app, Android client, offline mailbox synchronization or unified Mail/Dashboard sign-in.
+- Long meeting recording/transcription and Omi ingestion under the assistant allowance; coordinate separately with [CRM/Meeting Inbox work](CRM_BUSINESS_REFINEMENTS.md).
+- Broad Website Builder/SEO/settings parity from the historical backlog unless separately requested. Preserve those existing features and their budgets.
+
+No employee needs to choose external apps for milestones A–H to move forward. Apple signing/provider configuration and verified employee destinations are concrete activation dependencies to resolve when the implementation is ready to test.

@@ -40,6 +40,8 @@ Open `TailoredAgents.xcodeproj` for normal Xcode development. Its checked-in pro
 
 Website changes appear through the existing deployments. Native changes require rebuilding and reinstalling the IPA. Pushing this repository does not deploy the Cloudflare mail service or install the iOS app.
 
+The [employee-assistant delivery plan](../../docs/OPERATIONS_ASSISTANT_PLAN.md) specifies native push as an extension of this app, with employee SMS alerts first and SMS fallback for employees without verified push. Push remains planned: it requires native implementation, APNs/signing configuration, a rebuilt app and physical-device acceptance. The separate Mail website's web-push support does not establish native push support here.
+
 ## Verification
 
 Verified on October 21, 2026 with Xcode 26.3: the Release device build and IPA archive check passed, all 38 policy checks passed, and the live sign-in/tab-state UI test passed on the existing iOS 26.3.1 simulator. No account was signed in and no email or SMS was sent during these checks.

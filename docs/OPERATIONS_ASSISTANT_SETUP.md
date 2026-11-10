@@ -2,6 +2,8 @@
 
 This is an implementation checkpoint, not the completion of the full owner-assistant plan. The capability inventory explicitly tracks pending and partial coverage.
 
+The next delivery goal is defined in the [current employee-assistant plan](OPERATIONS_ASSISTANT_PLAN.md): reliable assignments and employee SMS, native iPhone push, documents, shared knowledge, proactive follow-up and complete chat communications. Those planned additions are not enabled by this documentation update. External application integrations are deferred.
+
 ## Native employee operations — November 10
 
 The dashboard assistant serves company operations: customer work, planning, research, scheduling and communications. Austin builds custom client AI systems and automation workflows; the assistant is explicitly instructed not to program, construct or deploy those systems.
@@ -155,4 +157,4 @@ Verification: 65 Operations/SMS tests passed, including actual MCP direct execut
 
 ## Next work
 
-Follow phases 0–7 in `OPERATIONS_ASSISTANT_PLAN.md`. The code-derived manifest lists outstanding features; the dashboard also describes what is and is not available. Real ChatGPT discovery, consent and account reading are accepted; direct writes, renewal and revocation still need real-client acceptance. Austin replaced the proposed per-action write test with a request for direct mode. Then complete the pending service extraction, calendar and communication flows, longer-lived identity delegation and durable routines without bypassing existing approvals or spending limits.
+Follow milestones A–H in [the current employee-assistant plan](OPERATIONS_ASSISTANT_PLAN.md). It supersedes the older phase numbering and reconciles the background/routine features already implemented above with the remaining work. Keep the code-derived inventory and these release notes synchronized with verified implementation. Real ChatGPT discovery, consent and account reading are accepted; direct writes, renewal and revocation still need real-client acceptance. Preserve the existing approval policies, session restrictions until real background delegation is implemented, and the shared $25/month AI allowance.
