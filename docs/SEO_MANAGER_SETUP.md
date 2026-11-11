@@ -16,6 +16,8 @@ The November 11 live audit found daily scans healthy but the November 2 and 9 we
 
 Enabling automatic mode (or saving changed priorities under it) schedules one fresh strategy within the same allowance. Previous unapproved wording is retained as stale history, not silently published. An in-flight strategy finishes before new work starts; completed grant work is not repeatedly charged on each worker check.
 
+Final worker review also corrected empty-queue polling (`GREATEST` must not convert an absent next job into zero delay). The added idle/inactive-site regression and all focused tests pass: **86 SEO tests, including 49 database cases**, with strict types and lint. The six browser journeys/build above cover the same publication UI and workflow; this final SQL-only scheduling correction was verified against PostgreSQL.
+
 **Historical state, November 1:** free daily monitoring is working (nine completed
 14-page scans), Google remains connected, and Jeffrey's business-facts review is
 saved. The dedicated SEO project/key and enforced $10/month provider limit are

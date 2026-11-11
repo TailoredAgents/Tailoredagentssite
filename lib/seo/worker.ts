@@ -509,7 +509,9 @@ async function work(run: SeoRun, manager: SeoManager, onMetadataChanged?: (path:
 }
 async function pendingWork() {
   const due = await getDatabasePool().query(
-    `SELECT GREATEST(0,EXTRACT(EPOCH FROM (min(r.next_attempt_at)-now()))*1000)::float wait_ms FROM seo_runs r JOIN seo_managers m ON m.workspace_id=r.workspace_id AND m.site_id=r.site_id
+    `SELECT CASE WHEN count(*)=0 THEN NULL ELSE GREATEST(0,EXTRACT(EPOCH FROM (min(r.next_attempt_at)-now()))*1000)::float END wait_ms FROM seo_runs r JOIN seo_managers m ON m.workspace_id=r.workspace_id AND m.site_id=r.site_id
+     JOIN sites s ON s.id=m.site_id AND s.workspace_id=m.workspace_id AND s.status='active'
+     JOIN workspaces w ON w.id=m.workspace_id AND w.status='active'
      WHERE r.workspace_id=$1 AND r.site_id=$2 AND r.status='queued' AND (r.kind IN ('monitor','verify','measure','publish') OR (m.ai_enabled AND m.ai_reviewed_at IS NOT NULL) OR (m.pilot_enabled AND r.context->>'pilot'='true'))
      AND NOT (r.kind='strategy' AND r.stage='plan' AND r.context->>'pilot' IS DISTINCT FROM 'true' AND EXISTS(SELECT 1 FROM seo_runs scan WHERE scan.workspace_id=r.workspace_id AND scan.site_id=r.site_id AND scan.kind='monitor' AND scan.status IN ('queued','running')))`,
     [SEO_WORKSPACE_ID, SEO_SITE_ID],

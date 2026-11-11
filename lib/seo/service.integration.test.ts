@@ -259,6 +259,12 @@ describe.skipIf(!url)("Internal SEO manager with guarded PostgreSQL", () => {
     ]);
     expect(d.spent).toBe(0);
   });
+  it("ends idle checks immediately instead of turning SQL NULL into a busy poll",async()=>{
+    expect(await runSeoWorkerStep()).toEqual({checked:0,failed:0,more:false,retryAfterMs:0});
+    await queueSeoRun(owner,"monitor");
+    await pool.query("UPDATE sites SET status='paused' WHERE id=$1",[site]);
+    expect(await runSeoWorkerStep()).toEqual({checked:0,failed:0,more:false,retryAfterMs:0});
+  });
   it("rechecks database roles and workspace access for mutations", async () => {
     await expect(saveSeoSettings(viewer, settings)).rejects.toThrow();
     await expect(queueSeoRun(member, "strategy")).rejects.toThrow();
