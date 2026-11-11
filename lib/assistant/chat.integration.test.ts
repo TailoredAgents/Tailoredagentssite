@@ -53,6 +53,10 @@ describe.skipIf(!url)('Native employee assistant integration',()=>{
   vi.stubEnv('ASSISTANT_BACKGROUND_ENABLED','false');
  });
  afterAll(async()=>{await pool?.end();delete (globalThis as {tailoredAgentsDatabasePool?:Pool}).tailoredAgentsDatabasePool;vi.unstubAllEnvs();vi.unstubAllGlobals();});
+ it('reports a terminal permission failure once even after the lease is cleared',async()=>{
+  const {p,id}=await turn();await pool.query('UPDATE assistant_grants SET revoked_at=now() WHERE id=$1',[p.grantId]);
+  expect((await runAssistantWorker(id,1)).failed).toBe(1);expect((await runAssistantWorker(id,1)).failed).toBe(0);expect(fetch).not.toHaveBeenCalled();
+ });
  it('keeps chats private across employees and workspaces and rejects forged session ownership',async()=>{
   const {p,id,thread}=await turn();
   expect((await chatState(owner,'chat-session',thread)).turns[0].id).toBe(id);
@@ -230,7 +234,7 @@ describe.skipIf(!url)('Native employee assistant integration',()=>{
  });
  it('rejects cyclic or unproven work plans and stops uncertain work from auto-resuming',async()=>{
   expect(workPlanSchema.safeParse({steps:[{id:'a',label:'Do work',status:'done',dependsOn:['a'],evidence:''}]}).success).toBe(false);
-  const {id,thread}=await turn();await saveChatBudget(owner,25);await runAssistantWorker(id,1);expect((await chatState(owner,'chat-session',thread)).turns[0].status).toBe('outcome_unknown');
+  const {id,thread}=await turn();await saveChatBudget(owner,25);expect((await runAssistantWorker(id,1)).failed).toBe(1);expect((await chatState(owner,'chat-session',thread)).turns[0].status).toBe('outcome_unknown');
   await expect(controlAssignment(owner,{operation:'assignment',id,threadId:thread,action:'resume'})).rejects.toThrow('receipts');expect(fetch).toHaveBeenCalledTimes(1);
  });
  it('continues beyond twelve steps without resetting its total ceiling and stops at thirty-six',async()=>{

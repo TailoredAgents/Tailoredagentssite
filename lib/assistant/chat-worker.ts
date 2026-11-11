@@ -30,12 +30,14 @@ export async function runAssistantWorker(turnId?:string,limit=1){
   const routine=(await db.query('SELECT r.template FROM assistant_chat_turns t JOIN assistant_routines r ON r.id=t.routine_id WHERE t.id=$1',[row.id])).rows[0];
   await routinePolicy.run({recommendationsOnly:!!routine&&routine.template!=='custom'},()=>chatLease.run({turnId:row.id,token},async()=>{
    try{if(row.work_expires_at<=new Date()){await finishChatTurn(row.id,'This assignment’s seven-day window ended. Saved results remain available.','failed');return;}const grant=(await db.query('SELECT * FROM assistant_grants WHERE id=$1',[row.grant_id])).rows[0];if(!grant)throw Error('grant_unavailable');const p=await principal(grant);requireScopes(p,[],false);await advanceChatTurn(p,row.thread_id,row.id,token,row.engine_state);}
-   catch{failed++;await finishChatTurn(row.id,'Your assistant connection expired or became unavailable. Reconnect to start new work; check receipts before repeating actions.','failed');}
+   catch{await finishChatTurn(row.id,'Your assistant connection expired or became unavailable. Reconnect to start new work; check receipts before repeating actions.','failed');}
   }));
-  await db.query("UPDATE assistant_chat_turns SET lease_token=NULL,lease_until=NULL,status=CASE WHEN status='running' THEN 'queued' ELSE status END WHERE id=$1 AND lease_token=$2",[row.id,token]);
+  const settled=await db.query("UPDATE assistant_chat_turns SET lease_token=NULL,lease_until=NULL,status=CASE WHEN status='running' THEN 'queued' ELSE status END WHERE id=$1 AND lease_token=$2 RETURNING status",[row.id,token]);
+  const status=settled.rows[0]?.status??(await db.query('SELECT status FROM assistant_chat_turns WHERE id=$1',[row.id])).rows[0]?.status;
+  if(['failed','outcome_unknown'].includes(status))failed++;
  }
  const more=!!(await getDatabasePool().query("SELECT id FROM assistant_chat_turns WHERE status IN ('queued','running') AND (lease_until IS NULL OR lease_until<now()) LIMIT 1")).rowCount;
  const notifications=await runBookingNotificationWorker();
  const employeeNotifications=await runEmployeeNotificationWorker();
- return {checked,failed,more:more||notifications.more||employeeNotifications.more};
+ return {checked,failed:failed+employeeNotifications.failed,more:more||notifications.more||employeeNotifications.more};
 }

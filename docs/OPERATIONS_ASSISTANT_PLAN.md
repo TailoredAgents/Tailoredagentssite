@@ -2,7 +2,7 @@
 
 Prepared November 10, 2026 for Austin, Devon, Jeffrey and the rest of Tailored Agents.
 
-**Status: implementation in progress. Completed code and verification are recorded under each milestone; open activation gates remain explicit.** This replaces the earlier overlapping phase lists; [the previous plan is archived](OPERATIONS_ASSISTANT_PLAN_ARCHIVE.md). Implemented behavior and verification remain in [setup and release notes](OPERATIONS_ASSISTANT_SETUP.md). The reviewed committed baseline is main `63dac95`, including assistant release `fab93f3`. Separate, uncommitted relationship and Meeting Inbox work was present during planning; coordinate with it rather than treating it as released or duplicating it.
+**Status: code implementation and local verification complete; production activation remains partial.** See the [release record and partner handoff](OPERATIONS_ASSISTANT_RELEASE.md). Mail deployment, real employee SMS acceptance and signed iPhone push remain open; code/test completion does not close those gates. This replaces the earlier overlapping phase lists; [the previous plan is archived](OPERATIONS_ASSISTANT_PLAN_ARCHIVE.md). Implemented behavior and verification remain in [setup and release notes](OPERATIONS_ASSISTANT_SETUP.md). The reviewed committed baseline is main `63dac95`, including assistant release `fab93f3`. Separate, uncommitted relationship and Meeting Inbox work was present during planning; coordinate with it rather than treating it as released or duplicating it.
 
 ## The single goal
 

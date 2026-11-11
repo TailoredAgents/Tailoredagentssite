@@ -14,6 +14,10 @@ export async function runScheduledWorkers(env, { fetcher = fetch, now = Date.now
       if (result.ok !== true) throw new Error(`${name}: invalid worker response.`);
       log(`${name}: ${result.checked ?? 0} checked; ${result.failed ?? 0} need review.`);
       failed ||= Boolean(result.failed);
+      if (result.assistant) {
+        log(`Assistant: ${result.assistant.checked ?? 0} checked; ${result.assistant.failed ?? 0} need review.`);
+        failed ||= Boolean(result.assistant.failed);
+      }
       for (const [key, title] of [["voice", "Voicemail retention"], ["callRecordings", "Call recordings"], ["metaLeads", "Meta leads"], ["metaConversions", "Meta conversions"], ["introductions", "Lead introductions"]]) {
         if (result[key]?.checked || result[key]?.failed) log(`${title}: ${result[key].checked ?? 0} checked; ${result[key].failed ?? 0} need review.`);
       }

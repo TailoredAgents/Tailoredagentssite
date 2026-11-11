@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       runCallRecordingWorker().catch(()=>{console.error("call_recording_worker_failed");return {checked:0,failed:1,more:false};}),
       runMetaLeadWorker().catch(()=>{console.error("meta_lead_worker_failed");return {checked:0,failed:1,more:false};}),
       runMetaConversionWorker().catch(()=>{console.error("meta_conversion_worker_failed");return {checked:0,failed:1,more:false};}),
-      runAssistantWorker().catch(()=>({checked:0,failed:1,more:false})),
+      runAssistantWorker().catch(()=>{console.error('assistant_worker_failed');return {checked:0,failed:1,more:false};}),
     ]);
     const textAlerts = await runIncomingSmsAlertWorker().catch(() => ({ checked: 0, failed: 1, more: false }));
     const leadAlerts = await runLeadAlertWorker().catch(() => ({ checked: 0, failed: 1, more: false }));

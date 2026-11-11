@@ -55,3 +55,15 @@ it("runs the authenticated meeting lane independently and can pause it",async()=
  expect(await runScheduledWorkers({...env,MEETING_WORKER_ENABLED:undefined},{fetcher,log:()=>{}})).toBe(true);
  expect(fetcher).toHaveBeenCalledTimes(3);
 });
+
+it("reports assistant failures even when reporting succeeded and preserves other lanes",async()=>{
+ const fetcher=vi.fn(async(url:URL)=>Response.json({ok:true,checked:0,failed:0,more:false,...(url.pathname.endsWith('/search-console')?{assistant:{checked:1,failed:1,more:false}}:{})})),log=vi.fn();
+ expect(await runScheduledWorkers(env,{fetcher,log})).toBe(false);
+ expect(fetcher).toHaveBeenCalledTimes(2);expect(log).toHaveBeenCalledWith('Assistant: 1 checked; 1 need review.');
+ expect(JSON.stringify(log.mock.calls)).not.toContain(env.SEARCH_CONSOLE_SYNC_SECRET);
+});
+it("records a healthy idle assistant without starting extra requests",async()=>{
+ const fetcher=vi.fn(async()=>Response.json({ok:true,assistant:{checked:0,failed:0,more:false}})),log=vi.fn();
+ expect(await runScheduledWorkers({...env,SEO_WORKER_URL:''},{fetcher,log})).toBe(true);
+ expect(fetcher).toHaveBeenCalledTimes(1);expect(log).toHaveBeenCalledWith('Assistant: 0 checked; 0 need review.');
+});

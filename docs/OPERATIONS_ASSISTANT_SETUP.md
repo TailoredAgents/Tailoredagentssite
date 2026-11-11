@@ -1,8 +1,8 @@
 # Operations assistant setup and release notes
 
-This is an implementation checkpoint, not the completion of the full owner-assistant plan. The capability inventory explicitly tracks pending and partial coverage.
+Recommendations 1–5 are implemented and locally verified. See the [release record and partner handoff](OPERATIONS_ASSISTANT_RELEASE.md) for actual production state and the remaining Mail, employee SMS and iPhone acceptance gates. The capability inventory also tracks the broader deferred backlog.
 
-The next delivery goal is defined in the [current employee-assistant plan](OPERATIONS_ASSISTANT_PLAN.md): reliable assignments and employee SMS, native iPhone push, documents, shared knowledge, proactive follow-up and complete chat communications. Those planned additions are not enabled by this documentation update. External application integrations are deferred.
+The [employee-assistant plan](OPERATIONS_ASSISTANT_PLAN.md) covers reliable assignments and employee SMS, native iPhone push, documents, shared knowledge, proactive follow-up and complete chat communications. The dated sections below retain the evidence for each increment. External application integrations are deferred.
 
 ## Employee work and SMS alerts — November 10 implementation increment
 
