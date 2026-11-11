@@ -249,6 +249,8 @@ November 11 implementation update: the [record polish pass](SOFTWARE_RECORD_POLI
 | Settings / Mail admin | Categories and current status are easy to find. Routine edits are visually separate from revoke/reset/delete actions. The current selected preference is obvious. |
 | Smart Cards / Builder | Daily sharing/review tasks are easy to reach; long campaign/setup details do not dominate the first screen. Existing permanent links, approved plans and previews are preserved. |
 
+November 11 follow-up: the [Sales and delivery pass](SOFTWARE_DELIVERY_POLISH_2026-11-11.md) refines Sales board/table (V06 and the Sales part of V30), Quick capture mobile grouping (V34–35), Partners/statements (V38), and Sites read-first/edit and viewer presentation (V16, V19, V31). This is scoped implementation evidence, not closure of the remaining Assistant, reporting, administration, Mail or physical-device work.
+
 ## Verification plan for implementation
 
 This audit is a visual review, not an accessibility certification or a functional release test. For implementation, use these explicit gates:

@@ -1,0 +1,67 @@
+.workspace { min-width: 0; }
+.workspace :global(.work-heading), .workspace :global(.dashboard-page-heading) { gap: 20px; }
+.workspace :global(.work-section) > h2 { font-size: 18px; font-weight: 600; letter-spacing: -.02em; margin: 0 0 16px; }
+.workspace :global(.work-section) > summary { font-size: 16px; font-weight: 600; cursor: pointer; line-height: 1.5; }
+.workspace :global(.work-section)[open] > summary { margin-bottom: 18px; }
+.workspace :global(.work-section) > form { margin-top: 18px; }
+.workspace :global(.work-section) > form > button { margin-top: 16px; }
+.workspace :global(.dashboard-operation-fields) > details { margin: 22px 0; padding: 16px; border: 1px solid var(--workspace-line); border-radius: 10px; background: var(--workspace-soft); }
+.workspace :global(.dashboard-operation-fields) > details > summary { cursor: pointer; font-size: 14px; font-weight: 600; line-height: 1.6; color: var(--workspace-ink); }
+.workspace :global(.dashboard-operation-fields) > details[open] > summary { margin-bottom: 20px; }
+.workspace :global(.dashboard-operation-fields) > details > :global(.dashboard-field) + :global(.dashboard-field) { margin-top: 16px; }
+.workspace :global(.work-record) { box-shadow: none; }
+.workspace :global(.work-record) > p, .workspace :global(.work-section) > p { color: var(--workspace-muted); line-height: 1.65; }
+.workspace :global(.work-section-heading) > strong:last-child { font-variant-numeric: tabular-nums; }
+.workspace :global(.work-record) > summary { color: var(--workspace-ink); }
+.workspace :global(.work-record) :global(.dashboard-operation-form) { padding-inline: 0; }
+.workspace :global(.work-card) { border-color: var(--workspace-line); box-shadow: var(--workspace-shadow); align-items: center; gap: 18px; }
+.workspace :global(.work-card) h2 { font-size: 18px; overflow-wrap: anywhere; }
+.workspace :global(.work-card) > div { min-width: 0; }
+.workspace :global(.work-avatar) { background: var(--workspace-blue-soft); border: 1px solid var(--workspace-line); border-radius: 50%; }
+.workspace :global(.sales-metrics) { gap: 12px; }
+.workspace :global(.sales-metric) { padding: 18px 20px; border-color: var(--workspace-line); box-shadow: none; }
+.workspace :global(.sales-metric) > strong { font-size: 27px; font-variant-numeric: tabular-nums; }
+.workspace :global(.sales-filter-bar) { padding: 12px; border: 1px solid var(--workspace-line); border-radius: 12px; background: var(--workspace-surface); gap: 8px; }
+.workspace :global(.sales-filter-bar) > label { min-width: 0; }
+.workspace :global(.sales-filter-bar) select { max-width: 100%; }
+.workspace :global(.sales-section-title) { align-items: center; gap: 12px; margin: 24px 0 16px; }
+.workspace :global(.sales-pipeline) { grid-auto-columns: 280px; gap: 14px; padding-bottom: 16px; scroll-snap-type: x proximity; scrollbar-width: thin; scrollbar-color: var(--workspace-control-line) var(--workspace-canvas); }
+.workspace :global(.sales-pipeline-column) { min-width: 280px; background: var(--workspace-soft); border: 1px solid var(--workspace-line); border-radius: 12px; padding: 12px; scroll-snap-align: start; }
+.workspace :global(.sales-column-heading) { margin: 0 0 14px; padding: 4px 2px 12px; border-bottom: 1px solid var(--workspace-line); }
+.workspace :global(.sales-column-heading) i { background: var(--workspace-muted); }
+.workspace :global(.sales-pipeline-column)[data-stage="interested"] :global(.sales-column-heading) i, .workspace :global(.sales-pipeline-column)[data-stage="discovery"] :global(.sales-column-heading) i, .workspace :global(.sales-pipeline-column)[data-stage="mockup"] :global(.sales-column-heading) i { background: var(--workspace-blue); }
+.workspace :global(.sales-pipeline-column)[data-stage="won"] :global(.sales-column-heading) i { background: var(--workspace-success); }
+.workspace :global(.sales-opportunity-card) { border-radius: 10px; border-color: var(--workspace-line); box-shadow: var(--workspace-shadow); padding: 16px; overflow-wrap: anywhere; }
+.workspace :global(.sales-opportunity-card):hover { border-color: var(--workspace-blue); }
+.workspace :global(.sales-opportunity-card) h3 { font-size: 16px; line-height: 1.4; }
+.workspace :global(.sales-card-next) { display: flex; align-items: flex-start; gap: 8px; padding: 12px 0; border-top: 1px solid var(--workspace-line); }
+.workspace :global(.sales-card-next) svg { flex-shrink: 0; margin-top: 3px; }
+.workspace :global(.sales-card-next) small { display: block; margin-top: 5px; color: var(--workspace-muted); }
+.workspace :global(.sales-card-footer) { flex-wrap: wrap; gap: 10px; }
+.workspace :global(.sales-column-empty) { padding: 20px 8px; font-size: 13px; line-height: 1.6; color: var(--workspace-muted); text-align: center; }
+.workspace :global(.sales-table) { min-width: 1000px; }
+.workspace :global(.sales-table) td:nth-child(3) { min-width: 180px; }
+.workspace :global(.sales-table) td:nth-child(5) { min-width: 100px; }
+.workspace :global(.sales-table) :is(th,td) { padding: 16px; vertical-align: top; }
+.workspace :global(.sales-table) td { white-space: normal; overflow-wrap: anywhere; }
+.workspace :global(.sales-table) td:first-child { min-width: 240px; }
+.workspace :global(.sales-table) td:nth-child(4) { min-width: 200px; }
+.workspace :global(.sales-table) :global(.sales-table-phone) { display: flex; align-items: center; gap: 6px; }
+.workspace :global(.sales-table-phone) svg { flex-shrink: 0; }
+.workspace :global(.sales-table) tbody tr:hover { background: var(--workspace-blue-soft); }
+.workspace :global(.dashboard-sites-table) small { white-space: normal; overflow-wrap: anywhere; }
+@media(max-width:700px) {
+ .workspace :global(.sales-metrics) { grid-template-columns: repeat(2,minmax(0,1fr)); }
+ .workspace :global(.sales-metric) { padding: 14px; }
+ .workspace :global(.sales-metric) > small { line-height: 1.5; }
+ .workspace :global(.sales-filter-bar) { align-items: stretch; }
+ .workspace :global(.sales-filter-bar) > label { flex: 1 1 100%; width: 100%; }
+ .workspace :global(.sales-view-switch) { margin-left: 0; }
+ .workspace :global(.sales-section-title) { flex-direction: column; align-items: flex-start; }
+ .workspace :global(.sales-pipeline) { grid-auto-columns: 275px; }
+ .workspace :global(.sales-pipeline-column) { min-width: 0; }
+ .workspace :global(.work-record) { padding: 14px; }
+ .workspace :global(.work-section) > :global(.dashboard-operation-form) { padding-inline: 0; }
+ .workspace :global(.dashboard-operation-fields) > details { padding: 12px; }
+ .workspace :global(.work-section-heading) { gap: 10px; }
+}

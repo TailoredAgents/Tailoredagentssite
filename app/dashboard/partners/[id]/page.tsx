@@ -1,3 +1,6 @@
+import {RecordFacts} from "@/components/dashboard/record-facts";
+import deliveryStyles from "@/components/dashboard/delivery-workspace.module.css";
+import recordStyles from "@/components/dashboard/record-workspace.module.css";
 import Link from 'next/link';
 import {notFound} from 'next/navigation';
 import {z} from 'zod';
@@ -13,9 +16,9 @@ export default async function PartnerPage({params}:{params:Promise<{id:string}>}
  const {id}=await params;if(!z.uuid().safeParse(id).success)notFound();const c=await requireDashboardContext();
  const d=await partnerWorkspace(c,id).catch(e=>{if(e instanceof SalesAccessError)notFound();throw e;}),members=d.admin?await getWorkspaceMembers(c):[];
  const active=d.agreements.filter(a=>a.status==='active'),reversed=new Set(d.earnings.filter(e=>e.reverses_id).map(e=>e.reverses_id));
- return <><header className="dashboard-topbar"><div><span>Partners</span><strong>Partnership</strong></div></header><div className="dashboard-content operating-workspace"><Link className="dashboard-back-link" href="/dashboard/partners">← All partners</Link>
-  <section className="work-heading"><div><span className="relationship-eyebrow">Private partnership record</span><h1>{d.partner.name}</h1><p>{d.partner.organization||'Referral partner'}</p></div><span className="relationship-pill">{d.manage?'Finance workspace':'Read access'}</span></section>
-  <nav className="workspace-section-links" aria-label="Partner sections"><a href="#agreements">Agreements</a><a href="#earnings">Earnings</a><a href="#statements">Statements</a></nav>
+ return <><header className="dashboard-topbar"><div><span>Partners</span><strong>Partnership</strong></div></header><div className={`dashboard-content operating-workspace ${deliveryStyles.workspace} ${recordStyles.workspace}`}><Link className="dashboard-back-link" href="/dashboard/partners">← All partners</Link>
+  <section className="work-heading dashboard-record-heading"><div><span className="relationship-eyebrow">Private partnership record</span><h1>{d.partner.name}</h1><p>{d.partner.organization||'Referral partner'}</p></div><span className="relationship-pill">{d.manage?'Finance workspace':'Read access'}</span></section>
+  <RecordFacts facts={[{label:"Active agreements",value:active.length},{label:"Visible earnings",value:d.earnings.length},{label:"Statements",value:d.statements.length}]} /><nav className="workspace-section-links" aria-label="Partner sections"><a href="#agreements">Agreements</a><a href="#earnings">Earnings</a><a href="#statements">Statements</a></nav>
   {d.manage&&!active.length&&<p className="work-notice">No agreement is active. Conner or the designated finance lead must enter the agreed rates and rules, review them, and activate a version before earnings can be recorded.</p>}
   <section id="agreements" className="dashboard-panel work-section"><div className="work-section-heading"><div><span className="relationship-eyebrow">Versioned terms</span><h2>Agreements</h2></div></div>
    {d.agreements.map(a=><details className="work-record" key={a.id}><summary>Version {a.version} · {a.status} · {a.terms.startsOn}{a.terms.endsOn?` to ${a.terms.endsOn}`:''}</summary><dl className="work-facts"><div><dt>Document earning</dt><dd>{dollars(a.terms.documentRateCents)} per eligible document</dd></div><div><dt>Other revenue</dt><dd>{a.terms.nonDocumentBps/100}% · {a.terms.basis} basis</dd></div>{Object.entries({documentEligibility:'Eligible documents',eligibleServices:'Eligible services',paymentTiming:'Payment timing',durationPolicy:'Duration',refundPolicy:'Refunds and credits',splitPolicy:'Multiple introducers'}).map(([key,label])=><div key={key}><dt>{label}</dt><dd>{a.terms[key]}</dd></div>)}</dl><p>Activated by {a.activated_by_name||'Nobody yet'}. Rates and policies are immutable; changes need a new version.</p>

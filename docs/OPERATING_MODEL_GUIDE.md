@@ -23,7 +23,7 @@ Click any of the four sidebar section headings to collapse or expand its links. 
 1. Open **Sales & prospects → Meetings & notes → Quick capture**, or use the **Quick capture** shortcut in My day.
 2. Save whatever is known: a person, contact detail, event or useful conversation context. No specific name, company, phone, email or website is mandatory.
 3. If a phone/email is known, use **Check existing prospects**. A matching existing prospect requires an explicit choice: append to it or deliberately create a separate record. No name-based merge occurs.
-4. Record the introducer and appointment setter separately. Choose the follow-up owner for a new prospect.
+4. Open **Conversation context, ownership & introductions** for the event, date, introducer, appointment setter and follow-up owner. These remain optional; the current employee is the default follow-up owner for a new prospect.
 5. Saving opens the relationship overview. Use **Hand off next step**, **Team calendar**, or the existing prospect follow-up controls for the actual next commitment.
 
 Appending an encounter does not replace existing contact details, owner, source or NFC/QR campaign context. It adds the conversation and any explicitly selected introduction. Manual capture does not trigger automatic lead-introduction SMS, email, booking or Website Builder work. Existing standard manual entry retains its phone-or-email requirement; this new encounter workflow supports contacts whose details are still incomplete.
