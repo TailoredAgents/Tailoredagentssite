@@ -2,7 +2,7 @@
 
 Prepared November 10, 2026 for Austin, Devon, Jeffrey and the rest of Tailored Agents.
 
-**Status: code implementation and local verification complete; production activation remains partial.** See the [release record and partner handoff](OPERATIONS_ASSISTANT_RELEASE.md). Mail deployment, real employee SMS acceptance and signed iPhone push remain open; code/test completion does not close those gates. This replaces the earlier overlapping phase lists; [the previous plan is archived](OPERATIONS_ASSISTANT_PLAN_ARCHIVE.md). Implemented behavior and verification remain in [setup and release notes](OPERATIONS_ASSISTANT_SETUP.md). The reviewed committed baseline is main `63dac95`, including assistant release `fab93f3`. Separate, uncommitted relationship and Meeting Inbox work was present during planning; coordinate with it rather than treating it as released or duplicating it.
+**Status: code implementation and local verification complete; production activation remains partial.** See the [release record and partner handoff](OPERATIONS_ASSISTANT_RELEASE.md). Austin's live SMS delivery/link check passed November 10; Mail deployment, independent background activation, wider employee rollout and signed iPhone push remain open. Code/test completion does not close those gates. This replaces the earlier overlapping phase lists; [the previous plan is archived](OPERATIONS_ASSISTANT_PLAN_ARCHIVE.md). Implemented behavior and verification remain in [setup and release notes](OPERATIONS_ASSISTANT_SETUP.md). The reviewed committed baseline is main `63dac95`, including assistant release `fab93f3`. Separate, uncommitted relationship and Meeting Inbox work was present during planning; coordinate with it rather than treating it as released or duplicating it.
 
 ## The single goal
 
@@ -116,6 +116,8 @@ Reuse the durable delivery and signed-callback patterns in `lib/sms/alerts.ts`; 
 Validate Twilio callbacks against the expected account, sender, recipient and provider message ID. Track out-of-order callbacks and uncertain submission. Provider acceptance, delivery and human reading are different states; SMS can be billed in multiple segments. [Twilio Message resource](https://www.twilio.com/docs/messaging/api/message-resource).
 
 **B acceptance:** closing the browser and restarting the worker preserves progress; revocation stops subsequent effects; duplicate events/retries do not duplicate alerts or actions; a stale review request is not texted; quiet hours/DST and STOP work; one employee never receives another's private work. A real opted-in employee receives a test alert and opens the correct authorized assignment.
+
+**November 10 live SMS check:** Austin verified his own mobile through Settings and received one authorized completion alert from a harmless assistant test. My work reported **delivered**, and Austin confirmed receipt and a working Assistant link. SMS/completion preferences were restored to off after the test; his verified phone remains saved. This passes the real employee delivery/link portion of B, while independent background execution and the remaining rollout gates stay open. See the release record for evidence and limits.
 
 ### C. Extend the existing iPhone app with push
 
@@ -243,7 +245,7 @@ Roll out to Austin with controlled employee test destinations, then Devon and Je
 
 ## Completion checklist for this one goal
 
-November 10 progress: the first implementation increment adds the employee work list, durable notification feed and opted-in SMS with verification, quiet hours and receipts. See [the release notes](OPERATIONS_ASSISTANT_SETUP.md) for evidence. Independent 30-day background delegation is also implemented and locally verified; bounded assignments, saved plans, pause/resume, review/input waiting and per-assignment spending ceilings are implemented. Production activation and real employee alert acceptance remain open. Document and knowledge implementation passed local acceptance. Proactive routines also passed local acceptance. Chat communications passed local acceptance. Native push activation and live team rollout remain open. Austin confirmed only a free Apple account is available, so signed physical-device push acceptance requires future Developer Program enrollment.
+November 10 progress: the first implementation increment adds the employee work list, durable notification feed and opted-in SMS with verification, quiet hours and receipts. See [the release notes](OPERATIONS_ASSISTANT_SETUP.md) for evidence. Independent 30-day background delegation is also implemented and locally verified; bounded assignments, saved plans, pause/resume, review/input waiting and per-assignment spending ceilings are implemented. Independent background activation remains open; Austin's live SMS delivery/link check passed as recorded above. Document and knowledge implementation passed local acceptance. Proactive routines also passed local acceptance. Chat communications passed local acceptance. Native push activation and live team rollout remain open. Austin confirmed only a free Apple account is available, so signed physical-device push acceptance requires future Developer Program enrollment.
 
 - [ ] A: Baseline health and current production acceptance recorded.
 - [ ] B: Durable assignments, independent scoped delegation, work list and employee SMS pass acceptance.

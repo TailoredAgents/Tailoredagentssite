@@ -58,8 +58,14 @@ Then enable `ASSISTANT_BACKGROUND_ENABLED=true` on the Render website. Each empl
 
 ## Employee rollout
 
+### Live SMS acceptance — November 10, 2026
+
+Austin authorized one verification text and one generic employee assistant alert to his own mobile. The normal Settings flow verified the number using the code he supplied. With completion alerts temporarily enabled, a harmless Chat request completed at **8:07:19 PM Eastern** with `Notification test complete.` The production My work feed reported the notification **delivered**. Austin confirmed both physical receipt and that the SMS link opened his Assistant page. No customer was contacted and no business record was changed by the test request.
+
+After the test, SMS and completion preferences were saved back to their original off state; the phone remains verified. Ongoing alerts require the employee's own opt-in. This closes the real delivery/link check for Austin. Quiet-hours/STOP behavior remains covered by automated checks, not a claim of live carrier testing. It does not close independent background execution, Mail deployment, other employees' rollout or native iPhone push acceptance.
+
 1. Open Dashboard → Assistant → Settings. Confirm reviewed/direct mode and choose only needed capabilities. The allowance is shared, not $25 per employee.
-2. Verify the employee's own mobile number and explicitly opt into attention/review alerts; completion texts are optional. Check a designated employee alert, its authenticated deep link, delivery receipt, quiet hours and STOP behavior. No live SMS acceptance test has been performed in this release.
+2. Verify the employee's own mobile number and explicitly opt into attention/review alerts; completion texts are optional. Check a designated employee alert, its authenticated deep link, delivery receipt, quiet hours and STOP behavior. Austin's real delivery/link check passed as recorded above; other employees must verify their own destinations and preferences.
 3. In Chat, upload a private source, ask for a cited brief and download it. In Files, deliberately publish selected guidance only if it should be shared. Confirm another employee cannot see private uploads/chats.
 4. In My work, enable only wanted routines with the displayed schedule, scope, per-run/daily limit and notification preference. Templates default paused; no routine was enabled for Austin, Devon or Jeffrey by this release.
 5. Review a proposed email inline and test short voice dictation on the actual employee devices. Browser acceptance used synthetic providers and desktop/phone Chromium. Safari/WKWebView microphone behavior still needs physical-device validation.
