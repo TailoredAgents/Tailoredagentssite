@@ -253,6 +253,8 @@ November 11 follow-up: the [Sales and delivery pass](SOFTWARE_DELIVERY_POLISH_20
 
 November 11 next follow-up: the [Assistant supporting-page pass](SOFTWARE_ASSISTANT_SUPPORT_POLISH_2026-11-11.md) addresses V21 and the settings portion of V15 with knowledge/document reading and editing layouts, routine cards/forms, grouped access controls and saved notification summaries. Local responsive and interaction evidence is recorded there; reporting/admin, separate Mail and physical-device work remain open.
 
+November 11 reporting/admin follow-up: the [administration pass](SOFTWARE_ADMIN_POLISH_2026-11-11.md) implements the scoped phase-6 presentation improvements for Analytics, Activity, Settings, Smart Cards, SEO overview/review and Builder/import utilities (V11–14, V26, V29–30 and V39). Desktop/mobile evidence and unchanged interaction checks are recorded there. CSV file-picker/mapping acceptance, separate Mail, remaining state permutations and physical-device acceptance remain explicit gaps. The earlier Assistant knowledge layout was also observed live during this pass.
+
 ## Verification plan for implementation
 
 This audit is a visual review, not an accessibility certification or a functional release test. For implementation, use these explicit gates:

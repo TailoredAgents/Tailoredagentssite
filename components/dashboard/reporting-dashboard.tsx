@@ -231,6 +231,13 @@ const tableDefinitions: Record<
     second: "Appearances",
   },
 };
+function ReportLabel({value, page}:{value:string;page:boolean}) {
+  if(!page || !/^https?:\/\//i.test(value)) return <>{value}</>;
+  try {
+    const url=new URL(value);
+    return <details className="report-address"><summary>{url.hostname}<wbr/>{url.pathname}</summary><small>{value}</small></details>;
+  } catch { return <>{value}</>; }
+}
 function DetailTable({
   table,
   selection,
@@ -353,7 +360,7 @@ function DetailTable({
           <tbody>
             {result?.rows.map((row) => (
               <tr key={row.label}>
-                <th scope="row">{row.label}</th>
+                <th scope="row"><ReportLabel value={row.label} page={table==="google-pages"||table==="website-pages"}/></th>
                 <td>{number(row.primary)}</td>
                 <td>{number(row.secondary)}</td>
                 {google && <td>{number(row.position ?? 0)}</td>}

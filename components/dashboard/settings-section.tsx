@@ -3,7 +3,7 @@
 import { ChevronDown, Settings2 } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
 
-export function SettingsSection({ id, target, title, description, children }: { id: string; target: string; title: string; description: string; children: ReactNode }) {
+export function SettingsSection({ id, target, title, description, status, children }: { id: string; target: string; title: string; description: string; status?: string; children: ReactNode }) {
   const details = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
     function reveal() { if ([`#${id}`, `#${target}`].includes(location.hash) && details.current) details.current.open = true; }
@@ -12,5 +12,7 @@ export function SettingsSection({ id, target, title, description, children }: { 
     document.addEventListener("click", click, true);
     return () => { window.removeEventListener("hashchange", reveal); window.removeEventListener("popstate", reveal); document.removeEventListener("click", click, true); };
   }, [id, target]);
-  return <details id={id} ref={details} className="workspace-settings-section"><summary><span className="workspace-section-icon"><Settings2 size={20} aria-hidden="true" /></span><span><strong>{title}</strong><small>{description}</small></span><ChevronDown size={19} aria-hidden="true" /></summary><div>{children}</div></details>;
+  // A browser can expand details containing the URL's fragment before React hydrates.
+  // Keep that native state; reveal() also handles later client-side hash changes.
+  return <details id={id} ref={details} suppressHydrationWarning className="workspace-settings-section"><summary><span className="workspace-section-icon"><Settings2 size={20} aria-hidden="true" /></span><span><strong>{title}</strong><small>{description}</small>{status&&<em className="workspace-section-status">{status}</em>}</span><ChevronDown size={19} aria-hidden="true" /></summary><div>{children}</div></details>;
 }

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight, CalendarClock, Check, LayoutGrid, ListFilter, LockKeyhole, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 
-export function SalesHeader({ title, subtitle, active, children }: { title: string; subtitle: string; active: "pipeline" | "today" | "mockups" | "imports"; children?: ReactNode }) {
+export function SalesHeader({ title, subtitle, active, children, showNavigation=true }: { title: string; subtitle: string; active: "pipeline" | "today" | "mockups" | "imports"; children?: ReactNode; showNavigation?: boolean }) {
   const tabs = [
     { key: "pipeline", href: "/dashboard/sales", label: "Pipeline", icon: LayoutGrid },
     { key: "today", href: "/dashboard/sales/today", label: "My day", icon: CalendarClock },
@@ -11,7 +11,7 @@ export function SalesHeader({ title, subtitle, active, children }: { title: stri
   return <>
     <header className="dashboard-topbar"><div><span>Tailored Agents / Sales</span><strong>{title}</strong></div><span className="dashboard-secure"><LockKeyhole size={14} />Private workspace</span></header>
     <div className="sales-page-heading"><div><span className="sales-eyebrow">{active === "today" ? "Daily work" : active === "imports" ? "Prospecting" : active === "mockups" ? "Website delivery" : "Sales & prospects"}</span><h1>{title}</h1><p>{subtitle}</p></div>{children ? <div className="sales-heading-actions">{children}</div> : null}</div>
-    <nav className="sales-tabs" aria-label="Sales workspace">{tabs.map(({ key, href, label, icon: Icon }) => <Link key={key} href={href} className={active === key ? "is-active" : ""} aria-current={active === key ? "page" : undefined}><Icon size={16} />{label}</Link>)}</nav>
+    {showNavigation&&<nav className="sales-tabs" aria-label="Sales workspace">{tabs.map(({ key, href, label, icon: Icon }) => <Link key={key} href={href} className={active === key ? "is-active" : ""} aria-current={active === key ? "page" : undefined}><Icon size={16} />{label}</Link>)}</nav>}
   </>;
 }
 

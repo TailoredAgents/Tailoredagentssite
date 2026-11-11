@@ -20,7 +20,7 @@
   font-size: 15px;
   line-height: 1.6;
 }
-.seo-heading > div:last-child {
+.seo-heading > div:last-child:not(:first-child) {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -330,3 +330,24 @@
   outline: 2px solid var(--workspace-blue);
   outline-offset: -2px;
 }
+
+/* Quieter section navigation and clearer source reading. */
+.seo-tabs { flex-wrap:wrap; gap:8px; overflow:visible; border:0; padding-bottom:0; }
+.seo-tabs a { padding:9px 13px; border:1px solid var(--workspace-line); border-radius:8px; background:var(--workspace-surface); }
+.seo-body [id] { scroll-margin-top:24px; }
+.seo-plan-item { padding:18px; margin-top:14px; border:1px solid var(--workspace-line); border-radius:10px; background:var(--workspace-soft); }
+.seo-plan-item p { max-width:76ch; }
+.seo-body .sales-panel { border-radius:14px; box-shadow:var(--workspace-shadow); }
+.seo-body .seo-box { overflow-wrap:anywhere; }
+.seo-body .seo-table { min-width:600px; }
+.seo-body .seo-copy-preview { padding:22px; }
+.seo-body .dashboard-field { margin-bottom:10px; }
+.seo-body .dashboard-form-footer { gap:12px; }
+@media(max-width:680px) {
+ .seo-plan-item { padding:14px; }
+ .seo-body .seo-copy-preview { padding:16px; }
+ .seo-heading>div:first-child { min-width:0; }
+ .seo-heading h1 { overflow-wrap:anywhere; }
+}
+
+@media(max-width:680px) { .seo-review-topbar { align-items:flex-start; flex-direction:column; gap:8px; } .seo-review-topbar>a { font-size:13px; } }

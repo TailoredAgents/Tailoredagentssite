@@ -42,9 +42,9 @@ export default async function SeoChangePage({
   ) => (typeof source?.[key] === "number" ? String(source[key]) : "—");
   return (
     <>
-      <header className="dashboard-topbar">
+      <header className="dashboard-topbar seo-review-topbar">
         <div>
-          <span>Tailored Agents / SEO manager</span>
+          <span>SEO manager</span>
           <strong>Review & publication</strong>
         </div>
         <Link href="/dashboard/seo">Back to SEO manager</Link>
@@ -62,9 +62,6 @@ export default async function SeoChangePage({
             </SalesStatus>
           </p>
         </div>
-        <Link className="sales-button" href="/dashboard/seo#review">
-          SEO manager
-        </Link>
       </div>
       <div className="seo-body">
         <SalesPanel title="Why this change" eyebrow="Source-linked proposal">

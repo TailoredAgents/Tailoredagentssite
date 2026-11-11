@@ -1,3 +1,4 @@
+import styles from "@/components/dashboard/admin-polish.module.css";
 import { LeadIntroSettings } from "@/components/lead-intro-settings";
 import { getIntroSettings } from "@/lib/lead-intro/service";
 import { SmsAlertSettings } from "@/components/sms/alert-settings";
@@ -53,19 +54,19 @@ export default async function SettingsPage() {
   ];
   return <>
     <header className="dashboard-topbar"><div><span>Your workspace</span><strong>Settings</strong></div><span className="dashboard-secure"><ShieldCheck size={16} />Private team workspace</span></header>
-    <div className="dashboard-content">
+    <div className={`dashboard-content ${styles.settings}`}>
       <section className="dashboard-page-heading dashboard-page-heading-compact"><div><span>Account and connections</span><h1>Settings</h1><p>Check your access, manage your password, and see which services are connected.</p></div></section>
-      <nav className="workspace-section-links" aria-label="Settings shortcuts"><a href="#connections">Connections & access</a><a href="#sms">SMS settings</a><a href="#lead-alerts">Lead alerts</a><a href="#lead-introductions">AI introductions</a><a href="#text-alerts">Text alerts</a><a href="#calling">Calling & voicemail</a><a href="https://mail.tailoredagents.com/settings" target="_blank" rel="noreferrer">Email and password settings<span className="sr-only"> (new tab)</span></a></nav>
+      <nav className="workspace-section-links" aria-label="Settings shortcuts"><a href="#appearance">Appearance</a><a href="#connections">Connections & access</a><a href="#sms">SMS settings</a><a href="#lead-alerts">Lead alerts</a><a href="#lead-introductions">AI introductions</a><a href="#text-alerts">Text alerts</a><a href="#calling">Calling & voicemail</a><a href="#meta">Facebook & Instagram</a><a href="https://mail.tailoredagents.com/settings" target="_blank" rel="noreferrer">Email and password settings<span className="sr-only"> (new tab)</span></a></nav>
       <section className="workspace-profile" aria-label="Your workspace"><i aria-hidden="true">TA</i><div><h2>{context.workspace.name}</h2><p>{context.user.email} · {context.role.charAt(0).toUpperCase() + context.role.slice(1)}</p></div><span className="dashboard-status status-active"><CheckCircle2 size={15} aria-hidden="true" />Active workspace</span></section>
-      <DashboardAppearance />
+      <div id="appearance"><DashboardAppearance /></div>
       <div className="dashboard-section-heading" id="connections"><h2>Connections & access</h2><Link href="/dashboard/analytics">Google connection and reports</Link></div>
       <section className="workspace-connections" aria-label="Service connections">{settings.map(({ icon: Icon, label, value, detail, healthy }) => <article className="workspace-connection" key={label}><header><span><Icon size={19} aria-hidden="true" /></span><div><h3>{label}</h3><em className={healthy ? "" : "is-neutral"}>{value}</em></div></header><p>{detail}</p></article>)}</section>
       <SettingsSection id="messaging-settings" target="sms" title="Business SMS" description="Verify your number, manage teammate access and control sending."><SmsSettingsPanel settings={sms} /></SettingsSection>
       <SettingsSection id="voice-settings" target="calling" title="Calling & voicemail" description="Manage voice permissions, business hours, routing and voicemail."><VoiceSettingsPanel workspace={voice} /></SettingsSection>
-      <SmsAlertSettings settings={textAlerts} />
-      <LeadAlertSettings settings={leadAlerts} />
-      <LeadIntroSettings data={introductions} numbers={sms.numbers}/>
-      <MetaSettingsPanel state={meta} conversions={metaConversions} admin={context.role === "owner" || context.role === "admin"} />
+      {textAlerts&&<SettingsSection id="text-alert-settings" target="text-alerts" title="Customer text alerts" description="Choose who receives alerts when a customer texts your business." status={textAlerts.enabled?"Enabled":"Off"}><SmsAlertSettings settings={textAlerts} /></SettingsSection>}
+      {leadAlerts&&<SettingsSection id="lead-alert-settings" target="lead-alerts" title="New-lead alerts" description="Manage teammate alerts for new Meta Instant Form leads." status={leadAlerts.enabled?"Enabled":"Off"}><LeadAlertSettings settings={leadAlerts} /></SettingsSection>}
+      {introductions&&<SettingsSection id="introduction-settings" target="lead-introductions" title="AI lead introductions" description="Review the first-message policy, forms, sending hours and responsible teammate." status={introductions.liveAllowed&&introductions.settings?.enabled?"Enabled":"Off"}><LeadIntroSettings data={introductions} numbers={sms.numbers}/></SettingsSection>}
+      <SettingsSection id="meta-settings" target="meta" title="Facebook & Instagram" description="Check lead intake, conversion reporting and setup requirements."><MetaSettingsPanel state={meta} conversions={metaConversions} admin={context.role === "owner" || context.role === "admin"} /></SettingsSection>
       <section className="dashboard-panel dashboard-boundary-card"><ShieldCheck size={22} /><div><h2>This workspace is private to your team</h2><p>Clients cannot sign in to this dashboard. If you need a password reset or someone has left the team, contact the mail owner.</p></div></section>
     </div>
   </>;
