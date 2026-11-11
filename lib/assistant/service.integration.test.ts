@@ -66,6 +66,30 @@ describe.skipIf(!url)('Operations OAuth and execution integration',()=>{
   expect((await pool.query('SELECT updated_at FROM meetings WHERE id=$1',[id])).rows[0].updated_at).toEqual(before);
   await pool.query('DELETE FROM meetings WHERE id=$1',[id]);
  });
+ async function relationshipLead(){const id=randomUUID();await pool.query("INSERT INTO leads(id,workspace_id,name,organization,email,source) VALUES($1,$2,'Relationship fixture','','person@example.test','manual')",[id,workspace]);return id;}
+ it('denies relationship writes to read-only grants and preserves passive overview reads',async()=>{
+  const id=await relationshipLead(),c=await connection(['operations:read']);
+  const result=await (await rpc(c.tokens.access_token,'tools/call',{name:'get_relationship_overview',arguments:{kind:'lead',id}})).json();expect(result.result.isError).not.toBe(true);
+  const v={kind:'lead',id,requestId:randomUUID(),recipientUserId:owner.user.id,nextAction:'Review this relationship',context:'Synthetic only',dueAt:'2026-11-12T15:00:00Z'};
+  await expect(prepareAction(c.p,'request_relationship_handoff',v,'read-only-handoff')).rejects.toThrow();
+  expect((await pool.query('SELECT id FROM crm_relationship_handoffs WHERE lead_id=$1',[id])).rowCount).toBe(0);
+ });
+ it('requires configured review and deduplicates approved relationship handoffs',async()=>{
+  const id=await relationshipLead(),c=await connection(),v={kind:'lead',id,requestId:randomUUID(),recipientUserId:owner.user.id,nextAction:'Prepare discovery questions',context:'No customer contact',dueAt:'2026-11-12T15:00:00Z'};
+  const proposal=await prepareAction(c.p,'request_relationship_handoff',v,'review-handoff-001');expect(proposal.status).toBe('awaiting_approval');expect((await pool.query('SELECT id FROM crm_relationship_handoffs WHERE id=$1',[v.requestId])).rowCount).toBe(0);
+  const results=await Promise.all([reviewAction(owner,proposal.id,'approve'),reviewAction(owner,proposal.id,'approve')]);expect(results.some(r=>r.status==='succeeded')).toBe(true);expect((await pool.query('SELECT id FROM crm_relationship_handoffs WHERE id=$1',[v.requestId])).rowCount).toBe(1);
+  const handoff=readTools.find(t=>t.name==='get_relationship_handoff')!;expect(await handoff.run(c.p,{id:v.requestId})).toMatchObject({status:'pending',revision:1});
+ });
+ it('supports explicitly delegated discovery and introductions without upgrading read-only access',async()=>{
+  const id=await relationshipLead(),c=await connection(allScopes,true);
+  const v={kind:'lead',id,fields:{problems:'Duplicate data entry',opportunities:'Explore an agent'}};
+  const first=await executeAction(c.p,'save_business_discovery',v,'discovery-direct-001');expect(first.status).toBe('succeeded');await executeAction(c.p,'save_business_discovery',v,'discovery-direct-001');expect((await pool.query('SELECT id FROM crm_discovery_notes WHERE lead_id=$1',[id])).rowCount).toBe(1);
+  const introduction=await executeAction(c.p,'record_introduction',{kind:'lead',id,partnerId:'',name:'Synthetic introducer',organization:'',note:'User supplied attribution'},'introduction-direct-001');expect(introduction.status).toBe('succeeded');expect((await pool.query('SELECT id FROM crm_introductions WHERE lead_id=$1',[id])).rowCount).toBe(1);
+ });
+ it('keeps meeting metadata out of relationship reads without a meeting scope',async()=>{
+  const id=await relationshipLead(),meeting=randomUUID(),c=await connection(['operations:read']);await pool.query("INSERT INTO meetings(id,workspace_id,owner_user_id,title,source,status,visibility,lead_id) VALUES($1,$2,$3,'Team meeting fixture','upload','review','team',$4)",[meeting,workspace,owner.user.id,id]);
+  expect(await readTools.find(t=>t.name==='get_relationship_overview')!.run(c.p,{kind:'lead',id})).toMatchObject({meetings:[]});
+ });
  afterAll(async()=>{await pool?.end();delete (globalThis as {tailoredAgentsDatabasePool?:Pool}).tailoredAgentsDatabasePool;vi.unstubAllEnvs();});
  it('binds OAuth to exact callback, resource, identity and scopes; stores only token hashes',async()=>{
   const c=await connection();expect(c.location.searchParams.get('state')).toBe('test-state');expect(c.p.context.user.id).toBe(owner.user.id);expect(c.p.scopes).toEqual(allScopes);

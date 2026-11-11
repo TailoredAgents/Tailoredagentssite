@@ -1,19 +1,19 @@
 # Current project direction and documentation map
 
-Reconciled November 10, 2026 against source through `dd09c09`, including the model release `99166c8`. This is a source/documentation review. Deployment and test statements below cite recorded release evidence; they are not fresh production checks.
+Reconciled November 10, 2026 against source through `dd09c09`, including the model release `99166c8`; the later relationship release is tracked in [its runbook](RELATIONSHIP_WORKSPACE.md). This is a source/documentation review. Deployment and test statements below cite recorded release evidence; they are not fresh production checks.
 
 ## Direction
 
 Tailored Agents leads with custom AI agents, business automation, integrations and software. Websites and SEO remain services, not required entry points. Insurance and freight/3PL are focused campaigns within a broader business. Partnerships and revenue sharing invite a conversation; terms stay private.
 
-The internal CRM supports relationship-led discovery, sales, client account management and delivery. It is not the future client-facing Growth Hub. The employee assistant helps operate the business; Austin remains responsible for building custom client systems.
+The internal CRM supports relationship-led discovery, sales, client account management and delivery. It is not the future client-facing Growth Hub. The employee assistant helps operate the business. Austin leads development/sales; Jeffrey also develops and sells. Devon focuses on introductions/appointment setting, and Conner on finance/structuring. Functional responsibilities do not automatically grant permissions.
 
 ## What exists and what remains
 
 | Area | Current implementation / recorded evidence | Still open |
 | --- | --- | --- |
 | Public site | AI/automation-first positioning, custom solutions before standardized pricing, partnership conversation and retained website/SEO services. [Positioning](PUBLIC_SITE_POSITIONING.md) | Preserve truthful case-study claims; do not publish partnership terms without approval. |
-| CRM and calendar | Prospects, opportunities, structured discovery, persistent introductions, client account management and staff calendar. Calling Lists is absent from navigation; legacy records remain. [CRM](CRM_BUSINESS_REFINEMENTS.md), [calendar](TEAM_CALENDAR.md) | Automatic AI discovery/solution planning is a proposed next product phase, not already delivered by structured discovery fields. |
+| CRM and calendar | Prospects, opportunities, structured discovery, persistent introductions, client account management and staff calendar, relationship overview and accountable internal handoffs. [Relationship workflow](RELATIONSHIP_WORKSPACE.md). Calling Lists is absent from navigation; legacy records remain. [CRM](CRM_BUSINESS_REFINEMENTS.md), [calendar](TEAM_CALENDAR.md) | Automatic AI discovery/solution planning is a proposed next product phase, not already delivered by structured discovery fields. |
 | Website Builder | Staff explicitly starts a mockup; migration 0048 retires automatic intake research. Planning chat, exact-version approval, separate build/preview infrastructure on Render and exports remain. [Setup](WEBSITE_FACTORY_SETUP.md) | Finished-site editing/visitor assistant and further quality work follow their specific roadmap. No new build or paid request is authorized by this review. |
 | Employee assistant | Chat, work feed, private files, published company knowledge, opt-in routines, inline reviewed communication and short dictation. Website/model deployment and Austin's SMS receipt/link recorded. [Release](OPERATIONS_ASSISTANT_RELEASE.md) | Jeffrey's separate Mail deployment, independent background activation, broader employee journeys and physical-device acceptance. Austin's SMS preferences were restored off after the test. |
 | Assistant models/spending | Sol with variable reasoning; Astra only after a completed Sol-high attempt, with bounded escalation. Austin explicitly selected uncapped company AI spending; existing routine/legacy task ceilings and permissions remain. [Policy](ASSISTANT_MODEL_POLICY.md) | Astra availability, escalation quality and representative paid latency are not established by synthetic tests or one harmless live chat. |
@@ -27,7 +27,7 @@ The internal CRM supports relationship-led discovery, sales, client account mana
 
 1. **Jeffrey:** complete the separate Cloudflare Mail release and record its exact version/checks. Follow the current addendum in [new jeffrey.md](../new%20jeffrey.md), not superseded initial setup instructions.
 2. **Austin with implementation help:** after Mail acceptance, explicitly activate/test desired background grants and employee preferences. Complete designated device/meeting checks; real sends require approved recipient/content. Native push also needs Apple account/signing work.
-3. **Development:** build AI discovery and solution planning on the existing structured discovery records, following the current [roadmap](AGENCY_OS_ROADMAP.md). Agree research budget/model/activation before new paid automatic work. Billing, managed-service delivery and the client portal remain their own later tracks.
+3. **Development:** follow [the relationship operating-model plan](RELATIONSHIP_OPERATING_MODEL_PLAN.md): verify the overview/handoff release, then define referral-ledger policy and finance permissions before implementing earnings. AI discovery/solution planning builds on existing structured records and follows the [roadmap](AGENCY_OS_ROADMAP.md). Agree research budget/model/activation before new paid automatic work. Billing, managed-service delivery and the client portal remain their own later tracks.
 
 ## Keeping documentation aligned
 

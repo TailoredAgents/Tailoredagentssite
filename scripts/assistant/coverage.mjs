@@ -4,6 +4,8 @@ import path from 'node:path';
 // Generated inventory makes omissions visible when new dashboard actions ship.
 async function walk(dir){const files=[];for(const entry of await readdir(dir,{withFileTypes:true})){if(['node_modules','.next'].includes(entry.name))continue;const name=path.posix.join(dir,entry.name);if(entry.isDirectory())files.push(...await walk(name));else if(/\.tsx?$/.test(name)&&!name.endsWith('.test.ts'))files.push(name);}return files;}
 const implementations={
+ 'lib/relationships/actions.ts#relationshipAction':['prepare_save_business_discovery','prepare_record_introduction','prepare_set_account_manager'],
+ 'lib/relationships/handoff-actions.ts#handoffAction':['prepare_request_relationship_handoff','prepare_update_relationship_handoff'],
  'lib/inbox/actions.ts#saveDraftAction':['prepare_save_mail_draft'],
  'lib/sms/actions.ts#saveSmsDraftAction':['prepare_save_sms_draft'],
  'lib/smart-cards/actions.ts#saveCardSettings':['prepare_save_card_profile','prepare_create_card_link','prepare_update_card_link','prepare_set_card_assistant'],

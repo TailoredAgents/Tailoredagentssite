@@ -12,6 +12,7 @@ import "./inbox/voice.css";
 import "./polish.css";
 import "./theme.css";
 import "./meetings.css";
+import "./relationships.css";
 
 export const metadata: Metadata = {
   title: { default: "Dashboard", template: "%s — Tailored Agents Dashboard" },

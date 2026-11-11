@@ -6,6 +6,7 @@ import {callChanges} from './call-changes';
 import {cardChanges} from './card-changes';
 import {draftChanges} from './draft-changes';
 import {personalChanges} from './personal-changes';
+import {relationshipChanges} from './relationship-changes';
 import type {Principal} from '../oauth';
 import type {AssistantScope} from '../config';
 import {goalSchema,saveGoal} from '../goals';
@@ -23,6 +24,7 @@ function change<S extends z.ZodObject>(name:string,title:string,description:stri
  return {name,title,description,schema,scopes,async run(p,input){try{return await run(p,schema.parse(input));}catch(error){if(error instanceof SalesInputError||error instanceof CalendarInputError||error instanceof CardError)throw new AssistantError('change_rejected',error.message,409);throw error;}}};
 }
 export const changeTools:ChangeTool[]=[
+ ...relationshipChanges,
  ...personalChanges,
  ...operationChanges,
  ...communicationChanges,

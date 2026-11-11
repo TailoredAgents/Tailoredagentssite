@@ -4,3 +4,7 @@ export const targetSchema=z.object({kind:z.enum(['lead','business','opportunity'
 export type RelationshipTarget=z.infer<typeof targetSchema>;
 export const fieldsSchema=z.object(Object.fromEntries(Object.keys(discoveryFields).map(k=>[k,z.string().trim().max(4000).default('')])) as Record<keyof typeof discoveryFields,z.ZodDefault<z.ZodString>>).strict();
 export const discoverySchema=targetSchema.extend({fields:fieldsSchema}).refine(v=>Object.values(v.fields).some(Boolean),'Add at least one discovery detail.');
+export const introductionSchema=targetSchema.extend({partnerId:z.union([z.uuid(),z.literal('')]),name:z.string().trim().max(160),organization:z.string().trim().max(160),note:z.string().trim().max(2000)});
+export const accountManagerSchema=z.object({clientId:z.uuid(),userId:z.string().max(200),expectedUpdatedAt:z.iso.datetime({offset:true}).optional()});
+export const handoffSchema=targetSchema.extend({requestId:z.uuid(),recipientUserId:z.string().min(1).max(200),nextAction:z.string().trim().min(2).max(220),context:z.string().trim().max(4000).default(''),dueAt:z.iso.datetime({offset:true})});
+export const handoffTransitionSchema=z.object({handoffId:z.uuid(),revision:z.number().int().positive(),operation:z.enum(['accept','complete','cancel']),note:z.string().trim().max(2000).default('')}).superRefine((v,c)=>{if(v.operation!=='accept'&&v.note.length<2)c.addIssue({code:'custom',path:['note'],message:'Record the outcome or reason.'});});

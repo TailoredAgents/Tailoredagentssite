@@ -13,10 +13,30 @@ import {getCallFollowUpOptions,getCallFollowUpTask} from '@/lib/voice/follow-up-
 import {getManagedProfile,getManagedCard,getCardAiSettings} from '@/lib/smart-cards/settings';
 import {readMailDraft,readSmsDraft} from './drafts';
 import type {Principal} from './oauth';
+import {targetSchema} from '@/lib/relationships/contract';
+import {readRelationship} from '@/lib/relationships/service';
+import {getRelationshipOverview} from '@/lib/relationships/overview';
+import {getHandoff} from '@/lib/relationships/handoffs';
 // Save human-readable target identity alongside the exact proposed input. Never
 // accept these labels from the assistant. Re-resolve before executing the change.
 export async function reviewContext(p:Principal,tool:string,input:Record<string,unknown>){
  const context=p.context;const result:Record<string,unknown>={requestedFor:context.user.name,workspace:context.workspace.name};
+ if(['save_business_discovery','record_introduction','request_relationship_handoff'].includes(tool)){
+  const overview=await getRelationshipOverview(context,targetSchema.parse(input));
+  result.relationship={id:overview.current.id,kind:overview.current.kind,name:overview.current.name};
+  result.notice='Internal team-visible record. No message, booking, ownership transfer or financial agreement.';
+  if(tool==='record_introduction'&&input.partnerId){const partner=(await readRelationship(context,targetSchema.parse(input))).partners.find(x=>x.id===input.partnerId);if(!partner)throw new AssistantError('not_found','Choose a referral partner in this workspace.',404);result.introducer={id:partner.id,name:partner.name,organization:partner.organization};}
+ }
+ if(tool==='update_relationship_handoff'){
+  const h=await getHandoff(context,String(input.handoffId));
+  result.handoff={id:h.id,nextAction:h.next_action,recipient:h.recipient,status:h.status,revision:h.revision};
+ }
+ if(tool==='request_relationship_handoff'||tool==='set_account_manager'){
+  const selected=String(input.recipientUserId??input.userId??'');
+  const member=(await getWorkspaceMembers(context)).find(m=>m.id===selected&&m.role!=='viewer');
+  if(selected&&!member)throw new AssistantError('invalid_assignee','Choose an active teammate with editing access.',409);
+  result.assignedTeammate=member?.name??'Unassigned';
+ }
  if(tool==='send_email')result.email=await emailReview(p,input);
  if(tool==='call_customer')result.call=await callReview(p,input);
  if(tool==='save_mail_draft')result.currentPrivateDraft=await readMailDraft(p,input);

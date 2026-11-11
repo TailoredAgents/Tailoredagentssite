@@ -914,9 +914,23 @@
     {
       "file": "lib/relationships/actions.ts",
       "export": "relationshipAction",
-      "status": "pending",
-      "tools": [],
-      "reason": "Service extraction, permission/revision checks and acceptance tests remain."
+      "status": "implemented",
+      "tools": [
+        "prepare_save_business_discovery",
+        "prepare_record_introduction",
+        "prepare_set_account_manager"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+    },
+    {
+      "file": "lib/relationships/handoff-actions.ts",
+      "export": "handoffAction",
+      "status": "implemented",
+      "tools": [
+        "prepare_request_relationship_handoff",
+        "prepare_update_relationship_handoff"
+      ],
+      "reason": "Shared domain service behind delegated access; changes require dashboard review."
     },
     {
       "file": "lib/sales/actions.ts",

@@ -4,6 +4,8 @@ Reconciled November 10, 2026 through `dd09c09`. This is the active implementatio
 
 ## Current development resume point
 
+**Relationship operating model, November 10:** Austin authorized [the full implementation plan](RELATIONSHIP_OPERATING_MODEL_PLAN.md). Release 1 adds a relationship overview, accountable handoffs in My day and permissioned assistant actions for discovery/introductions/account management. [Operating and verification guide](RELATIONSHIP_WORKSPACE.md). The referral ledger, finance/partner permissions, solution briefs and service outcomes remain later planned releases; do not treat an introduction as a payout agreement.
+
 Read [current project status](PROJECT_STATUS.md) first. Current priority is completing employee-assistant Mail/background and device/team acceptance, plus Meeting Intelligence device/provider acceptance. Next product development is AI discovery and solution planning; structured discovery and introductions already exist. Older release sequences below are historical planning, not instructions to rebuild shipped capabilities.
 
 **Assistant, November 10:** Chat-centered workspace, durable assignments, private files, published knowledge, opt-in routines, reviewed communications and short dictation are implemented. `99166c8` is recorded live: Sol uses adaptive reasoning with bounded Astra escalation, and Austin selected uncapped company AI spending. `dd09c09` records Austin's real employee SMS/link acceptance with alerts restored off afterward. Separate Mail/background activation, native push and wider team acceptance remain open. [Release record](OPERATIONS_ASSISTANT_RELEASE.md) and [model policy](ASSISTANT_MODEL_POLICY.md).

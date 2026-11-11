@@ -1,14 +1,13 @@
 import 'server-only';
 import {randomUUID} from 'node:crypto';
-import {z} from 'zod';
 import type {PoolClient} from 'pg';
 import type {DashboardContext} from '@/lib/dashboard/data';
 import {getDatabasePool,insertAuditLog} from '@/lib/dashboard/db';
 import {authorizeSales,SalesAccessError} from '@/lib/sales/data';
-import {discoverySchema,targetSchema,type RelationshipTarget} from './contract';
+import {discoverySchema,targetSchema,introductionSchema,accountManagerSchema,type RelationshipTarget} from './contract';
 const tables={lead:'leads',business:'crm_businesses',opportunity:'crm_opportunities',client:'clients',contact:'contacts'} as const;
 const columns={lead:'lead_id',business:'business_id',opportunity:'opportunity_id',client:'client_id',contact:'contact_id'} as const;
-export async function relationshipAccess(c:DashboardContext,target:RelationshipTarget,db=getDatabasePool()){
+export async function relationshipAccess(c:DashboardContext,target:RelationshipTarget,db:Pick<PoolClient,'query'>=getDatabasePool()){
  const t=targetSchema.parse(target);await authorizeSales(c);
  if(!(await db.query(`SELECT id FROM ${tables[t.kind]} WHERE workspace_id=$1 AND id=$2 ${['lead','business'].includes(t.kind)?'AND anonymized_at IS NULL':''}`,[c.workspace.id,t.id])).rowCount)throw new SalesAccessError('That relationship is unavailable.');
  return t;
@@ -50,7 +49,7 @@ export async function saveDiscovery(c:DashboardContext,input:unknown){
  return mutate(c,async db=>{const id=randomUUID();await db.query(`INSERT INTO crm_discovery_notes(id,workspace_id,${columns[v.kind]},fields,author_user_id) VALUES($1,$2,$3,$4,$5)`,[id,c.workspace.id,v.id,v.fields,c.user.id]);await insertAuditLog(db,{workspaceId:c.workspace.id,actorUserId:c.user.id,action:'discovery.recorded',targetType:v.kind,targetId:v.id});return id;});
 }
 export async function addIntroduction(c:DashboardContext,input:unknown){
- const v=targetSchema.extend({partnerId:z.union([z.uuid(),z.literal('')]),name:z.string().trim().max(160),organization:z.string().trim().max(160),note:z.string().trim().max(2000)}).parse(input);await relationshipAccess(c,v);
+ const v=introductionSchema.parse(input);await relationshipAccess(c,v);
  return mutate(c,async db=>{
  let partner=v.partnerId;
  if(!partner){if(!v.name)throw new SalesAccessError('Choose a referral partner or enter their name.');partner=randomUUID();await db.query('INSERT INTO crm_referral_partners(id,workspace_id,name,organization,created_by) VALUES($1,$2,$3,$4,$5)',[partner,c.workspace.id,v.name,v.organization,c.user.id]);}
@@ -59,6 +58,11 @@ export async function addIntroduction(c:DashboardContext,input:unknown){
  });
 }
 export async function setAccountManager(c:DashboardContext,input:unknown){
- const v=z.object({clientId:z.uuid(),userId:z.string().max(200)}).parse(input);await relationshipAccess(c,{kind:'client',id:v.clientId});
- return mutate(c,async db=>{if(v.userId&&!(await db.query("SELECT 1 FROM workspace_memberships WHERE workspace_id=$1 AND user_id=$2 AND status='active' AND role<>'viewer'",[c.workspace.id,v.userId])).rowCount)throw new SalesAccessError('Choose an active teammate.');await db.query('UPDATE clients SET account_manager_user_id=$3,updated_at=now() WHERE workspace_id=$1 AND id=$2',[c.workspace.id,v.clientId,v.userId||null]);await insertAuditLog(db,{workspaceId:c.workspace.id,actorUserId:c.user.id,action:'client.account_manager_changed',targetType:'client',targetId:v.clientId,metadata:{userId:v.userId||null}});});
+ const v=accountManagerSchema.parse(input);await relationshipAccess(c,{kind:'client',id:v.clientId});
+ return mutate(c,async db=>{
+  const current=(await db.query('SELECT updated_at FROM clients WHERE workspace_id=$1 AND id=$2 FOR UPDATE',[c.workspace.id,v.clientId])).rows[0];
+  if(!current||(v.expectedUpdatedAt&&new Date(current.updated_at).getTime()!==Date.parse(v.expectedUpdatedAt)))throw new SalesAccessError('This client changed. Refresh before assigning its account manager.');
+  if(v.userId&&!(await db.query("SELECT 1 FROM workspace_memberships WHERE workspace_id=$1 AND user_id=$2 AND status='active' AND role<>'viewer' FOR SHARE",[c.workspace.id,v.userId])).rowCount)throw new SalesAccessError('Choose an active teammate.');
+  await db.query('UPDATE clients SET account_manager_user_id=$3,updated_at=now() WHERE workspace_id=$1 AND id=$2',[c.workspace.id,v.clientId,v.userId||null]);await insertAuditLog(db,{workspaceId:c.workspace.id,actorUserId:c.user.id,action:'client.account_manager_changed',targetType:'client',targetId:v.clientId,metadata:{userId:v.userId||null}});
+ });
 }
