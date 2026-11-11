@@ -251,6 +251,8 @@ November 11 implementation update: the [record polish pass](SOFTWARE_RECORD_POLI
 
 November 11 follow-up: the [Sales and delivery pass](SOFTWARE_DELIVERY_POLISH_2026-11-11.md) refines Sales board/table (V06 and the Sales part of V30), Quick capture mobile grouping (V34–35), Partners/statements (V38), and Sites read-first/edit and viewer presentation (V16, V19, V31). This is scoped implementation evidence, not closure of the remaining Assistant, reporting, administration, Mail or physical-device work.
 
+November 11 next follow-up: the [Assistant supporting-page pass](SOFTWARE_ASSISTANT_SUPPORT_POLISH_2026-11-11.md) addresses V21 and the settings portion of V15 with knowledge/document reading and editing layouts, routine cards/forms, grouped access controls and saved notification summaries. Local responsive and interaction evidence is recorded there; reporting/admin, separate Mail and physical-device work remain open.
+
 ## Verification plan for implementation
 
 This audit is a visual review, not an accessibility certification or a functional release test. For implementation, use these explicit gates:
