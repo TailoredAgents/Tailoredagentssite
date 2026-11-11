@@ -19,6 +19,7 @@ import {
   Menu,
   X,
   Mail,
+  NotebookPen,
   Settings,
   Sparkles,
   UsersRound,
@@ -37,10 +38,8 @@ const navigationGroups = [
     items: [
       { label: "Overview", href: "/dashboard", icon: Gauge },
       { label: "Inbox", href: "/dashboard/inbox", icon: Inbox },
-      { label: "Meeting Inbox", href: "/dashboard/meetings", icon: Mail },
       { label: "Team calendar", href: "/dashboard/calendar", icon: CalendarCheck2 },
       { label: "My day", href: "/dashboard/sales/today", icon: CalendarCheck2 },
-      { label: "Capture conversation", href: "/dashboard/capture", icon: ContactRound },
       { label: "Assistant", href: "/dashboard/assistant", icon: Sparkles },
     ],
   },
@@ -48,9 +47,9 @@ const navigationGroups = [
     label: "Sales & prospects",
     items: [
       { label: "Prospects", href: "/dashboard/leads", icon: UsersRound },
+      { label: "Meetings & notes", href: "/dashboard/meetings", icon: NotebookPen },
       { label: "Sales", href: "/dashboard/sales", icon: Columns3 },
       { label: "Website Builder", href: "/dashboard/sales/factory", icon: PanelsTopLeft },
-      { label: "Smart Cards", href: "/dashboard/smart-cards", icon: ContactRound },
       { label: "Partners", href: "/dashboard/partners", icon: UsersRound },
     ],
   },
@@ -60,13 +59,14 @@ const navigationGroups = [
       { label: "Clients", href: "/dashboard/clients", icon: Building2 },
       { label: "Projects", href: "/dashboard/projects", icon: FolderKanban },
       { label: "Services", href: "/dashboard/services", icon: Activity },
-      { label: "Sites", href: "/dashboard/sites", icon: Globe2 },
-      { label: "SEO manager", href: "/dashboard/seo", icon: Sparkles },
     ],
   },
   {
     label: "Workspace",
     items: [
+      { label: "Smart Cards", href: "/dashboard/smart-cards", icon: ContactRound },
+      { label: "SEO manager", href: "/dashboard/seo", icon: Sparkles },
+      { label: "Sites", href: "/dashboard/sites", icon: Globe2 },
       { label: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
       { label: "Activity", href: "/dashboard/activity", icon: Activity },
       { label: "Settings", href: "/dashboard/settings", icon: Settings },
@@ -112,6 +112,7 @@ export function DashboardNavigation({ context }: { context: DashboardContext }) 
   }
 
   function isCurrent(href: string) {
+    if (href === "/dashboard/meetings" && pathname === "/dashboard/capture") return true;
     if (href === "/dashboard/sales/today" && pathname.startsWith("/dashboard/tasks/")) return true;
     if (href === "/dashboard/sales/factory" && pathname.startsWith("/dashboard/sales/mockups")) return true;
     if (href === "/dashboard/sales") {

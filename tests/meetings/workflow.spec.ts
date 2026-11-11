@@ -4,7 +4,19 @@ const pcm=(value:number)=>{const b=Buffer.alloc(32044,value);b.write('RIFF');b.w
 async function signIn(page:Page,viewer=false){await page.goto('/sign-in');await page.getByLabel('Team email').fill(viewer?'viewer@example.test':'owner@example.test');await page.getByLabel('Password',{exact:true}).fill('Reporting-test-password-2026');await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page).toHaveURL(/\/dashboard$/);}
 test('upload → AI review → sparse prospect → discovery and referral → private deletion',async({page},info)=>{
  test.setTimeout(120000);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await signIn(page);await page.goto('/dashboard/meetings');
- await expect(page.getByRole('heading',{name:'Meeting Inbox',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Meetings & notes',exact:true})).toBeVisible();
+ const groups=page.locator('.dashboard-nav-group'),sales=groups.filter({has:page.locator('.dashboard-nav-label').getByText('Sales & prospects',{exact:true})}),workspace=groups.filter({has:page.locator('.dashboard-nav-label').getByText('Workspace',{exact:true})});
+ await expect(sales.locator('a[href="/dashboard/meetings"]')).toHaveCount(1);
+ for(const href of ['smart-cards','seo','sites'])await expect(workspace.locator(`a[href="/dashboard/${href}"]`)).toHaveCount(1);
+ await expect(page.locator('#dashboard-navigation a[href="/dashboard/capture"]')).toHaveCount(0);
+ await expect(page.getByLabel('Meeting title',{exact:true})).toBeHidden();
+ await page.screenshot({path:info.outputPath('meetings-notes-hub.png'),fullPage:true});
+ await page.getByRole('link',{name:'Quick capture',exact:true}).click();await expect(page.getByRole('heading',{name:'Quick capture',exact:true})).toBeVisible();
+ await expect(page.locator('#dashboard-navigation a[aria-current="page"]')).toHaveAttribute('href','/dashboard/meetings');
+ await page.getByRole('link',{name:'← Meetings & notes',exact:true}).click();
+ await page.keyboard.press('Control+k');await page.getByRole('searchbox',{name:'Search dashboard pages'}).fill('capture conversation');
+ await page.getByRole('navigation',{name:'Matching dashboard pages'}).getByRole('link',{name:/Meetings & notes/}).click();
+ await page.getByRole('button',{name:'Add recording',exact:true}).click();await expect(page.getByLabel('Meeting title',{exact:true})).toBeVisible();
  await page.getByText('Processing allowance & Omi devices',{exact:true}).click();await page.getByLabel('Monthly limit (USD)').fill('10');await page.getByRole('button',{name:'Save allowance',exact:true}).click();
  const title=`Synthetic meeting ${info.project.name}`;await page.getByLabel('Meeting title',{exact:true}).fill(title);await page.locator('input[name=audio]').setInputFiles({name:'fixture.wav',mimeType:'audio/wav',buffer:pcm(info.project.name==='phone'?2:1)});await page.getByLabel('Recording permission / consent notes').fill('Synthetic local audio, no real participants.');await page.getByLabel('I have permission to upload and process this recording.').check();await page.getByRole('button',{name:'Upload recording',exact:true}).click();await expect(page).toHaveURL(/\/dashboard\/meetings\/[a-f0-9-]+$/);const meetingUrl=page.url(),id=meetingUrl.split('/').at(-1)!;
  await expect(page.locator('audio')).toBeVisible();const audioResponse=await page.request.get(`/api/meetings/${id}/audio`,{headers:{range:'bytes=0-43'}});expect(audioResponse.status()).toBe(206);expect((await audioResponse.body()).subarray(0,4).toString()).toBe('RIFF');await page.getByRole('button',{name:'Transcribe & analyze'}).click();await expect(page.getByText('Preparing the meeting review',{exact:true})).toBeVisible();

@@ -47,7 +47,7 @@ export default async function SeoPage() {
     <>
       <header className="dashboard-topbar">
         <div>
-          <span>Tailored Agents / Growth</span>
+          <span>Workspace</span>
           <strong>SEO manager</strong>
         </div>
         <span className="dashboard-secure">

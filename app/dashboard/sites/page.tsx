@@ -21,7 +21,7 @@ export default async function SitesPage({ searchParams }: { searchParams: Promis
 
   return (
     <>
-      <header className="dashboard-topbar"><div><span>Operations</span><strong>Sites</strong></div><span className="dashboard-secure"><ShieldCheck size={15} />Protected session</span></header>
+      <header className="dashboard-topbar"><div><span>Workspace</span><strong>Sites</strong></div><span className="dashboard-secure"><ShieldCheck size={15} />Protected session</span></header>
       <div className="dashboard-content">
         <section className="dashboard-page-heading dashboard-page-heading-compact"><div><span>Managed footprint</span><h1>Sites</h1><p>Track the production, staging, and development properties connected to each client.</p></div>{mutable ? <Link className="dashboard-primary-button" href="#create-site">Add site</Link> : null}</section>
         <div className="dashboard-list-create-grid">

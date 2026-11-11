@@ -10,9 +10,15 @@ Implemented November 10, 2026. This guide describes the relationship operating-m
 
 These are owner-supplied responsibilities, not automatic permission assignments. My day’s saved work focus changes presentation only. It never grants finance, mailbox, meeting or sending access.
 
+## Finding your work
+
+**Sales & prospects → Meetings & notes** brings recording intake and typed conversation capture into one place. Choose **Add recording** for audio, transcripts and AI findings, or **Quick capture** for notes saved to a new or existing prospect. Recording access and relationship-note access keep their existing permissions; these are two entry paths, not a merged data feed. You do not need to use both for the same conversation.
+
+**Smart Cards**, **SEO manager** and **Sites** are under **Workspace**. **Clients**, **Projects** and **Services** remain under **Clients & delivery**. The page finder also recognizes the former Meeting Inbox and Capture conversation names.
+
 ## Capture a conversation
 
-1. Open **Capture conversation** in the sidebar or My day.
+1. Open **Sales & prospects → Meetings & notes → Quick capture**, or use the **Quick capture** shortcut in My day.
 2. Save whatever is known: a person, contact detail, event or useful conversation context. No specific name, company, phone, email or website is mandatory.
 3. If a phone/email is known, use **Check existing prospects**. A matching existing prospect requires an explicit choice: append to it or deliberately create a separate record. No name-based merge occurs.
 4. Record the introducer and appointment setter separately. Choose the follow-up owner for a new prospect.
@@ -35,7 +41,7 @@ Edits create an attributable version snapshot. Marking a brief Reviewed internal
 
 **Draft with assistant** opens an editable request in the existing employee chat. Nothing is submitted automatically. The assistant can read permitted discovery and brief history, prepare a draft through the existing review/direct-action pipeline, and cite connected team sources. No new AI job, separate research allowance or website build is enabled. Normal employee-chat usage applies only when the employee sends the request.
 
-Briefs are team-visible. Explicit source citations must point to connected discovery records or currently team-shared meetings. Private meetings cannot be cited until deliberately shared through Meeting Inbox. Already published brief text is its own saved team record; changing a source’s later visibility does not retract that text. Do not copy private messages or recordings without the owner’s sharing direction.
+Briefs are team-visible. Explicit source citations must point to connected discovery records or currently team-shared meetings. Private meetings cannot be cited until deliberately shared through Meetings & notes. Already published brief text is its own saved team record; changing a source’s later visibility does not retract that text. Do not copy private messages or recordings without the owner’s sharing direction.
 
 ## Ongoing client services
 
@@ -67,3 +73,9 @@ Website migrations `0064_relationship_operating_model.sql`, `0065_solution_desig
 Conner configures the actual rates and policies before any agreement is activated. [Referral ledger setup](REFERRAL_LEDGER.md) is the operating checklist. The public repository contains no owner-supplied commercial rates. Financial records are internal and authenticated; the public partnership page is unchanged.
 
 After deployment, verify the exact commit, new sidebar entries, a relationship’s solution section, My day focus/exception views and finance boundaries using the actual staff accounts. Source/tests do not prove those live account journeys. Financial integrations, automatic money movement, automated uptime monitoring, external accounting imports and new notifications are outside this release.
+
+## November 11 navigation update
+
+Meetings & notes replaces the separate Meeting Inbox and Capture conversation sidebar entries. Existing recording and capture URLs continue to work, and Quick capture highlights the same Sales & prospects destination. Smart Cards, SEO manager and Sites now appear under Workspace, including their page headings. No migrations or permission changes are required.
+
+Local verification used a separate checkout and disposable database with synthetic audio, AI and storage: four desktop/phone browser journeys passed, covering both entry paths, sidebar groups, old-name page search, upload/review and private access denial, and sparse-note capture through solution planning. Screenshots were visually reviewed; existing accessibility checks passed. Route type generation, TypeScript, lint and a production Webpack build passed. These are local results, not production acceptance or physical Omi verification.

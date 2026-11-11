@@ -13,7 +13,7 @@ function easternNow(){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Ame
 test.use({timezoneId:'America/Los_Angeles'});test.setTimeout(90000);
 
 test('sparse meetup capture leads to a versioned solution brief and assistant handoff',async({page},info)=>{
- await login(page);await page.goto('/dashboard/capture');const name=`Sparse browser ${info.project.name} ${randomUUID().slice(0,6)}`;
+ await login(page);await page.goto('/dashboard/meetings');await page.getByRole('link',{name:'Quick capture',exact:true}).click();await expect(page.getByRole('heading',{name:'Quick capture',exact:true})).toBeVisible();const name=`Sparse browser ${info.project.name} ${randomUUID().slice(0,6)}`;
  await page.getByLabel('Person’s name (optional)',{exact:true}).fill(name);await page.getByLabel('What did you talk about? What should happen next?').fill('Met at a business meetup; exploring document intake. Contact details are not known yet.');await page.getByLabel('Event or context (optional)').fill('Synthetic owner meetup');await check(page,info,'encounter-capture');
  await page.getByRole('button',{name:'Save new prospect',exact:true}).click();await expect(page).toHaveURL(/\/dashboard\/relationships\/lead\/[0-9a-f-]+$/);const leadId=page.url().split('/').at(-1)!;await expect(page.getByRole('heading',{name,exact:true})).toBeVisible();
  expect((await sql('SELECT email,phone,source FROM leads WHERE id=$1',[leadId])).rows[0]).toMatchObject({email:null,phone:null,source:'manual'});
