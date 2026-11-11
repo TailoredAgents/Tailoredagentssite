@@ -18,6 +18,13 @@ Enabling automatic mode (or saving changed priorities under it) schedules one fr
 
 Final worker review also corrected empty-queue polling (`GREATEST` must not convert an absent next job into zero delay). The added idle/inactive-site regression and all focused tests pass: **86 SEO tests, including 49 database cases**, with strict types and lint. The six browser journeys/build above cover the same publication UI and workflow; this final SQL-only scheduling correction was verified against PostgreSQL.
 
+### Observed production acceptance — November 11
+
+- Source commits `2e6ebfb` and `8cbf34a` are pushed to `main`. Render web deployment `dep-dbpvt88ae00c73fjm82g` for `8cbf34afe29ad28ec8a0252bb881f39b9e594ace` reported **Deploy succeeded / Live**, with service-live log at **12:38:42 AM Eastern**. The deployed settings and automatic publication successfully used the migration 0067 fields; no replacement infrastructure or secrets were installed.
+- Austin's signed-in owner account saved **Publishing: automatic**, daily scans and weekly Sol enabled, budget **$10/month**, the existing five Georgia service areas, and AI/automation/software-first keywords and instructions. Partnership terms stay private. The UI confirmed **SEO settings saved**.
+- The existing scheduled worker recovered the blocked strategy, completed planning and critique, automatically published `/engineering`, then reported **Published search title and description verified on the live page** at **12:41 AM Eastern**. Its publication history says **Published automatically**, with observation review due **December 9 at 12:41 AM Eastern**. No manual publication/retry click or forced example edit was used.
+- Final observed dashboard status: **Ready**, **14/14 pages**, **zero technical flags**, **$0.77 settled/displayed this month**, **$0 reserved**, **$9.23 remaining**. The existing `/seo` publication and November 29 observation remain. The first real automatic publication is verified; later daily/weekly cycles and ranking/conversion outcomes require elapsed time and are not claimed by this check.
+
 **Historical state, November 1:** free daily monitoring is working (nine completed
 14-page scans), Google remains connected, and Jeffrey's business-facts review is
 saved. The dedicated SEO project/key and enforced $10/month provider limit are
