@@ -9,6 +9,8 @@ Reconciled November 10, 2026 through `dd09c09`. This is the active implementatio
 
 ## Current development resume point
 
+**SEO autonomy, November 11:** owner-requested automatic metadata publishing and scan dependency recovery are implemented. The [SEO runbook](SEO_MANAGER_SETUP.md) owns current tests, activation and observed live evidence. Older mandatory per-change SEO approval below describes manual mode. The $10/month allowance, exact source validation, independent AI critique, live verification/rollback and observation window remain; article/code publishing is separate work.
+
 **Relationship operating model, November 10:** Austin authorized [the full implementation plan](RELATIONSHIP_OPERATING_MODEL_PLAN.md). Release 1 adds a relationship overview, accountable handoffs in My day and permissioned assistant actions for discovery/introductions/account management. [Operating and verification guide](RELATIONSHIP_WORKSPACE.md). The referral ledger, finance/partner permissions, solution briefs and service outcomes remain later planned releases; do not treat an introduction as a payout agreement.
 
 Read [current project status](PROJECT_STATUS.md) first. Current priority is completing employee-assistant Mail/background and device/team acceptance, plus Meeting Intelligence device/provider acceptance. Next product development is AI discovery and solution planning; structured discovery and introductions already exist. Older release sequences below are historical planning, not instructions to rebuild shipped capabilities.

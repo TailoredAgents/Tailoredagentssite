@@ -73,7 +73,7 @@ export default async function SeoPage() {
             <form action={pauseSeoAction}>
               <button type="submit" className="sales-button">
                 <Pause size={15} aria-hidden="true" />
-                Pause paid AI
+                Pause SEO automation
               </button>
             </form>
           ) : null}
@@ -100,9 +100,9 @@ export default async function SeoPage() {
             tone="blue"
           />
           <SalesMetric
-            label="Ready for review"
+            label={m.auto_publish ? "Pending metadata updates" : "Ready for review"}
             value={ready.length}
-            detail="Evidence checked; awaiting your factual review"
+            detail={m.auto_publish ? "New authorized plans publish after validation" : "Evidence checked; awaiting your factual review"}
           />
           <SalesMetric
             label="Pages observed"
@@ -150,6 +150,7 @@ export default async function SeoPage() {
         <SalesPanel title="Connection & update status" eyebrow="Free checks and paid recommendations are separate">
           <div className="seo-box">
             <p>Website monitoring: {m.enabled ? "on" : "paused"}. Paid AI: {m.ai_enabled ? "on" : "paused"}. Model: GPT-6.1 Sol.</p>
+            <p><strong>Publishing: {m.auto_publish ? "automatic" : "manual review"}.</strong> {m.auto_publish ? "New plans can update page titles, descriptions and matching social metadata without individual approval. Live verification and rollback remain active." : "Each public metadata update waits for an owner or administrator to publish it."}</p>
             <p>Last completed scan: {data.health.last_scan ? <LocalTime value={data.health.last_scan.toISOString()} /> : "Awaiting a full scan"}. Last strategy: {data.health.last_strategy ? <LocalTime value={data.health.last_strategy.toISOString()} /> : "Awaiting the first strategy"}.</p>
             {data.health.stale ? <p role="status">The background worker has not completed a check in the last 20 minutes. Review the scheduled job connection.</p> : <p>The background worker is checking for work.</p>}
             {!data.configuration.ai ? <p>Connect the separate SEO API key to prepare paid recommendations. Free website scans remain available.</p> : null}
@@ -206,14 +207,14 @@ export default async function SeoPage() {
         ) : null}
         <SalesPanel
           id="review"
-          title="Work to review"
+          title={m.auto_publish ? "Pending metadata updates" : "Work to review"}
           eyebrow="Exact wording, sources and a reversible publication"
         >
           {ready.length ? (
             ready.map((c) => (
               <article className="seo-work-card" key={c.id}>
                 <div>
-                  <SalesStatus value={c.status}>Ready for review</SalesStatus>
+                  <SalesStatus value={c.status}>{m.auto_publish ? "Validated proposal" : "Ready for review"}</SalesStatus>
                   <h3>{c.title}</h3>
                   <p>
                     {c.path} · {c.rationale}
@@ -518,6 +519,7 @@ export default async function SeoPage() {
               <input
                 type="checkbox"
                 name="enabled"
+                key={`monitor:${m.enabled}`}
                 defaultChecked={m.enabled}
               />
               <span>
@@ -525,8 +527,12 @@ export default async function SeoPage() {
               </span>
             </label>
             <label className="seo-checkbox">
-              <input type="checkbox" name="aiEnabled" defaultChecked={m.ai_enabled} disabled={!m.ai_reviewed_at || !data.configuration.ai}/>
-              <span>Run weekly paid AI recommendations within this monthly limit. Public changes still require your review.</span>
+              <input key={`ai:${m.ai_enabled}`} type="checkbox" name="aiEnabled" defaultChecked={m.ai_enabled} disabled={!m.ai_reviewed_at || !data.configuration.ai}/>
+              <span>Run weekly paid AI recommendations within this monthly limit.</span>
+            </label>
+            <label className="seo-checkbox">
+              <input key={`publish:${m.auto_grant_id}`} type="checkbox" name="autoPublish" defaultChecked={m.auto_publish} />
+              <span>Publish validated metadata automatically, without asking me to approve each change. Applies to new plans for Tailored Agents page titles, search descriptions and matching link-preview text. Requires daily checks and weekly AI. Pause SEO automation stops future publications.</span>
             </label>
           </OperationForm>
         </SalesPanel>
@@ -580,6 +586,7 @@ export default async function SeoPage() {
                     <h3>{c.title}</h3>
                     <p>
                       {c.path}
+                      {c.published_at ? ` · ${c.publication_mode === "automatic" ? "Published automatically" : "Published after human review"}` : ""}
                       {c.evaluation_due_at ? (
                         <>
                           {" "}
@@ -699,8 +706,7 @@ export default async function SeoPage() {
         <div className="seo-status-row">
           <CheckCircle2 size={17} aria-hidden="true" />
           <span>
-            Published copy gets a factual review. Permitted monitoring and
-            planning continue automatically.
+            {m.auto_publish ? "Automatic metadata updates keep source checks, live verification and a 28-day observation window." : "Public metadata changes wait for your review. Enabled monitoring and planning continue automatically."}
           </span>
           <Link href="/dashboard/analytics" className="sales-button">
             <Globe2 size={15} aria-hidden="true" />

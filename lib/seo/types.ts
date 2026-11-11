@@ -18,6 +18,10 @@ export type SeoManager = {
   workspace_id: string;
   enabled: boolean;
   ai_enabled: boolean;
+  auto_publish: boolean;
+  auto_grant_id: string | null;
+  auto_authorized_by: string | null;
+  auto_authorized_at: Date | null;
   pilot_enabled: boolean;
   ai_reviewed_at: Date | null;
   last_worker_success_at: Date | null;
@@ -60,11 +64,15 @@ export type SeoChange = {
   previous_change_id: string | null;
   created_at: Date;
   published_at: Date | null;
+  publication_mode: "manual" | "automatic";
+  auto_grant_id: string | null;
+  auto_authorized_by: string | null;
   verified_at: Date | null;
   evaluation_due_at: Date | null;
   baseline_metrics: unknown;
   outcome: unknown;
 };
 export class SeoInputError extends Error {}
+export class SeoStaleError extends SeoInputError {}
 export class SeoAccessError extends Error {}
 export class SeoBudgetError extends Error {}

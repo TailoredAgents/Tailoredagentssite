@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Pool } from "pg";
 import { SEO_SITE_ID, SEO_WORKSPACE_ID, managedPath } from "./config";
 type PublicGlobal = typeof globalThis & { seoPublicMetadataPool?: Pool };
-/** Only published, fact-checked metadata is public. Bounded independent queries
+/** Only explicitly reviewed or owner-authorized automatic metadata is public. Bounded independent queries
  * keep a database outage from taking the marketing pages down. Page ISR is
  * invalidated by publication actions; a worker rollback also expires in 5m. */
 export async function managedMetadata(
@@ -28,7 +28,7 @@ export async function managedMetadata(
     const pool = global.seoPublicMetadataPool;
     const row = (
       await pool.query<{ title: string; description: string }>(
-        "SELECT c.title,c.description FROM seo_publications p JOIN seo_changes c ON c.id=p.change_id AND c.workspace_id=p.workspace_id AND c.site_id=p.site_id JOIN sites s ON s.id=p.site_id AND s.workspace_id=p.workspace_id JOIN workspaces w ON w.id=p.workspace_id WHERE p.site_id=$1 AND p.workspace_id=$2 AND p.path=$3 AND c.status IN ('published','verified') AND c.human_reviewed_at IS NOT NULL AND s.status='active' AND w.status='active'",
+        "SELECT c.title,c.description FROM seo_publications p JOIN seo_changes c ON c.id=p.change_id AND c.workspace_id=p.workspace_id AND c.site_id=p.site_id JOIN sites s ON s.id=p.site_id AND s.workspace_id=p.workspace_id JOIN workspaces w ON w.id=p.workspace_id WHERE p.site_id=$1 AND p.workspace_id=$2 AND p.path=$3 AND c.status IN ('published','verified') AND (c.human_reviewed_at IS NOT NULL OR (c.publication_mode='automatic' AND c.auto_grant_id IS NOT NULL AND c.auto_authorized_by IS NOT NULL AND c.review->>'approved'='true')) AND s.status='active' AND w.status='active'",
         [SEO_SITE_ID, SEO_WORKSPACE_ID, path],
       )
     ).rows[0];

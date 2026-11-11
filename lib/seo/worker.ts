@@ -24,10 +24,12 @@ import { seoMetrics } from "./metrics";
 import {
   seoTransaction,
   rollbackPublication,
+  publishAutomaticSeoChange,
   validatePublicCopy,
 } from "./service";
 import {
   SeoBudgetError,
+  SeoStaleError,
   type SeoRun,
   type SeoManager,
   type SeoSnapshot,
@@ -54,8 +56,25 @@ async function progress(
   if (!r.rowCount) throw new Error("worker_lease_changed");
 }
 async function schedule() {
-  const db = getDatabasePool(),
-    scope = [SEO_WORKSPACE_ID, SEO_SITE_ID];
+  await seoTransaction(SEO_SITE_ID, async db => {
+  const scope = [SEO_WORKSPACE_ID, SEO_SITE_ID];
+  // Recover only the newest unpaid scan dependency, never replay paid requests
+  // or resurrect every historical weekly failure.
+  await db.query(`UPDATE seo_runs r SET status='queued',error_code=NULL,finished_at=NULL,next_attempt_at=now()
+    FROM seo_managers m WHERE r.workspace_id=$1 AND r.site_id=$2 AND m.workspace_id=r.workspace_id AND m.site_id=r.site_id
+    AND m.ai_enabled AND m.ai_reviewed_at IS NOT NULL AND r.kind='strategy' AND r.stage='plan' AND r.status='blocked' AND r.error_code='scan_required'
+    AND r.context->>'pilot' IS DISTINCT FROM 'true' AND r.context->>'safetyCase' IS NULL
+    AND r.id=(SELECT latest.id FROM seo_runs latest WHERE latest.workspace_id=r.workspace_id AND latest.site_id=r.site_id AND latest.kind='strategy' AND latest.context->>'pilot' IS DISTINCT FROM 'true' ORDER BY latest.created_at DESC,latest.id LIMIT 1)
+    AND NOT EXISTS(SELECT 1 FROM seo_costs c WHERE c.run_id=r.id AND c.attempted_at IS NOT NULL)`,scope);
+  // A new standing instruction/grant gets one fresh strategy automatically.
+  // An in-flight strategy finishes first; never silently opt old copy into it.
+  if (seoConfiguration().ai) await db.query(`INSERT INTO seo_runs(id,workspace_id,site_id,kind,schedule_key,stage)
+    SELECT gen_random_uuid(),m.workspace_id,m.site_id,'strategy','grant:'||m.auto_grant_id,'plan'
+    FROM seo_managers m WHERE m.workspace_id=$1 AND m.site_id=$2 AND m.enabled AND m.ai_enabled AND m.auto_publish
+      AND m.ai_reviewed_at IS NOT NULL AND m.profile_reviewed_at IS NOT NULL AND m.auto_grant_id IS NOT NULL
+      AND NOT EXISTS(SELECT 1 FROM seo_runs r WHERE r.workspace_id=m.workspace_id AND r.site_id=m.site_id AND r.kind='strategy'
+        AND (r.status IN ('queued','running') OR r.context->>'autoGrantId'=m.auto_grant_id::text))
+    ON CONFLICT(workspace_id,site_id,kind,schedule_key) DO NOTHING`,scope);
   // A manual scan/run in the current period satisfies the automatic schedule.
   for (const kind of ["monitor", "strategy", "research"] as const) {
     if (kind === "research" && !seoConfiguration().research) continue;
@@ -85,6 +104,21 @@ async function schedule() {
     "INSERT INTO seo_runs(id,workspace_id,site_id,kind,schedule_key,stage,context) SELECT gen_random_uuid(),workspace_id,site_id,'measure',id::text||':'||to_char(now(),'YYYY-MM-DD'),'measure',jsonb_build_object('changeId',id) FROM seo_changes WHERE workspace_id=$1 AND site_id=$2 AND status='verified' AND evaluation_due_at<=now() AND outcome IS NULL ON CONFLICT(workspace_id,site_id,kind,schedule_key) DO NOTHING",
     scope,
   );
+  // Changed/revoked standing authority cannot authorize an older plan. Retain
+  // those proposals as stale history so they do not block the next strategy.
+  await db.query(`UPDATE seo_changes c SET status='stale',version=version+1 FROM seo_runs r,seo_managers m
+    WHERE c.workspace_id=$1 AND c.site_id=$2 AND c.run_id=r.id AND m.site_id=c.site_id AND m.workspace_id=c.workspace_id AND c.status='ready'
+    AND ((r.context->>'autoGrantId' IS DISTINCT FROM m.auto_grant_id::text AND (m.auto_publish OR r.context->>'autoGrantId' IS NOT NULL))
+      OR (r.context->>'autoGrantId' IS NOT NULL AND r.finished_at<now()-interval '2 days'))`,scope);
+  await db.query(`INSERT INTO seo_runs(id,workspace_id,site_id,kind,schedule_key,stage,context)
+    SELECT gen_random_uuid(),c.workspace_id,c.site_id,'publish','automatic:'||c.id,'publish',jsonb_build_object('changeId',c.id,'autoGrantId',m.auto_grant_id)
+    FROM seo_changes c JOIN seo_runs r ON r.id=c.run_id JOIN seo_managers m ON m.workspace_id=c.workspace_id AND m.site_id=c.site_id
+    WHERE c.workspace_id=$1 AND c.site_id=$2 AND c.status='ready' AND c.review->>'approved'='true'
+    AND r.status='succeeded' AND r.kind='strategy' AND r.context->>'pilot' IS DISTINCT FROM 'true' AND r.context->>'safetyCase' IS NULL
+    AND m.auto_publish AND m.enabled AND m.ai_enabled AND r.context->>'autoGrantId'=m.auto_grant_id::text
+    AND r.finished_at>now()-interval '2 days'
+    ON CONFLICT(workspace_id,site_id,kind,schedule_key) DO NOTHING`,scope);
+  });
 }
 async function claim() {
   return seoTransaction(SEO_SITE_ID, async (db) => {
@@ -107,7 +141,11 @@ async function claim() {
       return null;
     const r = (
       await db.query<SeoRun>(
-        "SELECT r.* FROM seo_runs r JOIN seo_managers m ON m.site_id=r.site_id AND m.workspace_id=r.workspace_id JOIN sites s ON s.id=m.site_id AND s.workspace_id=m.workspace_id JOIN workspaces w ON w.id=m.workspace_id WHERE r.workspace_id=$1 AND r.site_id=$2 AND r.status='queued' AND r.next_attempt_at<=now() AND s.status='active' AND w.status='active' AND (r.kind IN ('monitor','verify','measure') OR (m.ai_enabled AND m.ai_reviewed_at IS NOT NULL) OR (m.pilot_enabled AND r.context->>'pilot'='true')) ORDER BY CASE WHEN r.kind='verify' THEN 0 WHEN r.kind='monitor' THEN 1 ELSE 2 END,r.created_at LIMIT 1 FOR UPDATE OF r SKIP LOCKED",
+        `SELECT r.* FROM seo_runs r JOIN seo_managers m ON m.site_id=r.site_id AND m.workspace_id=r.workspace_id JOIN sites s ON s.id=m.site_id AND s.workspace_id=m.workspace_id JOIN workspaces w ON w.id=m.workspace_id
+         WHERE r.workspace_id=$1 AND r.site_id=$2 AND r.status='queued' AND r.next_attempt_at<=now() AND s.status='active' AND w.status='active'
+         AND (r.kind IN ('monitor','verify','measure','publish') OR (m.ai_enabled AND m.ai_reviewed_at IS NOT NULL) OR (m.pilot_enabled AND r.context->>'pilot'='true'))
+         AND NOT (r.kind='strategy' AND r.stage='plan' AND r.context->>'pilot' IS DISTINCT FROM 'true' AND EXISTS(SELECT 1 FROM seo_runs scan WHERE scan.workspace_id=r.workspace_id AND scan.site_id=r.site_id AND scan.kind='monitor' AND scan.status IN ('queued','running')))
+         ORDER BY CASE WHEN r.kind='verify' THEN 0 WHEN r.kind='monitor' THEN 1 WHEN r.kind='publish' THEN 2 ELSE 3 END,r.created_at LIMIT 1 FOR UPDATE OF r SKIP LOCKED`,
         [SEO_WORKSPACE_ID, SEO_SITE_ID],
       )
     ).rows[0];
@@ -155,6 +193,7 @@ export async function strategyContext(run: SeoRun, manager: SeoManager) {
   return {
     business: businessProfile(manager.local_markets),
     ownerInstructions: manager.instructions,
+    priorityKeywords: manager.keywords,
     metrics: await seoMetrics(run.workspace_id, run.site_id),
     sources,
     history,
@@ -163,7 +202,7 @@ export async function strategyContext(run: SeoRun, manager: SeoManager) {
     asOf: new Date().toISOString(),
   };
 }
-async function work(run: SeoRun, manager: SeoManager) {
+async function work(run: SeoRun, manager: SeoManager, onMetadataChanged?: (path: string) => void) {
   const pool = getDatabasePool();
   if (run.kind === "monitor") {
     const index = Number(run.context.index || 0),
@@ -229,6 +268,8 @@ async function work(run: SeoRun, manager: SeoManager) {
         (policy.model !== seoModelPolicy.model && !(run.context.pilot === true && policy.model === "gpt-6-astra")))
       throw new Error("model_policy_review");
     if (run.stage === "plan") {
+      run.context.autoGrantId = manager.auto_publish && run.context.pilot !== true ? manager.auto_grant_id : null;
+      await pool.query("UPDATE seo_runs SET context=$3 WHERE id=$1 AND lease_token=$2",[run.id,run.lease_token,JSON.stringify(run.context)]);
       const context = run.context.pilot === true && run.context.pilotEvidence ? run.context.pilotEvidence as Awaited<ReturnType<typeof strategyContext>> : await strategyContext(run, manager),
         proposal = await modelResult({
           workspace: run.workspace_id,
@@ -261,7 +302,7 @@ async function work(run: SeoRun, manager: SeoManager) {
         validatePublicCopy(change.title, change.description);
         paths.add(change.path);
       }
-      await progress(run, "critique", { ...context, proposal, policy, pilot: run.context.pilot === true, safetyCase: run.context.safetyCase });
+      await progress(run, "critique", { ...context, proposal, policy, pilot: run.context.pilot === true, safetyCase: run.context.safetyCase, autoGrantId: run.context.autoGrantId });
       return;
     }
     const proposal = proposalSchema.parse(run.context.proposal),
@@ -329,7 +370,7 @@ async function work(run: SeoRun, manager: SeoManager) {
         );
       }
       await db.query(
-        "UPDATE seo_runs SET status='succeeded',stage='done',result=$3,context=jsonb_build_object('policy',context->'policy','pilot',context->'pilot','safetyCase',context->'safetyCase'),lease_token=NULL,lease_expires_at=NULL,finished_at=now() WHERE id=$1 AND lease_token=$2",
+        "UPDATE seo_runs SET status='succeeded',stage='done',result=$3,context=jsonb_build_object('policy',context->'policy','pilot',context->'pilot','safetyCase',context->'safetyCase','autoGrantId',context->'autoGrantId'),lease_token=NULL,lease_expires_at=NULL,finished_at=now() WHERE id=$1 AND lease_token=$2",
         [
           run.id,
           run.lease_token,
@@ -362,6 +403,16 @@ async function work(run: SeoRun, manager: SeoManager) {
     )
   ).rows[0];
   if (!change) throw new Error("change_unavailable");
+  if (run.kind === "publish") {
+    if (["stale","rejected","rolled_back"].includes(change.status) || !manager.auto_publish || run.context.autoGrantId !== manager.auto_grant_id) {
+      await progress(run,"done",run.context,"succeeded",{summary:"Automatic publication skipped: the proposal or its standing authorization changed."});
+      return;
+    }
+    const path = await publishAutomaticSeoChange(run,change);
+    onMetadataChanged?.(path);
+    await progress(run,"done",run.context,"succeeded",{summary:"Metadata published automatically under the owner's saved authorization. Live verification is queued."});
+    return;
+  }
   if (run.kind === "verify") {
     const active = (
       await pool.query(
@@ -401,6 +452,7 @@ async function work(run: SeoRun, manager: SeoManager) {
       );
     } else {
       await rollbackPublication(run.workspace_id, run.site_id, id);
+      onMetadataChanged?.(change.path);
       await progress(run, "done", {}, "succeeded", {
         summary:
           "Published metadata did not verify. The previous version was restored.",
@@ -455,7 +507,17 @@ async function work(run: SeoRun, manager: SeoManager) {
       "The post-change search and measured inquiry evidence was recorded.",
   });
 }
-export async function runSeoWorkerStep() {
+async function pendingWork() {
+  const due = await getDatabasePool().query(
+    `SELECT GREATEST(0,EXTRACT(EPOCH FROM (min(r.next_attempt_at)-now()))*1000)::float wait_ms FROM seo_runs r JOIN seo_managers m ON m.workspace_id=r.workspace_id AND m.site_id=r.site_id
+     WHERE r.workspace_id=$1 AND r.site_id=$2 AND r.status='queued' AND (r.kind IN ('monitor','verify','measure','publish') OR (m.ai_enabled AND m.ai_reviewed_at IS NOT NULL) OR (m.pilot_enabled AND r.context->>'pilot'='true'))
+     AND NOT (r.kind='strategy' AND r.stage='plan' AND r.context->>'pilot' IS DISTINCT FROM 'true' AND EXISTS(SELECT 1 FROM seo_runs scan WHERE scan.workspace_id=r.workspace_id AND scan.site_id=r.site_id AND scan.kind='monitor' AND scan.status IN ('queued','running')))`,
+    [SEO_WORKSPACE_ID, SEO_SITE_ID],
+  );
+  const wait = due.rows[0]?.wait_ms;
+  return {more: wait !== null && wait !== undefined && Number(wait) <= 2500, retryAfterMs: Number(wait) || 0};
+}
+export async function runSeoWorkerStep(options: {onMetadataChanged?: (path: string) => void} = {}) {
   await schedule();
   const pool = getDatabasePool();
   await pool.query(
@@ -464,7 +526,7 @@ export async function runSeoWorkerStep() {
   );
   const run = await claim();
   const success = () => pool.query("UPDATE seo_managers SET last_worker_success_at=now() WHERE site_id=$1 AND workspace_id=$2",[SEO_SITE_ID,SEO_WORKSPACE_ID]);
-  if (!run) { await success(); return { checked: 0, failed: 0, more: false, retryAfterMs: 0 }; }
+  if (!run) { await success(); return { checked: 0, failed: 0, ...await pendingWork() }; }
   try {
     const manager = (
       await pool.query<SeoManager>(
@@ -472,7 +534,8 @@ export async function runSeoWorkerStep() {
         [run.site_id, run.workspace_id],
       )
     ).rows[0];
-    await work(run, manager);
+    await work(run, manager, options.onMetadataChanged);
+    if (run.kind === "strategy" && run.stage === "critique") await schedule();
     if (run.context.pilot === true) await pool.query("UPDATE seo_managers SET pilot_enabled=false WHERE site_id=$1 AND workspace_id=$2 AND NOT EXISTS(SELECT 1 FROM seo_runs WHERE site_id=$1 AND workspace_id=$2 AND context->>'pilot'='true' AND status IN ('queued','running'))",[run.site_id,run.workspace_id]);
     await success();
   } catch (error) {
@@ -487,9 +550,27 @@ export async function runSeoWorkerStep() {
     const code =
       error instanceof SeoBudgetError
         ? "budget_or_receipt_review"
+        : error instanceof SeoStaleError
+          ? "proposal_stale"
         : error instanceof Error && /^[a-z_]{3,80}$/.test(error.message)
           ? error.message
           : "provider_or_worker_failure";
+    if (run.kind === "publish" && ["proposal_stale","automatic_evidence_changed","automatic_page_check_failed","automatic_observation_window"].includes(code)) {
+      await pool.query("UPDATE seo_changes SET status='stale',version=version+1 WHERE id=$1 AND workspace_id=$2 AND site_id=$3 AND status='ready'",[run.context.changeId,run.workspace_id,run.site_id]);
+      await progress(run,"done",run.context,"succeeded",{summary:"Publication skipped because current evidence or page checks changed. A future strategy can prepare a fresh proposal.",reason:code});
+      await success();
+      return {checked:1,failed:0,...await pendingWork()};
+    }
+    if (code === "scan_required" && !uncertain && run.kind === "strategy" && run.stage === "plan") {
+      await seoTransaction(run.site_id, async db => {
+        await db.query("UPDATE seo_runs SET status='queued',error_code=NULL,result=$3,lease_token=NULL,lease_expires_at=NULL,finished_at=NULL,next_attempt_at=now()+interval '1 minute' WHERE id=$1 AND lease_token=$2",[run.id,run.lease_token,JSON.stringify({summary:"Waiting for a complete, current website scan. Planning will resume automatically."})]);
+        await db.query(`INSERT INTO seo_runs(id,workspace_id,site_id,kind,schedule_key,stage)
+          SELECT gen_random_uuid(),$1,$2,'monitor',$3,'collect' WHERE NOT EXISTS(SELECT 1 FROM seo_runs WHERE workspace_id=$1 AND site_id=$2 AND kind='monitor' AND status IN ('queued','running'))
+          ON CONFLICT(workspace_id,site_id,kind,schedule_key) DO NOTHING`,[run.workspace_id,run.site_id,`scan:${run.id}:${new Date().toISOString().slice(0,10)}`]);
+      });
+      await success();
+      return {checked:1,failed:0,more:true,retryAfterMs:0};
+    }
     await pool.query(
       "UPDATE seo_runs SET status=$3,error_code=$4,lease_token=NULL,lease_expires_at=NULL,finished_at=now() WHERE id=$1 AND lease_token=$2",
       [
@@ -512,15 +593,9 @@ export async function runSeoWorkerStep() {
     );
     return { checked: 1, failed: 1, more: true, retryAfterMs: 0 };
   }
-  const due = await pool.query(
-    "SELECT GREATEST(0,EXTRACT(EPOCH FROM (min(r.next_attempt_at)-now()))*1000)::float wait_ms FROM seo_runs r JOIN seo_managers m ON m.workspace_id=r.workspace_id AND m.site_id=r.site_id WHERE r.workspace_id=$1 AND r.site_id=$2 AND r.status='queued' AND (r.kind IN ('monitor','verify','measure') OR (m.ai_enabled AND m.ai_reviewed_at IS NOT NULL) OR (m.pilot_enabled AND r.context->>'pilot'='true'))",
-    [SEO_WORKSPACE_ID, SEO_SITE_ID],
-  );
-  const wait = due.rows[0]?.wait_ms;
   return {
     checked: 1,
     failed: 0,
-    more: wait !== null && wait !== undefined && Number(wait) <= 2500,
-    retryAfterMs: Number(wait) || 0,
+    ...await pendingWork(),
   };
 }

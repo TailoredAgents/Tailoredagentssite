@@ -180,3 +180,35 @@ test("keeps viewers read-only and rejects unsigned worker requests", async ({
   expect((await request.get("/api/cron/seo")).status()).toBe(405);
   expect((await control(request, "inspect")).modelCalls).toBe(0);
 });
+
+test("owner enables automatic publication and can pause it after live verification", async ({page,request}) => {
+  await signIn(page);
+  const automatic=page.getByLabel("Publish validated metadata automatically");
+  await expect(automatic).not.toBeChecked();
+  await page.getByLabel("I have reviewed the business knowledge").check();
+  await page.getByLabel("Run free daily website checks").check();
+  await page.getByLabel("Run weekly paid AI recommendations").check();
+  await automatic.check();
+  await page.getByRole("button",{name:"Save SEO settings",exact:true}).click();
+  await expect(page.getByText("SEO settings saved.",{exact:true})).toBeVisible();
+  let state;
+  for(let i=0;i<35;i++) {
+    await step(request);state=await control(request,"inspect");
+    if(state.changes.some((c:{status:string})=>c.status==="verified")) break;
+  }
+  const published=state.changes.find((c:{status:string})=>c.status==="verified");
+  expect(published,JSON.stringify(state)).toBeTruthy();expect(state.modelCalls).toBe(2);
+  await page.reload();
+  await expect(page.getByText("Publishing: automatic.",{exact:true})).toBeVisible();
+  await expect(page.getByText(/Published automatically/).first()).toBeVisible();
+  await page.goto("/websites");await expect(page).toHaveTitle(published.title);
+  await page.goto("/dashboard/seo");
+  await page.getByRole("button",{name:"Pause SEO automation",exact:true}).click();
+  await expect(page.getByText("Publishing: manual review.",{exact:true})).toBeVisible();
+  await expect(automatic).not.toBeChecked();
+  await page.goto("/websites");await expect(page).toHaveTitle(published.title);
+  await page.goto(`/dashboard/seo/changes/${published.id}`);
+  await page.getByRole("button",{name:"Restore previous metadata",exact:true}).click();
+  await expect(page.getByText("rolled back",{exact:true})).toBeVisible();
+  await page.goto("/websites");await expect(page).not.toHaveTitle(published.title);
+});

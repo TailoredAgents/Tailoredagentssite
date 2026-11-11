@@ -70,6 +70,7 @@ export default async function SeoChangePage({
         <SalesPanel title="Why this change" eyebrow="Source-linked proposal">
           <div className="seo-box">
             <p>{change.rationale}</p>
+            {change.published_at ? <p>{change.publication_mode === "automatic" ? "Published automatically under saved owner authorization; no individual human approval was requested." : "Published after an individual human review."}</p> : null}
             {change.review ? (
               <p>
                 <strong>Independent review:</strong> {change.review.reason}

@@ -1,3 +1,11 @@
+# SEO autonomy addendum — November 11, 2026
+
+Austin requested automatic SEO operation without individual publication approvals. The website release adds migration `0067_seo_autonomy.sql`, owner-authorized automatic metadata publishing, AI/automation-first planning and recovery from the scan/planning race that blocked November 2 and 9. Follow [the current SEO runbook](docs/SEO_MANAGER_SETUP.md) for exact scope, tests, activation and rollback. No Cloudflare/Mail work, new provider account or new budget is required; the separate $10/month SEO cap stays in place.
+
+Local verification: 85 focused SEO tests (48 database cases), six desktop/phone browser journeys, production build, strict types, lint and diff checks passed. The broader website run passed 880 with 641 skipped before the final scheduling refinement, which received another focused/browser/build pass. These tests use synthetic providers. Push/deployment/actual automatic publication are separate acceptance steps; record their evidence in the runbook rather than infer them from these tests. The existing November 1 `/seo` publication still has its November 29 observation review. All earlier handoff material is preserved below.
+
+---
+
 # Current handoff addendum — November 10, 2026
 
 This addendum preserves all earlier records below. Use [current project status](docs/PROJECT_STATUS.md) and [the assistant release checklist](docs/OPERATIONS_ASSISTANT_RELEASE.md) for today's implementation/activation state. The November 1 Mail connection is not being rebuilt from scratch; older “tonight” instructions are historical unless a current check shows recovery is necessary.

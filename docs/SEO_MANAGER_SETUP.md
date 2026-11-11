@@ -1,8 +1,22 @@
 # Tailored Agents SEO manager
 
-Updated November 1, 2026. Applies only to **https://www.tailoredagents.com**. Work stays on `main`. See [the Jeffrey handoff](../new%20jeffrey.md) for the live acceptance record.
+Updated November 11, 2026. Applies only to **https://www.tailoredagents.com**. Work stays on `main`. See [the Jeffrey handoff](../new%20jeffrey.md) for dated live acceptance records.
 
-**Current state, November 1:** free daily monitoring is working (nine completed
+## Automatic metadata publishing — November 11
+
+Austin requested autonomous SEO operation without per-change approval. Migration **0067_seo_autonomy.sql** adds an explicit owner/admin setting, **Publish validated metadata automatically**. It is off by default: migrations never impersonate an authorizing owner. Saving it records the current owner, time and a unique grant. Daily monitoring, weekly Sol, the reviewed business profile and the existing $10/month allowance remain prerequisites. No new credentials, provider purchases or DataForSEO activation are needed.
+
+In this mode, each new normal strategy can prepare up to three metadata updates. Exact source quotations, a separate AI critique, current page fingerprints, current authorizer membership, a valid worker lease and the saved grant are checked before publication. The worker publishes titles, descriptions and matching Open Graph/Twitter text, invalidates page caches, verifies public HTML and restores the previous version if verification does not pass within 15 minutes. The 28-day observation window remains. Automatic publications are labelled as automatic and never receive a fabricated human-review timestamp. Articles, page-body edits, code repairs, backlinks, outreach and client sites remain unsupported by this publisher.
+
+The November 11 live audit found daily scans healthy but the November 2 and 9 weekly runs blocked on `scan_required`. The cause was a planning/scan race: page snapshots were partially replaced during an incremental scan. Planning now waits through scan delays; missing evidence queues a scan and resumes automatically. Only the latest unpaid historical scan block is recovered, without replaying old paid requests. Uncertain receipts still stop paid work. Stale evidence is retired so a later strategy can prepare a fresh proposal. A model may legitimately recommend no change.
+
+**Deployment / activation:** push the verified website release on `main`; `tailored-agents-web` runs the ordered migrations and build through its existing Render build command. Keep the existing shared scheduled job and all secrets. Verify migration 0067 and the exact live commit. In `/dashboard/seo`, an owner saves daily checks, weekly AI and automatic metadata publishing, with reviewed AI/automation-first priorities and the existing budget. Saving different priorities or disabling/re-enabling automation creates a new grant; older proposals are not silently opted in. **Pause SEO automation** stops new paid work and future publications, while already published metadata and free verification/rollback remain available. Changing a grant during a publication is rechecked at commit.
+
+**Local release evidence, November 11:** 85 focused SEO tests passed (including 48 PostgreSQL cases), plus six real-page browser journeys across desktop and phone, production build, strict types, lint and `git diff --check`. The broader website run before the final one-per-grant scheduling refinement passed 880 tests with 641 skipped; focused tests, types/lint and all browser journeys/build were rerun after that refinement. All provider traffic in these tests was synthetic; skipped suites are not passed checks. The pre-release live audit observed 14/14 pages, zero technical flags, $0.697127 spent, no reservations, and the existing `/seo` observation due November 29. Production activation is recorded separately below when observed.
+
+Enabling automatic mode (or saving changed priorities under it) schedules one fresh strategy within the same allowance. Previous unapproved wording is retained as stale history, not silently published. An in-flight strategy finishes before new work starts; completed grant work is not repeatedly charged on each worker check.
+
+**Historical state, November 1:** free daily monitoring is working (nine completed
 14-page scans), Google remains connected, and Jeffrey's business-facts review is
 saved. The dedicated SEO project/key and enforced $10/month provider limit are
 configured. Both real comparison models and all five safety cases succeeded with
@@ -25,11 +39,11 @@ provider invoice remains separate evidence.
 
 ## Current release and costs
 
-Daily monitoring checks the 14 registered public pages. Enabled weekly paid strategy proposes useful improvements, with a separate critique request and exact supporting quotations. An owner/admin must review the final public title and description before publication. Matching social metadata, live verification, version checks, rollback and 28-finalized-day outcome review are implemented. The first real reviewed publication was live-verified November 1; its outcome review remains pending. Articles, page-body changes, city-ranking measurements, automatic code repair, outreach and client sites are outside this release.
+Daily monitoring checks the 14 registered public pages. Enabled weekly paid strategy proposes useful improvements, with a separate critique request and exact supporting quotations. Manual mode requires an owner/admin to review final wording. Automatic mode publishes new validated proposals under the saved owner authorization described above. Matching social metadata, live verification, version checks, rollback and 28-finalized-day outcome review are implemented. The first real reviewed publication was live-verified November 1; its outcome review remains pending. Articles, page-body changes, city-ranking measurements, automatic code repair, outreach and client sites are outside this release.
 
 **DataForSEO is optional and off. Do not create or fund its account for this release.** Search Console supplies the site's own search evidence free of API charges. The five Georgia service areas guide business relevance; they are not office claims or measured city rankings.
 
-The maximum is **$10 per UTC calendar month**, including manual requests, retries, the real model pilot and unresolved reservations. Hosting, call analysis and taxes are separate. Five weekly Sol plan/critique pairs reserve at most approximately $3.50 at the configured context/output limits and standard 30-minute cache-write rates. Actual charges depend on tokens and cache use. Provider funding is separate from consumption; no automatic top-up is implemented.
+The maximum is **$10 per Eastern calendar month**, including manual requests, retries, the real model pilot and unresolved reservations. Hosting, call analysis and taxes are separate. Five weekly Sol plan/critique pairs reserve at most approximately $3.50 at the configured context/output limits and standard 30-minute cache-write rates. Actual charges depend on tokens and cache use. Provider funding is separate from consumption; no automatic top-up is implemented.
 
 Approved active model: `gpt-6.1-sol`, medium reasoning, standard service tier, maximum 8,000 output tokens, bounded plain-text context, no hosted tools. It passed the real pilot and Jeffrey's named review. Preserve this role and evaluate before changing models. The comparison pilot may use Astra explicitly, within its own **$5 sub-limit** of the same monthly allowance.
 
@@ -75,10 +89,10 @@ Approval checks both completed model runs, active reviewer membership and resolv
 
 - **Free daily website checks** and **weekly paid AI recommendations** have separate switches. Budget exhaustion or pausing AI leaves monitoring available.
 - The screen shows settled cost, reservations, remaining allowance, latest Google date, completed scan/strategy and last successful worker check. A warning appears after 20 minutes without a successful check. A configured key is not proof of provider authentication.
-- Queue a scan before a strategy. A strategy requires all 14 pages from a completed recent scan; partial scans cannot be treated as complete evidence. Missing Google data remains explicitly incomplete.
+- Planning automatically waits for or queues a complete scan. A strategy requires all 14 pages from a completed recent scan; partial scans cannot be treated as complete evidence. Missing Google data remains explicitly incomplete.
 - **Retry update** resumes a blocked/failed stage only when that stage has no attempted paid request. Concurrent clicks reuse active work. If a paid result is uncertain, review its receipt first; the system never quietly repeats the charge. Unresolved charges from an older month still block paid work.
 - After a charge is reconciled, deliberately request new work if needed. Money reconciliation does not recreate a lost model output.
-- Public changes require factual review and a current version. A changed source page invalidates stale proposals. Verify actual public HTML; restoring previous metadata is available. Public cache invalidation occurs on reviewed publication/rollback; automatic rollback can take up to five minutes.
+- Public changes require either individual factual review or current standing automatic authority, plus source validation and a current version. A changed source page invalidates stale proposals. The authenticated worker invalidates caches on automatic publication/rollback and verifies actual HTML. The standalone recovery worker relies on the five-minute ISR fallback. Restoring previous metadata is available.
 - Outcome review waits for 28 complete finalized Google dates. Restored/replaced changes are not falsely attributed. Before/after differences do not prove causation.
 
 ## Tests and rollback

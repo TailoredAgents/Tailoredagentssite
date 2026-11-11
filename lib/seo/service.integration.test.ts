@@ -29,6 +29,7 @@ import {
   saveSeoSettings,
   queueSeoRun,
   publishSeoChange,
+  publishAutomaticSeoChange,
   rollbackSeoChange,
   getSeoChange,
   pauseSeo,
@@ -152,6 +153,21 @@ async function readyChange() {
     [run],
   );
   return id;
+}
+async function autoProposal() {
+  await saveSeoSettings(owner,{...settings,autoPublish:true});
+  await baseline();
+  transport.json.mockResolvedValueOnce(modelReply(plan())).mockResolvedValueOnce(modelReply({summary:"Evidence checked",decisions:[{index:0,approved:true,reason:"Supported by the page"}]}));
+  await queueSeoRun(owner,"strategy");
+  expect((await runSeoWorkerStep()).failed).toBe(0);
+  await pool.query("UPDATE seo_runs SET next_attempt_at=now() WHERE status='queued'");
+  expect((await runSeoWorkerStep()).failed).toBe(0);
+  return (await pool.query("SELECT * FROM seo_changes WHERE status='ready'")).rows[0];
+}
+async function leasedPublication() {
+  const change=await autoProposal();
+  const run=(await pool.query<SeoRun>("UPDATE seo_runs SET status='running',lease_token=gen_random_uuid(),lease_expires_at=now()+interval '3 minutes' WHERE kind='publish' RETURNING *")).rows[0];
+  return {change,run};
 }
 describe.skipIf(!url)("Internal SEO manager with guarded PostgreSQL", () => {
   beforeAll(async () => {
@@ -913,16 +929,148 @@ describe.skipIf(!url)("Internal SEO manager with guarded PostgreSQL", () => {
     await expect(saveSeoSettings(owner,{...settings,budget:10.01})).rejects.toThrow();
     await expect(pool.query("UPDATE seo_managers SET monthly_limit_micros=10000001")).rejects.toThrow();
   });
-  it("blocks a strategy when even one page of a full scan is missing", async () => {
+  it("waits and queues a replacement scan when even one page is missing", async () => {
     await saveSeoSettings(owner,settings);await baseline();
     await pool.query("DELETE FROM seo_pages WHERE path='/contact'");
     await queueSeoRun(owner,"strategy");await runSeoWorkerStep();
     expect(transport.json).not.toHaveBeenCalled();
-    expect((await pool.query("SELECT error_code FROM seo_runs WHERE kind='strategy'")).rows[0].error_code).toBe("scan_required");
+    expect((await pool.query("SELECT status,error_code FROM seo_runs WHERE kind='strategy'")).rows[0]).toEqual({status:"queued",error_code:null});
+    expect((await pool.query("SELECT id FROM seo_runs WHERE kind='monitor' AND status='queued'")).rowCount).toBe(1);
     await baseline();
     const retry=await queueSeoRun(owner,"strategy");
     expect((await pool.query("SELECT status FROM seo_runs WHERE id=$1",[retry])).rows[0].status).toBe("queued");
     expect((await pool.query("SELECT id FROM seo_runs WHERE kind='strategy'")).rowCount).toBe(1);
+  });
+  it("waits through the scan's two-second gaps instead of using partially replaced snapshots", async () => {
+    await saveSeoSettings(owner,settings);await baseline();
+    await queueSeoRun(owner,"monitor");await queueSeoRun(owner,"strategy");
+    const first=await runSeoWorkerStep();
+    expect(first.more).toBe(true);expect(first.retryAfterMs).toBeGreaterThan(0);
+    const gap=await runSeoWorkerStep();
+    expect(gap.checked).toBe(0);expect(gap.more).toBe(true);
+    expect(transport.json).not.toHaveBeenCalled();
+    for(let i=1;i<managedPaths.length;i++) {
+      await pool.query("UPDATE seo_runs SET next_attempt_at=now() WHERE kind='monitor'");
+      expect((await runSeoWorkerStep()).failed).toBe(0);
+    }
+    transport.json.mockResolvedValueOnce(modelReply({...plan(),changes:[]}));
+    expect((await runSeoWorkerStep()).failed).toBe(0);
+    expect(transport.json).toHaveBeenCalledTimes(1);
+    const input=JSON.parse(transport.json.mock.calls[0][1].body).input[0].content;
+    expect(JSON.parse(input).priorityKeywords).toContain("AI agent development");
+  });
+  it("recovers only the newest unpaid historical scan block automatically",async()=>{
+    await saveSeoSettings(owner,settings);await baseline();
+    const older=randomUUID(),latest=randomUUID();
+    for(const [id,age] of [[older,9],[latest,2]] as const) await pool.query("INSERT INTO seo_runs(id,workspace_id,site_id,kind,schedule_key,stage,status,error_code,created_at,finished_at) VALUES($1::uuid,$2,$3,'strategy',$1::text,'plan','blocked','scan_required',now()-$4*interval '1 day',now()-$4*interval '1 day')",[id,ws,site,age]);
+    transport.json.mockResolvedValueOnce(modelReply({...plan(),changes:[]}));
+    expect((await runSeoWorkerStep()).failed).toBe(0);
+    expect((await pool.query("SELECT status FROM seo_runs WHERE id=$1",[older])).rows[0].status).toBe("blocked");
+    expect((await pool.query("SELECT stage FROM seo_runs WHERE id=$1",[latest])).rows[0].stage).toBe("critique");
+    expect((await pool.query("SELECT id FROM seo_runs WHERE kind='strategy'")).rowCount).toBe(2);
+    expect((await getSeoDashboard(owner)).health.status).toBe("Working");
+  });
+  it("requires explicit owner authorization and keeps manual mode as the default",async()=>{
+    await saveSeoSettings(owner,settings);
+    expect((await getSeoDashboard(owner)).manager.auto_publish).toBe(false);
+    await expect(saveSeoSettings(viewer,{...settings,autoPublish:true})).rejects.toThrow();
+    await expect(saveSeoSettings(owner,{...settings,enabled:false,autoPublish:true})).rejects.toThrow("requires");
+    await saveSeoSettings(owner,{...settings,autoPublish:true});
+    const first=(await getSeoDashboard(owner)).manager;
+    expect(first.auto_authorized_by).toBe(owner.user.id);expect(first.auto_grant_id).toBeTruthy();
+    await saveSeoSettings(owner,{...settings,autoPublish:true});
+    expect((await getSeoDashboard(owner)).manager.auto_grant_id).toBe(first.auto_grant_id);
+  });
+  it("starts one fresh strategy after enabling autonomy without adopting previously unapproved wording",async()=>{
+    const older=await readyChange();await baseline();
+    await saveSeoSettings(owner,{...settings,autoPublish:true});
+    transport.json.mockResolvedValueOnce(modelReply({...plan(),changes:[]}));
+    await runSeoWorkerStep();
+    expect((await getSeoChange(owner,older)).status).toBe("stale");
+    expect((await pool.query("SELECT * FROM seo_publications")).rowCount).toBe(0);
+    await pool.query("UPDATE seo_runs SET next_attempt_at=now() WHERE status='queued'");
+    await runSeoWorkerStep();await runSeoWorkerStep();
+    expect((await pool.query("SELECT * FROM seo_runs WHERE schedule_key LIKE 'grant:%'")).rowCount).toBe(1);
+    expect(transport.json).toHaveBeenCalledTimes(1);
+  });
+  it("automatically publishes, exposes and verifies metadata without fabricating a human review",async()=>{
+    const c=await autoProposal(),changed=vi.fn();
+    expect((await runSeoWorkerStep({onMetadataChanged:changed})).failed).toBe(0);
+    expect(changed).toHaveBeenCalledWith("/websites");
+    const published=(await pool.query("SELECT * FROM seo_changes WHERE id=$1",[c.id])).rows[0];
+    expect(published.publication_mode).toBe("automatic");expect(published.human_reviewed_at).toBeNull();
+    expect(published.auto_authorized_by).toBe(owner.user.id);
+    const publicCopy=await managedMetadata("/websites",{title:"Original"});
+    expect(publicCopy.title).toEqual({absolute:c.title});
+    transport.page.mockResolvedValue({status:200,body:html("/websites",c.title,c.description)});
+    await runSeoWorkerStep();
+    expect((await getSeoChange(owner,c.id)).status).toBe("verified");
+    expect(transport.json).toHaveBeenCalledTimes(2);
+  });
+  it("restores metadata automatically when live verification fails",async()=>{
+    const c=await autoProposal();await runSeoWorkerStep();
+    await pool.query("UPDATE seo_runs SET created_at=now()-interval '16 minutes' WHERE kind='verify'");
+    const changed=vi.fn();await runSeoWorkerStep({onMetadataChanged:changed});
+    expect((await getSeoChange(owner,c.id)).status).toBe("rolled_back");
+    expect((await pool.query("SELECT * FROM seo_publications")).rowCount).toBe(0);
+    expect(changed).toHaveBeenCalledWith("/websites");
+  });
+  it("retires stale automatic proposals so future plans can use current facts",async()=>{
+    const c=await autoProposal();
+    transport.page.mockResolvedValue({status:200,body:html().replace("We build premium websites for growing businesses.","Our services changed.")});
+    expect((await runSeoWorkerStep()).failed).toBe(0);
+    expect((await getSeoChange(owner,c.id)).status).toBe("stale");
+    expect((await pool.query("SELECT * FROM seo_publications")).rowCount).toBe(0);
+  });
+  it("stops a queued publication when paused and invalidates old grant plans on re-enable",async()=>{
+    const c=await autoProposal();await pauseSeo(owner);
+    await runSeoWorkerStep();
+    transport.json.mockResolvedValueOnce(modelReply({...plan(),changes:[]}));
+    await saveSeoSettings(owner,{...settings,autoPublish:true});await runSeoWorkerStep();
+    expect((await pool.query("SELECT * FROM seo_publications")).rowCount).toBe(0);
+    expect((await getSeoChange(owner,c.id)).status).toBe("stale");
+    expect(transport.json).toHaveBeenCalledTimes(3);
+  });
+  it("rechecks membership at publication commit after public-page reads",async()=>{
+    const {change,run}=await leasedPublication();
+    transport.page.mockImplementation(async path=>{
+      await pool.query("UPDATE workspace_memberships SET role='viewer' WHERE user_id=$1",[owner.user.id]);
+      return {status:200,body:html(path)};
+    });
+    await expect(publishAutomaticSeoChange(run,change)).rejects.toThrow("access changed");
+    expect((await pool.query("SELECT * FROM seo_publications")).rowCount).toBe(0);
+  });
+  it("rechecks standing authorization at publication commit",async()=>{
+    const {change,run}=await leasedPublication();
+    transport.page.mockImplementation(async path=>{
+      await pauseSeo(owner);return {status:200,body:html(path)};
+    });
+    await expect(publishAutomaticSeoChange(run,change)).rejects.toThrow("automatic_authority_changed");
+    expect((await pool.query("SELECT * FROM seo_publications")).rowCount).toBe(0);
+  });
+  it("rejects changed evidence, cross-workspace access, expired leases and pilot publication",async()=>{
+    const {change,run}=await leasedPublication();
+    await expect(publishAutomaticSeoChange({...run,workspace_id:randomUUID()},change)).rejects.toThrow("authority");
+    await pool.query("UPDATE seo_runs SET lease_expires_at=now()-interval '1 second' WHERE id=$1",[run.id]);
+    await expect(publishAutomaticSeoChange(run,change)).rejects.toThrow("authority");
+    await pool.query("UPDATE seo_runs SET lease_expires_at=now()+interval '3 minutes' WHERE id=$1",[run.id]);
+    await pool.query("UPDATE seo_runs SET context=context||'{\"pilot\":true}' WHERE id=$1",[change.run_id]);
+    await expect(publishAutomaticSeoChange(run,change)).rejects.toThrow("authority");
+    await pool.query("UPDATE seo_runs SET context=context||'{\"pilot\":false}' WHERE id=$1",[change.run_id]);
+    transport.page.mockResolvedValue({status:200,body:html().replace("We build premium websites for growing businesses.","Our services changed.")});
+    await expect(publishAutomaticSeoChange(run,change)).rejects.toThrow("evidence_changed");
+    expect((await pool.query("SELECT * FROM seo_publications")).rowCount).toBe(0);
+  });
+  it("recovers a post-commit interruption without duplicate publications or verification jobs",async()=>{
+    const {change,run}=await leasedPublication();
+    await publishAutomaticSeoChange(run,change);
+    await pool.query("UPDATE seo_runs SET lease_expires_at=now()-interval '1 second' WHERE id=$1",[run.id]);
+    transport.page.mockResolvedValue({status:200,body:html("/websites",change.title,change.description)});
+    await runSeoWorkerStep();await runSeoWorkerStep();
+    expect((await pool.query("SELECT * FROM seo_publications")).rowCount).toBe(1);
+    expect((await pool.query("SELECT * FROM seo_runs WHERE kind='verify'")).rowCount).toBe(1);
+    expect((await pool.query("SELECT * FROM audit_logs WHERE action='seo.change.published'")).rowCount).toBe(1);
+    expect((await getSeoChange(owner,change.id)).version).toBe(2);
   });
   it("retains an older month's uncertain charge as a paid-work stop", async () => {
     await saveSeoSettings(owner,settings);const run=await running();

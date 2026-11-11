@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { revalidatePath } from "next/cache";
 import { runSeoWorkerStep } from "@/lib/seo/worker";
 import { privateJson } from "@/lib/reporting/http";
 export const runtime = "nodejs";
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
   )
     return privateJson({ ok: false }, 401);
   try {
-    return privateJson({ ok: true, ...(await runSeoWorkerStep()) });
+    return privateJson({ ok: true, ...(await runSeoWorkerStep({onMetadataChanged: path => revalidatePath(path)})) });
   } catch {
     return privateJson({ ok: false, error: "seo_worker_unavailable" }, 503);
   }
