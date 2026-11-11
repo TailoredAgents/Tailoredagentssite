@@ -1,3 +1,19 @@
+# Current handoff addendum — November 10, 2026
+
+This addendum preserves all earlier records below. Use [current project status](docs/PROJECT_STATUS.md) and [the assistant release checklist](docs/OPERATIONS_ASSISTANT_RELEASE.md) for today's implementation/activation state. The November 1 Mail connection is not being rebuilt from scratch; older “tonight” instructions are historical unless a current check shows recovery is necessary.
+
+- **Pushed / recorded live:** employee-assistant implementation and `99166c8` model/settings release. The latter was recorded live on Render at 7:53:29 PM Eastern, deployment `dep-dbprnkks728c738oi440`. Austin selected uncapped company assistant AI spending; SEO ($10/month), meeting ($10/month), website research ($25/month) and builds ($50/month, $5 initial-site limit) remain separate. Existing routine/legacy task limits and access grants remain in force.
+- **Later recorded acceptance:** `dd09c09` documents Austin's approved employee SMS delivery and working link. SMS/completion alerts were restored off; his phone remains verified. Other employees must verify and opt in themselves.
+- **Jeffrey — Mail:** verify the correct Cloudflare account/bindings, privately back up production D1 using [MCP_SETUP.md](apps/mail/MCP_SETUP.md), then follow [the Mail release commands](docs/OPERATIONS_ASSISTANT_RELEASE.md#partner-handoff-mail). Apply pending migration `0039_assistant_background_grants.sql` and deploy the existing production Mail service. Do not commit backup exports, create replacement credentials or reset existing grants. Migration 0038's grant revocation belongs to the earlier release; do not manually repeat it.
+- **Verify before background activation:** record Worker version/time, OAuth discovery and unauthenticated denial, then authorized version-2 compose/attachment capabilities. Keep current sender restrictions, sending flag and daily cap; the recorded Mail cap is 100 per user per Eastern day, not a newly approved increase. Recheck its effective production value. An actual reply-all/attachment test needs approval of recipient and exact content. No new send is authorized by this documentation update.
+- **After Mail passes:** enable `ASSISTANT_BACKGROUND_ENABLED` on Render as described in the release checklist, then have each employee explicitly select scopes and grant background access. A server flag does not grant it for them. Verify a bounded assignment across sign-out, pause and revocation. Record results; don't call the rollout complete merely because deployment passed.
+- **Device / owner checks:** Austin and the team still need actual meeting/Omi and microphone acceptance. Native iPhone push requires Apple enrollment/signing, macOS build and physical-device checks; the normal free-account app remains usable without push. Follow the linked runbooks rather than purchasing or enabling anything merely from this note.
+- **Documentation-only reconciliation:** source checked through `dd09c09`. Latest model-release evidence records 49 focused database tests, six browser journeys, 833 passed/645 skipped in the full website suite, plus build/type/lint/inventory passes. Earlier Mail release evidence records 438 tests and check/build passes. Those are recorded results, not tests rerun for this documentation edit. Cloudflare deployment, enhanced live Mail delivery, independent background and signed-device gates remain unverified here.
+
+Jeffrey: append the actual commit/Worker versions, effective configuration, passed checks, remaining blockers and owner for each blocker here after the work. Tell Austin in the ongoing conversation when his account/device step is ready. Preserve the older closeout below as evidence.
+
+---
+
 <!-- Current timezone policy: America/New_York, approved by Jeffrey November 1, 2026. -->
 
 System calendar: **Georgia time (EST/EDT)**. Mail's 100/day assistant limit resets

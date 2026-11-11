@@ -2,17 +2,17 @@
 
 This repository contains the Tailored Agents public website, its private operating dashboard, a separately deployed team mail application, and a private iPhone companion.
 
-The business uses premium websites and managed local SEO as the primary client entry point, then expands suitable relationships into website intelligence, focused automation, managed operations agents, and custom software. The product direction is to connect those services through a secure Growth Hub over time. Analytics and human-reviewed SEO operations come before any autonomous SEO agent.
+Tailored Agents leads with custom AI agents, business automation and connected software for businesses. Website development and SEO remain services, not prerequisites for automation. The Georgia-based business works across industries, with commercial insurance and freight/3PL as focused campaigns. Partnerships and revenue sharing begin with a conversation; terms remain private.
 
 Read [the product plan](docs/PRODUCT_PLAN.md) and [active agency OS sequence](docs/AGENCY_OS_ROADMAP.md) before making architectural or roadmap changes. It is the source of truth for the current state, delivery phases, security boundaries, deferred decisions, and eventual SEO-agent scope.
 
 For the latest verified Meta, shared Sales inbox and SEO activation status, use [Jeffrey's current checklist](new%20jeffrey.md). It separates completed setup, remaining live checks and future work; the linked setup guides contain reusable technical procedures.
 
-Documentation reconciled with source on October 25, 2026. Use this README for the overview, the opening of the active roadmap for the development queue, and feature guides for current behavior. Dated verification sections describe their recorded release only; they are not fresh test results for the latest commit. [JEFFREY.md](JEFFREY.md) is a historical handoff, not the current assignment or setup checklist. Update current instructions when behavior changes, and preserve dated evidence separately.
+Documentation reconciled with source through `dd09c09` on November 10, 2026. [Current project status](docs/PROJECT_STATUS.md) separates implementation, recorded live evidence and remaining activation. Use this README for the overview, the opening of the active roadmap for the development queue, and feature guides for current behavior. Dated verification sections describe their recorded release only; they are not fresh test results for the latest commit. [JEFFREY.md](JEFFREY.md) is a historical handoff, not the current assignment or setup checklist. Update current instructions when behavior changes, and preserve dated evidence separately.
 
 ## Agency operating-system expansion
 
-The owner has prioritized the internal sales CRM around researched calling lists, Devon's BatchDialer outreach, personalized Factory previews and website sales. The first source release adds Sales, My day, Calling lists and Mockups inside this existing dashboard, using canonical businesses and the existing contacts/clients/projects. It includes reviewed CSV imports, visual sales stages, list attribution, manual/imported communications, evidence-backed channel restrictions, explicit appointments/follow-ups, mockup handoffs and repeat-safe client/project conversion. Public package prices are unchanged; a promotional $800 offer is entered on its individual opportunity.
+The internal operating system supports relationship-led prospects, discovery, introductions, opportunities, client account management, delivery and ongoing service. Prospects retains the existing `/dashboard/leads` route and data. Team calendar supports staff scheduling; Meeting Inbox adds independent meeting review. Calling Lists is no longer a navigation destination; legacy records/imports are not implicitly deleted. Website Builder starts only when a teammate requests a mockup, then retains planning chat and exact-version approval before a build.
 
 Read [the active agency OS roadmap](docs/AGENCY_OS_ROADMAP.md) for implemented scope, deployment acceptance and the next releases. [Communications setup](docs/COMMUNICATIONS_SETUP.md) covers the implemented unified Inbox, separate Mail activation and owner-managed Twilio SMS/calling activation. Source implementation and production provider acceptance are tracked separately.
 
@@ -45,8 +45,8 @@ The existing operations and measurement releases are active. The agency sales fo
 - Readable desktop and phone layouts across every dashboard tab, with an overview of open inquiries, due follow-ups and project deadlines. See [dashboard usability and verification](docs/DASHBOARD_USABILITY.md).
 - A shared private-workspace design system, grouped navigation with a keyboard page finder, focused creation drawers and organized record/settings pages. See the [22-page design scorecard and implementation](docs/DASHBOARD_DESIGN_AUDIT.md) and [desktop/phone comparison gallery](docs/previews/design/index.html).
 - Slate & blue and Midnight blue palettes with a saved Light / Dark / System preference in the sidebar and Settings. See [dashboard appearance](docs/DASHBOARD_APPEARANCE.md) and the [light/dark gallery](docs/previews/themes/index.html).
-- Manual lead entry requires a phone number or email; business name, contact name, website, service and notes are optional. Lead search, qualification, ownership, next actions, conversion, safe CSV export and confirmed deletion are implemented. Deletion preserves linked sales, client, project and conversation records while removing the lead and its derived client memory.
-- Lead statuses can be changed directly from the Leads list with an automatically saved dropdown. Status-only changes preserve ownership and follow-up details; viewers retain read-only status labels.
+- Manual lead entry requires a phone number or email; business name, contact name, website, service and notes are optional. Lead search, qualification, ownership, next actions, conversion, safe CSV export and confirmed deletion are implemented. Deletion removes explicitly linked CRM conversation history and queues media cleanup, preserving converted clients, projects and sales records. It does not delete the underlying Mail mailbox or unrelated history merely sharing a phone number or company.
+- Lead statuses can be changed directly from the Prospects list with an automatically saved dropdown. Status-only changes preserve ownership and follow-up details; viewers retain read-only status labels.
 - A unified customer Inbox with email, SMS, calls, internal notes, assignment, reminders and personal drafts/read state. New conversation starts with a contact/lead picker and uses saved recipient details; each channel retains its own access permissions.
 - Browser calling, voicemail, connected-call recordings, transcripts, summaries and explicitly reviewed follow-up tasks in My day. The owner has confirmed working SMS, calling and recording/analysis setup; feature-specific live acceptance limits remain in the [recording guide](docs/CALL_RECORDINGS.md).
 - AI email/SMS suggestions inserted into the editable composer for human review, plus editable, source-backed client briefs. Migration 0019 supports recipient drafts; migration 0020 adds client memory. Suggestions never send automatically. See [Inbox behavior and limits](docs/UNIFIED_INBOX.md).
@@ -56,11 +56,13 @@ The existing operations and measurement releases are active. The agency sales fo
 - Read-only Google Search Console connection, encrypted credentials, resumable daily imports, coverage records, and reporting. Jeffrey connected Google on October 21; the automatic worker completed the initial 90-day import without failures. See [activation evidence and remaining checks](docs/CONNECTION_ACTIVATION.md).
 - Safe setup behavior: the marketing site remains operational when dashboard infrastructure is absent.
 
-The Blueprint provisions the persistent database. Production dashboard access uses the existing Mail account and password, with approval controlled by a Mail owner. Resend notifications and the Google Search Console connection are active in production. Shared Sales mail is connected, and free SEO monitoring has completed its first production scan. Paid SEO recommendations remain paused pending the dedicated key, business-facts review and model pilot. GA4, client accounts, broader automated SEO publishing and a generally available standardized-agent catalog remain future work. Recorded acceptance and outstanding daily-refresh/team checks are in [Jeffrey's checklist](new%20jeffrey.md) and [Google activation evidence](docs/CONNECTION_ACTIVATION.md).
+The Blueprint provisions the persistent database. Production dashboard access uses the existing Mail account and password, with approval controlled by a Mail owner. Resend notifications and the Google Search Console connection are active in production. Shared Sales mail is connected, and free SEO monitoring has completed its first production scan. The November 1 handoff records the approved SEO model pilot, weekly Sol activation and a reviewed metadata publication; subsequent scheduled and outcome acceptance needs its own evidence. GA4, client accounts, broader automated SEO publishing and a generally available standardized-agent catalog remain future work. Recorded acceptance and outstanding daily-refresh/team checks are in [Jeffrey's checklist](new%20jeffrey.md) and [Google activation evidence](docs/CONNECTION_ACTIVATION.md).
 
-### Operations assistant (in progress)
+### Employee operations assistant
 
-The initial Operations connection provides business reading, private goals and reviewed internal proposals, with an Assistant dashboard for approvals and revocation. Connect it separately from Tailored Agents Mail. Full communications, calendar editing, automation and owner workflow coverage remain in progress. See [setup and current limits](docs/OPERATIONS_ASSISTANT_SETUP.md) and [the full implementation plan](docs/OPERATIONS_ASSISTANT_PLAN.md).
+The assistant has Chat, My work, Files, Activity and Settings, with durable assignments, private documents, published company knowledge, opt-in routines, reviewed communications and employee notifications. Sol uses adaptive reasoning with bounded Astra escalation. Austin explicitly selected uncapped company AI spending; permissions, explicit routine/legacy assignment limits and provider charges remain in force. See [model policy](docs/ASSISTANT_MODEL_POLICY.md).
+
+The website release and Austin's employee SMS receipt/link are verified. Enhanced Mail and independent background access require the separate Mail release; native push and broader device/team acceptance remain open. Connect Operations separately from Mail. [Release evidence and remaining activation](docs/OPERATIONS_ASSISTANT_RELEASE.md) is the current checklist.
 
 ### Tailored Mail
 
@@ -68,7 +70,7 @@ The initial Operations connection provides business reading, private goals and r
 
 ### Private iPhone companion
 
-`apps/ios` contains an initial sideloadable iPhone companion with Mail and Dashboard tabs, using the existing deployments and accounts. It builds separately with Xcode and is signed/installed through Sideloadly. Jeffrey confirmed installation and sign-in on his iPhone on October 21, with no blocking problems observed. It requires internet access; push notifications and offline mail are outside this first version. See [the iPhone build, installation, and verification guide](apps/ios/README.md) for the remaining workflow and renewal checks.
+`apps/ios` contains an initial sideloadable iPhone companion with Mail and Dashboard tabs, using the existing deployments and accounts. It builds separately with Xcode and is signed/installed through Sideloadly. Jeffrey confirmed installation and sign-in on his iPhone on October 21, with no blocking problems observed. It requires internet access. Native assistant push is implemented but awaits paid Apple enrollment, signing and physical-device acceptance; offline mail remains deferred. See [the iPhone build, installation, and verification guide](apps/ios/README.md) for the remaining workflow and renewal checks.
 
 ## Technology
 
@@ -284,7 +286,7 @@ Do not add another proxy or CDN until certificate, forwarding-header, authentica
 - Confirm the Blueprint-managed PostgreSQL resource is healthy, private, backed up, and restorable before relying on it for business records.
 - Rotate any setup credentials that were exposed outside the intended secret store, verify Mail dashboard approvals and complete live sign-in/denial/session tests. Keep legacy password-mode recovery separate.
 - Confirm the authorized inquiry recipient and a Resend-verified sender.
-- Replace the temporary personal phone number through `lib/site.ts` when the final Woodstock-area business number is ready.
+- Recheck approved public contact details in `lib/site.ts`; the business number is already configured.
 - Add an authorized privacy/legal contact and confirm governing-law language if counsel requires it.
 - Complete browser-based responsive, accessibility, and authenticated-flow QA.
 - Verify production analytics ingestion, conversion definitions, privacy controls, and 7/30/90-day dashboard ranges.
@@ -292,4 +294,4 @@ Do not add another proxy or CDN until certificate, forwarding-header, authentica
 
 See [the launch checklist](docs/LAUNCH_CHECKLIST.md) for the complete production gate.
 
-The internal **Dashboard → SEO manager** has live free monitoring and implemented tools for reviewed search-title/description changes, verification, rollback and outcome tracking. Paid recommendations remain paused for the live model pilot. The allowance is capped at **$10/month**, the existing reporting job is reused, and DataForSEO/city-ranking checks are off. See [SEO manager setup](docs/SEO_MANAGER_SETUP.md) for configuration and recovery. Full article and technical repair publishing remain later stages.
+The internal **Dashboard → SEO manager** has live free monitoring and implemented tools for reviewed search-title/description changes, verification, rollback and outcome tracking. The approved model pilot and first reviewed metadata publication are recorded in the November 1 handoff; scheduled execution and 28-day outcome review need separate evidence. The allowance is capped at **$10/month**, the existing reporting job is reused, and DataForSEO/city-ranking checks are off. See [SEO manager setup](docs/SEO_MANAGER_SETUP.md) for configuration and recovery. Full article and technical repair publishing remain later stages.

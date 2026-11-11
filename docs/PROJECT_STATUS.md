@@ -1,0 +1,41 @@
+# Current project direction and documentation map
+
+Reconciled November 10, 2026 against source through `dd09c09`, including the model release `99166c8`. This is a source/documentation review. Deployment and test statements below cite recorded release evidence; they are not fresh production checks.
+
+## Direction
+
+Tailored Agents leads with custom AI agents, business automation, integrations and software. Websites and SEO remain services, not required entry points. Insurance and freight/3PL are focused campaigns within a broader business. Partnerships and revenue sharing invite a conversation; terms stay private.
+
+The internal CRM supports relationship-led discovery, sales, client account management and delivery. It is not the future client-facing Growth Hub. The employee assistant helps operate the business; Austin remains responsible for building custom client systems.
+
+## What exists and what remains
+
+| Area | Current implementation / recorded evidence | Still open |
+| --- | --- | --- |
+| Public site | AI/automation-first positioning, custom solutions before standardized pricing, partnership conversation and retained website/SEO services. [Positioning](PUBLIC_SITE_POSITIONING.md) | Preserve truthful case-study claims; do not publish partnership terms without approval. |
+| CRM and calendar | Prospects, opportunities, structured discovery, persistent introductions, client account management and staff calendar. Calling Lists is absent from navigation; legacy records remain. [CRM](CRM_BUSINESS_REFINEMENTS.md), [calendar](TEAM_CALENDAR.md) | Automatic AI discovery/solution planning is a proposed next product phase, not already delivered by structured discovery fields. |
+| Website Builder | Staff explicitly starts a mockup; migration 0048 retires automatic intake research. Planning chat, exact-version approval, separate build/preview infrastructure on Render and exports remain. [Setup](WEBSITE_FACTORY_SETUP.md) | Finished-site editing/visitor assistant and further quality work follow their specific roadmap. No new build or paid request is authorized by this review. |
+| Employee assistant | Chat, work feed, private files, published company knowledge, opt-in routines, inline reviewed communication and short dictation. Website/model deployment and Austin's SMS receipt/link recorded. [Release](OPERATIONS_ASSISTANT_RELEASE.md) | Jeffrey's separate Mail deployment, independent background activation, broader employee journeys and physical-device acceptance. Austin's SMS preferences were restored off after the test. |
+| Assistant models/spending | Sol with variable reasoning; Astra only after a completed Sol-high attempt, with bounded escalation. Austin explicitly selected uncapped company AI spending; existing routine/legacy task ceilings and permissions remain. [Policy](ASSISTANT_MODEL_POLICY.md) | Astra availability, escalation quality and representative paid latency are not established by synthetic tests or one harmless live chat. |
+| Meetings | Independent Meeting Inbox, upload/analysis, authenticated Omi intake and permissioned assistant reads; separate $10/month allowance recorded live. [Runbook](MEETING_INTELLIGENCE.md) | Actual recording/transcription and physical Omi/device/network acceptance. Do not promise continuous capture without those checks. |
+| Mail and communications | Existing authenticated Mail MCP and channel permissions; November 1 handoff records Austin's own connection. New enhanced compose/background code needs a separate Mail release. [Mail setup](../apps/mail/MCP_SETUP.md), [assistant communications](OPERATIONS_ASSISTANT_COMMUNICATIONS.md) | Mail migration 0039, current live capability checks and explicitly approved test recipients/content. A website push does not deploy Mail. |
+| SEO | November 1 records a completed comparison pilot, weekly Sol activation and a reviewed metadata publication; $10/month SEO cap remains separate. [Pilot](SEO_PILOT_REVIEW_2026-11-01.md), [handoff](../new%20jeffrey.md) | Scheduled/outcome evidence, with the recorded 28-day review due November 29. DataForSEO, broad publishing and client-site SEO remain separate work. |
+| Meta | Lead intake and review submission have dated evidence in the handoff. | Confirm current external review/delivery status when needed; an old status is not a fresh Meta check. |
+| iPhone | Existing companion and prepared native push implementation. [iPhone guide](../apps/ios/README.md) | Paid Apple enrollment/signing, macOS build and physical push/microphone acceptance; offline mail remains deferred. |
+
+## Next work and ownership
+
+1. **Jeffrey:** complete the separate Cloudflare Mail release and record its exact version/checks. Follow the current addendum in [new jeffrey.md](../new%20jeffrey.md), not superseded initial setup instructions.
+2. **Austin with implementation help:** after Mail acceptance, explicitly activate/test desired background grants and employee preferences. Complete designated device/meeting checks; real sends require approved recipient/content. Native push also needs Apple account/signing work.
+3. **Development:** build AI discovery and solution planning on the existing structured discovery records, following the current [roadmap](AGENCY_OS_ROADMAP.md). Agree research budget/model/activation before new paid automatic work. Billing, managed-service delivery and the client portal remain their own later tracks.
+
+## Keeping documentation aligned
+
+- README is the orientation; PRODUCT_PLAN is durable direction; AGENCY_OS_ROADMAP owns sequencing. Feature runbooks own exact operating steps and acceptance. `new jeffrey.md` owns the partner handoff; `JEFFREY.md` is historical.
+- Code/schema determine implemented behavior. Explicit owner decisions determine intended direction and grants. Dated deployment evidence determines what was actually observed live. None substitutes for the others; surface conflicts rather than silently declaring completion.
+- When behavior changes, update its runbook and affected current summaries in the same release. Label superseded checkpoints instead of erasing test/release history. Keep version-specific test counts dated; do not present skipped tests as passed or copy old totals as new verification.
+- Keep secrets and private exports out of documentation. Documentation changes do not grant access, enable providers, change spending or authorize messages.
+
+## Reconciliation verification
+
+Reviewed the November 10 commit history, active navigation, on-demand Factory migration, lead deletion boundaries, assistant model/limit code and production Mail configuration against these summaries and feature release records. All 185 local Markdown link targets across the 16 changed/new documentation files resolve; the entire previous Jeffrey handoff remains intact below its addendum. `git diff --check` passed. Application tests were not rerun for documentation-only changes; the cited test counts belong to their implementation releases. No provider settings, grants, spending or messages were changed.

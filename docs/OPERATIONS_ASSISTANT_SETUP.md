@@ -4,6 +4,16 @@ Recommendations 1–5 are implemented and locally verified. See the [release rec
 
 The [employee-assistant plan](OPERATIONS_ASSISTANT_PLAN.md) covers reliable assignments and employee SMS, native iPhone push, documents, shared knowledge, proactive follow-up and complete chat communications. The dated sections below retain the evidence for each increment. External application integrations are deferred.
 
+## Current operating policy — November 10, later model release
+
+The current company spending mode is uncapped by Austin's explicit selection in Settings → Models & usage; API usage is still billed. Migration 0062 preserves existing limits by default and does not opt companies in. Explicit legacy assignment and routine limits still apply. See [model and spending policy](ASSISTANT_MODEL_POLICY.md). Website Builder, SEO, meetings and carrier charges remain separate.
+
+Chat uses Sol with adaptive reasoning and bounded Astra escalation. New messages do not ask for a per-task dollar ceiling. Settings holds Models & usage, legacy assignment limits and employee preferences. Assignments remain bounded to 36 tool steps; older 12-step/$1 composer descriptions below describe earlier increments. Austin's real SMS receipt/link passed, and alerts were restored off afterward. Mail/background, native push and wider team acceptance remain open in the [release record](OPERATIONS_ASSISTANT_RELEASE.md).
+
+## Historical implementation increments
+
+The dated sections below preserve their original tests and rollout state. Current model/spending behavior above supersedes the initial $25 and per-message controls; do not rerun activation merely because an early paragraph says pending.
+
 ## Employee work and SMS alerts — November 10 implementation increment
 
 Migration `0053_employee_notifications.sql` adds the private **My work & alerts** area, atomic completion/failure/review events, employee phone verification, opt-in SMS, quiet hours and delivery receipts. This is the first increment of the new goal; independent background delegation, native push, documents, shared knowledge, event routines and enhanced communications remain in progress.

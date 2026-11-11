@@ -29,7 +29,7 @@ Local verification uses synthetic OpenAI responses and dedicated disposable Post
 
 Deploy the website through its normal Render main-branch pipeline, which applies database migrations before startup. No Mail Worker deployment or new credentials are needed for this change. Keep the separate Mail/Apple activation gates in `OPERATIONS_ASSISTANT_RELEASE.md` intact. Verify Chat and Settings after deployment, then save the requested spending mode through the owner account; the migration itself does not opt a company in.
 
-Paid Sol/Astra availability on the production API account, routing quality, and real-world latency remain unverified until normal authorized use. An unavailable model produces a visible failure/uncertain receipt, not a silent paid retry or alternate-provider fallback.
+A harmless production chat completed during the later SMS acceptance, but per-model availability (especially Astra), escalation quality and representative latency remain unverified. An unavailable model produces a visible failure/uncertain receipt, not a silent paid retry or alternate-provider fallback.
 
 ## Verified local release checks
 
@@ -37,4 +37,4 @@ Paid Sol/Astra availability on the production API account, routing quality, and 
 - Full website unit suite: 833 passed, 645 environment-dependent cases skipped; the focused database cases above were run separately.
 - Six desktop/phone browser journeys passed, including keyboard/back navigation, unsent draft preservation, uncapped setting persistence, exact action review, and document export. Browser testing exposed and fixed a refresh/navigation race; tab changes now use router navigation.
 - Production build, TypeScript, lint, and capability inventory passed. No real AI or communication requests were issued during testing.
-- Production deployment and selected spending mode must be verified separately after the push. These checks do not establish live provider availability or generation quality.
+- Production release `99166c8` was recorded live in Render deployment `dep-dbprnkks728c738oi440` November 10 at 7:53:29 PM Eastern. Authenticated readback confirmed Austin selected uncapped company spending and it persisted after reload. Permissions remained unchanged. See [release evidence](OPERATIONS_ASSISTANT_RELEASE.md). This does not establish Astra availability, escalation quality or typical generation latency.

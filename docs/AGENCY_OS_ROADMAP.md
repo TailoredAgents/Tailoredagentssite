@@ -1,8 +1,12 @@
 # Tailored Agents internal operating system
 
-Updated October 24, 2026. This is the active implementation sequence authorized by the owner's agency-OS brief. It supersedes the earlier instruction to proceed directly from internal analytics to the client Growth Hub. The historical Search Console, Mail and website release records remain evidence for those releases.
+Reconciled November 10, 2026 through `dd09c09`. This is the active implementation sequence authorized by the owner's agency-OS brief. It supersedes the earlier instruction to proceed directly from internal analytics to the client Growth Hub. The historical Search Console, Mail and website release records remain evidence for those releases.
 
 ## Current development resume point
+
+Read [current project status](PROJECT_STATUS.md) first. Current priority is completing employee-assistant Mail/background and device/team acceptance, plus Meeting Intelligence device/provider acceptance. Next product development is AI discovery and solution planning; structured discovery and introductions already exist. Older release sequences below are historical planning, not instructions to rebuild shipped capabilities.
+
+**Assistant, November 10:** Chat-centered workspace, durable assignments, private files, published knowledge, opt-in routines, reviewed communications and short dictation are implemented. `99166c8` is recorded live: Sol uses adaptive reasoning with bounded Astra escalation, and Austin selected uncapped company AI spending. `dd09c09` records Austin's real employee SMS/link acceptance with alerts restored off afterward. Separate Mail/background activation, native push and wider team acceptance remain open. [Release record](OPERATIONS_ASSISTANT_RELEASE.md) and [model policy](ASSISTANT_MODEL_POLICY.md).
 
 **Meeting Intelligence and relationships, November 10:** Structured discovery, referral introductions, separate client account management, private independent recording review, authenticated Omi raw-audio intake and optional assistant meeting reads are implemented in the second CRM increment. Austin approved a separate **$10/month** meeting allowance. Deployment/activation evidence and physical-device acceptance are tracked in [the meeting runbook](MEETING_INTELLIGENCE.md); do not infer physical Omi or live transcription acceptance from software tests. Existing communications, website approvals and commission boundaries remain unchanged.
 
@@ -14,7 +18,9 @@ Updated October 24, 2026. This is the active implementation sequence authorized 
 
 **Website intake change:** Website Builder now starts only when a teammate requests **Create website mockup**. Facebook, website and manual lead intake are independent of the builder. Migration **0048** disables and retires the automatic-research flag. Manual research, preapproval chat, exact-version approval, budget limits and existing previews remain. Previously queued/running work is preserved and may finish. [Deployment and operating details](WEBSITE_FACTORY_SETUP.md#on-demand-planning-release--november-10).
 
-**Next phase — AI discovery and solution planning (planned, not implemented by this release):**
+**Next phase — AI discovery and solution planning (agent workflow planned):**
+
+Structured discovery capture and introductions already exist in the CRM. The steps below describe the future agent-assisted flow around those records, not a need to rebuild their manual forms.
 
 1. Route interest into AI agents, workflow automation/integrations, websites, mixed needs or unknown. Keep submitted answers verbatim, support missing details, record evidence and allow staff corrections. Campaign context is a clue, not proof of the customer's needs. Unknown leads should prompt discovery rather than force a website plan.
 2. Prepare a salesperson brief: company context, current workflow, possible opportunities, evidence/uncertainty and useful discovery questions. Keep externally researched hypotheses separate from customer-confirmed facts. Do not repurpose website-planning prompts or assume that its $25 allowance authorizes a new automated research service.
@@ -25,6 +31,10 @@ Updated October 24, 2026. This is the active implementation sequence authorized 
 Recommended implementation order: service-interest routing and a staff-editable discovery brief first; then bounded research/planning; then delivery and managed-service reporting. Coordinate model choice, budget, activation and a reviewed insurance/freight pilot before paid automatic research. Preserve existing lead alerts, SMS introductions, communications permissions and Website Builder approval. No new paid AI request or customer message is part of the on-demand website release.
 
 **Local verification, November 10:** 31 focused PostgreSQL tests passed across Factory service, salesperson journey and Meta intake, including migration preservation, no automatic intake, exact approval and simulated publishing. Four desktop/phone browser checks passed (navigation, sparse-lead start, settings, chat and approval; including accessibility/overflow assertions). TypeScript, lint and production build passed. The journey provider fixture was updated to the current explicit media/crop response contract and distinct service copy; production quality checks were not weakened. No paid generation, real customer messages or production lead mutations were used. At this source checkpoint, production deployment and authenticated readback have not yet been verified.
+
+## Historical release checkpoints — November 2 and earlier
+
+These preserve what was known at each checkpoint, including former next steps and blockers. They do not override the current resume point, November 1 handoff closeout or current feature runbooks. Paid SEO pilot/activation passed November 1; all-Render preview hosting replaced the October 26 Cloudflare/R2 proposal.
 
 **Operations assistant planning, November 2:** Austin requested full bot access across his authorized business workflows, including action-taking and personal organization. The [full implementation plan](OPERATIONS_ASSISTANT_PLAN.md) defines coverage of the existing platform, service extraction, delegated OAuth, reviewed side effects, private goals, durable routines, rollout gates and remaining product gaps. Implementation is underway: separate Operations OAuth, business reads, private goals and reviewed internal proposals are present in source. Real ChatGPT acceptance and full parity remain outstanding; no new schedule or autonomous send is enabled. See [setup and current limits](OPERATIONS_ASSISTANT_SETUP.md) and the code-derived coverage inventory. Continue through the full delivery sequence. Existing Mail approval policy, channel permissions and exact Website Builder approvals remain intact.
 
@@ -80,9 +90,9 @@ The project owner handles Twilio accounts, business-number decisions, registrati
 
 ## Business workflow and boundaries
 
-The immediate business is website sales: researched prospect -> Devon's BatchDialer outreach -> interested conversation -> appointment and/or personalized mockup -> proposal -> won sale -> website project -> recurring services.
+The current workflow is prospect/referral -> discovery -> reviewed solution proposal -> explicit client/project conversion -> implementation -> acceptance -> agreed managed support. Websites and SEO are optional paths. Website Builder starts on staff request, not automatically for every incoming lead.
 
-The existing Next.js/Render application and PostgreSQL remain the internal system of record. Tailored Mail remains a separately deployed mailbox and password authority. Website Factory remains a separate development toolkit producing standalone customer websites. BatchDialer remains the bulk calling tool. Wholesale supplies architecture and interaction references; none of its real-estate workflows, databases, credentials or client records are imported.
+The existing Next.js/Render application and PostgreSQL remain the internal system of record. Tailored Mail remains a separately deployed mailbox and password authority. Website Builder provides integrated on-demand planning/builds with separate Render build/preview infrastructure and portable exports. Calling Lists was removed from navigation; legacy imports do not define the current sales workflow. Wholesale supplies architecture and interaction references; none of its real-estate workflows, databases, credentials or client records are imported.
 
 Public prices remain in `lib/services.ts` and `lib/packages.ts`. The introductory $800 website acquisition offer belongs to an individual opportunity's `promotion` offer type and entered value. It changes neither published packages nor future renewal prices. A won opportunity is a sales amount, not proof of payment or recurring revenue.
 

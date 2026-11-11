@@ -1,41 +1,30 @@
 # Tailored Agents product plan
 
-Last updated: October 25, 2026
+Last reconciled: November 10, 2026, against source through `dd09c09`. See [current status and remaining gates](PROJECT_STATUS.md). Dated decisions retain historical context.
 
-This document is the durable product and implementation plan for the Tailored Agents website, internal dashboard, future client Growth Hub, analytics platform, SEO workspace, and eventual SEO agent. It records the intended sequence, boundaries, data model, security posture, and completion criteria so future work does not drift from the business goals.
+This document is the durable product and implementation plan for the Tailored Agents public site, internal CRM, employee assistant, meeting workflows, website/SEO services and future client Growth Hub. It records the intended sequence, boundaries, data model, security posture, and completion criteria so future work does not drift from the business goals.
 
-[Jeffrey's handoff](../new%20jeffrey.md) is the current activation record for Meta leads, shared Sales email and the internal SEO manager. Its October 24 choices supersede earlier budgets and setup assumptions in historical decisions below; roadmap phases do not by themselves establish live acceptance.
+[Jeffrey's handoff](../new%20jeffrey.md) is the current activation record for Meta leads, shared Sales email and the internal SEO manager. Its latest dated closeout and November 10 addendum supersede earlier budgets and setup assumptions in historical decisions below; roadmap phases do not by themselves establish live acceptance.
 
 ## Product direction
 
-Tailored Agents uses websites and managed SEO as the primary entry point for client relationships:
+Tailored Agents leads with custom AI agents, business automation and connected software for businesses. Website development and SEO remain services, not prerequisites for automation. The Georgia-based business works across industries, with commercial insurance and freight/3PL as focused campaigns. Partnerships and revenue sharing begin with a conversation; terms remain private.
 
-1. Premium website design and development.
-2. Managed local SEO and growth analytics.
-3. Standardized website intelligence and business-operations agents introduced through a limited founding-client rollout.
-4. Focused business automation and, where justified, advanced managed agents.
-5. Custom software and connected systems for qualified projects.
+The internal operating system supports discovery, a reviewed solution proposal, delivery and agreed ongoing support. A website is optional. The future client Growth Hub remains separate from the internal employee dashboard; do not describe it as existing client access.
 
-The software product grows out of those services. A website creates the customer-facing foundation, managed SEO adds recurring improvement and reporting, website intelligence adds chat, qualification, booking, or follow-up, and operations agents can later support calls, service, documents, reporting, and connected workflows. These capabilities should accumulate through one client relationship and shared infrastructure rather than become unrelated systems.
+### Commercial service model
 
-The immediate goal is not to launch a broad autonomous-agent platform. It is to build a reliable internal operating system that helps Tailored Agents manage leads, clients, websites, work, evidence, and eventually bounded agent activity. That system can then become a client-facing Growth Hub and, only after the data and workflows are trustworthy, support a bounded SEO agent.
-
-### Commercial service ladder
-
-- Websites generally carry the larger upfront project fee and establish the initial client relationship.
-- Managed SEO and growth analytics create recurring monthly value after launch.
-- Standardized agents use a $0 setup model for the approved standard configuration and a recurring monthly fee, with usage and nonstandard work identified separately.
-- Founding-client introductory prices are $99/month for a Website Chat Assistant, $149/month for a Lead Qualification Assistant, $199/month plus messaging usage for a Lead Follow-Up Agent, and $299/month plus voice usage for an AI Phone Receptionist.
-- Smaller future add-ons may generally fall between $49 and $149 per month, but they must not be published as available before their scope and delivery model exist.
-- Advanced agents, broader integrations, and custom software retain implementation pricing plus an individually defined support and usage model.
-- Normal analytics and the planned human-reviewed SEO intelligence layer belong inside the existing managed SEO subscription rather than becoming separate agent charges.
-- Founding-client pricing is positioned as an introductory program for suitable early clients, not as low-service or universally available work.
+- Scope custom AI, integrations and software around the customer's workflow, identifying implementation, support and provider usage separately.
+- Retain website/SEO packages and standardized-agent offers. Published amounts live in `lib/services.ts` and `lib/packages.ts`; a listed offer does not prove every capability is generally available.
+- Preserve exact Website Builder approval. Direct assistant actions require explicit delegated scope; not every action universally waits for dashboard approval.
+- Keep referral attribution separate from an agreed compensation contract. Do not invent revenue-share terms or a custom-project minimum.
+- Internal SEO supports bounded, reviewed metadata improvements; broader publishing and client SEO require separate implementation and acceptance.
 
 ## Product principles
 
 - Sell what exists. Conceptual interfaces must stay labeled as illustrative until the corresponding production capability is operational.
 - Collect evidence before adding autonomy. Analytics, work history, and reviewed recommendations come before an SEO agent.
-- Keep people accountable. Generated recommendations, content, and actions require review and an attributable approval path.
+- Keep people accountable. Changes need an attributable authorization path: exact review where required, or explicitly granted direct-action scope. Passive monitoring remains non-mutating.
 - Design for multiple clients without overbuilding the first release. Every business record belongs to a workspace, even while Tailored Agents is the only workspace.
 - Treat access control as a data-layer concern. Every protected read and mutation must verify the session, workspace membership, role, and resource ownership.
 - Minimize sensitive data. Store only what the product needs, return narrow data-transfer objects, and never expose provider credentials to the browser.
@@ -44,7 +33,7 @@ The immediate goal is not to launch a broad autonomous-agent platform. It is to 
 
 ## Current state
 
-### Operational today
+### Implemented platform (live evidence is release-specific)
 
 - A production Next.js 16.4 marketing website deployed on Render.
 - Public pages for websites, SEO, automation, engineering, packages, pricing, work, company, and contact.
@@ -66,19 +55,19 @@ The immediate goal is not to launch a broad autonomous-agent platform. It is to 
 - Client accounts or a client-facing Growth Hub.
 - A public interactive product demo.
 - A generally available standardized website-agent or operations-agent catalog; the public site describes a limited founding-client rollout without claiming that every listed capability is operational.
-- Paid SEO recommendations and the first real reviewed metadata publication: the implementation exists, but activation awaits the dedicated key, business-facts review and model pilot. Broader content generation/publishing, city-ranking measurements and client-site SEO remain later work.
+- Broader SEO publishing, city-ranking measurements and client-site SEO remain later work. The internal pilot, weekly Sol activation and first reviewed metadata publication passed in the November 1 handoff; initial setup is not still pending.
 
-### Current source capabilities — October 24
+### Earlier source checkpoint — October 24 (superseded where noted)
 
 The following extends the earlier operations/measurement summary. Implementation and recorded production acceptance remain distinct:
 
-- Manual leads require phone or email; business/contact names are optional. Confirmed deletion removes the lead and its derived memory while preserving linked sales, client, project and conversation records.
+- Manual leads require phone or email; business/contact names are optional. Current deletion also removes explicitly linked CRM conversation history and queues media cleanup, preserving converted clients/projects and sales records; see `lib/operations/delete-lead.ts` and `delete-lead-history.ts`.
 - The unified Inbox combines permitted email, SMS, calls and internal notes with assignment, reminders and private drafts. New conversation chooses a contact or lead, reuses authorized history and prefills missing channels. Migration **0019** supports separate recipient drafts.
 - Browser calling, voicemail, connected-call recordings, transcripts, summaries and reviewed follow-up tasks are implemented. The owner has confirmed working SMS/calling and recording/analysis setup; the [recording guide](CALL_RECORDINGS.md) distinguishes that confirmation from independent live checks.
 - AI email/SMS suggestions go into the editable composer; sending remains a separate human action. Source-backed client briefs support manual edits, call takeaways and fact extraction during message generation. Migration **0020** adds permission-scoped, 24-month memory. See [Inbox behavior](UNIFIED_INBOX.md).
 - The private iPhone companion provides Mail and Dashboard tabs using the existing deployments; installation/sign-in and selected attachment checks have owner confirmation. It requires internet access. See [the iPhone guide](../apps/ios/README.md).
 
-General-email-to-lead conversion, richer dashboard email composing, team coverage and the next account-assistant phase remain development work. Client briefs do not enable autonomous customer outreach, automatic scheduling or project/billing changes. Follow the [active roadmap](AGENCY_OS_ROADMAP.md) for sequence; dated decisions below are historical context, not current activation instructions.
+That checkpoint is historical. Current assistant, structured relationship and meeting capabilities and their remaining acceptance gates are summarized in [PROJECT_STATUS.md](PROJECT_STATUS.md). Client briefs alone do not authorize customer outreach or scheduling. Dated decisions below are historical context, not current activation instructions.
 
 
 ### October 21 agency operating-system expansion

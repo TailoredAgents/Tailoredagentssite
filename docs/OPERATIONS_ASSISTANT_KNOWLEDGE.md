@@ -27,7 +27,7 @@ Deleting a knowledge series clears every version's text, provenance and source r
 - Indexed search returns up to 50 matches in the UI and 15 metadata matches per chat search; refine the query for older entries. Read a full source before relying on it.
 - Migration: `0059_assistant_knowledge.sql`.
 - `ASSISTANT_KNOWLEDGE_ENABLED=false` temporarily disables the knowledge API/tools. It does not delete saved guidance or release published source retention.
-- Deterministic search, publication and correction make no AI request. Chat reasoning and file generation remain under the existing assignment and shared $25 allowance.
+- Deterministic search, publication and correction make no AI request. Chat reasoning and file generation use the shared assistant ledger and any explicit assignment/routine limit. Austin selected uncapped company spending in the later release; see [current model policy](ASSISTANT_MODEL_POLICY.md).
 
 ## Verification
 

@@ -2,13 +2,15 @@
 
 Use this checklist for the public website and private dashboard. The mail application has a separate live-test checklist in `apps/mail/README.md` and a separate Cloudflare deployment process.
 
-## Current activation work — October 24
+## Current activation work — November 10
 
-Documentation reconciliation on October 25 aligned the overview and guides with optional lead business names, confirmed lead deletion, contact-first Inbox entry, call recordings/follow-ups, AI drafts and client briefs through migration **0020**. This was a source/documentation check, not a new deployment acceptance or test-suite run; no open production checks were marked complete. The current development queue is in [the active roadmap](AGENCY_OS_ROADMAP.md), and [JEFFREY.md](../JEFFREY.md) is historical.
+[Current project status](PROJECT_STATUS.md) is the reconciliation index; the feature runbooks own detailed behavior and release acceptance. This documentation pass checked source through `dd09c09`, not fresh provider tests. Earlier dated checklists retain release-specific evidence and do not override later completion records.
 
-[Jeffrey's handoff](../new%20jeffrey.md) is the single current checklist for Meta, shared Sales email and the internal SEO manager. It records exact deployed versions and test evidence. Sales setup/grants and Gmail delivery are verified; the remaining team checks are still open. Free SEO monitoring and the existing shared worker are live; paid AI remains paused pending the dedicated key, facts review and model pilot. Meta is published and connected, and Jeffrey confirmed a live test-form submission appeared in CRM Leads. Ordinary public/Instagram delivery and the remaining production checks are still open.
-
-Use the handoff to update those remaining items instead of duplicating them below. Dated release sections retain historical evidence; an earlier unchecked setup item must not override later recorded completion. Other public-site and product gates below remain separate.
+- Assistant: website/model release and Austin's SMS receipt/link passed; separate Mail deployment/background activation, other employees and signed-device push still need acceptance. Use [the assistant release checklist](OPERATIONS_ASSISTANT_RELEASE.md).
+- Meetings: implemented with the approved separate $10/month allowance; physical Omi/device and actual transcription acceptance remain in [the meeting runbook](MEETING_INTELLIGENCE.md).
+- SEO: the November 1 handoff records pilot/weekly Sol activation and a reviewed metadata publication. Verify subsequent scheduled work and the 28-day outcome; do not repeat initial key/model setup.
+- Meta and shared Sales: use [Jeffrey's latest handoff](../new%20jeffrey.md) for recorded connection/delivery and remaining app-review/team checks. Do not infer fresh external status from an old checklist.
+- Website Builder is on demand; neither incoming prospects nor documentation updates authorize research/build charges.
 
 ## Product and documentation
 
@@ -24,7 +26,7 @@ Use the handoff to update those remaining items instead of duplicating them belo
 
 - [ ] Confirm GitHub repository ownership, branch protection, and authorized collaborators.
 - [ ] Confirm the authorized Tailored Agents business email address.
-- [ ] Replace the temporary personal phone number with the final Woodstock-area business number through `lib/site.ts`.
+- [ ] Recheck the already-configured business number and approved contact details in `lib/site.ts`.
 - [x] Verified the Resend sending domain through actual delivery and configured alerts to both approved team inboxes on October 21.
 - [ ] Confirm the legal/privacy contact and required governing jurisdiction.
 - [ ] Review public StonegateOS capability language with the system owner.

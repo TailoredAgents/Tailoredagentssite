@@ -16,6 +16,10 @@ Desktop history can collapse. Mobile history uses a dismissible dialog; the Phon
 
 Assistant replies render a small safe Markdown subset: paragraphs, headings, lists, bold, code, and HTTPS or internal dashboard links. Raw HTML is escaped; incomplete Markdown markers cannot stall rendering.
 
+## Later model/settings release
+
+The subsequent `99166c8` release moves spending controls into Settings → Models & usage, removes the new-message dollar selector and cost receipts from the composer, and adds adaptive Sol reasoning with bounded Astra escalation. Austin explicitly selected uncapped company spending after deployment. The unchanged-limits statement below applies to this earlier UI-only release; see [current model policy](ASSISTANT_MODEL_POLICY.md) and [release evidence](OPERATIONS_ASSISTANT_RELEASE.md).
+
 ## Scope
 
 This redesign preserves the existing APIs, grants, exact approvals, account boundaries, cost limits, file processing, and sending behavior. It does not grant access, raise allowances, enable messaging, or send communications. Pending-review queries remain scoped to the signed-in user and workspace and are separate from paginated history.

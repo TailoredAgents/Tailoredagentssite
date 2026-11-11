@@ -15,3 +15,7 @@ Jeffrey requested on October 20, 2026 that all work stay on `main`. Work directl
 ## Website Builder quality
 
 For Website Builder planning, generation, rendering or review work, read `docs/WEBSITE_BUILDER_STANDARDS.md`. Keep general quality lessons in the shared instructions in `lib/factory/website-standards.ts` so all three AI stages stay aligned. Keep client-specific palettes, page counts and content in that client's plan. Check the actual renderer's capabilities before promising a form, action or layout; distinguish tested integration from observed live design quality. Preserve exact human approval, sparse-lead support, spending limits and existing previews.
+
+## Product direction and documentation
+
+Read `docs/PROJECT_STATUS.md` for the current direction, documentation map and remaining activation gates. Lead with custom AI, automation and connected software; websites/SEO remain optional services. Keep partnership terms private. Update affected runbooks and current summaries when behavior changes; preserve dated release evidence and distinguish source, local checks and observed live acceptance. Do not treat historical pending items as current instructions.

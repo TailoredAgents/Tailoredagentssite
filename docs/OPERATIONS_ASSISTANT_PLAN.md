@@ -2,7 +2,7 @@
 
 Prepared November 10, 2026 for Austin, Devon, Jeffrey and the rest of Tailored Agents.
 
-**Status: code implementation and local verification complete; production activation remains partial.** See the [release record and partner handoff](OPERATIONS_ASSISTANT_RELEASE.md). Austin's live SMS delivery/link check passed November 10; Mail deployment, independent background activation, wider employee rollout and signed iPhone push remain open. Code/test completion does not close those gates. This replaces the earlier overlapping phase lists; [the previous plan is archived](OPERATIONS_ASSISTANT_PLAN_ARCHIVE.md). Implemented behavior and verification remain in [setup and release notes](OPERATIONS_ASSISTANT_SETUP.md). The reviewed committed baseline is main `63dac95`, including assistant release `fab93f3`. Separate, uncommitted relationship and Meeting Inbox work was present during planning; coordinate with it rather than treating it as released or duplicating it.
+**Status: code implementation and local verification complete; production activation remains partial.** See the [release record and partner handoff](OPERATIONS_ASSISTANT_RELEASE.md). Austin's live SMS delivery/link check passed November 10; Mail deployment, independent background activation, wider employee rollout and signed iPhone push remain open. Code/test completion does not close those gates. This replaces the earlier overlapping phase lists; [the previous plan is archived](OPERATIONS_ASSISTANT_PLAN_ARCHIVE.md). Implemented behavior and verification remain in [setup and release notes](OPERATIONS_ASSISTANT_SETUP.md). The reviewed committed baseline is main `63dac95`, including assistant release `fab93f3`. That was the planning checkpoint. Relationship and Meeting Inbox work is now implemented; see [current project status](PROJECT_STATUS.md) for the reconciled source and activation state.
 
 ## The single goal
 
@@ -12,7 +12,7 @@ Deliver recommendations **1–5** under this goal. Employee **SMS alerts ship fi
 
 The assistant supports selling and servicing AI agents, document automation and websites. Austin remains responsible for designing, programming and deploying custom client AI systems and workflows. The assistant may organize requirements, prepare documents and coordinate the work; it does not build those client systems.
 
-The shared company AI allowance remains **$25/month**. Ordinary SMS/call charges remain separate. Existing grants, customer opt-outs, exact email approval, employee-connected calling, Website Builder approvals and independent budgets stay in force.
+The current company spending mode is uncapped by Austin's explicit selection in Settings → Models & usage; API usage is still billed. Migration 0062 preserves existing limits by default and does not opt companies in. Explicit legacy assignment and routine limits still apply. See [model and spending policy](ASSISTANT_MODEL_POLICY.md). Website Builder, SEO, meetings and carrier charges remain separate.
 
 ## What employees should experience
 
@@ -203,7 +203,7 @@ Extend the separate Mail transport and attachment contract with scoped file acce
 
 **Inline review and receipts:** show the exact message and files in chat, with edit, approve, cancel and status controls backed by the existing action service. Review endpoints verify the actual user and current revision. Record queued, accepted, delivered where supported, failed and unknown separately. Reconcile through saved provider IDs; checking status must never resend. Display what the provider actually proves.
 
-**Short voice notes:** explicit press-to-record, clear recording indicator, short bounded clips (initial target two minutes), transcription preview/correction and normal Send. Verify spoken names, phone numbers and amounts before action where ambiguous. Include transcription in the $25 allowance and retain/delete clips under a visible policy. This is dictation, not ambient recording, live meeting capture or an AI voice calling customers.
+**Short voice notes:** explicit press-to-record, clear recording indicator, short bounded clips (initial target two minutes), transcription preview/correction and normal Send. Verify spoken names, phone numbers and amounts before action where ambiguous. Include transcription in the shared assistant spending ledger and retain/delete clips under a visible policy. This is dictation, not ambient recording, live meeting capture or an AI voice calling customers.
 
 **Calls:** keep the employee-connected call flow: the selected employee answers and presses 1 before the customer connects. Show initiation, connection/failure and the saved receipt in chat. Never switch to autonomous AI voice.
 
@@ -215,7 +215,7 @@ Extend the separate Mail transport and attachment contract with scoped file acce
 
 Use the existing shared reservation/settlement ledger for all assistant model/tool/OCR/dictation costs. Reserve conservatively before work, reconcile actual usage and retain unknown charges until resolved. Track employee, assignment and feature so the owner can see what used the allowance. A continuation or retry inherits the original ceiling.
 
-Keep notification routing, schedules, template formatting and routine condition checks deterministic. Cache permitted extraction by scoped source/version, not globally accessible file hash. Stop expensive work clearly when allowance is insufficient; keep saved results and cheap reminders available. Do not promise unlimited document processing or daily research for the whole team within $25.
+Keep notification routing, schedules, template formatting and routine condition checks deterministic. Cache permitted extraction by scoped source/version, not globally accessible file hash. Stop expensive work clearly when allowance is insufficient; keep saved results and cheap reminders available. Uncapped dollar spending does not remove request, document, task or provider limits. Do not promise unlimited throughput or fixed-cost research.
 
 SMS/call spend, storage and any Apple account/distribution costs are separate from AI. Prefer existing infrastructure, expose SMS usage/caps and make any new paid service or limit increase a concrete activation decision. Never treat the AI allowance as permission to enable another paid service.
 

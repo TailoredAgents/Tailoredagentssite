@@ -2,7 +2,11 @@
 
 November 10, 2026. Owner direction: refine the current software, preserve its look and workflow, and keep websites and SEO available. This plan complements the active agency roadmap and employee-assistant work; it does not replace either.
 
-## Repository assessment
+## Current reading guide
+
+The first-increment assessment below is historical. The **second increment** later in this document implements structured discovery, persistent introductions, separate client account management and Meeting Intelligence. See [the meeting runbook](MEETING_INTELLIGENCE.md) for deployment evidence, the approved $10/month allowance and still-open physical Omi/live-processing acceptance. The earlier deferred list is not the current implementation backlog.
+
+## Repository assessment — first-increment checkpoint
 
 Reviewed main through `d21daad` and fetched origin/main before implementation; there were no remote commits to pull. Uncommitted assistant chat, permissions, memory, routines, calendar, Mail and migration `0050_assistant_operations.sql` work was present. This increment leaves those files alone and must stage only its own files. Recheck the shared tree before committing.
 
