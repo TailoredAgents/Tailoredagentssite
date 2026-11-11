@@ -147,7 +147,7 @@ test("adds a phone-only lead directly from Leads and retains useful sales contex
   await form.getByRole("button", { name: "Save prospect", exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard\/leads\/[a-f0-9-]+$/);
   await expect(
-    page.getByRole("heading", { name: organization, exact: true }),
+    page.getByRole("heading", { name: "Jordan Referral", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText("Added manually", { exact: false }).first(),

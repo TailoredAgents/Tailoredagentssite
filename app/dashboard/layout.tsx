@@ -1,3 +1,4 @@
+import './operating-model.css';
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { DashboardNavigation } from "@/components/dashboard/dashboard-navigation";

@@ -15,7 +15,7 @@ export const stageLabels: Record<SalesStage, string> = {
   contacted: "Contacted",
   interested: "Interested",
   discovery: "Discovery",
-  mockup: "Mockup",
+  mockup: "Solution design",
   proposal: "Proposal",
   won: "Won",
   lost: "Lost",

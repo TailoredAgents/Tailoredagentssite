@@ -1,5 +1,7 @@
 # CRM refinements for relationship-led AI and automation work
 
+November 10 current source addendum: [the operating-model guide](OPERATING_MODEL_GUIDE.md) now covers the implemented solution briefs, encounter capture, work-focus views, referral ledger and service/outcome records. Conner configures actual private financial policies before activation. Historical assessments below remain dated evidence.
+
 November 10, 2026. Owner direction: refine the current software, preserve its look and workflow, and keep websites and SEO available. This plan complements the active agency roadmap and employee-assistant work; it does not replace either.
 
 ## Current reading guide

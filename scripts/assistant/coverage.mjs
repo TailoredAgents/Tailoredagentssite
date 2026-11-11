@@ -4,6 +4,7 @@ import path from 'node:path';
 // Generated inventory makes omissions visible when new dashboard actions ship.
 async function walk(dir){const files=[];for(const entry of await readdir(dir,{withFileTypes:true})){if(['node_modules','.next'].includes(entry.name))continue;const name=path.posix.join(dir,entry.name);if(entry.isDirectory())files.push(...await walk(name));else if(/\.tsx?$/.test(name)&&!name.endsWith('.test.ts'))files.push(name);}return files;}
 const implementations={
+ 'lib/client-services/actions.ts#clientServiceAction':['prepare_save_client_service','prepare_record_service_review','prepare_record_service_incident','prepare_resolve_service_incident','prepare_record_service_measurement'],
  'lib/relationships/actions.ts#relationshipAction':['prepare_save_business_discovery','prepare_record_introduction','prepare_set_account_manager'],
  'lib/relationships/handoff-actions.ts#handoffAction':['prepare_request_relationship_handoff','prepare_update_relationship_handoff'],
  'lib/inbox/actions.ts#saveDraftAction':['prepare_save_mail_draft'],
@@ -38,6 +39,8 @@ const implementations={
  'lib/voice/actions.ts#getVoiceCallAction':['get_call'],
 };
 const partial={
+ 'lib/relationships/work-actions.ts#relationshipWorkAction':['prepare_save_solution_brief, prepare_capture_encounter','Shared briefs and encounter capture are delegated; private work-focus preference stays in My day.'],
+ 'lib/partners/actions.ts#referralAction':['prepare_create_referral_partner, prepare_draft_referral_agreement, prepare_record_referral_earning, prepare_reverse_referral_earning, prepare_draft_referral_statement','Finance permissions enforced in domain services. Access grants, agreement activation and statement approval/payment recording remain explicit finance controls in Partners.'],
  'lib/sales/actions.ts#logActivityAction':['prepare_log_activity','Internal notes only; imported communications and outcomes remain in dashboard.'],
 };
 const handoffs=/connectSmsNumber|saveSmsGrant|connectVoiceLine|saveVoiceGrant|saveCallingPhone|issueVoiceToken|updateVoicePresence|acceptVoiceCall|createVoiceIntent|startPhoneCall|saveVoiceRouting|saveVoiceForwarding|saveRecordingPreferences|deleteCallRecording|deleteVoicemail|deleteLead/;
@@ -48,7 +51,7 @@ for(const file of [...await walk('lib'),...await walk('app')].sort()){
  for(const n of ast.statements){if(!ts.isFunctionDeclaration(n)||!n.name||!n.modifiers?.some(m=>m.kind===ts.SyntaxKind.ExportKeyword))continue;
   const name=n.name.text,key=file+'#'+name;
   let status='pending',tools=[],reason='Service extraction, permission/revision checks and acceptance tests remain.';
-  if(implementations[key]){status='implemented';tools=implementations[key];reason='Shared domain service behind delegated access; changes require dashboard review.';}
+  if(implementations[key]){status='implemented';tools=implementations[key];reason='Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy.';}
   else if(partial[key]){status='partial';tools=[partial[key][0]];reason=partial[key][1];}
   else if(file.includes('/assistant/')){status='control';reason='Authenticated owner control or MCP transport; deliberately not callable as an approval tool.';}
   else if(handoffs.test(name)){status='human_handoff';reason='Identity, security, deletion or physical-device operation remains in the trusted dashboard.';}

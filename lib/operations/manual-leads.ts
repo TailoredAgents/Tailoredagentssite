@@ -1,5 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
+import type {PoolClient} from "pg";
+import type {z} from "zod";
 import type { DashboardContext } from "@/lib/dashboard/data";
 import { getDatabasePool, insertAuditLog } from "@/lib/dashboard/db";
 import { authorizeSales, SalesAccessError } from "@/lib/sales/data";
@@ -21,6 +23,21 @@ export async function createManualLead(context: DashboardContext, input: unknown
     );
     if (!access.rowCount) throw new SalesAccessError("Your workspace access no longer allows changes.");
 
+    const result = await insertManualLead(client, context, data);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Internal transaction helper: both intake paths share stable manual-submission
+// deduplication. The caller must hold an authenticated editing transaction.
+export async function insertManualLead(client:PoolClient,context:DashboardContext,data:z.output<typeof createLeadSchema>) {
+  await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`agency-sales:${context.workspace.id}`]);
     // A form retry reopens the same record. Scope the key to the actual actor and
     // workspace; never let a caller-supplied ID retrieve another team's lead.
     const submissionId = `manual:${context.workspace.id}:${context.user.id}:${data.submissionId}`;
@@ -29,7 +46,6 @@ export async function createManualLead(context: DashboardContext, input: unknown
       [context.workspace.id, submissionId],
     );
     if (existing.rows[0]) {
-      await client.query("COMMIT");
       return { leadId: existing.rows[0].id };
     }
 
@@ -47,12 +63,5 @@ export async function createManualLead(context: DashboardContext, input: unknown
       action: "lead.created", targetType: "lead", targetId: leadId,
       metadata: { source: "manual" },
     });
-    await client.query("COMMIT");
     return { leadId };
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
 }

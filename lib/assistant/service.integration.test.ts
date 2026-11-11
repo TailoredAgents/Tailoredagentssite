@@ -91,6 +91,32 @@ describe.skipIf(!url)('Operations OAuth and execution integration',()=>{
   expect(await readTools.find(t=>t.name==='get_relationship_overview')!.run(c.p,{kind:'lead',id})).toMatchObject({meetings:[]});
  });
  afterAll(async()=>{await pool?.end();delete (globalThis as {tailoredAgentsDatabasePool?:Pool}).tailoredAgentsDatabasePool;vi.unstubAllEnvs();});
+ it('keeps operating-model writes unavailable to read-only grants',async()=>{
+  const id=await relationshipLead(),c=await connection(['operations:read']);
+  await expect(prepareAction(c.p,'save_solution_brief',{requestId:randomUUID(),kind:'lead',id,title:'Read-only draft',status:'draft',fields:{workflow:'Synthetic workflow'}},'readonly-solution')).rejects.toThrow();
+  await expect(prepareAction(c.p,'capture_encounter',{requestId:randomUUID(),notes:'Read-only encounter',channel:'meetup',ownerUserId:owner.user.id},'readonly-capture')).rejects.toThrow();
+  expect((await pool.query('SELECT id FROM crm_solution_briefs WHERE lead_id=$1',[id])).rowCount).toBe(0);
+  expect(await readTools.find(t=>t.name==='get_company_operating_guide')!.run(c.p,{})).toMatchObject({version:'2026-11-10'});
+ });
+ it('reviews exact solution drafts before writing and preserves their sources and version',async()=>{
+  const id=await relationshipLead(),c=await connection(),v={requestId:randomUUID(),kind:'lead',id,title:'Synthetic automation pilot',status:'draft',fields:{workflow:'Known manual document intake',assumptions:'Volume unknown'}};
+  const proposal=await prepareAction(c.p,'save_solution_brief',v,'review-solution-001');expect(proposal.status).toBe('awaiting_approval');
+  expect((await pool.query('SELECT id FROM crm_solution_briefs WHERE lead_id=$1',[id])).rowCount).toBe(0);
+  expect((await reviewAction(owner,proposal.id,'approve')).status).toBe('succeeded');
+  const result=await readTools.find(t=>t.name==='get_solution_briefs')!.run(c.p,{kind:'lead',id});expect(result).toMatchObject({briefs:[{title:v.title,status:'draft',revision:1}]});
+ });
+ it('allows explicitly delegated sparse capture with duplicate-safe receipts and no implicit messaging',async()=>{
+  const c=await connection(allScopes,true),v={requestId:randomUUID(),channel:'meetup',notes:'Synthetic prospect known only from a meetup',ownerUserId:owner.user.id};
+  const first=await executeAction(c.p,'capture_encounter',v,'capture-direct-001');expect(first.status).toBe('succeeded');
+  await executeAction(c.p,'capture_encounter',v,'capture-direct-001');
+  const rows=(await pool.query('SELECT e.id,l.source,l.email,l.phone,l.delivery_status FROM crm_encounters e JOIN leads l ON l.id=e.lead_id WHERE e.notes=$1',[v.notes])).rows;expect(rows).toHaveLength(1);expect(rows[0]).toMatchObject({source:'manual',email:null,phone:null,delivery_status:'not_configured'});
+ });
+ it('does not turn Operations write scope or job descriptions into finance privileges',async()=>{
+  const c=await connection(allScopes,true);await pool.query("UPDATE workspace_memberships SET role='member' WHERE user_id=$1",[owner.user.id]);
+  await expect(executeAction(c.p,'create_referral_partner',{requestId:randomUUID(),name:'Unauthorized private partner'},'no-finance-access')).rejects.toThrow();
+  expect((await pool.query("SELECT id FROM crm_referral_partners WHERE name='Unauthorized private partner'")).rowCount).toBe(0);
+  expect(await readTools.find(t=>t.name==='list_referral_partners')!.run(c.p,{})).toMatchObject({full:false,partners:[]});
+ });
  it('binds OAuth to exact callback, resource, identity and scopes; stores only token hashes',async()=>{
   const c=await connection();expect(c.location.searchParams.get('state')).toBe('test-state');expect(c.p.context.user.id).toBe(owner.user.id);expect(c.p.scopes).toEqual(allScopes);
   const saved=(await pool.query('SELECT * FROM assistant_tokens')).rows;expect(saved).toHaveLength(2);expect(JSON.stringify(saved)).not.toContain(c.tokens.access_token);expect(saved.some(t=>t.token_hash===hash(c.tokens.access_token))).toBe(true);

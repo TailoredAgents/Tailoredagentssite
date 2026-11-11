@@ -17,10 +17,35 @@ import {targetSchema} from '@/lib/relationships/contract';
 import {readRelationship} from '@/lib/relationships/service';
 import {getRelationshipOverview} from '@/lib/relationships/overview';
 import {getHandoff} from '@/lib/relationships/handoffs';
+import {listSolutionBriefs} from '@/lib/relationships/solutions';
+import {getClientService} from '@/lib/client-services/service';
+import {financeReviewContext} from '@/lib/partners/service';
 // Save human-readable target identity alongside the exact proposed input. Never
 // accept these labels from the assistant. Re-resolve before executing the change.
 export async function reviewContext(p:Principal,tool:string,input:Record<string,unknown>){
  const context=p.context;const result:Record<string,unknown>={requestedFor:context.user.name,workspace:context.workspace.name};
+ if(['create_referral_partner','draft_referral_agreement','record_referral_earning','reverse_referral_earning','draft_referral_statement'].includes(tool))result.finance=await financeReviewContext(context,input);
+ if(tool==='save_solution_brief'){
+  const target=targetSchema.parse(input),overview=await getRelationshipOverview(context,target);
+  result.relationship={id:target.id,kind:target.kind,name:overview.current.name};result.notice='Team-visible solution brief. Internal review is not client approval, a contract or authorization to build.';
+  if(input.briefId){const brief=(await listSolutionBriefs(context,target)).briefs.find(b=>b.id===input.briefId);if(!brief)throw new AssistantError('not_found','That brief is unavailable.',404);result.currentBrief={id:brief.id,title:brief.title,revision:brief.revision,status:brief.status};}
+ }
+ if(typeof input.serviceId==='string'){
+  const service=(await getClientService(context,input.serviceId)).service;
+  result.service={id:service.id,name:service.name,client:service.client_name,revision:service.revision,health:service.health};
+ }
+ if(tool==='resolve_service_incident'){
+  const incident=(await getDatabasePool().query('SELECT service_id FROM crm_service_incidents WHERE workspace_id=$1 AND id=$2',[context.workspace.id,input.incidentId])).rows[0];
+  if(!incident)throw new AssistantError('not_found','That incident is unavailable.',404);
+  const data=await getClientService(context,incident.service_id),current=data.incidents.find(i=>i.id===input.incidentId);
+  if(!current)throw new AssistantError('not_found','That incident is unavailable in the current view.',404);
+  result.incident={id:current.id,title:current.title,service:data.service.name,status:current.status,revision:current.revision};
+ }
+ if(tool==='capture_encounter'){
+  result.notice=input.leadId?'Append encounter context; preserve existing ownership and campaign source.':'Create a sparse manual prospect and encounter; no automatic message or booking.';
+  if(input.appointmentSetterUserId){const setter=(await getWorkspaceMembers(context)).find(m=>m.id===input.appointmentSetterUserId&&m.role!=='viewer');if(!setter)throw new AssistantError('not_found','Choose an active appointment setter.',404);result.appointmentSetter=setter.name;}
+  if(input.partnerId){const partner=(await getDatabasePool().query('SELECT name,organization FROM crm_referral_partners WHERE workspace_id=$1 AND id=$2',[context.workspace.id,input.partnerId])).rows[0];if(!partner)throw new AssistantError('not_found','That introducer is unavailable.',404);result.introducer=partner;}
+ }
  if(['save_business_discovery','record_introduction','request_relationship_handoff'].includes(tool)){
   const overview=await getRelationshipOverview(context,targetSchema.parse(input));
   result.relationship={id:overview.current.id,kind:overview.current.kind,name:overview.current.name};

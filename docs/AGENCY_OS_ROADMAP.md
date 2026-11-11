@@ -1,5 +1,10 @@
 # Tailored Agents internal operating system
 
+## Relationship operating-model releases 2–5 — November 10 source update
+
+The remaining [relationship plan](RELATIONSHIP_OPERATING_MODEL_PLAN.md) phases are implemented locally: private referral agreements/earnings/statements, solution design briefs, sparse encounter capture and work-focus views, and ongoing service reviews/incidents/outcomes. Follow [the employee guide](OPERATING_MODEL_GUIDE.md) and [the finance setup guide](REFERRAL_LEDGER.md). Conner configures real commercial rules before activation; no rates, finance grants, payables or provider changes are seeded by the release. Final browser/release evidence is recorded in the plan. Earlier “planned” ledger/solution references below describe their dated milestones, not the current source state.
+
+
 Reconciled November 10, 2026 through `dd09c09`. This is the active implementation sequence authorized by the owner's agency-OS brief. It supersedes the earlier instruction to proceed directly from internal analytics to the client Growth Hub. The historical Search Console, Mail and website release records remain evidence for those releases.
 
 ## Current development resume point

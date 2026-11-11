@@ -559,7 +559,20 @@
         "prepare_close_calendar_entry",
         "prepare_cancel_consultation"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
+    },
+    {
+      "file": "lib/client-services/actions.ts",
+      "export": "clientServiceAction",
+      "status": "implemented",
+      "tools": [
+        "prepare_save_client_service",
+        "prepare_record_service_review",
+        "prepare_record_service_incident",
+        "prepare_resolve_service_incident",
+        "prepare_record_service_measurement"
+      ],
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/conversations/actions.ts",
@@ -568,7 +581,7 @@
       "tools": [
         "prepare_save_conversation_work"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/conversations/actions.ts",
@@ -584,7 +597,7 @@
       "tools": [
         "prepare_add_conversation_note"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/conversations/actions.ts",
@@ -614,7 +627,7 @@
       "tools": [
         "get_source_history"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/conversations/draft-actions.ts",
@@ -735,7 +748,7 @@
       "tools": [
         "prepare_save_mail_draft"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/inbox/actions.ts",
@@ -821,7 +834,7 @@
       "tools": [
         "prepare_update_lead"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/operations/actions.ts",
@@ -830,7 +843,7 @@
       "tools": [
         "prepare_update_lead_status"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/operations/actions.ts",
@@ -839,7 +852,7 @@
       "tools": [
         "prepare_add_lead_note"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/operations/actions.ts",
@@ -855,7 +868,7 @@
       "tools": [
         "prepare_save_client"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/operations/actions.ts",
@@ -864,7 +877,7 @@
       "tools": [
         "prepare_save_contact"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/operations/actions.ts",
@@ -873,7 +886,7 @@
       "tools": [
         "prepare_save_site"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/operations/actions.ts",
@@ -882,7 +895,7 @@
       "tools": [
         "prepare_save_project"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/operations/actions.ts",
@@ -891,7 +904,7 @@
       "tools": [
         "prepare_add_milestone"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/operations/actions.ts",
@@ -900,7 +913,7 @@
       "tools": [
         "prepare_update_milestone_status"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/operations/actions.ts",
@@ -909,7 +922,16 @@
       "tools": [
         "prepare_add_project_record"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
+    },
+    {
+      "file": "lib/partners/actions.ts",
+      "export": "referralAction",
+      "status": "partial",
+      "tools": [
+        "prepare_create_referral_partner, prepare_draft_referral_agreement, prepare_record_referral_earning, prepare_reverse_referral_earning, prepare_draft_referral_statement"
+      ],
+      "reason": "Finance permissions enforced in domain services. Access grants, agreement activation and statement approval/payment recording remain explicit finance controls in Partners."
     },
     {
       "file": "lib/relationships/actions.ts",
@@ -920,7 +942,7 @@
         "prepare_record_introduction",
         "prepare_set_account_manager"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/relationships/handoff-actions.ts",
@@ -930,7 +952,16 @@
         "prepare_request_relationship_handoff",
         "prepare_update_relationship_handoff"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
+    },
+    {
+      "file": "lib/relationships/work-actions.ts",
+      "export": "relationshipWorkAction",
+      "status": "partial",
+      "tools": [
+        "prepare_save_solution_brief, prepare_capture_encounter"
+      ],
+      "reason": "Shared briefs and encounter capture are delegated; private work-focus preference stays in My day."
     },
     {
       "file": "lib/sales/actions.ts",
@@ -939,7 +970,7 @@
       "tools": [
         "prepare_create_opportunity"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/sales/actions.ts",
@@ -948,7 +979,7 @@
       "tools": [
         "prepare_update_opportunity"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/sales/actions.ts",
@@ -966,7 +997,7 @@
       "tools": [
         "prepare_save_sales_task"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/sales/actions.ts",
@@ -975,7 +1006,7 @@
       "tools": [
         "prepare_complete_sales_task"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/sales/actions.ts",
@@ -984,7 +1015,7 @@
       "tools": [
         "prepare_request_mockup"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/sales/actions.ts",
@@ -1087,7 +1118,7 @@
         "prepare_update_card_link",
         "prepare_set_card_assistant"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/sms/actions.ts",
@@ -1124,7 +1155,7 @@
       "tools": [
         "prepare_save_sms_draft"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/sms/actions.ts",
@@ -1147,7 +1178,7 @@
       "tools": [
         "prepare_send_sms"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/sms/actions.ts",
@@ -1156,7 +1187,7 @@
       "tools": [
         "get_sms_send_status"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/sms/alert-actions.ts",
@@ -1263,7 +1294,7 @@
       "tools": [
         "get_call"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/voice/actions.ts",
@@ -1293,7 +1324,7 @@
       "tools": [
         "get_call_follow_up_options"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/voice/follow-up-actions.ts",
@@ -1302,7 +1333,7 @@
       "tools": [
         "prepare_create_call_follow_up"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/voice/follow-up-actions.ts",
@@ -1311,7 +1342,7 @@
       "tools": [
         "prepare_update_call_follow_up"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     },
     {
       "file": "lib/voice/follow-up-actions.ts",
@@ -1320,7 +1351,7 @@
       "tools": [
         "prepare_complete_call_follow_up"
       ],
-      "reason": "Shared domain service behind delegated access; changes require dashboard review."
+      "reason": "Shared domain service behind delegated access; reviewed/direct behavior follows the saved connection and action policy."
     }
   ]
 }

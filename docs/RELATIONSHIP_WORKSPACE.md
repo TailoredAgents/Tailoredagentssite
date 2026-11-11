@@ -2,6 +2,8 @@
 
 Implemented November 10, 2026 as release 1 of [the operating-model plan](RELATIONSHIP_OPERATING_MODEL_PLAN.md). This extends existing CRM records; it does not create another customer database or activate revenue sharing.
 
+The subsequent [operating-model releases](OPERATING_MODEL_GUIDE.md) add solution briefs, sparse encounter capture, finance-protected partner records and ongoing service reviews. This document remains the overview/handoff guide.
+
 ## Employee workflow
 
 1. Open a prospect, sales opportunity, client or client contact. In Relationships & discovery, select **Open relationship overview**.

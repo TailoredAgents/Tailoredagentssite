@@ -33,7 +33,10 @@ export function AssistantChat({firstName='there',section='chat',onNavigate,workC
   finally{if(currentThread.current===id)setLoading(false);}
  },[]);
  const requestedThread=searchParams.get('thread');
- useEffect(()=>{const id=requestedThread&&/^[0-9a-f-]{36}$/i.test(requestedThread)?requestedThread:undefined;if(initialized.current&&currentThread.current===id)return;initialized.current=true;setMessage('');setFileIds([]);followLatest.current=true;currentThread.current=id;setThread(id);setLoading(true);void load(id);},[requestedThread,load]);
+ const relationshipRequest=searchParams.get('relationship');
+ const relationshipPrompt=relationshipRequest&&/^(lead|business|opportunity|client|contact):[0-9a-f-]{36}$/i.test(relationshipRequest)?`Help me draft a solution brief for this CRM relationship: ${relationshipRequest}. Read its relationship overview, discovery notes and existing solution briefs. Use only permitted team-shared meeting sources if available. Identify confirmed needs, unknowns, a practical pilot, human checkpoints, acceptance criteria, delivery responsibility and support scope. Keep unsupported savings and integration promises out. Prepare a draft for us to review; do not mark it reviewed, start a website build, contact anyone, or run paid external research.`:'';
+
+ useEffect(()=>{const id=requestedThread&&/^[0-9a-f-]{36}$/i.test(requestedThread)?requestedThread:undefined;if(initialized.current&&currentThread.current===id)return;initialized.current=true;setMessage(!id?relationshipPrompt:'');setFileIds([]);followLatest.current=true;currentThread.current=id;setThread(id);setLoading(true);void load(id);},[requestedThread,relationshipPrompt,load]);
  const accessKey=JSON.stringify(state?.connection);
  useEffect(()=>{if(state?.connection){setMode(state.connection.mode);setConversations(state.connection.conversations);setCapabilities({background:state.connection.background??false,meetings:state.connection.meetings??false,research:state.connection.research,sms:state.connection.sms,email:state.connection.email,calls:state.connection.calls,routines:state.connection.routines,notificationNumberId:state.connection.notificationNumberId});}},[accessKey]);
  useEffect(()=>{if(state){setBudget(String(state.monthlyLimit));setUncapped(state.uncapped??false);}},[state?.monthlyLimit,state?.uncapped]);
@@ -42,7 +45,7 @@ export function AssistantChat({firstName='there',section='chat',onNavigate,workC
  useEffect(()=>{if(activeWork?.max_cost_micros)setMaxCost(String(Number(activeWork.max_cost_micros)/1000000));},[activeWork?.id]);
  useEffect(()=>{if(!thread||(!running&&!busy))return;const timer=setInterval(()=>void load(thread),2500);return()=>clearInterval(timer);},[thread,running?.id,busy,load]);
  useEffect(()=>{if(section==='chat'&&state?.turns.length&&followLatest.current&&messages.current)messages.current.scrollTop=messages.current.scrollHeight;},[state?.turns.length,running?.activity.length,section,thread]);
- function updateThreadUrl(id?:string){const url=new URL(window.location.href);if(id)url.searchParams.set('thread',id);else url.searchParams.delete('thread');window.history.replaceState(null,'',url.pathname+url.search);}
+ function updateThreadUrl(id?:string){const url=new URL(window.location.href);url.searchParams.delete('relationship');if(id)url.searchParams.set('thread',id);else url.searchParams.delete('thread');window.history.replaceState(null,'',url.pathname+url.search);}
  function select(id?:string){setFileIds([]);setMessage('');followLatest.current=true;currentThread.current=id;setThread(id);setLoading(true);setError('');updateThreadUrl(id);void load(id);historyDialog.current?.close();}
  function suggest(prompt:string){setMessage(prompt);composer.current?.focus();}
  function openHistory(){if(window.matchMedia('(max-width: 900px)').matches)historyDialog.current?.showModal();else setHistoryVisible(!historyVisible);}

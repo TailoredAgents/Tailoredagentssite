@@ -40,6 +40,7 @@ const navigationGroups = [
       { label: "Meeting Inbox", href: "/dashboard/meetings", icon: Mail },
       { label: "Team calendar", href: "/dashboard/calendar", icon: CalendarCheck2 },
       { label: "My day", href: "/dashboard/sales/today", icon: CalendarCheck2 },
+      { label: "Capture conversation", href: "/dashboard/capture", icon: ContactRound },
       { label: "Assistant", href: "/dashboard/assistant", icon: Sparkles },
     ],
   },
@@ -50,6 +51,7 @@ const navigationGroups = [
       { label: "Sales", href: "/dashboard/sales", icon: Columns3 },
       { label: "Website Builder", href: "/dashboard/sales/factory", icon: PanelsTopLeft },
       { label: "Smart Cards", href: "/dashboard/smart-cards", icon: ContactRound },
+      { label: "Partners", href: "/dashboard/partners", icon: UsersRound },
     ],
   },
   {
@@ -57,6 +59,7 @@ const navigationGroups = [
     items: [
       { label: "Clients", href: "/dashboard/clients", icon: Building2 },
       { label: "Projects", href: "/dashboard/projects", icon: FolderKanban },
+      { label: "Services", href: "/dashboard/services", icon: Activity },
       { label: "Sites", href: "/dashboard/sites", icon: Globe2 },
       { label: "SEO manager", href: "/dashboard/seo", icon: Sparkles },
     ],
