@@ -19,9 +19,17 @@
 .dashboard-shell .dashboard-workspace-current i { background: var(--workspace-nav-surface); color: var(--workspace-nav-accent); font-family: var(--font-sans); }
 .dashboard-shell .dashboard-workspace-current strong { color: var(--workspace-nav-title); font-weight: 550; }
 .dashboard-shell .dashboard-workspace-current small { color: var(--workspace-nav-muted); font-size: 14px; }
-.dashboard-shell .dashboard-nav { flex: 1; min-height: 0; overflow-y: auto; margin-top: 16px; gap: 18px; scrollbar-width: thin; scrollbar-color: var(--workspace-nav-line) transparent; }
+.dashboard-shell .dashboard-nav { flex: 1; min-height: 0; overflow-y: auto; margin-top: 16px; gap: 8px; scrollbar-width: thin; scrollbar-color: var(--workspace-nav-line) transparent; }
 .dashboard-shell .dashboard-nav-label { margin: 0 12px 6px; color: var(--workspace-nav-muted); font-family: var(--font-sans); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .065em; }
+.dashboard-shell .dashboard-nav .dashboard-nav-group-toggle { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 36px; margin: 0 0 4px; padding: 8px 10px; border: 0; border-radius: 7px; background: transparent; text-align: left; cursor: pointer; }
+.dashboard-shell .dashboard-nav-group-toggle:hover { color: var(--workspace-nav-title); background: var(--workspace-nav-hover); }
+.dashboard-shell .dashboard-nav-group-toggle:focus-visible { outline-offset: -3px; }
+.dashboard-shell .dashboard-nav-group-toggle[data-current="true"] { color: var(--workspace-nav-accent); }
+.dashboard-shell .dashboard-nav-group-toggle svg { flex-shrink: 0; }
+.dashboard-shell .dashboard-nav-group-toggle[aria-expanded="true"] svg { transform: rotate(90deg); }
+.dashboard-shell .dashboard-nav.is-open .dashboard-nav-group-toggle { min-height: 44px; }
 .dashboard-shell .dashboard-nav-links { display: grid; gap: 3px; }
+.dashboard-shell .dashboard-nav-links[hidden] { display: none; }
 .dashboard-shell .dashboard-nav-item { display: flex; gap: 11px; min-height: 42px; padding: 9px 12px; border-radius: 7px; border-left: 0; color: var(--workspace-nav-text); font-weight: 450; font-size: 14px; }
 .dashboard-shell a.dashboard-nav-item:hover { color: var(--workspace-nav-title); background: var(--workspace-nav-hover); }
 .dashboard-shell .dashboard-nav-item.is-current { color: var(--workspace-nav-title); background: var(--workspace-nav-selected); box-shadow: inset 3px 0 var(--workspace-nav-accent); font-weight: 600; }

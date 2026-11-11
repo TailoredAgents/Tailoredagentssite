@@ -16,6 +16,8 @@ These are owner-supplied responsibilities, not automatic permission assignments.
 
 **Smart Cards**, **SEO manager** and **Sites** are under **Workspace**. **Clients**, **Projects** and **Services** remain under **Clients & delivery**. The page finder also recognizes the former Meeting Inbox and Capture conversation names.
 
+Click any of the four sidebar section headings to collapse or expand its links. Each section works independently, including the one containing your current page. Choices are remembered for your account and workspace in this browser; all sections start expanded when no choice is saved. The current section stays highlighted, and **Find a page** searches every destination even when its section is collapsed. On phones, open **Menu** to use the same controls.
+
 ## Capture a conversation
 
 1. Open **Sales & prospects → Meetings & notes → Quick capture**, or use the **Quick capture** shortcut in My day.
@@ -79,3 +81,5 @@ After deployment, verify the exact commit, new sidebar entries, a relationship�
 Meetings & notes replaces the separate Meeting Inbox and Capture conversation sidebar entries. Existing recording and capture URLs continue to work, and Quick capture highlights the same Sales & prospects destination. Smart Cards, SEO manager and Sites now appear under Workspace, including their page headings. No migrations or permission changes are required.
 
 Local verification used a separate checkout and disposable database with synthetic audio, AI and storage: four desktop/phone browser journeys passed, covering both entry paths, sidebar groups, old-name page search, upload/review and private access denial, and sparse-note capture through solution planning. Screenshots were visually reviewed; existing accessibility checks passed. Route type generation, TypeScript, lint and a production Webpack build passed. These are local results, not production acceptance or physical Omi verification.
+
+Sidebar follow-up: all four headings now independently collapse, with account/workspace-specific browser preferences and a visible current-section highlight. TypeScript, lint, the production Webpack build and both existing desktop/phone page-finder tests passed. The isolated browser review confirmed keyboard toggling, hidden links disappearing from accessible navigation, persistence after reload and navigation, search while sections are closed, and the 390px mobile menu. The keyboard focus outline stays inside the scrollable sidebar. This verification used demonstration records only.
