@@ -61,11 +61,11 @@ export async function connectNative(c:DashboardContext,sessionId:string,mode:'re
   for(const g of retired.rows)await revokeBackgroundIdentity(g.id,c).catch(()=>{});
  }catch(e){await db.query('ROLLBACK');if(identity)await releaseBackgroundIdentity(identity).catch(()=>{});throw e;}finally{db.release();}
 }
-export async function saveChatBudget(c:DashboardContext,dollars:number){
- const r=await getDatabasePool().query(`INSERT INTO assistant_chat_settings(workspace_id,monthly_limit_micros,updated_by)
-  SELECT w.id,$3,u.id FROM workspaces w JOIN workspace_memberships m ON m.workspace_id=w.id JOIN "user" u ON u.id=m.user_id
+export async function saveChatBudget(c:DashboardContext,dollars:number,uncapped=false){
+ const r=await getDatabasePool().query(`INSERT INTO assistant_chat_settings(workspace_id,monthly_limit_micros,updated_by,uncapped)
+  SELECT w.id,$3,u.id,$4 FROM workspaces w JOIN workspace_memberships m ON m.workspace_id=w.id JOIN "user" u ON u.id=m.user_id
   WHERE w.id=$1 AND u.id=$2 AND w.status='active' AND m.status='active' AND m.role IN ('owner','admin')
-  ON CONFLICT(workspace_id) DO UPDATE SET monthly_limit_micros=EXCLUDED.monthly_limit_micros,updated_by=EXCLUDED.updated_by,updated_at=now() RETURNING workspace_id`,[...owner(c),dollars*1000000]);
+  ON CONFLICT(workspace_id) DO UPDATE SET uncapped=EXCLUDED.uncapped,monthly_limit_micros=EXCLUDED.monthly_limit_micros,updated_by=EXCLUDED.updated_by,updated_at=now() RETURNING workspace_id`,[...owner(c),dollars*1000000,uncapped]);
  if(!r.rowCount)throw new AssistantError('forbidden','Only an owner or administrator can set the company allowance.',403);
 }
 export async function chatState(c:DashboardContext,sessionId:string,threadId?:string):Promise<ChatState>{
@@ -73,24 +73,25 @@ export async function chatState(c:DashboardContext,sessionId:string,threadId?:st
  let turns:ChatTurn[]=[];
  if(threadId){
   if(!(await db.query('SELECT id FROM assistant_chat_threads WHERE workspace_id=$1 AND user_id=$2 AND id=$3',[...owner(c),threadId])).rowCount)throw unavailable();
-  turns=(await db.query<ChatTurn>('SELECT id,waiting_action_id,file_ids,user_message,assistant_message,status,activity,created_at,work_plan,employee_replies,max_cost_micros,blocked_reason,(SELECT COALESCE(sum(amount_micros),0) FROM assistant_chat_requests r WHERE r.turn_id=t.id) used_micros FROM assistant_chat_turns t WHERE thread_id=$1 ORDER BY created_at DESC,id DESC LIMIT 101',[threadId])).rows;
+  turns=(await db.query<ChatTurn>('SELECT id,waiting_action_id,file_ids,user_message,assistant_message,status,activity,created_at,work_plan,employee_replies,budget_managed,max_cost_micros,blocked_reason,(SELECT COALESCE(sum(amount_micros),0) FROM assistant_chat_requests r WHERE r.turn_id=t.id) used_micros FROM assistant_chat_turns t WHERE thread_id=$1 ORDER BY created_at DESC,id DESC LIMIT 101',[threadId])).rows;
  }
  const [threads,settings,connection]=await Promise.all([
   db.query<{id:string;title:string}>('SELECT id,title FROM assistant_chat_threads WHERE workspace_id=$1 AND user_id=$2 ORDER BY updated_at DESC,id DESC LIMIT 101',owner(c)),
-  db.query<{monthly_limit_micros:string;used:string}>(`SELECT s.monthly_limit_micros,COALESCE(u.amount_micros,0) used FROM assistant_chat_settings s LEFT JOIN assistant_chat_usage u ON u.workspace_id=s.workspace_id AND u.month=date_trunc('month',now() AT TIME ZONE 'America/New_York')::date WHERE s.workspace_id=$1`,[c.workspace.id]),
+  db.query<{monthly_limit_micros:string;uncapped:boolean;used:string}>(`SELECT s.monthly_limit_micros,s.uncapped,COALESCE(u.amount_micros,0) used FROM assistant_chat_settings s LEFT JOIN assistant_chat_usage u ON u.workspace_id=s.workspace_id AND u.month=date_trunc('month',now() AT TIME ZONE 'America/New_York')::date WHERE s.workspace_id=$1`,[c.workspace.id]),
   nativePrincipal(c,sessionId).catch(()=>null),
  ]);
  const candidates=(await db.query<{id:string}>('SELECT number_id id FROM sms_number_grants WHERE workspace_id=$1 AND user_id=$2 AND can_send=true',owner(c))).rows;
  const numbers=(await Promise.all(candidates.map(n=>requireSmsNumber(c,n.id,true).then(r=>({id:r.id,phone:r.phone})).catch(()=>null)))).filter((n):n is {id:string;phone:string}=>!!n);
  const [memories,routines,notifications]=connection?await Promise.all([searchMemories(connection),listRoutines(connection),connection.scopes.includes('conversations:read')?listBookingNotifications(connection):{items:[]}]):[{items:[]},{items:[]},{items:[]}];
  const notificationNumberId=connection?(await db.query('SELECT notification_number_id FROM assistant_grants WHERE id=$1',[connection.grantId])).rows[0]?.notification_number_id??'':'';
- return {numbers,memories:memories.items,routines:routines.items,notifications:notifications.items,threads:threads.rows.slice(0,100),hasMore:threads.rows.length>100,turns:turns.slice(0,100).reverse(),historyLimited:turns.length>100,
+ const modelUsage=['owner','admin'].includes(c.role)?(await db.query(`SELECT model,count(*)::int requests,count(*) FILTER(WHERE status='completed')::int completed,COALESCE(sum(amount_micros) FILTER(WHERE status='completed'),0)::float8/1000000 estimated,COALESCE(sum(amount_micros) FILTER(WHERE status='reserved'),0)::float8/1000000 reserved FROM assistant_chat_requests WHERE workspace_id=$1 AND month=date_trunc('month',now() AT TIME ZONE 'America/New_York')::date GROUP BY model ORDER BY model`,[c.workspace.id])).rows:[];
+ return {uncapped:settings.rows[0]?.uncapped??false,modelUsage,numbers,memories:memories.items,routines:routines.items,notifications:notifications.items,threads:threads.rows.slice(0,100),hasMore:threads.rows.length>100,turns:turns.slice(0,100).reverse(),historyLimited:turns.length>100,
   backgroundAvailable:process.env.ASSISTANT_BACKGROUND_ENABLED==='true',dictationAvailable:process.env.ASSISTANT_DICTATION_ENABLED!=='false',
   connection:connection?{background:connection.authority==='background',expiresAt:connection.expiresAt.toISOString(),mode:connection.directActions?'direct':connection.scopes.includes('operations:write')?'review':'read',paused:connection.writesPaused,conversations:connection.scopes.includes('conversations:read'),meetings:connection.scopes.includes('meetings:read'),research:connection.scopes.includes('research:use'),sms:connection.scopes.includes('conversations:send'),email:connection.scopes.includes('mail:send'),calls:connection.scopes.includes('voice:send'),routines:connection.scopes.includes('routines:write'),notificationNumberId}:null,
   configured:!!process.env.OPENAI_API_KEY?.trim()&&process.env.ASSISTANT_CHAT_ENABLED!=='false'&&process.env.OPERATIONS_ASSISTANT_ENABLED!=='false',
   monthlyLimit:Number(settings.rows[0]?.monthly_limit_micros??0)/1000000,monthlyUsed:Number(settings.rows[0]?.used??0)/1000000,canManageBudget:['owner','admin'].includes(c.role),viewer:c.role==='viewer'};
 }
-export async function beginChatTurn(p:Principal,threadId:string,id:string,message:string,maxCostDollars=1,fileIds:string[]=[]){
+export async function beginChatTurn(p:Principal,threadId:string,id:string,message:string,maxCostDollars=1,fileIds:string[]=[],budgetManaged=false){
  workCostSchema.parse(maxCostDollars);
  return asAssistant(p,[],false,async fresh=>{
   const db=await getDatabasePool().connect();
@@ -98,11 +99,11 @@ export async function beginChatTurn(p:Principal,threadId:string,id:string,messag
    await db.query('BEGIN');
    await db.query(`INSERT INTO assistant_chat_threads(id,workspace_id,user_id,title) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING`,[threadId,...owner(fresh.context),message.slice(0,100)]);
    if(!(await db.query('SELECT id FROM assistant_chat_threads WHERE workspace_id=$1 AND user_id=$2 AND id=$3 FOR UPDATE',[...owner(fresh.context),threadId])).rowCount)throw unavailable();
-   const existing=(await db.query('SELECT thread_id,user_message,max_cost_micros,file_ids FROM assistant_chat_turns WHERE id=$1',[id])).rows[0];
-   if(existing){if(JSON.stringify(existing.file_ids)!==JSON.stringify(fileIds)||existing.thread_id!==threadId||existing.user_message!==message||Number(existing.max_cost_micros)!==Math.round(maxCostDollars*1000000))throw new AssistantError('conflict','This request identifier already belongs to another message.',409);await db.query('COMMIT');return false;}
+   const existing=(await db.query('SELECT thread_id,user_message,max_cost_micros,file_ids,budget_managed FROM assistant_chat_turns WHERE id=$1',[id])).rows[0];
+   if(existing){if(existing.budget_managed!==budgetManaged||JSON.stringify(existing.file_ids)!==JSON.stringify(fileIds)||existing.thread_id!==threadId||existing.user_message!==message||Number(existing.max_cost_micros)!==Math.round(maxCostDollars*1000000))throw new AssistantError('conflict','This request identifier already belongs to another message.',409);await db.query('COMMIT');return false;}
    if((await db.query("SELECT id FROM assistant_chat_turns WHERE thread_id=$1 AND status IN ('queued','running','waiting','waiting_input','paused','blocked','outcome_unknown')",[threadId])).rowCount)throw new AssistantError('busy','Wait for the current reply, resume it, or stop it first.',409);
    await validateDocumentAttachments(fresh.context,fileIds,db);
-   await db.query("INSERT INTO assistant_chat_turns(id,thread_id,grant_id,user_message,status,max_cost_micros,file_ids) VALUES($1,$2,$3,$4,'queued',$5,$6)",[id,threadId,p.grantId,message,Math.round(maxCostDollars*1000000),fileIds]);
+   await db.query("INSERT INTO assistant_chat_turns(id,thread_id,grant_id,user_message,status,max_cost_micros,file_ids,budget_managed) VALUES($1,$2,$3,$4,'queued',$5,$6,$7)",[id,threadId,p.grantId,message,Math.round(maxCostDollars*1000000),fileIds,budgetManaged]);
    if(fileIds.length)await db.query('INSERT INTO assistant_document_uses(document_id,turn_id) SELECT unnest($1::uuid[]),$2',[fileIds,id]);
    await db.query('UPDATE assistant_chat_threads SET updated_at=now() WHERE id=$1',[threadId]);
    await db.query('COMMIT');return true;

@@ -26,6 +26,19 @@ test('workspace keeps a draft across sections and supports keyboard, mobile hist
   await page.getByRole('tab',{name:'Settings',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Connections & permissions',exact:true})).toBeVisible();
   await expect(page.getByRole('region',{name:'Assistant notifications'})).toBeVisible();
+  const settings=page.getByRole('tabpanel',{name:'Settings',exact:true});
+  await expect(settings.getByRole('heading',{name:'Models & usage',exact:true})).toBeVisible();
+  await settings.getByLabel('No monthly assistant spending cap').check();
+  await expect(settings.getByLabel('Monthly limit in US dollars')).toBeDisabled();
+  await settings.getByRole('button',{name:'Save allowance',exact:true}).click();
+  await expect.poll(async()=>(await(await page.request.get('/api/assistant/chat')).json()).uncapped).toBe(true);
+  await page.screenshot({path:testInfo.outputPath('assistant-model-settings.png'),fullPage:true});
+  await settings.getByLabel('No monthly assistant spending cap').uncheck();
+  await settings.getByLabel('Monthly limit in US dollars').fill('25');
+  await settings.getByRole('button',{name:'Save allowance',exact:true}).click();
+  await expect.poll(async()=>(await(await page.request.get('/api/assistant/chat')).json()).uncapped).toBe(false);
+  await expect(chat.locator('.assistant-cost-control')).toHaveCount(0);
+
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.getByRole('tab',{name:'Settings',exact:true}).press('Home');
   await expect(page.getByRole('tab',{name:'Chat',exact:true})).toBeFocused();

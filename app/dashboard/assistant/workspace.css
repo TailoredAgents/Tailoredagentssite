@@ -109,16 +109,7 @@
 .assistant-compose-box:focus-within { border-color:var(--workspace-blue); box-shadow:0 0 0 2px var(--workspace-blue-soft); }
 .assistant-workspace .assistant-chat-composer textarea { width:100%; margin:0; min-height:72px; max-height:180px; padding:16px 17px 8px; border:0; border-radius:13px; background:transparent; font-size:14px; line-height:1.6; resize:vertical; outline:none; box-shadow:none; }
 .assistant-workspace .assistant-chat-composer textarea:focus-visible { outline:none; }
-.assistant-composer-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:12px; padding:7px 10px 10px; }
-.assistant-cost-control { position:relative; margin-right:auto; }
-.assistant-cost-control summary { display:flex; align-items:center; gap:7px; padding:8px 10px; border-radius:7px; color:var(--workspace-muted); font-size:12px; cursor:pointer; list-style:none; }
-.assistant-cost-control summary::-webkit-details-marker { display:none; }
-.assistant-cost-control summary:hover { background:var(--workspace-soft); }
-.assistant-cost-control summary strong { color:var(--workspace-ink); font-weight:550; }
-.assistant-cost-control[open] { flex-basis:100%; order:-1; }
-.assistant-cost-control>div { position:relative; margin-top:8px; padding:17px; width:min(290px,calc(100vw - 74px)); border:1px solid var(--workspace-control-line); border-radius:12px; background:var(--workspace-surface); box-shadow:0 8px 30px var(--workspace-shadow-ink); }
-.assistant-cost-control label { font-size:13px; line-height:1.5; }
-.assistant-cost-control p { font-size:12px; line-height:1.6; color:var(--workspace-muted); margin:0; }
+.assistant-composer-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:12px; padding:7px 10px 10px; }
 .assistant-compose-shortcut { color:var(--workspace-muted); font-size:11px; }
 .assistant-workspace .assistant-send { display:flex; gap:8px; align-items:center; justify-content:center; min-height:40px; padding:8px 14px; border-radius:9px; font-size:13px; }
 .assistant-workspace .assistant-chat-composer>.assistant-documents { padding:9px 2px 0; margin:0; border:0; }
@@ -235,7 +226,6 @@
  .assistant-workspace .assistant-chat-composer textarea { font-size:16px; padding:12px; min-height:67px; }
  .assistant-composer-toolbar { gap:6px; padding:3px 6px 7px; }
  .assistant-compose-shortcut { display:none; }
- .assistant-cost-control summary { font-size:11px; padding:8px; gap:5px; }
  .assistant-workspace .assistant-send { font-size:12px; padding:7px 11px; }
  .assistant-workspace .assistant-chat-composer .assistant-controls button { width:auto; }
  .assistant-workspace .assistant-chat-composer>.assistant-composer-note { font-size:10px; }

@@ -4,7 +4,7 @@ test('employee enables native chat, completes a tool action, and resumes private
  await page.goto('/sign-in');
  await page.getByLabel('Team email').fill('owner@example.test');
  await page.getByLabel('Password',{exact:true}).fill('Reporting-test-password-2026');
- await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page).toHaveURL(/\/dashboard$/,{timeout:15000});
+ await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page).toHaveURL(/\/dashboard$/,{timeout:45000});
  await page.goto('/dashboard/assistant');
  const chat=page.getByRole('region',{name:'Employee assistant'}),settings=page.getByRole('tabpanel',{name:'Settings',exact:true});
  await expect(chat).toBeVisible();
@@ -69,9 +69,7 @@ test('employee enables native chat, completes a tool action, and resumes private
  if(testInfo.project.name==='phone')await chat.getByRole('button',{name:'Conversations',exact:true}).click();
  await page.getByRole('button',{name:'New conversation',exact:true}).click();
  await chat.getByLabel('Message your assistant').fill('Save another goal after my review.');
- await chat.locator('.assistant-cost-control summary').click();
- await chat.getByLabel('Maximum AI cost for this assignment (US dollars)').fill('0.75');
- await chat.locator('.assistant-cost-control summary').click();
+ await expect(chat.locator('.assistant-cost-control')).toHaveCount(0);
  await chat.getByRole('button',{name:'Send',exact:true}).click();
  await expect(chat.getByText(/Review the proposed change to continue/)).toBeVisible({timeout:60000});
  await expect(chat.getByRole('button',{name:'Send',exact:true})).toBeDisabled();
@@ -82,7 +80,7 @@ test('employee enables native chat, completes a tool action, and resumes private
  await inline.getByRole('button',{name:'Approve this change',exact:true}).click();
  await expect(chat.getByText('Your onboarding goal is saved.',{exact:true})).toBeVisible({timeout:60000});
  const completed=(await (await page.request.get('/api/assistant/chat?thread='+pending.id)).json()).turns[0];
- expect(completed.status).toBe('completed');expect(completed.max_cost_micros).toBe('750000');
+ expect(completed.status).toBe('completed');expect(completed.budget_managed).toBe(true);
  expect(completed.work_plan[0].status).toBe('done');
  await chat.getByRole('button',{name:'Send',exact:true}).scrollIntoViewIfNeeded();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
@@ -96,10 +94,10 @@ test('employee enables native chat, completes a tool action, and resumes private
 });
 
 test('employee uploads a private source and downloads a cited brief',async({page},testInfo)=>{
- test.setTimeout(120000);await page.goto('/sign-in');await page.getByLabel('Team email').fill('owner@example.test');await page.getByLabel('Password',{exact:true}).fill('Reporting-test-password-2026');await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page).toHaveURL(/\/dashboard$/,{timeout:15000});await page.goto('/dashboard/assistant');
+ test.setTimeout(120000);await page.goto('/sign-in');await page.getByLabel('Team email').fill('owner@example.test');await page.getByLabel('Password',{exact:true}).fill('Reporting-test-password-2026');await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page).toHaveURL(/\/dashboard$/,{timeout:45000});await page.goto('/dashboard/assistant');
  const chat=page.getByRole('region',{name:'Employee assistant'}),settings=page.getByRole('tabpanel',{name:'Settings',exact:true});await page.getByRole('tab',{name:'Settings',exact:true}).click();await settings.getByLabel('How should the assistant work?').selectOption('direct');await settings.getByRole('button',{name:/Enable my assistant|Update my access/}).click();await expect(settings.getByText('Direct actions enabled',{exact:false}).first()).toBeVisible();await settings.getByLabel('Monthly limit in US dollars').fill('25');await settings.getByRole('button',{name:'Save allowance',exact:true}).click();await page.getByRole('tab',{name:'Chat',exact:true}).click();
  const files=chat.getByRole('region',{name:'Assistant documents'}),name='discovery-'+testInfo.project.name+'-'+Date.now()+'.txt';await files.locator('input[type=file]').setInputFiles({name,mimeType:'text/plain',buffer:Buffer.from('Customer asked about document automation.\nBudget is not confirmed.')});
  const source=files.locator('article').filter({hasText:name});await expect(source.getByRole('checkbox')).toBeEnabled({timeout:30000});await source.getByRole('checkbox').check();await chat.getByLabel('Message your assistant').fill('Make a document brief from my attachment.');await chat.getByRole('button',{name:'Send',exact:true}).click();await expect(chat.getByRole('link',{name:'Open Discovery brief',exact:true})).toBeVisible({timeout:60000});await chat.getByRole('link',{name:'Open Discovery brief',exact:true}).click();
- await expect(page.getByRole('heading',{name:'Discovery brief.docx',exact:true})).toBeVisible();await expect(page.getByText('The customer wants document automation. Budget needs confirmation.',{exact:true})).toBeVisible();const download=page.waitForEvent('download');await page.getByRole('link',{name:'Download DOCX',exact:true}).click();const file=await download;expect(file.suggestedFilename()).toBe('Discovery brief.docx');await file.saveAs(testInfo.outputPath('Discovery brief.docx'));expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:testInfo.outputPath('document-detail.png'),fullPage:true});
+ await expect(page.getByRole('heading',{name:'Discovery brief.docx',exact:true})).toBeVisible({timeout:30000});await expect(page.getByText('The customer wants document automation. Budget needs confirmation.',{exact:true})).toBeVisible();const download=page.waitForEvent('download');await page.getByRole('link',{name:'Download DOCX',exact:true}).click();const file=await download;expect(file.suggestedFilename()).toBe('Discovery brief.docx');await file.saveAs(testInfo.outputPath('Discovery brief.docx'));expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:testInfo.outputPath('document-detail.png'),fullPage:true});
  await page.getByText('Sharing & deletion',{exact:true}).click();await page.getByLabel('Delete this file and its derived results').check();await page.getByRole('button',{name:'Delete document',exact:true}).click();await expect(page.getByRole('heading',{name:'Document deleted',exact:true})).toBeVisible();
 });

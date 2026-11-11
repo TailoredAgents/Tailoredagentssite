@@ -30,7 +30,7 @@ export async function POST(request:Request){return endpoint(async()=>{
  checkOrigin(request,true);
  const {context,sessionId}=await identity();const v=chatRequestSchema.parse(await body(request,40000));
  if(v.operation==='connect')await connectNative(context,sessionId,v.mode,v.conversations,v);
- if(v.operation==='budget')await saveChatBudget(context,v.dollars);
+ if(v.operation==='budget')await saveChatBudget(context,v.dollars,v.uncapped);
  if(v.operation==='stop')await stopChatTurn(context,v.threadId,v.requestId);
  if(v.operation==='assignment'){await controlAssignment(context,v);if(v.action==='resume')after(()=>runAssistantWorker(v.id,30).then(()=>undefined));}
  if(v.operation==='forget')await forgetMemory(await nativePrincipal(context,sessionId),v.id,v.revision);
@@ -38,7 +38,7 @@ export async function POST(request:Request){return endpoint(async()=>{
  if(v.operation==='send'){
   await cardRateLimit('assistant:chat',context.user.id,6,60);
   const p=await nativePrincipal(context,sessionId);
-  if(await beginChatTurn(p,v.threadId,v.requestId,v.message,v.maxCostDollars,v.fileIds))after(()=>runAssistantWorker(v.requestId,30).then(()=>undefined));
+  if(await beginChatTurn(p,v.threadId,v.requestId,v.message,v.maxCostDollars,v.fileIds,v.maxCostDollars===undefined))after(()=>runAssistantWorker(v.requestId,30).then(()=>undefined));
  }
  return json(await chatState(context,sessionId,'threadId' in v?v.threadId:undefined));
 });}

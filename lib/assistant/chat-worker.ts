@@ -23,7 +23,8 @@ export async function runAssistantWorker(turnId?:string,limit=1){
  await wakeReviewedAssignments();
  if(!turnId)for(let i=0;i<5;i++)if(!await enqueueDueRoutine())break;
  let checked=0,failed=0;const until=Date.now()+145000;
- for(let n=0;n<limit&&Date.now()<until;n++){
+ // Leave room for a full 60-second provider request within the worker deadline.
+ for(let n=0;n<limit&&Date.now()<until-65000;n++){
   const db=getDatabasePool(),row=await claimAssignment(turnId);
   if(!row)break;checked++;
   const token=row.token;

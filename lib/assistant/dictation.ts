@@ -22,13 +22,13 @@ export async function transcribeDictation(p:Principal,id:string,bytes:Uint8Array
  const existing=await asAssistant(p,['operations:read'],false,async fresh=>{
   if(process.env.ASSISTANT_DICTATION_ENABLED==='false'||process.env.ASSISTANT_CHAT_ENABLED==='false'||!process.env.OPENAI_API_KEY?.trim())throw new AssistantError('dictation_disabled','Voice transcription is unavailable. You can still type your message.',503);
   const db=await getDatabasePool().connect();try{await db.query('BEGIN');
-   const settings=(await db.query('SELECT monthly_limit_micros FROM assistant_chat_settings WHERE workspace_id=$1 FOR UPDATE',[fresh.context.workspace.id])).rows[0];
+   const settings=(await db.query('SELECT monthly_limit_micros,uncapped FROM assistant_chat_settings WHERE workspace_id=$1 FOR UPDATE',[fresh.context.workspace.id])).rows[0];
    const prior=(await db.query('SELECT * FROM assistant_dictations WHERE id=$1',[id])).rows[0];if(prior){if(prior.workspace_id!==fresh.context.workspace.id||prior.user_id!==fresh.context.user.id||prior.audio_hash!==audioHash)throw new AssistantError('dictation_conflict','This voice-note identifier belongs to another recording.',409);await db.query('COMMIT');return true;}
-   if(!settings||Number(settings.monthly_limit_micros)<RESERVATION)throw new AssistantError('budget_exhausted','The company assistant allowance cannot cover this voice note.',429);
+   if(!settings||(!settings.uncapped&&Number(settings.monthly_limit_micros)<RESERVATION))throw new AssistantError('budget_exhausted','The company assistant allowance cannot cover this voice note.',429);
    if((await db.query("SELECT 1 FROM assistant_dictations WHERE workspace_id=$1 AND user_id=$2 AND status='reserved' AND created_at>now()-interval '1 minute'",[fresh.context.workspace.id,fresh.context.user.id])).rowCount)throw new AssistantError('dictation_busy','Wait for your current voice note to finish.',409);
    month=(await db.query("SELECT to_char(now() AT TIME ZONE 'America/New_York','YYYY-MM-01') AS month")).rows[0].month;
    await db.query('INSERT INTO assistant_chat_usage(workspace_id,month) VALUES($1,$2) ON CONFLICT DO NOTHING',[fresh.context.workspace.id,month]);
-   if(!(await db.query('UPDATE assistant_chat_usage SET amount_micros=amount_micros+$3 WHERE workspace_id=$1 AND month=$2 AND amount_micros+$3<=$4 RETURNING month',[fresh.context.workspace.id,month,RESERVATION,settings.monthly_limit_micros])).rowCount)throw new AssistantError('budget_exhausted','The company assistant has reached its monthly allowance.',429);
+   if(!(await db.query('UPDATE assistant_chat_usage SET amount_micros=amount_micros+$3 WHERE workspace_id=$1 AND month=$2 AND ($5 OR amount_micros+$3<=$4) RETURNING month',[fresh.context.workspace.id,month,RESERVATION,settings.monthly_limit_micros,settings.uncapped])).rowCount)throw new AssistantError('budget_exhausted','The company assistant has reached its monthly allowance.',429);
    await db.query('INSERT INTO assistant_dictations(id,workspace_id,user_id,grant_id,audio_hash,seconds,month,amount_micros) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',[id,fresh.context.workspace.id,fresh.context.user.id,fresh.grantId,audioHash,seconds,month,RESERVATION]);await db.query('COMMIT');return false;
   }catch(e){await db.query('ROLLBACK');throw e;}finally{db.release();}
  });

@@ -34,8 +34,9 @@ export function AssistantWorkspace({name, initialSection, pendingCount, work, ac
     url.searchParams.set('view', next);
     url.searchParams.delete('action');
     url.hash = '';
-    window.history.pushState(null, '', url.pathname + url.search);
-    if (next !== 'chat') router.refresh();
+    // Let the router order navigations and server refreshes; a late refresh must
+    // not restore an older tab after the employee has already moved on.
+    router.push(url.pathname + url.search, {scroll: false});
   }
 
   useEffect(() => {

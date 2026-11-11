@@ -25,6 +25,10 @@ describe.skipIf(!url)('Private employee voice-note transcription',()=>{
   p=await nativePrincipal(owner,owner.user.id+'-session');q=await nativePrincipal(other,other.user.id+'-session');await saveChatBudget(owner,25);vi.stubGlobal('fetch',vi.fn().mockImplementation(async()=>Response.json({text:'Ask Devon about discovery.',usage:{type:'duration',seconds:1}})));
  });
  afterAll(async()=>{await db?.end();delete (globalThis as {tailoredAgentsDatabasePool?:Pool}).tailoredAgentsDatabasePool;vi.unstubAllEnvs();vi.unstubAllGlobals();});
+ it('honors uncapped spending without losing dictation receipts or the pause switch',async()=>{
+  await saveChatBudget(owner,0,true);const result=await transcribeDictation(p,randomUUID(),wav());expect(result.status).toBe('completed');expect(Number((await db.query('SELECT amount_micros FROM assistant_chat_usage')).rows[0].amount_micros)).toBeGreaterThan(0);
+  await saveChatBudget(owner,0,false);await expect(transcribeDictation(p,randomUUID(),wav())).rejects.toThrow('allowance');expect(fetch).toHaveBeenCalledTimes(1);
+ });
  it('transcribes once, settles the shared ledger, and keeps the preview separate from chat instructions',async()=>{
   const id=randomUUID(),result=await transcribeDictation(p,id,wav());expect(result).toMatchObject({status:'completed',transcript:'Ask Devon about discovery.',cost:.000075});expect((await transcribeDictation(p,id,wav())).transcript).toBe(result.transcript);expect(fetch).toHaveBeenCalledTimes(1);const body=vi.mocked(fetch).mock.calls[0][1]!.body as FormData;expect(body.get('model')).toBe('gpt-transcribe');expect((await db.query('SELECT amount_micros FROM assistant_chat_usage')).rows[0].amount_micros).toBe('75');expect((await db.query('SELECT id FROM assistant_chat_turns')).rowCount).toBe(0);expect((await db.query("SELECT column_name FROM information_schema.columns WHERE table_name='assistant_dictations'")).rows.some(r=>r.column_name==='audio')).toBe(false);
  });

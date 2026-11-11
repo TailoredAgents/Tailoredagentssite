@@ -53,6 +53,53 @@ describe.skipIf(!url)('Native employee assistant integration',()=>{
   vi.stubEnv('ASSISTANT_BACKGROUND_ENABLED','false');
  });
  afterAll(async()=>{await pool?.end();delete (globalThis as {tailoredAgentsDatabasePool?:Pool}).tailoredAgentsDatabasePool;vi.unstubAllEnvs();vi.unstubAllGlobals();});
+ it('uses the company allowance for new chat while retaining explicit and routine ceilings',async()=>{
+  const p=await connection(),id=randomUUID(),thread=randomUUID();await saveChatBudget(owner,25);
+  await beginChatTurn(p,thread,id,'Analyze',.25,[],true);
+  await expect(beginChatTurn(p,thread,id,'Analyze',.25,[],false)).rejects.toThrow('identifier');
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json(answer())));
+  await requestChatResponse(p,id,0,{input:'x'.repeat(95000)},undefined,{model:'gpt-6.1-sol',effort:'high'});
+  expect((await chatState(owner,'chat-session',thread)).turns[0].budget_managed).toBe(true);
+ });
+ it('uncapped use crosses the monthly ceiling but retains accounting and explicit turn caps',async()=>{
+  const p=await connection(),id=randomUUID();await saveChatBudget(owner,0,true);
+  await beginChatTurn(p,randomUUID(),id,'Help',1,[],true);
+  const fetcher=vi.fn().mockImplementation(async()=>Response.json(answer()));vi.stubGlobal('fetch',fetcher);
+  await requestChatResponse(p,id,0,{input:'Hello'});
+  const state=await chatState(owner,'chat-session');expect(state.uncapped).toBe(true);expect(state.monthlyUsed).toBeGreaterThan(0);expect(state.modelUsage?.[0].requests).toBe(1);
+  const capped=randomUUID();await beginChatTurn(p,randomUUID(),capped,'Bounded routine',.25);
+  await expect(requestChatResponse(p,capped,0,{input:'x'.repeat(95000)},undefined,{model:'gpt-6.1-sol',effort:'high'})).rejects.toThrow('spending limit');
+  await saveChatBudget(owner,0,false);await expect(requestChatResponse(p,id,1,{input:'Stop'})).rejects.toThrow('monthly');expect(fetcher).toHaveBeenCalledTimes(1);
+ });
+ it('does not let a member enable uncapped spending or change model costs by payload injection',async()=>{
+  const {p,id}=await turn();await saveChatBudget(owner,25);
+  await pool.query("UPDATE workspace_memberships SET role='member' WHERE user_id=$1",[other.user.id]);
+  await expect(saveChatBudget(other,0,true)).rejects.toThrow('owner or administrator');
+  const fetcher=vi.fn().mockImplementation(async()=>Response.json(answer()));vi.stubGlobal('fetch',fetcher);
+  await requestChatResponse(p,id,0,{model:'gpt-6-astra',reasoning:{effort:'max'},max_output_tokens:100000,input:'Hello'});
+  const payload=JSON.parse(fetcher.mock.calls[0][1].body);expect(payload.model).toBe('gpt-6.1-sol');expect(payload.reasoning.effort).toBe('low');expect(payload.max_output_tokens).toBe(3000);
+ });
+ it('records model choices, caps Astra, safely transfers context and deduplicates paid steps',async()=>{
+  const p=await connection(),id=randomUUID();await saveChatBudget(owner,25);await beginChatTurn(p,randomUUID(),id,'Difficult analysis',1,[],true);
+  const fetcher=vi.fn().mockImplementation(async()=>Response.json(answer()));vi.stubGlobal('fetch',fetcher);
+  const astra={model:'gpt-6-astra',effort:'high'} as const;
+  await requestChatResponse(p,id,0,{input:'Analyze'},undefined,astra); // Forced Sol high first.
+  const input=[{type:'reasoning',encrypted_content:'sol-only'},{role:'user',content:'Analyze further'}];
+  await requestChatResponse(p,id,1,{input},undefined,astra);
+  await requestChatResponse(p,id,1,{input},undefined,astra); // Saved response, no charge.
+  await requestChatResponse(p,id,2,{input:'Continue'},undefined,astra);
+  await requestChatResponse(p,id,3,{input:'Finish'},undefined,astra);
+  const payloads=fetcher.mock.calls.map(c=>JSON.parse(c[1].body));expect(payloads.map(p=>p.model)).toEqual(['gpt-6.1-sol','gpt-6-astra','gpt-6-astra','gpt-6.1-sol']);
+  expect(payloads[1].input).toEqual(input.slice(1));
+  const rows=(await pool.query('SELECT model,effort,amount_micros FROM assistant_chat_requests WHERE turn_id=$1 ORDER BY step',[id])).rows;
+  expect(rows[1].effort).toBe('high');expect(Number(rows[1].amount_micros)).toBe(Number(rows[0].amount_micros)*5);
+ });
+ it('lets the agent change reasoning across saved checkpoints without changing permissions',async()=>{
+  const p=await connection('read'),id=randomUUID(),thread=randomUUID();await saveChatBudget(owner,25);await beginChatTurn(p,thread,id,'Compare plans',1,[],true);
+  const fetcher=vi.fn().mockResolvedValueOnce(Response.json(call('adjust_reasoning',{model:'gpt-6.1-sol',effort:'medium',reason:'Compare several operational plans and their dependencies.'}))).mockResolvedValueOnce(Response.json(answer('Here is the comparison.')));vi.stubGlobal('fetch',fetcher);
+  await runAssistantWorker(id,10);expect((await chatState(owner,'chat-session',thread)).turns[0].status).toBe('completed');
+  expect(JSON.parse(fetcher.mock.calls[1][1].body).reasoning.effort).toBe('medium');expect(p.scopes).not.toContain('operations:write');
+ });
  it('reports a terminal permission failure once even after the lease is cleared',async()=>{
   const {p,id}=await turn();await pool.query('UPDATE assistant_grants SET revoked_at=now() WHERE id=$1',[p.grantId]);
   expect((await runAssistantWorker(id,1)).failed).toBe(1);expect((await runAssistantWorker(id,1)).failed).toBe(0);expect(fetch).not.toHaveBeenCalled();
