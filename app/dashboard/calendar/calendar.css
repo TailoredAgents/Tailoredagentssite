@@ -62,7 +62,7 @@
 }
 .tc-workspace :is(button, select):focus-visible,
 .tc-dialog :focus-visible {
-  outline: 2px solid #3975eb;
+  outline: 2px solid var(--workspace-focus);
   outline-offset: 3px;
 }
 .tc-secondary {
@@ -112,9 +112,10 @@
   font-size: 14px;
 }
 .tc-team-strip > button[aria-pressed="true"] {
-  background: var(--workspace-active, #d8e5ff);
-  border-color: var(--workspace-accent, #285bdb);
-  box-shadow: inset 0 0 0 1px var(--workspace-accent, #285bdb);
+  background: var(--workspace-blue-soft);
+  color: var(--workspace-selected-ink);
+  border-color: var(--workspace-blue);
+  box-shadow: inset 0 0 0 1px var(--workspace-blue);
   font-weight: 650;
 }
 .tc-team-strip i {
@@ -177,8 +178,8 @@
   background: var(--workspace-soft);
 }
 .tc-mini-grid > button[aria-pressed="true"] {
-  background: #285bdb;
-  color: white;
+  background: var(--workspace-blue);
+  color: var(--workspace-on-primary);
   font-weight: 700;
 }
 .tc-calendars {
@@ -298,9 +299,9 @@
   padding: 10px 12px;
 }
 .tc-workweek[aria-pressed="true"] {
-  background: var(--workspace-active);
-  border-color: var(--workspace-accent);
-  color: var(--workspace-ink);
+  background: var(--workspace-blue-soft);
+  border-color: var(--workspace-blue);
+  color: var(--workspace-selected-ink);
 }
 .tc-weekend-notice {
   padding: 9px 20px;

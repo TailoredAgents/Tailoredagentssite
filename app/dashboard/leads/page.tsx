@@ -3,8 +3,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   Download,
-  Filter,
-  Search,
   ShieldCheck,
   UsersRound,
 } from "lucide-react";
@@ -14,7 +12,8 @@ import { LeadStatusSelect } from "@/components/dashboard/lead-status-select";
 import { requireDashboardContext } from "@/lib/dashboard/data";
 import { listLeads } from "@/lib/operations/data";
 import { formatOperationalDate, statusLabel } from "@/lib/operations/format";
-import { leadStatuses } from "@/lib/operations/validation";
+import { ProspectFilters } from "@/components/dashboard/prospect-filters";
+import styles from "./prospects.module.css";
 
 export const metadata: Metadata = { title: "Prospects" };
 
@@ -31,6 +30,7 @@ export default async function LeadsPage({
   const context = await requireDashboardContext();
   const filters = await searchParams;
   const leads = await listLeads(context, { ...filters, status: filters.status ?? "active" });
+  const exportLink = <a className="dashboard-secondary-button" href="/dashboard/leads/export"><Download size={16} aria-hidden="true" />Export all prospects</a>;
 
   return (
     <>
@@ -44,61 +44,20 @@ export default async function LeadsPage({
           Protected session
         </span>
       </header>
-      <div className="dashboard-content">
+      <div className={`dashboard-content ${styles.prospects}`}>
         <section className="dashboard-page-heading dashboard-page-heading-compact">
           <div>
             <span>Prospect pipeline</span>
             <h1>Prospects</h1>
             <p>
-              Manage connections, referrals, outreach, and incoming inquiries in one place.
-              Move prospects through New, Qualified, and Proposal; convert them to clients
-              when they accept a paid engagement.
+              Every connection, referral, and inquiry. One clear next step.
             </p>
           </div>
-          <a
-            className="dashboard-secondary-button"
-            href="/dashboard/leads/export"
-          >
-            <Download size={15} />
-            Export all prospects
-          </a>
         </section>
 
-        {context.role !== "viewer" ? <ManualLeadForm /> : null}
+        {context.role !== "viewer" ? <ManualLeadForm toolbarEnd={exportLink} /> : <div className={styles.viewerActions}>{exportLink}</div>}
 
-        <form className="dashboard-filter-bar" method="get">
-          <label>
-            <Search size={15} />
-            <input
-              type="search"
-              aria-label="Search prospects"
-              name="q"
-              defaultValue={leads.q}
-              placeholder="Search name, company, phone, or email"
-            />
-          </label>
-          <label>
-            <Filter size={15} />
-            <select
-              aria-label="Filter prospects by status"
-              name="status"
-              defaultValue={leads.status}
-            >
-              <option value="active">Active prospects</option>
-              <option value="all">All statuses</option>
-              {leadStatuses.map((status) => (
-                <option value={status} key={status}>
-                  {statusLabel(status)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label><Filter size={15} /><select aria-label="Filter prospects by source" name="source" defaultValue={leads.source}><option value="all">All sources</option><option value="facebook">Facebook / Instagram</option><option value="website">Website</option><option value="manual">Added manually</option><option value="smart_card">Smart Cards</option></select></label>
-          <button type="submit">Apply filters</button>
-          {leads.q || leads.status !== "active" || leads.source !== "all" ? (
-            <Link href="/dashboard/leads">Clear</Link>
-          ) : null}
-        </form>
+        <ProspectFilters key={`${leads.q}:${leads.status}:${leads.source}`} q={leads.q} status={leads.status} source={leads.source} />
 
         <section className="dashboard-panel dashboard-table-panel">
           <div className="dashboard-table-summary">
@@ -108,21 +67,21 @@ export default async function LeadsPage({
             </span>
             <small>{leads.status === "active" ? "New, Qualified, and Proposal · Newest first" : "Newest first"}</small>
           </div>
-          <div className="dashboard-data-table dashboard-leads-table">
-            <div className="dashboard-data-head">
+          <div className={styles.table}>
+            <div className={styles.tableHead}>
               <span>Prospect</span>
               <span>Interest</span>
               <span>Status</span>
               <span>Owner / next action</span>
-              <span>Received</span>
+              <span>Added</span>
             </div>
             {leads.items.length ? (
               leads.items.map((lead) => (
                 <div
-                  className="dashboard-data-row dashboard-lead-row"
+                  className={`${styles.row} dashboard-lead-row`}
                   key={lead.id}
                 >
-                  <span data-label="Prospect">
+                  <span className={styles.identity} data-label="Prospect">
                     <Link className="dashboard-lead-link" href={`/dashboard/leads/${lead.id}`}>
                       <strong>{leadDisplayName(lead)}</strong>
                       {leadCompanyName(lead) && <small>{leadCompanyName(lead)}</small>}
@@ -131,7 +90,7 @@ export default async function LeadsPage({
                       </small>
                     </Link>
                   </span>
-                  <span data-label="Interest">
+                  <span className={styles.interest} data-label="Interest">
                     <strong>
                       {lead.inquiryType === "website-review"
                         ? "Website review"
@@ -145,12 +104,12 @@ export default async function LeadsPage({
                       </small>
                     )}
                   </span>
-                  <span data-label="Status">
+                  <span className={styles.status} data-label="Status">
                     {context.role === "viewer" ? <em className={`dashboard-status status-${lead.status}`}>
                       {statusLabel(lead.status)}
                     </em> : <LeadStatusSelect leadId={lead.id} name={leadDisplayName(lead)} status={lead.status} />}
                   </span>
-                  <span data-label="Owner / next action">
+                  <span className={styles.nextAction} data-label="Owner / next action">
                     <strong>{lead.ownerName || "Unassigned"}</strong>
                     <small>
                       {lead.nextAction || "No next action"}
@@ -159,8 +118,8 @@ export default async function LeadsPage({
                         : ""}
                     </small>
                   </span>
-                  <time data-label="Received" dateTime={lead.createdAt}>
-                    {formatOperationalDate(lead.createdAt)}
+                  <time className={styles.date} data-label="Added" dateTime={lead.createdAt} title={formatOperationalDate(lead.createdAt)}>
+                    {formatOperationalDate(lead.createdAt, { dateOnly: true })}
                   </time>
                 </div>
               ))

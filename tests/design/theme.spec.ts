@@ -18,11 +18,11 @@ test("appearance choices persist through reload, navigation and server rendering
   await appearance.getByRole("button", { name: /^Dark / }).click();
   await expect(page.locator(".dashboard-theme")).toHaveAttribute("data-theme", "dark");
   await expect(appearance.getByRole("button", { name: /^Dark / })).toHaveAttribute("aria-pressed", "true");
-  expect(await themeColors(page)).toEqual({ background: "rgb(17, 24, 39)", scheme: "dark" });
+  expect(await themeColors(page)).toEqual({ background: "rgb(14, 23, 40)", scheme: "dark" });
   const response = await page.request.get("/dashboard/clients");
   expect(await response.text()).toContain('class="dashboard-theme" data-theme="dark"');
   await page.reload(); await expect(appearance.getByRole("button", { name: /^Dark / })).toHaveAttribute("aria-pressed", "true");
-  await page.goto("/dashboard/projects"); expect((await themeColors(page)).background).toBe("rgb(17, 24, 39)");
+  await page.goto("/dashboard/projects"); expect((await themeColors(page)).background).toBe("rgb(14, 23, 40)");
   const cookie = (await page.context().cookies()).find(cookie => cookie.name === "ta-dashboard-theme");
   expect(cookie).toMatchObject({ value: "dark", path: "/", sameSite: "Lax" }); expect(cookie!.expires).toBeGreaterThan(Date.now()/1000 + 300*86400);
   await page.getByRole("link", { name: "Tailored Agents website", exact: true }).click();
@@ -34,11 +34,11 @@ test("system follows appearance changes while an explicit light choice stays lig
   await page.emulateMedia({ colorScheme: "light" }); await signIn(page); await page.goto("/dashboard/settings");
   const appearance = page.getByRole("group", { name: "Dashboard appearance", exact: true });
   await appearance.getByRole("button", { name: /^System / }).click();
-  expect((await themeColors(page)).background).toBe("rgb(226, 232, 240)");
-  await page.emulateMedia({ colorScheme: "dark" }); expect((await themeColors(page)).background).toBe("rgb(17, 24, 39)");
+  expect((await themeColors(page)).background).toBe("rgb(233, 238, 245)");
+  await page.emulateMedia({ colorScheme: "dark" }); expect((await themeColors(page)).background).toBe("rgb(14, 23, 40)");
   await appearance.getByRole("button", { name: /^Light / }).click();
-  expect((await themeColors(page)).background).toBe("rgb(226, 232, 240)");
-  await page.reload(); expect((await themeColors(page)).background).toBe("rgb(226, 232, 240)");
+  expect((await themeColors(page)).background).toBe("rgb(233, 238, 245)");
+  await page.reload(); expect((await themeColors(page)).background).toBe("rgb(233, 238, 245)");
 });
 
 test("sidebar appearance changes preserve unsaved page input and theme the phone", async ({ page }, info) => {
@@ -50,7 +50,7 @@ test("sidebar appearance changes preserve unsaved page input and theme the phone
   await expect(search).toHaveValue("Unsaved color preference check");
   await page.getByRole("button", { name: /^Open browser phone/ }).click();
   const phone = page.locator(".voice-phone-panel"); await expect(phone).toBeVisible();
-  expect(await phone.evaluate(element => getComputedStyle(element).backgroundColor)).toBe("rgb(27, 38, 56)");
+  expect(await phone.evaluate(element => getComputedStyle(element).backgroundColor)).toBe("rgb(23, 36, 56)");
 });
 
 test("saved dark colors render before JavaScript and malformed values fall back to slate", async ({ page, browser }) => {
@@ -59,9 +59,9 @@ test("saved dark colors render before JavaScript and malformed values fall back 
   try {
     const serverPage = await context.newPage(); await serverPage.goto(new URL("/dashboard/settings", page.url()).href);
     await expect(serverPage.locator(".dashboard-theme")).toHaveAttribute("data-theme", "dark");
-    expect((await themeColors(serverPage)).background).toBe("rgb(17, 24, 39)");
+    expect((await themeColors(serverPage)).background).toBe("rgb(14, 23, 40)");
   } finally { await context.close(); }
   await page.context().addCookies([{ name: "ta-dashboard-theme", value: "unknown-theme", domain: "127.0.0.1", path: "/" }]);
   await page.reload(); await expect(page.locator(".dashboard-theme")).toHaveAttribute("data-theme", "light");
-  expect((await themeColors(page)).background).toBe("rgb(226, 232, 240)");
+  expect((await themeColors(page)).background).toBe("rgb(233, 238, 245)");
 });

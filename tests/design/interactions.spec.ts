@@ -14,6 +14,7 @@ async function accessible(page: Page, selector: string) {
 test("page finder opens from the keyboard, navigates and closes with Escape", async ({ page }, info) => {
   await signIn(page); await page.keyboard.press("Control+k");
   const finder = page.getByRole("dialog", { name: "Find a page", exact: true }); await expect(finder).toBeVisible();
+  await expect(finder.getByRole("searchbox", { name: "Search dashboard pages", exact: true })).toBeFocused();
   await finder.getByRole("searchbox", { name: "Search dashboard pages", exact: true }).fill("projects");
   await expect(finder.getByRole("link", { name: /Projects/ })).toHaveCount(1); await accessible(page, ".workspace-page-finder");
   await finder.getByRole("link", { name: /Projects/ }).click(); await expect(page).toHaveURL(/\/dashboard\/projects$/); await expect(finder).not.toBeVisible();

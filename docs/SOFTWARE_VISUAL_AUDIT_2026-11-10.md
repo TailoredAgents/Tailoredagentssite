@@ -1,6 +1,6 @@
 # Software visual audit and premium-finish plan
 
-Audit conducted November 10–11, 2026. Requested by Austin. **Employee web page review complete; design changes have not been implemented.**
+Audit conducted November 10–11, 2026. Requested by Austin. **Employee web page review complete.** This document preserves the findings before implementation. The first implementation pass is tracked in [the November 11 release record](SOFTWARE_VISUAL_POLISH_2026-11-11.md).
 
 Recommendation: keep the identity and refine the product around it. The greatest improvement will come from clearer surface contrast, less competing page chrome, consistent record/form patterns and deliberate mobile layouts. A wholesale rebrand is unnecessary. Fix the two observed obstruction/contrast issues first, establish shared foundations, then work through the pages in the order below.
 
@@ -270,6 +270,6 @@ There is no remaining uninspected current dashboard page template in the 43-rout
 - **Native CSV picker:** mapping and confirmation were rendered with synthetic parser input because browser file-upload permission was unavailable. Actual file selection, import submission and its resulting success/error are functional acceptance, not claimed here.
 - **Separate design products:** public marketing pages, public smart-card/profile/booking journeys, generated client sites and customer portals require their own visual scope. This report covers employee software and its Mail companion.
 
-## Audit handoff
+## Audit handoff (before implementation)
 
 The deliverable is this report and its ordered implementation plan: **43 dashboard route templates, 20 primary workspaces, Mail/authentication coverage and 41 prioritized findings**. Application design code has not been changed. The report was built incrementally, then reconciled against the current route inventory and accepted screenshots. Markdown/file links, finding IDs, referenced evidence and the scoped diff were checked. Application tests were not rerun for this documentation-only change; preview build evidence is recorded above. The final staged diff is limited to this audit document; collaborators' implementation changes remain separate.

@@ -31,6 +31,8 @@ import type { DashboardContext } from "@/lib/dashboard/data";
 import { PageFinder } from "./page-finder";
 import { DashboardThemeSelect } from "./theme-provider";
 import { nativeNotificationAction } from "@/lib/assistant/native-notifications";
+import { BrowserPhoneLauncher } from "@/components/voice/phone-panel";
+import { useBrowserPhone } from "@/components/voice/phone-provider";
 
 const navigationGroups = [
   {
@@ -76,6 +78,7 @@ const navigationGroups = [
 
 export function DashboardNavigation({ context }: { context: DashboardContext }) {
   const pathname = usePathname();
+  const phone = useBrowserPhone();
   const [menuOpen, setMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState(false);
@@ -129,17 +132,19 @@ export function DashboardNavigation({ context }: { context: DashboardContext }) 
     }}>
       <div className="dashboard-sidebar-brand">
         <Link href="/" className="dashboard-brand" aria-label="Tailored Agents website">
-          <span><BrandLogo dark compact /><small>Agency workspace</small></span>
+          <span><BrandLogo dark compact /></span>
         </Link>
-        <button ref={menuButton} type="button" className="dashboard-menu-toggle" aria-label={menuOpen ? "Close menu" : "Menu"} aria-expanded={menuOpen} aria-controls="dashboard-navigation" onClick={() => setMenuOpen(!menuOpen)}>
+        <div className="dashboard-mobile-tools"><BrowserPhoneLauncher compact onOpen={() => setMenuOpen(false)} />
+        <button ref={menuButton} type="button" className="dashboard-menu-toggle" aria-label={menuOpen ? "Close menu" : "Menu"} aria-expanded={menuOpen} aria-controls="dashboard-navigation" onClick={() => { if (!menuOpen) phone.setExpanded(false); setMenuOpen(!menuOpen); }}>
           {menuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}<span className="dashboard-menu-label">{menuOpen ? "Close menu" : "Menu"}</span>
         </button>
+        </div>
       </div>
 
       <div className="dashboard-workspace">
         <div className="dashboard-workspace-current">
           <i>TA</i>
-          <div><strong>{context.workspace.name}</strong><small>Team workspace</small></div>
+          <div><strong>{context.workspace.name}</strong></div>
         </div>
       </div>
 
@@ -157,7 +162,7 @@ export function DashboardNavigation({ context }: { context: DashboardContext }) 
       </nav>
 
       <DashboardThemeSelect />
-      <a className="dashboard-mail-link" href="https://mail.tailoredagents.com" target="_blank" rel="noreferrer"><Mail size={18} aria-hidden="true" /><span>Open email<span className="sr-only"> (new tab)</span></span><ArrowUpRight size={16} aria-hidden="true" /></a>
+      <div className="dashboard-utilities"><BrowserPhoneLauncher /><a className="dashboard-mail-link" href="https://mail.tailoredagents.com" target="_blank" rel="noreferrer"><Mail size={18} aria-hidden="true" /><span>Email<span className="sr-only"> (new tab)</span></span><ArrowUpRight size={14} aria-hidden="true" /></a></div>
       <div className="dashboard-user">
         <span className="dashboard-avatar">{initials}</span>
         <span className="dashboard-user-copy"><strong>{context.user.name}</strong><small>{context.role}</small></span>

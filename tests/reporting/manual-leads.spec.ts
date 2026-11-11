@@ -181,9 +181,7 @@ test("adds a phone-only lead directly from Leads and retains useful sales contex
   await page
     .getByRole("searchbox", { name: "Search prospects", exact: true })
     .fill(phone.slice(-7));
-  await page
-    .getByRole("button", { name: "Apply filters", exact: true })
-    .click();
+  await page.getByRole("searchbox", { name: "Search prospects", exact: true }).press("Enter");
   const lead = page
     .getByRole("link")
     .filter({ has: page.getByText(organization, { exact: true }) });

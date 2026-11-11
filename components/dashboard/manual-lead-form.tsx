@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, LoaderCircle, Plus, X } from "lucide-react";
 import { createLeadAction } from "@/lib/operations/actions";
 import { initialOperationActionState } from "@/lib/operations/validation";
@@ -17,7 +17,7 @@ const emptyLead = {
 
 type LeadField = keyof typeof emptyLead;
 
-export function ManualLeadForm() {
+export function ManualLeadForm({ toolbarEnd }: { toolbarEnd?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [submissionId, setSubmissionId] = useState("");
   const [values, setValues] = useState(emptyLead);
@@ -97,6 +97,7 @@ export function ManualLeadForm() {
           Add prospect
         </button>
         <p>Add someone you met, a referral, or an incoming inquiry.</p>
+        {toolbarEnd}
       </div>
 
       {open ? (

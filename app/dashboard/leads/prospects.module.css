@@ -1,0 +1,53 @@
+.prospects :global(.dashboard-page-heading) { margin-bottom: 20px; }
+.prospects :global(.dashboard-manual-lead) { margin-bottom: 18px; }
+.prospects :global(.dashboard-manual-lead-toolbar) { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; }
+.prospects :global(.dashboard-manual-lead-toolbar) > p { display: none; }
+.prospects :global(.dashboard-manual-lead-toolbar) > button { width: auto; }
+.viewerActions { display: flex; justify-content: flex-end; margin-bottom: 18px; }
+.prospects :global(.dashboard-table-panel) { overflow: hidden; }
+.prospects :global(.dashboard-table-summary) { gap: 10px; flex-wrap: wrap; min-height: 64px; }
+.tableHead, .row { display: grid; grid-template-columns: minmax(160px,1.5fr) minmax(120px,1fr) 128px minmax(140px,1.15fr) 90px; align-items: center; gap: 18px; padding: 15px 22px; }
+.tableHead { background: var(--workspace-field); border-top: 1px solid var(--workspace-line); border-bottom: 1px solid var(--workspace-line); color: var(--workspace-muted); font-size: 12px; font-weight: 600; letter-spacing: .02em; }
+.row { min-height: 100px; color: var(--workspace-ink); font-size: 14px; border-bottom: 1px solid var(--workspace-line); }
+.row:last-child { border-bottom: 0; }
+.row:hover { background: var(--workspace-field); }
+.row > span { min-width: 0; }
+.row strong, .row small { display: block; overflow-wrap: anywhere; }
+.row strong { font-size: 14px; font-weight: 550; line-height: 1.5; }
+.identity strong { font-size: 15px; font-weight: 650; }
+.row small { margin-top: 4px; color: var(--workspace-muted); font-size: 13px; line-height: 1.5; }
+.date { color: var(--workspace-muted); font: 13px var(--font-sans); line-height: 1.6; white-space: nowrap; }
+.row .status select { min-height: 36px; border-radius: 7px; border-color: transparent; padding: 6px 7px; font-size: 13px; font-weight: 600; }
+.row .status select:hover { border-color: var(--workspace-control-line); }
+.row .status select:disabled { cursor: wait; }
+@media (min-width: 761px) and (max-width: 1200px) {
+  .tableHead, .row { grid-template-columns: minmax(150px,1.3fr) minmax(100px,1fr) 118px minmax(120px,1fr); gap: 14px; padding-inline: 18px; }
+  .tableHead > span:last-child { display: none; }
+  .date { grid-column: 1 / -1; font-size: 12px; }
+  .date::before { content: "Added "; }
+}
+@media (max-width: 760px) {
+  .prospects :global(.dashboard-manual-lead-toolbar) { display: grid; grid-template-columns: auto auto; }
+  .prospects :global(.dashboard-manual-lead-toolbar) > :is(button,a) { padding-inline: 10px; font-size: 13px; }
+  .prospects :global(.dashboard-table-summary) { padding: 16px; }
+  .prospects :global(.dashboard-table-summary) > small { font-size: 12px; line-height: 1.5; }
+  .tableHead { display: none; }
+  .row { grid-template-columns: minmax(0,1fr) 114px; gap: 14px 10px; padding: 18px 16px; align-items: start; }
+  .identity { grid-column: 1; grid-row: 1; }
+  .identity strong { font-size: 16px; }
+  .identity small { font-size: 13px; }
+  .status { grid-column: 2; grid-row: 1; }
+  .row .status select { min-height: 44px; }
+  .interest { grid-column: 1 / -1; grid-row: 2; padding-top: 12px; border-top: 1px solid var(--workspace-line); }
+  .nextAction { grid-column: 1 / -1; grid-row: 3; }
+  .interest::before, .nextAction::before { content: attr(data-label); display: block; margin-bottom: 4px; font-size: 11px; font-weight: 600; color: var(--workspace-muted); letter-spacing: .04em; text-transform: uppercase; }
+  .date { grid-column: 1 / -1; grid-row: 4; font-size: 12px; }
+  .date::before { content: "Added "; }
+}
+@media (max-width: 360px) {
+  .row { grid-template-columns: minmax(0,1fr); }
+  .status { grid-column: 1; grid-row: 2; max-width: 150px; width: 100%; }
+  .interest { grid-row: 3; }
+  .nextAction { grid-row: 4; }
+  .date { grid-row: 5; }
+}

@@ -18,7 +18,7 @@ async function signIn(page: Page, user = "owner") {
 async function phone(page: Page) {
   const panel = page.getByRole("region", { name: "Browser phone", exact: true });
   if (!(await panel.isVisible())) {
-    const launcher = page.locator(".voice-launcher");
+    const launcher = page.locator(".voice-launcher:visible");
     if (await launcher.isVisible()) await launcher.click();
     else await page.getByRole("button", { name: "Open browser phone", exact: true }).click();
   }
@@ -312,8 +312,8 @@ test("calls through my phone without browser audio and resumes after reload",asy
   await expect(panel.locator(".voice-connection-state")).toContainText("Call in progress");
   await expect(panel.getByRole("button",{name:"Mute microphone",exact:true})).toHaveCount(0);
   expect((await new AxeBuilder({page}).include(".voice-call-composer").withTags(["wcag2a","wcag2aa"]).analyze()).violations).toEqual([]);
-  await page.reload();await expect(page.locator(".voice-launcher")).toContainText("Call in progress");
-  await page.locator(".voice-launcher").click();await expect(panel.getByRole("heading",{name:"Call using my phone"})).toBeVisible();
+  await page.reload();await expect(page.locator(".voice-launcher:visible")).toHaveAccessibleName(/Call in progress/);
+  await page.locator(".voice-launcher:visible").click();await expect(panel.getByRole("heading",{name:"Call using my phone"})).toBeVisible();
   await page.screenshot({path:dashboardPreviewPath(`phone-callback-active-${info.project.name}.png`),fullPage:true,style:"nextjs-portal{display:none!important;}"});
   await panel.getByRole("button",{name:"End call",exact:true}).click();
   await expect(panel.getByRole("button",{name:"End call",exact:true})).toHaveCount(0);

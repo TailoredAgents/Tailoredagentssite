@@ -51,8 +51,14 @@
 .voice-task-work .dashboard-operation-fields { padding: 20px; }
 .voice-task-work .dashboard-form-footer { padding: 0 20px 20px; }
 :is(.voice-phone-panel, .voice-settings-panel, .voice-call-composer, .voice-call-card) :is(button, a, input, select, textarea):focus-visible { outline: 3px solid var(--workspace-control-line); outline-offset: 3px; }
-.voice-launcher { position: fixed; z-index: 80; right: 22px; bottom: 18px; display: flex; align-items: center; gap: 8px; min-height: 44px; max-width: calc(100vw - 32px); padding: 10px 14px; border: 1px solid var(--workspace-line); border-radius: 9px; background: var(--workspace-surface); color: var(--workspace-muted); box-shadow: 0 4px 18px var(--workspace-shadow-ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
-.voice-launcher.has-call { border-color: var(--workspace-success); background: var(--workspace-success-solid); color: var(--workspace-on-primary); }
+.voice-launcher { display: flex; align-items: center; justify-content: center; gap: 7px; min-width: 0; min-height: 44px; padding: 9px 10px; border: 1px solid var(--workspace-nav-line); border-radius: 8px; background: var(--workspace-nav-surface); color: var(--workspace-nav-text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.voice-launcher:hover { background: var(--workspace-nav-hover); color: var(--workspace-nav-title); }
+.voice-launcher.has-call { flex-wrap: wrap; border-color: var(--workspace-nav-accent); background: var(--workspace-nav-selected); color: var(--workspace-nav-title); }
+.voice-launcher svg { flex-shrink: 0; }
+.voice-launcher i { width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%; background: var(--workspace-nav-accent); }
+.voice-launcher.is-compact { width: 44px; padding: 10px; }
+.voice-launcher.is-compact span, .voice-launcher.is-compact strong { display: none; }
+.voice-launcher.is-compact.has-call { box-shadow: inset 0 0 0 1px var(--workspace-nav-accent); }
 .voice-launcher strong { font-size: 14px; font-variant-numeric: tabular-nums; }
 .conversation-header-actions .voice-inbox-launcher { display: none; }
 .conversation-sync-desktop { flex-shrink: 0; }
@@ -170,8 +176,6 @@
 }
 @media (max-width: 620px) {
   .voice-phone-panel { right: 12px; bottom: 12px; max-height: calc(100dvh - 96px); }
-  .voice-launcher { right: 12px; bottom: 12px; }
-  .voice-launcher.is-inbox-idle { display: none; }
   .conversation-header-actions .voice-inbox-launcher { display: inline-flex; }
   .voice-phone-body { padding: 14px; }
   .voice-phone-controls > button { min-height: 44px; }

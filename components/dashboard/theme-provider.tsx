@@ -29,7 +29,7 @@ export function DashboardThemeSelect() {
 }
 
 const options = [
-  { value: "light", title: "Light", description: "Slate-gray canvas and soft blue-gray panels.", Icon: Sun },
+  { value: "light", title: "Light", description: "A soft slate canvas, white panels, and blue accents.", Icon: Sun },
   { value: "dark", title: "Dark", description: "Midnight navy with lighter surfaces and blue accents.", Icon: Moon },
   { value: "system", title: "System", description: "Follow this device’s light or dark appearance.", Icon: Monitor },
 ] as const;

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { ArrowUpRight, Headphones, LoaderCircle, Mic, MicOff, Minus, Phone, PhoneIncoming, PhoneOff, Settings2, ShieldCheck } from "lucide-react";
 import { useBrowserPhone } from "./phone-provider";
 
@@ -9,16 +9,34 @@ export function voiceDuration(seconds: number) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
+function phaseLabel(phone: ReturnType<typeof useBrowserPhone>) {
+  return { idle: phone.connection === "ready" ? "Phone connected" : phone.connection === "connecting" ? "Connecting phone…" : "Phone disconnected", incoming: "Incoming call", connecting: "Connecting call…", ringing: "Ringing…", active: "Call in progress", reconnecting: "Reconnecting audio…", ending: "Ending call…", uncertain: "Call end unconfirmed" }[phone.phase];
+}
+
+/** Lives in the navigation so the persistent phone never covers page actions. */
+export function BrowserPhoneLauncher({ compact = false, onOpen }: { compact?: boolean; onOpen?: () => void }) {
+  const phone = useBrowserPhone();
+  const busy = phone.phase !== "idle";
+  const label = phaseLabel(phone);
+  return <button className={`voice-launcher ${compact ? "is-compact" : ""} ${busy ? "has-call" : ""}`} type="button" onClick={() => { onOpen?.(); phone.setExpanded(true); }} aria-label={`Open browser phone · ${label}`} aria-expanded={phone.expanded} aria-controls={phone.expanded ? "browser-phone-panel" : undefined} title={label}>
+    {phone.phase === "incoming" ? <PhoneIncoming size={18} aria-hidden="true" /> : <Phone size={18} aria-hidden="true" />}<span>{busy ? "Call" : "Phone"}</span>{phone.phase === "active" ? <strong>{voiceDuration(phone.elapsed)}</strong> : phone.connection === "ready" ? <i aria-hidden="true" /> : null}
+  </button>;
+}
+
 export function BrowserPhonePanel() {
   const phone = useBrowserPhone();
-  const pathname = usePathname();
+  const minimizeButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => { if (phone.expanded) minimizeButton.current?.focus(); }, [phone.expanded]);
   const line = phone.workspace.lines.find((item) => item.id === phone.lineId);
   const usingPhone = Boolean(phone.activeCall?.usingPhone);
   const busy = phone.phase !== "idle";
-  const phaseLabels = { idle: phone.connection === "ready" ? "Phone connected" : phone.connection === "connecting" ? "Connecting phone…" : "Phone disconnected", incoming: "Incoming call", connecting: "Connecting call…", ringing: "Ringing…", active: "Call in progress", reconnecting: "Reconnecting audio…", ending: "Ending call…", uncertain: "Call end unconfirmed" };
-  if (!phone.expanded) return <button className={`voice-launcher ${pathname === "/dashboard/inbox" && !busy ? "is-inbox-idle" : ""} ${busy ? "has-call" : ""}`} type="button" onClick={() => phone.setExpanded(true)} aria-label={`Open browser phone · ${phaseLabels[phone.phase]}`}><Phone size={18} aria-hidden="true" /><span>{busy ? phaseLabels[phone.phase] : phone.connection === "ready" ? "Phone connected" : "Phone"}</span>{phone.phase === "active" ? <strong>{voiceDuration(phone.elapsed)}</strong> : null}</button>;
-  return <section className={`voice-phone-panel ${busy ? "has-call" : ""}`} aria-label="Browser phone"><header><span><Headphones size={18} aria-hidden="true" /><h2>{usingPhone ? "Call using my phone" : "Browser phone"}</h2></span><button className="voice-icon-button" type="button" aria-label="Minimize browser phone" onClick={() => phone.setExpanded(false)}><Minus size={18} aria-hidden="true" /></button></header>
-    <div className="voice-phone-body"><div className={`voice-connection-state is-${usingPhone && phone.phase === "active" ? "ready" : phone.connection}`}><i aria-hidden="true" />{phaseLabels[phone.phase]}{phone.phase === "active" || phone.phase === "reconnecting" ? <strong>{voiceDuration(phone.elapsed)}</strong> : null}</div>
+  function minimize() {
+    phone.setExpanded(false);
+    Array.from(document.querySelectorAll<HTMLButtonElement>(".voice-launcher")).find(button => button.getClientRects().length)?.focus();
+  }
+  if (!phone.expanded) return null;
+  return <section id="browser-phone-panel" className={`voice-phone-panel ${busy ? "has-call" : ""}`} aria-label="Browser phone" onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); minimize(); } }}><header><span><Headphones size={18} aria-hidden="true" /><h2>{usingPhone ? "Call using my phone" : "Browser phone"}</h2></span><button ref={minimizeButton} className="voice-icon-button" type="button" aria-label="Minimize browser phone" onClick={minimize}><Minus size={18} aria-hidden="true" /></button></header>
+    <div className="voice-phone-body"><div className={`voice-connection-state is-${usingPhone && phone.phase === "active" ? "ready" : phone.connection}`}><i aria-hidden="true" />{phaseLabel(phone)}{phone.phase === "active" || phone.phase === "reconnecting" ? <strong>{voiceDuration(phone.elapsed)}</strong> : null}</div>
       {busy ? <div className="voice-current-call">{phone.phase === "incoming" ? <span className="voice-caller-icon"><PhoneIncoming size={23} aria-hidden="true" /></span> : null}<strong>{phone.callerName || "Checking caller…"}</strong>{phone.activeCall ? <><span>{phone.activeCall.direction === "inbound" ? `To ${phone.activeCall.to}` : `From ${phone.activeCall.from}`}</span><Link href={`/dashboard/inbox?conversation=${phone.activeCall.conversationId}`}>Open customer conversation<ArrowUpRight size={14} aria-hidden="true" /></Link></> : null}</div> : <>
         <p className="voice-phone-description">{phone.workspace.message}</p>
         {phone.workspace.lines.length ? <label className="voice-field"><span>Calling line</span><select value={phone.lineId} onChange={(event) => phone.setLineId(event.target.value)} disabled={phone.connection === "connecting"}>{phone.workspace.lines.map((item) => <option key={item.id} value={item.id}>{item.phone}{item.status === "paused" ? " · Paused" : ""}</option>)}</select></label> : null}

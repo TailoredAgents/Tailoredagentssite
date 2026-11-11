@@ -1,0 +1,59 @@
+.overview .heading { margin-bottom: 24px; }
+.metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 16px; }
+.metric { display: flex; flex-direction: column; min-width: 0; padding: 20px; border: 1px solid var(--workspace-line); border-radius: 12px; background: var(--workspace-surface); box-shadow: var(--workspace-shadow); color: var(--workspace-ink); }
+.metric:hover { border-color: var(--workspace-control-line); background: var(--workspace-field); }
+.metricTitle { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; font-weight: 600; }
+.metricTitle svg { color: var(--workspace-blue); flex-shrink: 0; }
+.metric > strong { margin: 16px 0 4px; font-size: 36px; line-height: 1.1; font-weight: 650; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.metric > small { margin-bottom: 18px; font-size: 13px; line-height: 1.5; color: var(--workspace-muted); }
+.metricFooter { display: flex; justify-content: space-between; align-items: center; gap: 6px; min-height: 46px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--workspace-line); color: var(--workspace-blue); font-size: 13px; font-weight: 550; }
+.metricFooter svg { flex-shrink: 0; }
+.sectionHeading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 30px 0 16px; }
+.sectionHeading h2 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -.025em; }
+.sectionHeading p { margin: 5px 0 0; font-size: 14px; color: var(--workspace-muted); }
+.sectionHeading > a { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; font-size: 14px; font-weight: 550; color: var(--workspace-blue); flex-shrink: 0; }
+.priorityGrid, .secondaryGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px; align-items: start; }
+.priorityGrid { align-items: stretch; }
+.priorityPanel { overflow: hidden; }
+.overview .panelTitle { display: flex; align-items: center; gap: 10px; color: var(--workspace-blue); }
+.overview :global(.dashboard-panel-heading) { min-height: 70px; }
+.priorityPanel :global(.dashboard-panel-heading) { background: var(--workspace-field); }
+.overview :global(.dashboard-task-list) li > a { min-height: 80px; padding: 16px 22px; gap: 16px; }
+.overview :global(.dashboard-task-list) li > a > div { min-width: 0; }
+.overview :global(.dashboard-task-list) strong { overflow-wrap: anywhere; }
+.overview :global(.dashboard-task-list) small { margin-top: 5px; }
+.overview .due { display: inline-flex; align-items: center; gap: 10px; flex-shrink: 0; color: var(--workspace-muted); font-size: 13px; white-space: nowrap; }
+.overview :global(.dashboard-empty) { min-height: 190px; padding: 28px 22px; }
+.quickActions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 16px 0 28px; }
+.workspaces { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; }
+.workspace { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; padding: 22px; border: 1px solid var(--workspace-line); border-radius: 12px; background: var(--workspace-surface); box-shadow: var(--workspace-shadow); }
+.workspace:hover { border-color: var(--workspace-control-line); background: var(--workspace-field); }
+.workspaceIcon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; color: var(--workspace-blue); background: var(--workspace-blue-soft); }
+.workspace h3 { margin: 0 0 8px; font-size: 16px; font-weight: 600; letter-spacing: -.02em; }
+.workspace p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--workspace-muted); }
+.workspaceCta { display: inline-flex; align-items: center; gap: 8px; margin-top: auto; font-size: 14px; font-weight: 550; color: var(--workspace-blue); }
+@media (max-width: 1200px) {
+  .metrics { gap: 12px; }
+  .metric { padding: 16px; }
+  .overview :global(.dashboard-task-list) li > a { flex-wrap: wrap; gap: 8px; }
+}
+@media (max-width: 760px) {
+  .metrics { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+  .metric { padding: 14px; }
+  .metricTitle { font-size: 13px; align-items: flex-start; min-height: 36px; }
+  .metricTitle svg { width: 17px; height: 17px; }
+  .metric > strong { margin-top: 6px; font-size: 30px; }
+  .metric > small { margin-bottom: 12px; }
+  .metricFooter { font-size: 12px; }
+  .sectionHeading { align-items: flex-start; flex-wrap: wrap; gap: 4px 12px; margin-top: 24px; }
+  .sectionHeading > a { min-height: 36px; }
+  .priorityGrid, .secondaryGrid, .workspaces { grid-template-columns: minmax(0,1fr); gap: 14px; }
+  .overview :global(.dashboard-panel-heading) { padding: 16px; gap: 10px; }
+  .overview :global(.dashboard-panel-heading) h2 { font-size: 15px; }
+  .overview .panelTitle { gap: 7px; }
+  .overview :global(.dashboard-task-list) li > a { padding: 16px; }
+  .quickActions { gap: 8px; }
+  .quickActions > a { flex: 1 1 auto; }
+  .workspace { display: grid; grid-template-columns: 40px minmax(0,1fr); gap: 12px; padding: 18px; }
+  .workspaceCta { grid-column: 2; }
+}
