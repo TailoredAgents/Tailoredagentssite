@@ -5,6 +5,7 @@ if (!['localhost', '127.0.0.1'].includes(target.hostname) || target.pathname !==
 }
 const originalFetch = globalThis.fetch;
 globalThis.fetch = async function(input, init) {
+ if(String(input)==='https://api.openai.com/v1/audio/transcriptions')return Response.json({text:'Ask Devon about discovery.'});
  if (String(input) !== 'https://api.openai.com/v1/responses') return originalFetch(input, init);
  const payload = JSON.parse(init.body);
  const outputs = payload.input.filter(x => x.type === 'function_call_output');

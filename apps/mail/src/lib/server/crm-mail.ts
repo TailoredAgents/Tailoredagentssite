@@ -1,3 +1,4 @@
+import {crmReplyPlan,crmEnvelope,type CrmEnvelope} from './crm-compose';
 import { timingSafeEqual } from "node:crypto";
 import type { D1Database, R2Bucket } from "@cloudflare/workers-types";
 import { checkRateLimit, getUserById } from "./auth";
@@ -73,14 +74,14 @@ export async function handleCrmMail(
     return json({ error: "method_not_allowed" }, 405);
   let body: Record<string, unknown>;
   try {
-    if (Number(request.headers.get("content-length")) > 65536)
+    if (Number(request.headers.get("content-length")) > 7100000)
       throw new BodyLimitError("too large");
-    const parsed: unknown = JSON.parse(
-      await readLimitedText(request.body, 65536),
-    );
+    const raw=await readLimitedText(request.body,7100000);
+    const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
       return json({ error: "invalid_request" }, 400);
     body = parsed as Record<string, unknown>;
+    if(new TextEncoder().encode(raw).byteLength>65536&&!(body.action==='send'&&body.envelope))throw new BodyLimitError('too large');
   } catch (error) {
     return json(
       { error: "invalid_request" },
@@ -153,6 +154,21 @@ export async function handleCrmMail(
         secret,
       );
       await requireCrmMailboxGrant(env.DB, actor.id, mailboxId);
+      return json(result);
+    }
+    if(body.action==='sendStatus'){
+      if(typeof body.idempotencyKey!=='string'||!uuid.test(body.idempotencyKey))return json({error:'invalid_request'},400);
+      const attempt=await env.DB.prepare(`SELECT a.status,a.email_id,e.status delivery_status,COALESCE(e.thread_id,e.id) thread_id FROM send_attempts a JOIN crm_mail_send_authorizations permission ON permission.attempt_id=a.id LEFT JOIN emails e ON e.id=a.email_id WHERE a.id=? AND a.user_id=? AND permission.actor_id=? AND permission.mailbox_address_id=?`).bind(await sha256Hex(`${scope.ownerId}\u0000crm:${actor.id}:${body.idempotencyKey}`),scope.ownerId,actor.id,mailboxId).first<{status:string;email_id:string|null;delivery_status:string|null;thread_id:string|null}>();
+      await requireCrmMailboxGrant(env.DB,actor.id,mailboxId);
+      return json(attempt?{state:attempt.status==='sent'?'accepted':attempt.status==='failed'?'rejected':'unknown',messageId:attempt.email_id,threadId:attempt.thread_id,delivery:attempt.delivery_status}:{state:'unknown',messageId:null,threadId:null,delivery:null});
+    }
+    if(body.action==='composeCapabilities')return json({version:2,replyAll:true,generatedAttachments:true});
+    if (body.action === 'replyContext') {
+      if(!id(body.threadId))return json({error:'invalid_request'},400);
+      const {latest}=await crmReplyContext(env.DB,scope,body.threadId,'__latest__');
+      if(!latest)return json({error:'not_found'},404);
+      const result=await crmReplyPlan(latest,scope.address,await crmInternalAddresses(env.DB));
+      await requireCrmMailboxGrant(env.DB,actor.id,mailboxId);
       return json(result);
     }
     if (body.action === "threads") {
@@ -284,6 +300,11 @@ export async function handleCrmMail(
         idempotencyKey: key,
         crmAuthorization: { actorId: actor.id, mailboxAddressId: mailboxId },
       };
+      let envelope:CrmEnvelope|undefined;
+      if(body.envelope!==undefined){
+        try{const parsed=await crmEnvelope(body.envelope);envelope=parsed.envelope;input.attachments=parsed.attachments;input.cc=envelope.cc.join(', ');input.bcc=envelope.bcc.join(', ');}
+        catch{return json({error:'invalid_envelope'},400);}
+      }
       if (body.threadId !== undefined) {
         if (
           !id(body.threadId) ||
@@ -315,7 +336,12 @@ export async function handleCrmMail(
           return json({ error: "conversation_advanced" }, 409);
         if (!recipients.length)
           return json({ error: "invalid_recipient" }, 400);
-        input.to = recipients.join(", ");
+        if(envelope){
+          const plan=await crmReplyPlan(original,scope.address,await crmInternalAddresses(env.DB));
+          const selected=envelope.replyMode==='reply_all'?plan.replyAll:plan.reply;
+          if(envelope.replyMode==='new'||envelope.threadRevision!==plan.revision||JSON.stringify({to:envelope.to,cc:envelope.cc,bcc:envelope.bcc})!==JSON.stringify(selected))return json({error:'conversation_advanced'},409);
+          input.to=envelope.to.join(', ');
+        }else input.to = recipients.join(", ");
         input.subject = `Re: ${displaySubject(original.subject)}`;
         input.replyToEmailId = original.id;
         input.inReplyTo = original.message_id;
@@ -337,7 +363,8 @@ export async function handleCrmMail(
         // First increment is one explicit recipient. No CC/BCC or batch outreach.
         if (!/^[^\s<>,;@]+@[^\s<>,;@]+\.[^\s<>,;@]+$/.test(body.to))
           return json({ error: "invalid_recipient" }, 400);
-        input.to = body.to;
+        if(envelope&&(envelope.replyMode!=='new'||envelope.threadRevision!==null||envelope.to[0]!==body.to))return json({error:'invalid_envelope'},400);
+        input.to = envelope?envelope.to.join(', '):body.to;
         input.subject = body.subject;
       }
       // Recheck after all reads, then again immediately before provider delivery.
@@ -366,10 +393,15 @@ export async function handleCrmMail(
             body.replyToMessageId as string,
             attempt?.email_id,
           );
+          if(envelope&&latest){
+            const plan=await crmReplyPlan(latest,scope.address,await crmInternalAddresses(env.DB));
+            const selected=envelope.replyMode==='reply_all'?plan.replyAll:plan.reply;
+            if(plan.revision!==envelope.threadRevision||JSON.stringify(selected)!==JSON.stringify({to:envelope.to,cc:envelope.cc,bcc:envelope.bcc}))throw new CrmMailAccessError(409,'conversation_advanced');
+          }
           if (
             !latest ||
             latest.id !== body.replyToMessageId ||
-            crmMessagePerspective(latest, await crmInternalAddresses(env.DB)).reply_target.join(", ") !== input.to
+            (!envelope&&crmMessagePerspective(latest, await crmInternalAddresses(env.DB)).reply_target.join(", ") !== input.to)
           ) {
             throw new CrmMailAccessError(409, "conversation_advanced");
           }

@@ -15,6 +15,31 @@ import {
   type EmailProvider,
 } from "../src/lib/server/email-provider";
 import { recoverOutgoing } from "../src/lib/server/outgoing-recovery";
+import {sha256Hex} from '../src/lib/server/send-attempts';
+
+test('reviewed reply-all preserves visible recipients and headers, excludes BCC, and replays without a duplicate',async()=>{
+ const f=await fixture();await f.approve(true);await f.inbound('reply-all');
+ f.sqlite.exec("UPDATE emails SET to_addr='sales@example.test, partner@outside.test',cc_addr='cc@outside.test',bcc_addr='hidden@outside.test',reply_to_addr='reply@outside.test' WHERE id='reply-all'");
+ const context=await(await f.call({action:'replyContext',mailboxId:'sales',threadId:'reply-all'})).json();
+ assert.deepEqual(context.reply,{to:['reply@outside.test'],cc:[],bcc:[]});assert.deepEqual(context.replyAll,{to:['reply@outside.test'],cc:['partner@outside.test','cc@outside.test'],bcc:[]});assert.ok(!JSON.stringify(context).includes('hidden'));
+ const request={action:'send',mailboxId:'sales',fromAddressId:'sales',threadId:'reply-all',replyToMessageId:context.messageId,text:'Reviewed reply',idempotencyKey:crypto.randomUUID(),envelope:{...context.replyAll,replyMode:'reply_all',threadRevision:context.revision,attachments:[]}};
+ assert.equal((await f.call(request)).status,200);assert.equal((await f.call(request)).status,200);assert.equal(f.sent.length,1);
+ const sent=f.sent[0] as {to:string[];cc:string[];bcc:string[];inReplyTo:string};assert.deepEqual(sent.to,['reply@outside.test']);assert.deepEqual(sent.cc,['partner@outside.test','cc@outside.test']);assert.equal(sent.inReplyTo,'<reply-all@sender.example.test>');
+ const status=await(await f.call({action:'sendStatus',mailboxId:'sales',idempotencyKey:request.idempotencyKey})).json();assert.equal(status.state,'accepted');assert.equal(f.sent.length,1);
+ const latest=await(await f.call({action:'replyContext',mailboxId:'sales',threadId:'reply-all'})).json();assert.deepEqual(latest.reply.to,['reply@outside.test']);assert.ok(!latest.reply.to.includes('sales@example.test'));
+});
+test('reply revisions and attachment hashes are verified before delivery',async()=>{
+ const f=await fixture();await f.approve(true);await f.inbound('stale-reply');
+ const context=await(await f.call({action:'replyContext',mailboxId:'sales',threadId:'stale-reply'})).json();
+ f.sqlite.exec("UPDATE emails SET reply_to_addr='changed@outside.test' WHERE id='stale-reply'");
+ assert.equal((await f.call({action:'send',mailboxId:'sales',fromAddressId:'sales',threadId:'stale-reply',replyToMessageId:context.messageId,text:'Old reply',idempotencyKey:crypto.randomUUID(),envelope:{...context.reply,replyMode:'reply',threadRevision:context.revision,attachments:[]}})).status,409);assert.equal(f.sent.length,0);
+ const data='name,value\n'+'Discovery,1\n'.repeat(7000),file={id:crypto.randomUUID(),name:'brief.csv',mime:'text/csv',hash:await sha256Hex(data),bytes:Buffer.byteLength(data),content:Buffer.from(data).toString('base64')};
+ const envelope={to:['prospect@example.test'],cc:[],bcc:['copy@example.test'],replyMode:'new',threadRevision:null,attachments:[file]};
+ const message={action:'send',mailboxId:'sales',fromAddressId:'sales',to:envelope.to[0],subject:'Brief',text:'Reviewed attachment',idempotencyKey:crypto.randomUUID(),envelope};
+ assert.equal((await f.call({...message,envelope:{...envelope,attachments:[{...file,hash:'0'.repeat(64)}]}})).status,400);assert.equal(f.sent.length,0);
+ assert.equal((await f.call(message)).status,200);assert.equal((await f.call(message)).status,200);assert.equal(f.sent.length,1);const sent=f.sent[0] as {attachments:{content:string}[];bcc:string[]};assert.equal(sent.attachments[0].content,file.content);assert.deepEqual(sent.bcc,['copy@example.test']);
+ assert.equal((await f.call({...message,envelope:{...envelope,bcc:['another@example.test']}})).status,409);assert.equal(f.sent.length,1);
+});
 
 async function copiedTeamEmail(f: Awaited<ReturnType<typeof fixture>>) {
   f.sqlite.exec("INSERT INTO addresses(id,user_id,domain_id,address) VALUES('devon-address','devon','domain','devon@example.test')");

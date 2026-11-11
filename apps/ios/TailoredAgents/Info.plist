@@ -12,7 +12,7 @@
     <key>TAAPNSEnvironment</key><string>$(TA_APNS_ENVIRONMENT)</string>
     <key>LSRequiresIPhoneOS</key><true/>
     <key>NSCameraUsageDescription</key><string>Take a photo to attach to a message you are writing.</string>
-    <key>NSMicrophoneUsageDescription</key><string>Include audio when recording a video to attach to a message.</string>
+    <key>NSMicrophoneUsageDescription</key><string>Record a voice note for your assistant or include audio in a video you attach to a message.</string>
     <key>UIApplicationSceneManifest</key><dict>
         <key>UIApplicationSupportsMultipleScenes</key><false/>
         <key>UISceneConfigurations</key><dict/>

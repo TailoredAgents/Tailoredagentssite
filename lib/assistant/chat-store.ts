@@ -73,7 +73,7 @@ export async function chatState(c:DashboardContext,sessionId:string,threadId?:st
  let turns:ChatTurn[]=[];
  if(threadId){
   if(!(await db.query('SELECT id FROM assistant_chat_threads WHERE workspace_id=$1 AND user_id=$2 AND id=$3',[...owner(c),threadId])).rowCount)throw unavailable();
-  turns=(await db.query<ChatTurn>('SELECT id,file_ids,user_message,assistant_message,status,activity,created_at,work_plan,employee_replies,max_cost_micros,blocked_reason,(SELECT COALESCE(sum(amount_micros),0) FROM assistant_chat_requests r WHERE r.turn_id=t.id) used_micros FROM assistant_chat_turns t WHERE thread_id=$1 ORDER BY created_at DESC,id DESC LIMIT 101',[threadId])).rows;
+  turns=(await db.query<ChatTurn>('SELECT id,waiting_action_id,file_ids,user_message,assistant_message,status,activity,created_at,work_plan,employee_replies,max_cost_micros,blocked_reason,(SELECT COALESCE(sum(amount_micros),0) FROM assistant_chat_requests r WHERE r.turn_id=t.id) used_micros FROM assistant_chat_turns t WHERE thread_id=$1 ORDER BY created_at DESC,id DESC LIMIT 101',[threadId])).rows;
  }
  const [threads,settings,connection]=await Promise.all([
   db.query<{id:string;title:string}>('SELECT id,title FROM assistant_chat_threads WHERE workspace_id=$1 AND user_id=$2 ORDER BY updated_at DESC,id DESC LIMIT 101',owner(c)),
@@ -85,7 +85,7 @@ export async function chatState(c:DashboardContext,sessionId:string,threadId?:st
  const [memories,routines,notifications]=connection?await Promise.all([searchMemories(connection),listRoutines(connection),connection.scopes.includes('conversations:read')?listBookingNotifications(connection):{items:[]}]):[{items:[]},{items:[]},{items:[]}];
  const notificationNumberId=connection?(await db.query('SELECT notification_number_id FROM assistant_grants WHERE id=$1',[connection.grantId])).rows[0]?.notification_number_id??'':'';
  return {numbers,memories:memories.items,routines:routines.items,notifications:notifications.items,threads:threads.rows.slice(0,100),hasMore:threads.rows.length>100,turns:turns.slice(0,100).reverse(),historyLimited:turns.length>100,
-  backgroundAvailable:process.env.ASSISTANT_BACKGROUND_ENABLED==='true',
+  backgroundAvailable:process.env.ASSISTANT_BACKGROUND_ENABLED==='true',dictationAvailable:process.env.ASSISTANT_DICTATION_ENABLED!=='false',
   connection:connection?{background:connection.authority==='background',expiresAt:connection.expiresAt.toISOString(),mode:connection.directActions?'direct':connection.scopes.includes('operations:write')?'review':'read',paused:connection.writesPaused,conversations:connection.scopes.includes('conversations:read'),meetings:connection.scopes.includes('meetings:read'),research:connection.scopes.includes('research:use'),sms:connection.scopes.includes('conversations:send'),email:connection.scopes.includes('mail:send'),calls:connection.scopes.includes('voice:send'),routines:connection.scopes.includes('routines:write'),notificationNumberId}:null,
   configured:!!process.env.OPENAI_API_KEY?.trim()&&process.env.ASSISTANT_CHAT_ENABLED!=='false'&&process.env.OPERATIONS_ASSISTANT_ENABLED!=='false',
   monthlyLimit:Number(settings.rows[0]?.monthly_limit_micros??0)/1000000,monthlyUsed:Number(settings.rows[0]?.used??0)/1000000,canManageBudget:['owner','admin'].includes(c.role),viewer:c.role==='viewer'};

@@ -253,3 +253,13 @@
  /* Keep the business phone reachable without covering the chat's Send or file controls. */
  .dashboard-theme:has(.assistant-workspace[data-section=chat]) .voice-launcher { top:94px; bottom:auto; right:14px; min-height:36px; padding:6px 10px; }
 }
+
+.assistant-inline-review { margin: 1rem 0; padding: 1rem; border: 1px solid var(--dashboard-border, #d1dbe7); border-radius: 12px; overflow-wrap: anywhere; }
+.assistant-inline-review label { display: block; margin: .65rem 0; }
+.assistant-inline-review input:not([type=checkbox]), .assistant-inline-review textarea { display: block; width: 100%; max-width: 100%; padding: .6rem; border: 1px solid #a8b8cb; border-radius: 6px; }
+.assistant-inline-review pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .8rem; }
+.assistant-email-body { white-space: pre-wrap; border-left: 3px solid #b9c6db; padding-left: .8rem; }
+.assistant-file-hash { display: block; font-size: .72rem; overflow-wrap: anywhere; }
+
+.assistant-dictation { padding: .65rem 0; font-size: .9rem; }
+.assistant-dictation audio, .assistant-dictation textarea { display: block; width: 100%; margin: .5rem 0; }

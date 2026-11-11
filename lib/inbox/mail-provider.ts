@@ -1,4 +1,6 @@
+import {createHash} from 'node:crypto';
 import "server-only";
+import {emailEnvelopeIdentity,emailReplyContextSchema,type EmailEnvelope} from '@/lib/assistant/email-contract';
 import {assistantExecution} from '@/lib/assistant/execution-context';
 import {backgroundMailToken} from '@/lib/assistant/background-identity';
 import { getDatabasePool } from "@/lib/dashboard/db";
@@ -205,8 +207,13 @@ async function request(
   // Assistant mail sending must use the reviewed sender/allowance path, never
   // silently inherit the dashboard's unrestricted interactive send transport.
   if (delegated && body.action === 'send') {
-    const action=delegated.reviewedEmailActionId?(await getDatabasePool().query(`SELECT input FROM assistant_actions WHERE id=$1 AND grant_id=$2 AND user_id=$3 AND workspace_id=$4 AND tool='send_email' AND status='running' AND approved_at IS NOT NULL AND execution_authority='dashboard'`,[delegated.reviewedEmailActionId,delegated.grantId,context.user.id,context.workspace.id])).rows[0]:null;
-    if(!action||body.threadId||body.mailboxId!==action.input.mailboxId||body.to!==action.input.to||body.subject!==action.input.subject||body.text!==action.input.text)
+    const action=delegated.reviewedEmailActionId?(await getDatabasePool().query(`SELECT input,review_context FROM assistant_actions WHERE id=$1 AND grant_id=$2 AND user_id=$3 AND workspace_id=$4 AND tool='send_email' AND status='running' AND approved_at IS NOT NULL AND execution_authority='dashboard'`,[delegated.reviewedEmailActionId,delegated.grantId,context.user.id,context.workspace.id])).rows[0]:null;
+    const approved=action?.review_context?.email;
+    const suppliedEnvelope=body.envelope as EmailEnvelope|undefined;
+    const validFiles=suppliedEnvelope?.attachments.every(file=>typeof file.content==='string'&&Buffer.byteLength(file.content,'base64')===file.bytes&&createHash('sha256').update(Buffer.from(file.content,'base64')).digest('hex')===file.hash);
+    const matchesEnvelope=validFiles&&approved?.envelope&&body.envelope&&JSON.stringify(emailEnvelopeIdentity(body.envelope as EmailEnvelope))===JSON.stringify(approved.envelope);
+    const matchesTarget=approved?.envelope?matchesEnvelope&&(body.threadId??null)===action.input.threadId&&(body.replyToMessageId??null)===action.input.replyToMessageId&&(body.threadId?body.to===undefined&&body.subject===undefined:body.to===approved.envelope.to[0]&&body.subject===action.input.subject):!body.threadId&&body.to===action?.input.to&&body.subject===action?.input.subject&&!body.envelope;
+    if(!action||!matchesTarget||body.mailboxId!==action.input.mailboxId||body.text!==action.input.text)
       throw new MailProviderError('grant_required','Review this exact email in the Assistant dashboard before sending.');
   }
   if (!session || session.user.id !== context.user.id)
@@ -448,3 +455,9 @@ export async function downloadMailAttachment(
     true,
   )) as Response;
 }
+
+export async function getMailReplyContext(context:DashboardContext,mailboxId:string,threadId:string){return checked(emailReplyContextSchema,await request(context,{action:'replyContext',mailboxId,threadId}));}
+
+export async function getMailComposeCapabilities(context:DashboardContext,mailboxId:string){return checked(z.object({version:z.literal(2),replyAll:z.literal(true),generatedAttachments:z.literal(true)}),await request(context,{action:'composeCapabilities',mailboxId}));}
+
+export async function getMailSendStatus(context:DashboardContext,mailboxId:string,idempotencyKey:string){return checked(z.object({state:z.enum(['accepted','rejected','unknown']),messageId:identifier.nullable(),threadId:identifier.nullable(),delivery:z.string().max(100).nullable()}),await request(context,{action:'sendStatus',mailboxId,idempotencyKey}));}

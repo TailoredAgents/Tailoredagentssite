@@ -7,7 +7,7 @@ import {saveConversationWork,ConversationInputError} from '@/lib/conversations/s
 import {AssistantError} from '../config';
 import {emailSchema,executeEmail,callCustomerSchema,executeCall} from '../outbound';
 export const communicationChanges:ChangeTool[]=[{
- name:'send_email',title:'Send email',description:'Prepare a new email from an allowed mailbox. Exact human review is always required, even with direct actions. Read list_mailboxes and the customer’s current records first. Use a stable requestId. Acceptance is not proof of delivery.',schema:emailSchema,scopes:['conversations:read','mail:send'],external:true,reviewRequired:true,run:executeEmail,
+ name:'send_email',title:'Send email',description:'Prepare an email or reply from an allowed mailbox. Exact human review is always required. For replies, read get_email_reply_context and preserve its message ID, revision, subject and selected reply/reply-all recipients. New email may include explicit To/CC/BCC. Attach only generated PDF/DOCX/CSV/XLSX results by document ID and immutable hash; five files, 5 MB combined. Read current customer records first. Keep requestId stable; acceptance is not delivery.',schema:emailSchema,scopes:['conversations:read','mail:send'],external:true,reviewRequired:true,run:executeEmail,
 },{
  name:'call_customer',title:'Connect employee to customer',description:'Call the employee’s saved approved phone, then connect the customer after the employee answers and presses 1. Read get_voice_status and the customer first. Supply an exact phone and stable requestId. Standard calling charges apply. This is not an AI voice call.',schema:callCustomerSchema,scopes:['conversations:read','voice:send'],external:true,run:executeCall,
 },{

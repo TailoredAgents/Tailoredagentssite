@@ -75,13 +75,11 @@ test('employee enables native chat, completes a tool action, and resumes private
  await chat.getByRole('button',{name:'Send',exact:true}).click();
  await expect(chat.getByText(/Review the proposed change to continue/)).toBeVisible({timeout:60000});
  await expect(chat.getByRole('button',{name:'Send',exact:true})).toBeDisabled();
- const actionLink=chat.getByRole('link',{name:'View action',exact:true}).first();
- const reviewHref=await actionLink.getAttribute('href');
  const pending=(await (await page.request.get('/api/assistant/chat')).json()).threads.find((t:{title:string})=>t.title==='Save another goal after my review.');
- await page.goto(reviewHref!);
- const actionId=new URL(reviewHref!,baseURL).searchParams.get('action');
- await page.locator('#review-'+actionId).getByRole('button',{name:'Approve this change',exact:true}).click();
- await page.goto('/dashboard/assistant?thread='+pending.id);
+ const inline=chat.getByRole('region',{name:'Action review',exact:true});
+ await expect(inline.getByRole('button',{name:'Approve this change',exact:true})).toBeDisabled();
+ await inline.getByLabel('I reviewed the exact change above.').check();
+ await inline.getByRole('button',{name:'Approve this change',exact:true}).click();
  await expect(chat.getByText('Your onboarding goal is saved.',{exact:true})).toBeVisible({timeout:60000});
  const completed=(await (await page.request.get('/api/assistant/chat?thread='+pending.id)).json()).turns[0];
  expect(completed.status).toBe('completed');expect(completed.max_cost_micros).toBe('750000');

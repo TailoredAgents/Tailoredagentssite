@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {createHash} from 'node:crypto';
+import {emailEnvelopeIdentity} from '@/lib/assistant/email-contract';
 import {assistantExecution} from '@/lib/assistant/execution-context';
 import type { DashboardContext } from "@/lib/dashboard/data";
 vi.mock("server-only", () => ({}));
@@ -94,6 +96,19 @@ describe("CRM Mail transport and privacy", () => {
       await expect(sendMail(context,input)).rejects.toMatchObject({state:'grant_required'});
     });
     expect(token).toHaveBeenCalledWith('delegated-session',context.user.id);
+  });
+  it('binds reviewed reply recipients, thread and actual attachment bytes at the Mail boundary',async()=>{
+    const delegated={userId:context.user.id,sessionId:'delegated-session',grantId:'test-grant',reviewedEmailActionId:'reviewed-action'},bytes=Buffer.from('Task\nDiscovery');
+    const envelope={to:['customer@example.test'],cc:['partner@example.test'],bcc:[],replyMode:'reply_all' as const,threadRevision:'a'.repeat(64),attachments:[{id:'file',name:'brief.csv',mime:'text/csv',hash:createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length,content:bytes.toString('base64')}]};
+    const message={...input,threadId:'thread-1',replyToMessageId:'original',envelope};
+    deletedThread.query.mockImplementation(async sql=>String(sql).includes('assistant_actions')?{rowCount:1,rows:[{input:{...input,threadId:'thread-1',replyToMessageId:'original'},review_context:{email:{envelope:emailEnvelopeIdentity(envelope)}}}]}:{rowCount:0,rows:[]});
+    fetchMock.mockResolvedValue(Response.json({messageId:'message-1',threadId:'thread-1',status:'accepted'}));
+    await assistantExecution.run(delegated,async()=>{
+      await expect(sendMail(context,{...message,envelope:{...envelope,cc:['wrong@example.test']}})).rejects.toMatchObject({state:'grant_required'});
+      await expect(sendMail(context,{...message,replyToMessageId:'other'})).rejects.toMatchObject({state:'grant_required'});
+      await expect(sendMail(context,{...message,envelope:{...envelope,attachments:[{...envelope.attachments[0],content:Buffer.from('Changed').toString('base64')}]}})).rejects.toMatchObject({state:'grant_required'});
+      expect(fetchMock).not.toHaveBeenCalled();await sendMail(context,message);expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
   });
   afterEach(() => {
     vi.unstubAllGlobals();

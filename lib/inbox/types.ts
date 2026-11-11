@@ -1,3 +1,4 @@
+import type {EmailEnvelope} from '@/lib/assistant/email-contract';
 export type InboxMailbox = { id: string; name: string; email: string; canSend: boolean; addresses: { id: string; address: string }[] };
 export type InboxConnection = { state: "ready" | "setup" | "grant_required" | "unavailable"; message: string };
 export type InboxMember = { id: string; name: string; email: string };
@@ -35,5 +36,5 @@ export type InboxWorkspace = {
   composeDraft?: InboxDraft | null;
 };
 export type InboxFilters = { mailbox?: string | string[]; thread?: string | string[]; view?: string | string[]; q?: string | string[]; page?: string | string[]; unread?: string | string[]; compose?: string | string[] };
-export type MailSendInput = { mailboxId: string; fromAddressId: string; threadId?: string; replyToMessageId?: string; expectedReplyTargets?: string[]; to?: string; subject?: string; text: string; idempotencyKey: string };
+export type MailSendInput = { envelope?:EmailEnvelope; mailboxId: string; fromAddressId: string; threadId?: string; replyToMessageId?: string; expectedReplyTargets?: string[]; to?: string; subject?: string; text: string; idempotencyKey: string };
 export type MailSendResult = { messageId: string; threadId: string; providerId?: string; status: "accepted" | "pending" };

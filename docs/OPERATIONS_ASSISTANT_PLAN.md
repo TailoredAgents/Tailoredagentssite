@@ -207,6 +207,8 @@ Extend the separate Mail transport and attachment contract with scoped file acce
 
 **G acceptance:** correct reply routing from inbound and outbound messages; stale/edited approval rejected; attachments match the reviewed hashes; lost permission blocks send; provider timeout cannot cause duplicate send; voice correction works on desktop/mobile; callback behavior remains unchanged.
 
+**November 10 implementation:** replies/reply-all, generated-file attachments, exact inline editing/reapproval, read-only receipt reconciliation and bounded voice dictation are implemented. See [communications evidence and deployment order](OPERATIONS_ASSISTANT_COMMUNICATIONS.md). Ten desktop/phone journeys and the targeted communication/voice/Mail suites pass with synthetic providers. Austin cannot access Cloudflare; his partner must deploy the separate Mail release before enhanced Mail/background activation.
+
 ## Budget, performance and privacy throughout
 
 Use the existing shared reservation/settlement ledger for all assistant model/tool/OCR/dictation costs. Reserve conservatively before work, reconcile actual usage and retain unknown charges until resolved. Track employee, assignment and feature so the owner can see what used the allowance. A continuation or retry inherits the original ceiling.
@@ -241,7 +243,7 @@ Roll out to Austin with controlled employee test destinations, then Devon and Je
 
 ## Completion checklist for this one goal
 
-November 10 progress: the first implementation increment adds the employee work list, durable notification feed and opted-in SMS with verification, quiet hours and receipts. See [the release notes](OPERATIONS_ASSISTANT_SETUP.md) for evidence. Independent 30-day background delegation is also implemented and locally verified; bounded assignments, saved plans, pause/resume, review/input waiting and per-assignment spending ceilings are implemented. Production activation and real employee alert acceptance remain open. Document and knowledge implementation passed local acceptance. Proactive routines also passed local acceptance. Native push activation and milestones G–H remain open. Austin confirmed only a free Apple account is available, so signed physical-device push acceptance requires future Developer Program enrollment.
+November 10 progress: the first implementation increment adds the employee work list, durable notification feed and opted-in SMS with verification, quiet hours and receipts. See [the release notes](OPERATIONS_ASSISTANT_SETUP.md) for evidence. Independent 30-day background delegation is also implemented and locally verified; bounded assignments, saved plans, pause/resume, review/input waiting and per-assignment spending ceilings are implemented. Production activation and real employee alert acceptance remain open. Document and knowledge implementation passed local acceptance. Proactive routines also passed local acceptance. Chat communications passed local acceptance. Native push activation and live team rollout remain open. Austin confirmed only a free Apple account is available, so signed physical-device push acceptance requires future Developer Program enrollment.
 
 - [ ] A: Baseline health and current production acceptance recorded.
 - [ ] B: Durable assignments, independent scoped delegation, work list and employee SMS pass acceptance.
@@ -249,7 +251,7 @@ November 10 progress: the first implementation increment adds the employee work 
 - [x] D: Supported uploads produce useful, source-linked downloadable files (local acceptance; live/iPhone rollout remains H).
 - [x] E: Shared knowledge is published, cited, correctable and permissioned (local acceptance; production rollout remains H).
 - [x] F: Opted-in proactive routines are useful, bounded and deduplicated (local acceptance; employee activation remains H).
-- [ ] G: Replies, attachments, inline review, delivery states and voice dictation work in chat.
+- [x] G: Replies, attachments, inline review, delivery states and voice dictation pass local acceptance; separate Mail deployment and real iPhone acceptance remain H.
 - [ ] H: Employee end-to-end journeys, cost controls and staged rollout are accepted.
 - [ ] Exact changes, deployment state and remaining activation dependencies are recorded; verified commits are pushed to main.
 

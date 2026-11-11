@@ -47,7 +47,7 @@ export async function listActions(p:Principal,page=1){
 // Dashboard approval and explicitly delegated execution share one claim/receipt path.
 // Claim first, then execute once. A crash after claim is intentionally not retried:
 // a domain transaction may have committed even if its receipt was not saved.
-export async function reviewAction(context:DashboardContext,id:string,decision:'approve'|'reject'){return performAction(context,id,decision);}
+export async function reviewAction(context:DashboardContext,id:string,decision:'approve'|'reject',expectedHash?:string){return performAction(context,id,decision,undefined,expectedHash);}
 export async function executeAction(p:Principal,name:string,raw:unknown,key:string){
  const tool=findChange(name);if(!tool)throw new AssistantError('unsupported_action','This action is unavailable.');
  if(tool.reviewRequired)return prepareAction(p,name,raw,key);
@@ -56,12 +56,13 @@ export async function executeAction(p:Principal,name:string,raw:unknown,key:stri
   return performAction(fresh.context,proposal.id,'approve',fresh.grantId);
  },true);
 }
-async function performAction(context:DashboardContext,id:string,decision:'approve'|'reject',delegateGrantId?:string){
+async function performAction(context:DashboardContext,id:string,decision:'approve'|'reject',delegateGrantId?:string,expectedHash?:string){
  const db=await getDatabasePool().connect();let row:ActionRow;let p:Principal;
  try{
   await db.query('BEGIN');
   const r=(await db.query<ActionRow>('SELECT * FROM assistant_actions WHERE id=$1 AND user_id=$2 AND workspace_id=$3 FOR UPDATE',[z.uuid().parse(id),context.user.id,context.workspace.id])).rows[0];
   if(!r||(delegateGrantId&&r.grant_id!==delegateGrantId))throw new AssistantError('not_found','This action is unavailable.',404);row=r;
+  if(expectedHash&&row.input_hash!==expectedHash)throw new AssistantError('review_changed','The proposal changed. Refresh and review it again.',409);
   if(row.status!=='awaiting_approval'){await db.query('COMMIT');return receipt(row);}
   if(decision==='reject'){await db.query("UPDATE assistant_actions SET status='cancelled',updated_at=now() WHERE id=$1",[id]);await db.query('COMMIT');return receipt({...row,status:'cancelled'});}
   if(row.expires_at.getTime()<=Date.now())throw new AssistantError('expired','This proposal expired. Ask your assistant to prepare it again.',409);

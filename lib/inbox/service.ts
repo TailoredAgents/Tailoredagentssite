@@ -1,3 +1,4 @@
+import {emailEnvelopeIdentity,type EmailEnvelope} from '@/lib/assistant/email-contract';
 import "server-only";
 import {draftRevisionMatches} from '@/lib/conversations/draft-revision';
 import { createHash, randomUUID } from "node:crypto";
@@ -6,7 +7,7 @@ import type { PoolClient } from "pg";
 import type { DashboardContext } from "@/lib/dashboard/data";
 import { getDatabasePool, insertAuditLog } from "@/lib/dashboard/db";
 import { authorizeInbox, InboxAccessError, requireInboxMailbox } from "./data";
-import { getMailThread, sendMail, MailProviderError } from "./mail-provider";
+import { getMailThread, sendMail, getMailSendStatus, MailProviderError } from "./mail-provider";
 import {
   conversationSchema,
   draftSchema,
@@ -266,7 +267,7 @@ function providerKey(workspaceId: string, requestId: string) {
 export async function sendInboxMessage(
   context: DashboardContext,
   raw: unknown,
-  guard?: {beforeDelivery:()=>Promise<void>},
+  guard?: {beforeDelivery:()=>Promise<void>;emailEnvelope?:EmailEnvelope},
 ): Promise<InboxActionState> {
   const input = sendSchema.parse(raw);
   // Drafts preserve the editor's whitespace, while the send payload is trimmed.
@@ -321,9 +322,11 @@ export async function sendInboxMessage(
     ];
     if (!input.subject) throw new InboxInputError("Enter a subject.");
   }
+  if(guard?.emailEnvelope)recipients=[...guard.emailEnvelope.to,...guard.emailEnvelope.cc,...guard.emailEnvelope.bcc];
   const requestHash = createHash("sha256")
     .update(
       JSON.stringify({
+        ...(guard?.emailEnvelope?{envelope:emailEnvelopeIdentity(guard.emailEnvelope)}:{}),
         actor: context.user.id,
         mailbox: mailbox.id,
         thread: input.threadId ?? null,
@@ -396,13 +399,14 @@ export async function sendInboxMessage(
   try {
     // The gateway must revalidate current Mail permission and honor this exact
     // idempotency key. Unknown/crashed calls never create a fresh provider key.
-    if(guard)await guard.beforeDelivery();
+    if(guard)try{await guard.beforeDelivery();}catch{throw new MailProviderError('grant_required','The reviewed sources or permissions changed before delivery. Prepare a new review.');}
     const result = await sendMail(context, {
+      ...(guard?.emailEnvelope?{envelope:guard.emailEnvelope}:{}),
       mailboxId: input.mailboxId,
       fromAddressId: mailbox.id,
       threadId: input.threadId,
       replyToMessageId: input.replyToMessageId,
-      expectedReplyTargets: input.threadId ? recipients : undefined,
+      expectedReplyTargets: input.threadId ? guard?.emailEnvelope?.to??recipients : undefined,
       to: input.threadId ? undefined : recipients[0],
       subject: input.subject,
       text: input.text,
@@ -471,4 +475,14 @@ export async function sendInboxMessage(
       sendState: "unknown",
     };
   }
+}
+
+/** Read-only reconciliation. This endpoint never calls the sender or releases an unknown attempt. */
+export async function checkInboxSend(context:DashboardContext,mailboxId:string,requestId:string){
+ z.uuid().parse(requestId);await requireInboxMailbox(context,mailboxId);
+ const intent=(await getDatabasePool().query<Intent>('SELECT * FROM inbox_outbound_intents WHERE workspace_id=$1 AND actor_user_id=$2 AND mailbox_id=$3 AND request_id=$4',[context.workspace.id,context.user.id,mailboxId,requestId])).rows[0];
+ if(!intent)throw new InboxInputError('This send attempt is unavailable.');
+ const status=await getMailSendStatus(context,mailboxId,providerKey(context.workspace.id,requestId));
+ if(status.state==='accepted')await getDatabasePool().query("UPDATE inbox_outbound_intents SET state='accepted',message_id=$3,thread_id=$4,provider_status='accepted',updated_at=now() WHERE workspace_id=$1 AND request_id=$2",[context.workspace.id,requestId,status.messageId,status.threadId]);
+ return {requestId,...status,note:status.state==='unknown'?'No final outcome is confirmed. Do not resend with a new request ID.':status.state==='accepted'?'Mail accepted the message; inspect delivery separately.':'Mail reports a definite rejection.'};
 }
