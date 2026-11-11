@@ -232,6 +232,8 @@ Each phase should be a focused, reviewable change with before/after screenshots 
 
 Recommended first implementation slice: phases 1 and 2, demonstrated on Overview and Prospects. That will establish the premium finish without spreading inconsistent one-off styling across the software. Then apply the agreed patterns to the full workspace.
 
+November 11 implementation update: the [record polish pass](SOFTWARE_RECORD_POLISH_2026-11-11.md) applies the pattern to prospect, opportunity, client, contact, project, service and relationship details. It addresses V19–20 and V31 on those records, the form-spacing/mobile-width portions of V34–35 there, V36 full-width solution planning, and the service-detail priority portion of V37. The broader phase-4 Sites, Capture, partner/statement, sales-board/table and first-use findings remain separate work; this does not close the whole audit.
+
 ### Page-level acceptance targets
 
 | Family | What the finished page should demonstrate |

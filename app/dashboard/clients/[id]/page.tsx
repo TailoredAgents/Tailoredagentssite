@@ -1,3 +1,6 @@
+import { RecordEditor } from "@/components/dashboard/record-editor";
+import { RecordDetails } from "@/components/dashboard/record-workspace";
+import recordStyles from "@/components/dashboard/record-workspace.module.css";
 import { DiscoveryPanel } from "@/components/relationships/discovery-panel";
 import { RecordFacts } from "@/components/dashboard/record-facts";
 import type { Metadata } from "next";
@@ -23,20 +26,20 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
   return (
     <>
       <header className="dashboard-topbar"><div><span>Clients</span><strong>{client.name}</strong></div><span className="dashboard-secure"><ShieldCheck size={15} />Protected session</span></header>
-      <div className="dashboard-content">
+      <div className={`dashboard-content ${recordStyles.workspace}`}>
         <Link className="dashboard-back-link" href="/dashboard/clients"><ArrowLeft size={14} />Back to clients</Link>
         <section className="dashboard-page-heading dashboard-page-heading-compact dashboard-record-heading"><div><span>Client workspace</span><h1>{client.name}</h1><p>Created {formatOperationalDate(client.createdAt)} · Last updated {formatOperationalDate(client.updatedAt)}</p></div><em className={`dashboard-status status-${client.status}`}>{statusLabel(client.status)}</em></section>
-        <RecordFacts facts={[{label:"Contacts",value:client.contacts.length},{label:"Managed sites",value:client.sites.length},{label:"Projects",value:client.projects.length}]} />
+        <RecordFacts facts={[{label:"Primary contact",value:client.contacts.find(contact=>contact.isPrimary)?.name || "Not assigned"},{label:"Managed sites",value:client.sites.length},{label:"Projects",value:client.projects.length}]} />
         <nav className="workspace-section-links" aria-label="Client sections"><a href="#client-contacts">Contacts</a><a href="#client-assets">Sites & projects</a><a href="#client-settings">Account details</a></nav>
         <div className="dashboard-record-grid">
           <div className="dashboard-record-main">
-            <DiscoveryPanel context={context} target={{kind:"client",id}} />
+
             <section id="client-contacts" className="dashboard-panel">
               <div className="dashboard-panel-heading"><div><span>People</span><h2>Contacts</h2></div><small>{client.contacts.length}</small></div>
               <div className="dashboard-card-list">
-                {client.contacts.length ? client.contacts.map((contact) => <article key={contact.id}><span><UserRound size={16} /></span><div><strong>{contact.name}{contact.isPrimary ? " · Primary" : ""}</strong><small>{contact.title || "Contact"}</small></div><div className="dashboard-card-actions">{contact.email ? <a href={`mailto:${contact.email}`} aria-label={`Email ${contact.name}`}><Mail size={14} /></a> : null}{contact.phone ? <a href={`tel:${contact.phone}`} aria-label={`Call ${contact.name}`}><Phone size={14} /></a> : null}<Link href={`/dashboard/clients/${client.id}/contacts/${contact.id}`} aria-label={`Edit ${contact.name}`}><Pencil size={14} /></Link></div></article>) : <div className="dashboard-empty"><UsersRound size={21} /><strong>No contacts yet</strong></div>}
+                {client.contacts.length ? client.contacts.map((contact) => <article key={contact.id}><span><UserRound size={16} /></span><div><strong>{contact.name}{contact.isPrimary ? " · Primary" : ""}</strong><small>{contact.title || "Contact"}</small></div><div className="dashboard-card-actions">{contact.email ? <a href={`mailto:${contact.email}`} aria-label={`Email ${contact.name}`}><Mail size={14} /></a> : null}{contact.phone ? <a href={`tel:${contact.phone}`} aria-label={`Call ${contact.name}`}><Phone size={14} /></a> : null}<Link href={`/dashboard/clients/${client.id}/contacts/${contact.id}`} aria-label={`Open ${contact.name}`}><Pencil size={14} /></Link></div></article>) : <div className="dashboard-empty"><UsersRound size={21} /><strong>No contacts yet</strong></div>}
               </div>
-              <OperationForm disabled={!mutable} action={saveContactAction} submitLabel="Add contact" resetOnSuccess>
+              <RecordEditor label="Add a contact" disabled={!mutable}><OperationForm disabled={!mutable} action={saveContactAction} submitLabel="Add contact" resetOnSuccess>
                 <fieldset disabled={!mutable} className="dashboard-form-grid dashboard-form-grid-two">
                   <input type="hidden" name="clientId" value={client.id} />
                   <label className="dashboard-field"><span>Name</span><input name="name" required minLength={2} maxLength={140} /></label>
@@ -45,7 +48,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
                   <label className="dashboard-field"><span>Phone</span><input name="phone" type="tel" maxLength={40} /></label>
                   <label className="dashboard-check"><input type="checkbox" name="isPrimary" /><span>Primary contact</span></label>
                 </fieldset>
-              </OperationForm>
+              </OperationForm></RecordEditor>
             </section>
 
             <div id="client-assets" className="dashboard-secondary-grid dashboard-client-assets">
@@ -55,9 +58,10 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
           </div>
 
           <aside id="client-settings" className="dashboard-record-aside">
-            <section className="dashboard-panel"><div className="dashboard-panel-heading"><div><span>Account</span><h2>Client settings</h2></div></div><OperationForm disabled={!mutable} action={saveClientAction} submitLabel="Save client"><fieldset disabled={!mutable} className="dashboard-form-grid"><input type="hidden" name="clientId" value={client.id} /><label className="dashboard-field dashboard-field-full"><span>Client name</span><input name="name" defaultValue={client.name} required minLength={2} maxLength={160} /></label><label className="dashboard-field dashboard-field-full"><span>Status</span><select name="status" defaultValue={client.status}>{clientStatuses.map((status) => <option value={status} key={status}>{statusLabel(status)}</option>)}</select></label><label className="dashboard-field dashboard-field-full"><span>Internal notes</span><textarea name="notes" defaultValue={client.notes || ""} maxLength={4000} /></label></fieldset></OperationForm></section>
+            <section className="dashboard-panel"><div className="dashboard-panel-heading"><div><span>Account</span><h2>Client settings</h2></div></div><RecordDetails><p><strong>Account status</strong>{statusLabel(client.status)}</p><p><strong>Internal notes</strong>{client.notes || "No account notes yet."}</p></RecordDetails><RecordEditor label="Edit client" disabled={!mutable}><OperationForm disabled={!mutable} action={saveClientAction} submitLabel="Save client"><fieldset disabled={!mutable} className="dashboard-form-grid"><input type="hidden" name="clientId" value={client.id} /><label className="dashboard-field dashboard-field-full"><span>Client name</span><input name="name" defaultValue={client.name} required minLength={2} maxLength={160} /></label><label className="dashboard-field dashboard-field-full"><span>Status</span><select name="status" defaultValue={client.status}>{clientStatuses.map((status) => <option value={status} key={status}>{statusLabel(status)}</option>)}</select></label><label className="dashboard-field dashboard-field-full"><span>Internal notes</span><textarea name="notes" defaultValue={client.notes || ""} maxLength={4000} /></label></fieldset></OperationForm></RecordEditor></section>
           </aside>
         </div>
+        <DiscoveryPanel context={context} target={{kind:"client",id}} />
       </div>
     </>
   );

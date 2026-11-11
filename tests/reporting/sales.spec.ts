@@ -80,6 +80,7 @@ test("reviewed prospect import, scheduled sales and mockup handoff convert into 
   await page.getByRole("link", { name: f.first, exact: true }).click();
   await expect(page.getByRole("heading", { name: f.first, exact: true })).toBeVisible();
   const id = await recordId(f.first);
+  await page.getByText("Edit opportunity", { exact: true }).click();
   const opportunity = page.getByRole("form", { name: "Save opportunity", exact: true });
   await opportunity.getByRole("combobox", { name: "Stage", exact: true }).selectOption("interested");
   await opportunity.getByRole("combobox", { name: "Offer type", exact: true }).selectOption("promotion");
@@ -90,12 +91,14 @@ test("reviewed prospect import, scheduled sales and mockup handoff convert into 
   await expect(opportunity.getByRole("combobox", { name: "Offer type", exact: true })).toHaveValue("promotion");
   await expect(opportunity.getByLabel("Value (USD)", { exact: true })).toHaveValue("800");
   await page.reload();
+  await page.getByText("Edit opportunity", { exact: true }).click();
   await expect(opportunity.getByRole("combobox", { name: "Stage", exact: true })).toHaveValue("interested");
   await expect(opportunity.getByRole("combobox", { name: "Offer type", exact: true })).toHaveValue("promotion");
   await expect(opportunity.getByLabel("Value (USD)", { exact: true })).toHaveValue("800");
   await expect(page.getByText("Use Inbox for live calls and messages.", {exact:false})).toBeVisible();
   expect(await page.getByRole("button", { name: /^(Send email|Send text|Start call|Call now)$/i }).count()).toBe(0);
 
+  await page.getByText("Log a conversation or activity", { exact: true }).click();
   const log = page.getByRole("form", { name: "Log activity", exact: true });
   await log.getByRole("combobox", { name: "Activity type", exact: true }).selectOption("call");
   await log.getByRole("combobox", { name: "Direction", exact: true }).selectOption("outbound");
@@ -105,6 +108,7 @@ test("reviewed prospect import, scheduled sales and mockup handoff convert into 
   await expect(log.getByRole("status")).toHaveText("Activity recorded. No message or call was sent.");
   await expect(page.locator(".sales-activity-list")).toContainText(`Manual call history ${info.project.name}`);
 
+  await page.getByText("Schedule a next step", { exact: true }).click();
   const appointment = page.getByRole("form", { name: "Schedule next step", exact: true });
   await appointment.getByLabel("Title *", { exact: true }).fill(`Preview appointment ${info.project.name}`);
   await appointment.getByRole("combobox", { name: "Type", exact: true }).selectOption("appointment");
@@ -153,6 +157,7 @@ test("reviewed prospect import, scheduled sales and mockup handoff convert into 
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   await page.screenshot({ path: `test-results/sales-record-active-${info.project.name}.png`, fullPage: true });
 
+  await page.getByText("Prepare the client handoff", { exact: true }).click();
   const sale = page.getByRole("form", { name: "Mark won & create project", exact: true });
   const projectName = `${f.first} — Website delivery`;
   await sale.getByLabel("Project name *", { exact: true }).fill(projectName);
@@ -192,6 +197,7 @@ test("a networking opportunity keeps discovery notes and becomes a non-website c
   await create.getByRole("button", { name: "Create opportunity", exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard\/sales\/[a-f0-9-]+$/);
   const id = await recordId(business);
+  await page.getByText("Log a conversation or activity", { exact: true }).click();
   const activity = page.getByRole("form", { name: "Log activity", exact: true });
   await expect(activity.getByRole("combobox", { name: "Activity type", exact: true })).toHaveValue("note");
   await expect(activity.getByRole("combobox", { name: "Direction", exact: true })).toHaveValue("internal");
@@ -216,6 +222,7 @@ test("a networking opportunity keeps discovery notes and becomes a non-website c
   expect(a11y.violations).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   await page.locator("#sales-history").screenshot({ path: info.outputPath("discovery-notes.png") });
+  await page.getByText("Prepare the client handoff", { exact: true }).click();
   const handoff = page.getByRole("form", { name: "Mark won & create project", exact: true });
   await expect(handoff.getByLabel("Project name *", { exact: true })).toHaveValue("Document intake automation");
   await handoff.getByRole("button", { name: "Mark won & create project", exact: true }).click();
@@ -245,6 +252,7 @@ test("BatchDialer results reuse prospects, preserve opt-outs and deduplicate rep
   await page.goto(`/dashboard/sales/${id}`);
   await expect(page.locator(".sales-activity-list")).toContainText("BatchDialer import");
   await expect(page.locator(".sales-preferences")).toContainText("Do not contact");
+  await page.getByText("Edit opportunity", { exact: true }).click();
   await expect(page.getByRole("form", { name: "Save opportunity" }).getByRole("combobox", { name: "Stage", exact: true })).toHaveValue("interested");
   expect(await rows("SELECT id FROM crm_activities WHERE opportunity_id=$1 AND source='batchdialer'", [id])).toHaveLength(2);
   expect((await rows("SELECT status FROM crm_channel_preferences WHERE channel='call' AND normalized_address=$1", [f.secondPhone]))[0]?.status).toBe("blocked");

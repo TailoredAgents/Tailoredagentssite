@@ -80,23 +80,30 @@ test("navigation, search, empty results and shortcuts work with keyboard and pho
 test("real record changes save and milestone updates report success", async ({ page }, info) => {
   await signIn(page);
   await page.goto(`/dashboard/leads/${fixture.lead}`);
+  await page.getByText("Edit prospect", { exact: true }).click();
   const lead = page.getByRole("form", { name: "Save prospect" });
   await lead.getByLabel("Next action", { exact: true }).fill(`Confirm discovery call — ${info.project.name}`);
   await lead.getByRole("button", { name: "Save prospect", exact: true }).click();
   await expect(lead.getByRole("status")).toHaveText("Prospect updated.");
   await page.reload();
+  await page.getByText("Edit prospect", { exact: true }).click();
   await expect(lead.getByLabel("Next action", { exact: true })).toHaveValue(`Confirm discovery call — ${info.project.name}`);
+  await page.getByText("Add an internal note", { exact: true }).click();
   const note = page.getByRole("form", { name: "Add note" });
   await note.getByLabel("New note").fill(`Browser workflow check — ${info.project.name}`);
   await note.getByRole("button", { name: "Add note", exact: true }).click();
   await expect(page.locator(".dashboard-notes-list")).toContainText(`Browser workflow check — ${info.project.name}`);
   await page.goto(`/dashboard/projects/${fixture.project}`);
+  await page.locator("summary").filter({ hasText: "Update milestone" }).first().click();
   const milestone = page.getByRole("form", { name: "Update milestone" }).first();
   await milestone.getByRole("combobox").selectOption("completed");
   await milestone.getByRole("button", { name: "Update milestone" }).click();
   await expect(milestone.getByRole("status")).toHaveText("Milestone updated.");
-  await page.reload(); await expect(milestone.getByRole("combobox")).toHaveValue("completed");
+  await page.reload();
+  await page.locator("summary").filter({ hasText: "Update milestone" }).first().click();
+  await expect(milestone.getByRole("combobox")).toHaveValue("completed");
   await page.goto(`/dashboard/clients/${fixture.client}/contacts/${fixture.contact}`);
+  await page.getByText("Edit contact", { exact: true }).click();
   const contact = page.getByRole("form", { name: "Save contact" });
   await contact.getByLabel("Title", { exact: true }).fill(`Office manager — ${info.project.name}`);
   await contact.getByRole("button", { name: "Save contact", exact: true }).click();
@@ -111,7 +118,7 @@ test("view-only teammates can read every record without misleading edit buttons"
     await page.goto(path);
     await expect(page.getByText(/You have view-only access/)).toBeVisible();
     for (const form of await page.locator(".dashboard-operation-form, .dashboard-milestone-form").all()) {
-      await expect(form.getByRole("button", { name: /Save|Add|Create|Convert|Update/ })).toBeDisabled();
+      await expect(form.locator('button[type="submit"]')).toBeDisabled();
     }
   }
 });

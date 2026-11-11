@@ -52,7 +52,7 @@ test("record section navigation reaches saved work and account controls", async 
   await page.getByRole("navigation", { name: "Project sections", exact: true }).getByRole("link", { name: "Decisions & deliverables", exact: true }).click();
   await expect(page.locator("#project-records")).toBeInViewport();
   await page.goto("/dashboard/clients/00000000-0000-4000-8000-000000000311");
-  await page.getByRole("navigation", { name: "Client sections", exact: true }).getByRole("link", { name: "Account details", exact: true }).click(); await expect(page.getByRole("form", { name: "Save client", exact: true })).toBeInViewport();
+  await page.getByRole("navigation", { name: "Client sections", exact: true }).getByRole("link", { name: "Account details", exact: true }).click(); await page.getByText("Edit client", { exact: true }).click(); await expect(page.getByRole("form", { name: "Save client", exact: true })).toBeInViewport();
   for (const [label, title] of [["Add site", "Add site"], ["Add project", "Create project"]]) {
     await page.goto("/dashboard/clients/00000000-0000-4000-8000-000000000311");
     await page.getByRole("link", { name: label, exact: true }).click();

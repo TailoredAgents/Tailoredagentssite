@@ -6,6 +6,8 @@ The subsequent [operating-model releases](OPERATING_MODEL_GUIDE.md) add solution
 
 ## Employee workflow
 
+Record pages now lead with saved information and use explicit **Edit…** disclosures for prospect, opportunity, client, contact, project and service changes. **Cancel** discards unsaved changes; **Save** keeps the existing action and feedback. The relationship overview places solution design and delivery below the people/next-step columns, allowing longer briefs to use the page width. See the [November 11 record polish report](SOFTWARE_RECORD_POLISH_2026-11-11.md) for scope and verification.
+
 1. Open a prospect, sales opportunity, client or client contact. In Relationships & discovery, select **Open relationship overview**.
 2. Review the connected people, acquisition source, introducers, sales/account owners, discovery, prospect next actions, appointments and delivery projects. **Open conversations** uses the existing Inbox permission checks. Linked meetings retain their private/team visibility.
 3. Choose **Hand off next step**. Enter a clear action, an active teammate, due time and optional context. Times use US Eastern regardless of the device timezone.

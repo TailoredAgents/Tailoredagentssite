@@ -1,3 +1,6 @@
+import { RecordEditor } from "@/components/dashboard/record-editor";
+import { RecordNextStep, RecordDetails } from "@/components/dashboard/record-workspace";
+import recordStyles from "@/components/dashboard/record-workspace.module.css";
 import { DiscoveryPanel } from "@/components/relationships/discovery-panel";
 import { PhoneNumbers } from "@/components/conversations/phone-numbers";
 import { getConversationRecipient } from "@/lib/conversations/recipients";
@@ -69,7 +72,7 @@ export default async function LeadPage({
           Protected session
         </span>
       </header>
-      <div className="dashboard-content">
+      <div className={`dashboard-content ${recordStyles.workspace}`}>
         <Link className="dashboard-back-link" href="/dashboard/leads">
           <ArrowLeft size={14} />
           Back to prospects
@@ -98,10 +101,14 @@ export default async function LeadPage({
 
         <div className="dashboard-record-contact-action" style={{ display: "flex", flexWrap: "wrap", gap: ".65rem" }}><Link className="dashboard-primary-button" href={`/dashboard/inbox?lead=${lead.id}`}><MessageSquareText size={16} aria-hidden="true" />Contact prospect</Link>{websitePlan ? <Link className="dashboard-secondary-button" href={`/dashboard/sales/factory/${websitePlan.id}`}><Sparkles size={16} aria-hidden="true" />Open website project</Link> : mutable ? <StartFactoryButton leadId={lead.id} /> : null}{websitePlan?.latestBuild?.previewUrl ? <a className="dashboard-secondary-button" href={websitePlan.latestBuild.previewUrl} target="_blank" rel="noreferrer">View website</a> : null}</div>
         <RecordFacts facts={[{label:"Prospect owner",value:lead.ownerName || "Unassigned"},{label:"Service interest",value:lead.interest || "General inquiry"},{label:"Follow-up",value:lead.nextActionAt ? formatOperationalDate(lead.nextActionAt,{dateOnly:true}) : "Not scheduled"}]} />
+        <RecordNextStep title={lead.nextAction || "Choose the next conversation"} href="#prospect-management" linkLabel="Manage prospect">
+          {lead.nextActionAt ? <>Due {formatOperationalDate(lead.nextActionAt,{dateOnly:true})} · </> : null}{lead.ownerName || "No owner assigned"}
+        </RecordNextStep>
+        <nav className="workspace-section-links" aria-label="Prospect sections"><a href="#business-discovery">Discovery</a><a href="#prospect-context">Original context</a><a href="#prospect-notes">Notes</a><a href="#prospect-management">Manage prospect</a></nav>
         <div className="dashboard-record-grid">
           <div className="dashboard-record-main">
             <DiscoveryPanel context={context} target={{kind:"lead",id}} />{phoneRecipient ? <section className="dashboard-panel dashboard-detail-card"><PhoneNumbers recipient={phoneRecipient} readOnly={!mutable}/></section> : null}
-            <section className="dashboard-panel dashboard-detail-card">
+            <section id="prospect-context" className="dashboard-panel dashboard-detail-card">
               <div className="dashboard-panel-heading">
                 <div>
                   <span>{manual ? "Prospect details" : "Inquiry"}</span>
@@ -197,14 +204,14 @@ export default async function LeadPage({
               </div>
             </section>
 
-            <section className="dashboard-panel">
+            <section id="prospect-notes" className="dashboard-panel">
               <div className="dashboard-panel-heading">
                 <div>
                   <span>History</span>
                   <h2>Internal notes</h2>
                 </div>
               </div>
-              <OperationForm
+              <RecordEditor label="Add an internal note" disabled={!mutable}><OperationForm
                 disabled={!mutable}
                 action={addLeadNoteAction}
                 submitLabel="Add note"
@@ -223,7 +230,7 @@ export default async function LeadPage({
                     />
                   </label>
                 </fieldset>
-              </OperationForm>
+              </OperationForm></RecordEditor>
               <div className="dashboard-notes-list">
                 {lead.notes.length ? (
                   lead.notes.map((note) => (
@@ -251,14 +258,15 @@ export default async function LeadPage({
           </div>
 
           <aside className="dashboard-record-aside">
-            <section className="dashboard-panel">
+            <section id="prospect-management" className="dashboard-panel">
               <div className="dashboard-panel-heading">
                 <div>
                   <span>Pipeline</span>
                   <h2>Prospect management</h2>
                 </div>
               </div>
-              <OperationForm
+              <RecordDetails><p><strong>Current status</strong>{statusLabel(lead.status)}</p><p><strong>Outcome</strong>{lead.outcomeSummary || "No outcome recorded yet."}</p></RecordDetails>
+              <RecordEditor label="Edit prospect" disabled={!mutable}><OperationForm
                 disabled={!mutable}
                 action={updateLeadAction}
                 submitLabel="Save prospect"
@@ -316,7 +324,7 @@ export default async function LeadPage({
                     />
                   </label>
                 </fieldset>
-              </OperationForm>
+              </OperationForm></RecordEditor>
             </section>
 
             {lead.clientId ? (
@@ -343,7 +351,7 @@ export default async function LeadPage({
                   This marks them Won and creates their client and project records.
                   Payment can arrive later; conversion does not record a payment.
                 </p>
-                <OperationForm
+                <RecordEditor label="Prepare client conversion" disabled={!mutable}><OperationForm
                   disabled={!mutable}
                   action={convertLeadAction}
                   submitLabel="Convert to client"
@@ -392,7 +400,7 @@ export default async function LeadPage({
                       </label>
                     ) : null}
                   </fieldset>
-                </OperationForm>
+                </OperationForm></RecordEditor>
                 <p className="dashboard-form-note">
                   <CircleDollarSign size={14} />
                   Creates the client, primary contact, initial project, and

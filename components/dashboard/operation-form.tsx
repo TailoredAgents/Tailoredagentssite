@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { LoaderCircle } from "lucide-react";
+import { useRecordEditorCancel } from "./record-editor";
 import {
   initialOperationActionState,
   type OperationActionState,
@@ -25,6 +26,7 @@ export function OperationForm({
   disabled?: boolean;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
+  const cancelEditing = useRecordEditorCancel();
   const [state, formAction, pending] = useActionState(action, initialOperationActionState);
 
   useEffect(() => {
@@ -36,6 +38,7 @@ export function OperationForm({
       <fieldset className="dashboard-operation-fields" disabled={disabled || pending}>{children}</fieldset>
       <div className="dashboard-form-footer">
         <p className={`dashboard-form-message is-${state.status}`} role={state.status === "error" ? "alert" : "status"}>{state.message}</p>
+        {cancelEditing ? <button type="button" className="record-editor-cancel" disabled={pending} onClick={cancelEditing}>Cancel</button> : null}
         <button type="submit" disabled={disabled || pending}>
           {pending ? <LoaderCircle className="signin-spinner" size={15} /> : null}
           {pending ? pendingLabel : submitLabel}
