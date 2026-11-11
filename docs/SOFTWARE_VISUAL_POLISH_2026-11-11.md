@@ -69,6 +69,8 @@ The `production-` filename prefix means **local production build**, not the host
 
 ## Remaining work
 
+Follow-up: the [daily-work pass](SOFTWARE_DAILY_WORK_POLISH_2026-11-11.md) now covers Inbox, Assistant chat, My day, Calendar and Meetings & notes. The paragraph below records the sequencing at the end of this first pass.
+
 Continue the original audit's page-by-page implementation plan, applying these examples to record/detail forms, Inbox, Assistant, Sales, the remaining delivery workspaces, and the separately deployed Mail app. Page-specific depth, spacing, empty/error states, and dense record layouts still need their own implementation passes.
 
 Native iPhone safe areas, software keyboard, rotation, microphone/call continuity, and push behavior still require a physical device. This pass does not claim real call delivery or device acceptance. Production deployment and observed production UI are separate from local build and preview acceptance.

@@ -4,11 +4,11 @@ import { useId } from "react";
 import { EasternDateTimeControl } from "@/components/eastern-date-time-control";
 import { BUSINESS_TIME_LABEL, formatEasternTime } from "@/lib/time";
 
-export function DateTimeField({ name, label, defaultValue, required = false }: { name: string; label: string; defaultValue?: string | null; required?: boolean }) {
+export function DateTimeField({ name, label, defaultValue, required = false, hintId }: { name: string; label: string; defaultValue?: string | null; required?: boolean; hintId?: string }) {
   const id = useId();
   return <div className="dashboard-field dashboard-field-full"><span><label htmlFor={id}>{label}</label></span>
-    <EasternDateTimeControl id={id} name={name} defaultValue={defaultValue} required={required} describedBy={`${id}-hint`} />
-    <small id={`${id}-hint`}>Time zone: {BUSINESS_TIME_LABEL}. EST/EDT adjusts automatically.</small>
+    <EasternDateTimeControl id={id} name={name} defaultValue={defaultValue} required={required} describedBy={hintId || `${id}-hint`} />
+    {!hintId && <small id={`${id}-hint`}>Time zone: {BUSINESS_TIME_LABEL}. EST/EDT adjusts automatically.</small>}
   </div>;
 }
 

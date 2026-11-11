@@ -94,11 +94,13 @@ test("calendar creates, overlays, edits and removes busy events and full days", 
   await expect(
     page.locator(".tc-timed-event").filter({ hasText: name + " Updated" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Austin", exact: true }).click();
+  if (info.project.name === "phone") await page.getByRole("combobox", { name: "Show calendar" }).selectOption("austin");
+  else await page.getByRole("button", { name: "Austin", exact: true }).click();
   await expect(
     page.locator(".tc-event").filter({ hasText: name + " Jeffrey" }),
   ).toHaveCount(0);
-  await page.getByRole("button", { name: "Everyone", exact: true }).click();
+  if (info.project.name === "phone") await page.getByRole("combobox", { name: "Show calendar" }).selectOption("all");
+  else await page.getByRole("button", { name: "Everyone", exact: true }).click();
   await expect(
     page.locator(".tc-event").filter({ hasText: name + " Jeffrey" }),
   ).toHaveCount(1);
@@ -139,48 +141,63 @@ test("calendar creates, overlays, edits and removes busy events and full days", 
     .getByRole("group", { name: "Calendar view" })
     .getByRole("button", { name: "Month", exact: true })
     .click();
-  await expect(page.locator(".tc-grid-cell")).toHaveCount(42);
-  await expect(page.locator(".tc-weekday-name")).toHaveText([
-    "Sun",
-    "Mon",
-    "Tue",
-    "Wed",
-    "Thu",
-    "Fri",
-    "Sat",
-  ]);
-  await expect(page.locator(".tc-compact-event").first()).toBeVisible();
-  const firstDate = await page.locator(".tc-month-date").first().boundingBox(),
-    header = await page.locator(".tc-grid-day").first().boundingBox();
-  expect(firstDate!.y).toBeGreaterThanOrEqual(header!.y + header!.height - 1);
-  const heights = await page
-    .locator(".tc-month-row")
-    .evaluateAll((rows) => rows.map((r) => r.getBoundingClientRect().height));
-  expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(4);
-  await page.screenshot({
-    path: info.outputPath("team-calendar-month.png"),
-    fullPage: true,
-  });
-  await page
-    .locator(`.tc-grid-cell[data-date="${day}"]`)
-    .getByText(/\+\d+ more/)
-    .click();
-  await expect(
-    page
+  if (info.project.name === "phone") {
+    const month = page.getByRole("table");
+    await expect(month.getByRole("button")).toHaveCount(42);
+    await expect(month.getByRole("columnheader")).toHaveText(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]);
+    const selected = month.locator('button[aria-pressed="true"]');
+    await selected.press("ArrowRight");
+    await page.getByRole("button", { name: /^Add appointment on / }).click();
+    await expect(dialog.getByLabel("Starts", { exact: true })).toHaveValue(shiftDay(day, 1) + "T09:00");
+    await dialog.getByRole("button", { name: "Close dialog" }).click();
+    await month.locator('button[aria-pressed="true"]').press("ArrowLeft");
+    await expect(page.getByRole("region", { name: "Selected day agenda" })).toContainText(name + " Updated");
+    await page.screenshot({ path: info.outputPath("team-calendar-month.png"), fullPage: true });
+  } else {
+    await expect(page.locator(".tc-grid-cell")).toHaveCount(42);
+    await expect(page.locator(".tc-weekday-name")).toHaveText([
+      "Sun",
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat",
+    ]);
+    await expect(page.locator(".tc-compact-event").first()).toBeVisible();
+    const firstDate = await page.locator(".tc-month-date").first().boundingBox(),
+      header = await page.locator(".tc-grid-day").first().boundingBox();
+    expect(firstDate!.y).toBeGreaterThanOrEqual(header!.y + header!.height - 1);
+    const heights = await page
+      .locator(".tc-month-row")
+      .evaluateAll((rows) => rows.map((r) => r.getBoundingClientRect().height));
+    expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(4);
+    await page.screenshot({
+      path: info.outputPath("team-calendar-month.png"),
+      fullPage: true,
+    });
+    await page
+      .locator(`.tc-grid-cell[data-date="${day}"]`)
+      .getByText(/\+\d+ more/)
+      .click();
+    await expect(
+      page
+        .getByRole("group", { name: "Calendar view" })
+        .getByRole("button", { name: "Day", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      page.locator(".tc-timed-event").filter({ hasText: name + " Updated" }),
+    ).toBeVisible();
+    await page
       .getByRole("group", { name: "Calendar view" })
-      .getByRole("button", { name: "Day", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
-  await expect(
-    page.locator(".tc-timed-event").filter({ hasText: name + " Updated" }),
-  ).toBeVisible();
-  await page
-    .getByRole("group", { name: "Calendar view" })
-    .getByRole("button", { name: "Month", exact: true })
-    .click();
+      .getByRole("button", { name: "Month", exact: true })
+      .click();
+  }
   await page.getByRole("button", { name: "Next month", exact: true }).click();
   await expect(
     page.locator(".tc-event").filter({ hasText: name + " Updated" }),
   ).toHaveCount(0);
+  if (info.project.name === "phone") await expect(page.getByRole("region", { name: "Selected day agenda" })).not.toContainText(name + " Updated");
   await page.goto(`/dashboard/calendar?date=${day}&view=day`);
   await page
     .locator(".tc-timed-event")
@@ -243,7 +260,7 @@ test("calendar creates, overlays, edits and removes busy events and full days", 
   ).toEqual([]);
   expect(errors).toEqual([]);
 });
-test("viewer can browse but cannot create an event", async ({ page }) => {
+test("viewer can browse but cannot create an event", async ({ page }, info) => {
   await login(page, "viewer@example.test");
   await page.goto("/dashboard/calendar");
   await expect(
@@ -253,7 +270,10 @@ test("viewer can browse but cannot create an event", async ({ page }) => {
     .getByRole("group", { name: "Calendar view" })
     .getByRole("button", { name: "Month", exact: true })
     .click();
-  await expect(page.locator(".tc-grid-cell")).toHaveCount(42);
+  if (info.project.name === "phone") {
+    await expect(page.getByRole("table").getByRole("button")).toHaveCount(42);
+    await expect(page.getByRole("button", { name: /^Add appointment on / })).toHaveCount(0);
+  } else await expect(page.locator(".tc-grid-cell")).toHaveCount(42);
 });
 
 test("wide calendar opens at business hours and selection prefills the editor", async ({

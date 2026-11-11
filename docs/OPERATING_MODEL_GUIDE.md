@@ -8,7 +8,7 @@ Implemented November 10, 2026. This guide describes the relationship operating-m
 - **Austin and Jeffrey:** use Sales & relationships or Development & delivery. Review the relationship, record discovery, shape a solution brief, scope a pilot, and use the existing opportunity/project workflows for implementation.
 - **Conner:** use Finance & partnerships. Configure the private referral rules and agreements before activation, review source-backed earnings, and record approved statements and externally completed settlements. Owner/admin finance access is inherited; other teammates require an explicit finance grant.
 
-These are owner-supplied responsibilities, not automatic permission assignments. My day’s saved work focus changes presentation only. It never grants finance, mailbox, meeting or sending access.
+These are owner-supplied responsibilities, not automatic permission assignments. My day puts upcoming/overdue follow-ups and appointments first. Open **Work focus & shortcuts** to change your starting point. Website updates are grouped below current commitments; expanding the group does not mark them seen. My day’s saved work focus changes presentation only. It never grants finance, mailbox, meeting or sending access.
 
 ## Finding your work
 

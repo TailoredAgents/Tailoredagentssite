@@ -2,6 +2,7 @@
 import {
   useActionState,
   useEffect,
+  useId,
   useRef,
   useState,
   type ReactNode,
@@ -117,6 +118,7 @@ export function CalendarEditor({
   const event = draft.slot,
     [allDay, setAllDay] = useState(event?.allDay ?? draft.allDay ?? false),
     [remove, setRemove] = useState(false);
+  const timeHintId = useId();
   const start =
       event?.startsAt ?? draft.start ?? localInstant(draft.day, draft.minute),
     end =
@@ -236,12 +238,14 @@ export function CalendarEditor({
             <DateTimeField
               name="startsAt"
               label="Starts"
+              hintId={timeHintId}
               defaultValue={start}
               required
             />
             <DateTimeField
               name="endsAt"
               label="Ends"
+              hintId={timeHintId}
               defaultValue={end}
               required
             />
@@ -274,9 +278,9 @@ export function CalendarEditor({
             />
           </label>
         </details>
-        <p className="tc-hint">
+        <p className="tc-hint" id={timeHintId}>
           <Clock3 size={15} />
-          US Eastern · This time will be unavailable for online bookings.
+          US Eastern (EST/EDT adjusts automatically). This time will be unavailable for online bookings.
           Details are visible to the team. No invitations are sent.
         </p>
       </CalendarForm>

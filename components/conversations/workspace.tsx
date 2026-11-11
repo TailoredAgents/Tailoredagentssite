@@ -58,7 +58,7 @@ export function ConversationWorkspace({ data, userId, readOnly }: { data: Worksp
       const height = Math.max(0, (viewport?.height ?? window.innerHeight) + (viewport?.offsetTop ?? 0) - top);
       element.style.setProperty("--conversation-available-height", `${height}px`);
       element.dataset.short = String(height < 650);
-      setShortViewport(height < 650);
+      setShortViewport(height < 650 || window.innerWidth <= 620);
     };
     resize();
     const observer = new ResizeObserver(resize);
@@ -88,7 +88,7 @@ export function ConversationWorkspace({ data, userId, readOnly }: { data: Worksp
 
   return <section ref={workspace} className="conversation-workspace" aria-label="Customer conversations">
     <header className="conversation-page-header">
-      <div><span className="conversation-eyebrow">Tailored Agents · Relationships</span><h1>Conversations</h1><p><strong>{data.counts.needs_reply || 0}</strong> need reply<span aria-hidden="true"> · </span><strong>{data.counts.unread || 0}</strong> unread<span className="conversation-header-reassurance"><ShieldCheck size={13} aria-hidden="true" />Email from prospects & clients.</span></p></div>
+      <div><span className="conversation-eyebrow">Tailored Agents · Relationships</span><h1>Conversations</h1><p><strong>{data.counts.needs_reply || 0}</strong>{data.counts.needs_reply === 1 ? " needs reply" : " need reply"}<span aria-hidden="true"> · </span><strong>{data.counts.unread || 0}</strong> unread<span className="conversation-header-reassurance"><ShieldCheck size={13} aria-hidden="true" />Conversations with prospects & clients.</span></p></div>
       <div className="conversation-header-actions">{!selected && data.recipient ? <button ref={detailsToggle} className="conversation-icon-button conversation-details-toggle" type="button" aria-label={detailsOpen ? "Hide customer details" : "Show customer details"} aria-expanded={detailsOpen} aria-controls="conversation-customer-details" onClick={() => { setDetailsOpen(!detailsOpen); if (!detailsOpen) requestAnimationFrame(() => detailsBack.current?.focus()); }}>{detailsOpen ? <PanelRightClose size={19} aria-hidden="true" /> : <PanelRightOpen size={19} aria-hidden="true" />}</button> : null}{attention.length ? <details className="conversation-connections"><summary className="conversation-icon-button" aria-label={`Channel connections: ${attention.length} need attention`} title="Channel connections need attention"><CircleAlert size={18} aria-hidden="true" /></summary><ConnectionNotices entries={attention} /></details> : null}<button className="conversation-icon-button voice-inbox-launcher" type="button" aria-label="Open browser phone" onClick={() => phone.setExpanded(true)}><Phone size={18} aria-hidden="true" /></button><button className="conversation-icon-button" type="button" onClick={() => router.refresh()} aria-label="Refresh conversations"><RefreshCw size={18} aria-hidden="true" /></button><Link className="conversation-button is-primary" href="/dashboard/inbox/new"><PenSquare size={16} aria-hidden="true" /><span>New conversation</span></Link></div>
     </header>
 

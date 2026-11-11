@@ -58,7 +58,7 @@ export function AssistantWorkspace({name, initialSection, pendingCount, work, ac
         event.preventDefault();
         navigate(sections[next].id);
         tabs.current?.querySelector<HTMLButtonElement>('#assistant-tab-' + sections[next].id)?.focus();
-      }}><Icon size={17} aria-hidden="true"/><span>{label}</span>{id === 'work' && pendingCount > 0 && <span className="assistant-tab-count" aria-label={pendingCount + ' changes awaiting review'}>{pendingCount}</span>}</button>)}
+      }}><Icon size={17} aria-hidden="true"/><span>{label}</span>{id === 'work' && pendingCount > 0 && <span className="assistant-tab-count" aria-label={pendingCount + (pendingCount === 1 ? ' change awaiting review' : ' changes awaiting review')}>{pendingCount}</span>}</button>)}
     </nav>
     <AssistantChat firstName={name.split(' ')[0]} section={section} onNavigate={navigate} workContent={work} activityContent={activity} settingsContent={settings}/>
   </div>;

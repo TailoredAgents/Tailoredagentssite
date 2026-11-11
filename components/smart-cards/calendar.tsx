@@ -31,6 +31,7 @@ import {
   type CalendarDraft,
 } from "./calendar-editor";
 import FullCalendar from "@fullcalendar/react";
+import { MobileMonth } from "./mobile-month";
 import themePlugin from "@fullcalendar/react/themes/classic";
 import dayGridPlugin from "@fullcalendar/react/daygrid";
 import timeGridPlugin from "@fullcalendar/react/timegrid";
@@ -92,6 +93,7 @@ export function BookingCalendar({
     [opening, setOpening] = useState(false),
     [sidebar, setSidebar] = useState(false),
     [mobile, setMobile] = useState(false),
+    [monthDay, setMonthDay] = useState(anchor),
     [workweek, setWorkweek] = useState(false),
     [peek, setPeek] = useState<{
       event: CalendarEvent;
@@ -100,6 +102,7 @@ export function BookingCalendar({
     } | null>(null);
   const days = viewDays(anchor, view),
     miniDays = viewDays(anchor, "month");
+  useEffect(() => setMonthDay(anchor), [anchor]);
   // Revalidation can remove a cancelled entry (and its form) before the form's
   // success effect runs. Close the detail dialog from the authoritative data too.
   useEffect(() => {
@@ -233,7 +236,7 @@ export function BookingCalendar({
     else setDetail(event);
   }
   function newEvent(
-    day = anchor,
+    day = mobile && view === "month" ? monthDay : anchor,
     minute = 540,
     kind: CalendarDraft["kind"] = "appointment",
   ) {
@@ -258,7 +261,7 @@ export function BookingCalendar({
           <button
             className="tc-secondary"
             disabled={!editable.length}
-            onClick={() => newEvent(anchor, 540, "busy")}
+            onClick={() => newEvent(mobile && view === "month" ? monthDay : anchor, 540, "busy")}
           >
             <Clock3 size={18} />
             Block time
@@ -275,6 +278,7 @@ export function BookingCalendar({
       </header>
       <div className="tc-team-strip" aria-label="Choose whose calendar to show">
         <span>Show calendar</span>
+        <label className="tc-mobile-owner"><span className="sr-only">Show calendar</span><select value={selected.length === 1 ? selected[0] : profiles.every(p => selected.includes(p.slug)) && selected.includes("unassigned") ? "all" : "custom"} onChange={event => setSelected(event.target.value === "all" ? profiles.map(p => p.slug).concat("unassigned") : [event.target.value])}><option value="all">Everyone</option>{profiles.map(p => <option key={p.slug} value={p.slug}>{p.display_name}</option>)}<option value="unassigned">Unassigned appointments</option><option value="custom" disabled>Custom calendars</option></select></label>
         <button
           aria-pressed={profiles.every((p) => selected.includes(p.slug))}
           onClick={() =>
@@ -507,7 +511,7 @@ export function BookingCalendar({
             range to see all entries.
           </p>
         ) : null}
-        {!events.length ? (
+        {!events.length && !(mobile && view === "month") ? (
           <div className="tc-empty">
             <CalendarDays size={22} />
             <div>
@@ -532,6 +536,7 @@ export function BookingCalendar({
           </div>
         ) : null}
         <div className={`tc-view-body tc-view-${view}`}>
+          {mobile && view === "month" ? <MobileMonth days={days} anchor={anchor} today={today} selectedDay={monthDay} events={events} canCreate={editable.length > 0} onSelect={setMonthDay} onOpen={openEvent} onCreate={day => newEvent(day)} /> : <>
           <div
             className={`tc-calendar-surface ${view === "week" || view === "month" ? "tc-wide-grid" : ""}`}
           >
@@ -799,6 +804,7 @@ export function BookingCalendar({
               </div>
             </aside>
           ) : null}
+          </>}
         </div>
         <footer className="tc-footer">
           <span>

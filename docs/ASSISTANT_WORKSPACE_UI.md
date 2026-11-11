@@ -1,6 +1,6 @@
 # Assistant workspace
 
-Updated November 10, 2026.
+Updated November 11, 2026.
 
 ## Layout and behavior
 
@@ -13,6 +13,8 @@ Updated November 10, 2026.
 Switching sections preserves the current chat draft, selected files, and conversation. Switching conversations starts a separate draft. The URL records the selected section and conversation; browser Back works between sections. Existing action links open the appropriate review or activity section. Form submissions stay in their relevant section.
 
 Desktop history can collapse. Mobile history uses a dismissible dialog; the Phone launcher moves away from the chat composer. Tabs support arrow keys, Home, and End. Ctrl/Cmd+Enter submits the composer. Starter cards only fill a draft.
+
+November 11 polish: Chat measures the available viewport below the workspace header, keeps a shorter composer, and presents voice/files in a compact tools row. File selection and size limits stay visible; retention, processing cost guidance and Company knowledge are under **File limits, privacy & retention**. This disclosure also appears in Files. [Implementation and visual checks](SOFTWARE_DAILY_WORK_POLISH_2026-11-11.md).
 
 Assistant replies render a small safe Markdown subset: paragraphs, headings, lists, bold, code, and HTTPS or internal dashboard links. Raw HTML is escaped; incomplete Markdown markers cannot stall rendering.
 

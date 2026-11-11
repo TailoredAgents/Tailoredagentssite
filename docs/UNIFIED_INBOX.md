@@ -1,5 +1,9 @@
 # Unified Inbox
 
+## Daily-work polish — November 11, 2026
+
+Messages use the shared light/dark palette, with more compact sender/time/delivery details and distinct incoming/outgoing surfaces. At phone widths (620 pixels and below), the reply editor starts folded so the history gets the space. Select a channel or **Show reply** to write; hiding the editor or switching mobile panes keeps the existing draft mounted. Existing short-window and focused-editor behavior remains. The dashboard navigation supplies Phone on mobile; desktop retains the Inbox shortcut. [Implementation and local checks](SOFTWARE_DAILY_WORK_POLISH_2026-11-11.md).
+
 ## Reading and screen sizing — October 29, 2026
 
 The customer Inbox sizes itself to the space below the dashboard navigation and view-only notice. It follows the browser's visible viewport when the keyboard or browser controls reduce that space; fixed minimum page heights have been removed. The message history, list and customer details use normal-width, higher-contrast scrollbars with reserved space where supported. The operating system may still hide scrollbars until scrolling.

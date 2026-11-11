@@ -1,0 +1,25 @@
+.month { min-width:0; }
+.month table { width:100%; table-layout:fixed; border-collapse:separate; border-spacing:3px; padding:4px 8px 10px; }
+.month th { height:28px; color:var(--workspace-muted); font-size:12px; font-weight:550; text-align:center; }
+.month td { padding:0; text-align:center; }
+.month td button { display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; min-height:44px; padding:5px 0 1px; border:1px solid transparent; border-radius:9px; background:transparent; color:var(--workspace-ink); font-size:14px; font-weight:550; }
+.month td button:hover { background:var(--workspace-soft); }
+.month td button.otherMonth { color:var(--workspace-muted); }
+.month td button.today { border-color:var(--workspace-line); color:var(--workspace-blue); font-weight:750; }
+.month td button[aria-pressed=true] { background:var(--workspace-blue); color:var(--workspace-on-primary); border-color:var(--workspace-blue); }
+.eventMark { height:8px; display:grid; place-items:center; }
+.eventMark i { width:4px; height:4px; background:currentColor; border-radius:50%; }
+.agenda { border-top:1px solid var(--workspace-line); padding:16px; background:var(--workspace-field); }
+.agenda header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.agenda h3 { margin:0; font-size:16px; font-weight:650; }
+.agenda header p { margin:4px 0 0; color:var(--workspace-muted); font-size:12px; }
+.agenda header button { display:grid; place-items:center; width:44px; height:44px; border:1px solid var(--workspace-line); border-radius:9px; background:var(--workspace-surface); color:var(--workspace-blue); }
+.agenda ul { list-style:none; margin:12px 0 0; padding:0; }
+.agenda li + li { border-top:1px solid var(--workspace-line); }
+.agenda li button { display:flex; align-items:flex-start; gap:14px; width:100%; padding:14px 0; background:transparent; color:var(--workspace-ink); border:0; text-align:left; }
+.agenda li button:hover strong { color:var(--workspace-blue); }
+.agenda time { min-width:64px; color:var(--workspace-muted); font-size:12px; padding-top:2px; font-variant-numeric:tabular-nums; }
+.agenda li strong { display:block; font-size:14px; line-height:1.5; overflow-wrap:anywhere; }
+.agenda small { display:block; margin-top:4px; font-size:12px; color:var(--workspace-muted); }
+.empty { display:flex; align-items:center; gap:10px; color:var(--workspace-muted); margin-top:14px; }
+.empty p { margin:0; font-size:13px; }

@@ -1,6 +1,6 @@
 # Software visual audit and premium-finish plan
 
-Audit conducted November 10–11, 2026. Requested by Austin. **Employee web page review complete.** This document preserves the findings before implementation. The first implementation pass is tracked in [the November 11 release record](SOFTWARE_VISUAL_POLISH_2026-11-11.md).
+Audit conducted November 10–11, 2026. Requested by Austin. **Employee web page review complete.** This document preserves the findings before implementation. The first implementation pass is tracked in [the November 11 release record](SOFTWARE_VISUAL_POLISH_2026-11-11.md). Inbox, Assistant chat, My day, Calendar and Meetings & notes are tracked in the [second implementation pass](SOFTWARE_DAILY_WORK_POLISH_2026-11-11.md).
 
 Recommendation: keep the identity and refine the product around it. The greatest improvement will come from clearer surface contrast, less competing page chrome, consistent record/form patterns and deliberate mobile layouts. A wholesale rebrand is unnecessary. Fix the two observed obstruction/contrast issues first, establish shared foundations, then work through the pages in the order below.
 

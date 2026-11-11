@@ -22,9 +22,9 @@ export default async function MeetingsPage({searchParams}:{searchParams:Promise<
    <section className="dashboard-panel">
     <div className="dashboard-panel-heading">
      <div><span>Your private meetings & team-shared recordings</span><h2>Recordings to review</h2></div>
-     <form method="get">
+     <form method="get" className="meeting-search" role="search">
       <label className="dashboard-field"><span className="sr-only">Search meetings</span>
-       <input name="q" type="search" maxLength={120} defaultValue={p.q||''} placeholder="Search title or transcript…"/>
+       <input name="q" type="search" maxLength={120} defaultValue={p.q||''} placeholder="Search recordings…"/>
       </label>
       <button className="dashboard-secondary-button">Search</button>
      </form>
@@ -36,13 +36,13 @@ export default async function MeetingsPage({searchParams}:{searchParams:Promise<
       <span className={`meeting-badge status-${m.status}`}>{m.status.replaceAll('_',' ')}</span><ArrowRight size={16} aria-hidden="true"/>
      </Link>):<div className="meeting-empty">
       <Mic size={30} aria-hidden="true"/><h3>{p.q?'No matching recordings':'No recordings yet'}</h3>
-      <p>Add a recording or connect your Omi to review conversations here.</p>
+      <p>{p.q?'Try another title or a phrase from the transcript.':'Add a recording or use Quick capture to save conversation notes.'}</p>{p.q&&<Link href="/dashboard/meetings">Clear search</Link>}
      </div>}
     </div>
-    <div className="meeting-action-row meeting-pagination">
+    <nav className="meeting-action-row meeting-pagination" aria-label="Recording pages">
      {page>1&&<Link href={`?page=${page-1}&q=${encodeURIComponent(p.q||'')}`}>Previous</Link>}
      <span>Page {page}</span>{data.hasMore&&<Link href={`?page=${page+1}&q=${encodeURIComponent(p.q||'')}`}>Next</Link>}
-    </div>
+    </nav>
    </section>
    {c.role!=='viewer'&&<MeetingSettings settings={settings} devices={JSON.parse(JSON.stringify(devices))}/>}
   </div>
