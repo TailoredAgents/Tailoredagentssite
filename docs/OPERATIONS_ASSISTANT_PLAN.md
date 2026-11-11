@@ -253,7 +253,7 @@ November 10 progress: the first implementation increment adds the employee work 
 - [x] F: Opted-in proactive routines are useful, bounded and deduplicated (local acceptance; employee activation remains H).
 - [x] G: Replies, attachments, inline review, delivery states and voice dictation pass local acceptance; separate Mail deployment and real iPhone acceptance remain H.
 - [ ] H: Employee end-to-end journeys, cost controls and staged rollout are accepted.
-- [ ] Exact changes, deployment state and remaining activation dependencies are recorded; verified commits are pushed to main.
+- [x] Exact changes, observed deployment state and remaining activation dependencies are recorded in OPERATIONS_ASSISTANT_RELEASE.md; verified implementation commits are pushed to main.
 
 The planning deliverable is this document. Implementation is complete only when the corresponding checklist gates pass; a plan, passing mock, deployed web page or generated unsigned IPA is not a substitute.
 

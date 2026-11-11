@@ -27,6 +27,12 @@ The collaborator's `ac9a8c3` workspace redesign is preserved. The company allowa
 - After the communication push, the live website displayed **Voice note** in Chat. Public health returned HTTP 200; the new private dictation and review routes returned HTTP 401 with `private, no-store` without authentication. These are deployment/authentication smoke checks, not paid-provider or Mail delivery acceptance.
 - The connected Operations plugin requested reauthentication. Cloudflare CLI and browser were signed out; Austin confirmed only his partner has the login. No Cloudflare release/version or real provider delivery is claimed.
 
+## Final website verification
+
+The implementation release `f8c142ab26a844fa925452ca6ecafa34395fe6c1` completed Render deployment `dep-dbprgqtg1s2s7395nfd0`; the deployment log recorded the service live at **November 10, 2026, 7:38:26 PM Eastern**. A read-only query in that exact running instance confirmed migration `0061_assistant_dictation.sql`, the dictation table, the unchanged 25,000,000-microdollar ($25) company allowance, an empty assistant queue and no employee SMS preference records. Public health returned 200; unauthenticated review/dictation requests returned 401 with private/no-store caching.
+
+The recovery cron also deployed `f8c142a` in `dep-dbprgrdg1s2s7395ngf0` and retained its five-minute schedule. Its scheduled 7:40 PM Eastern run logged `Assistant: 0 checked; 0 need review.` at 7:40:31 PM and finished successfully at 7:40:34 PM. This confirms the current worker can perform an idle cycle; it does not substitute for a real employee assignment or SMS delivery test. The connected Desktop Commander inventory contained only a Windows device; no macOS/Xcode build environment was available. Cloudflare CLI remained unauthenticated. These observations close the website deployment check, not the separate Mail, employee alert or signed-device gates.
+
 ## Partner handoff: Mail
 
 From a clean checkout of current `main`, with the partner's existing Cloudflare account that owns `tailored-mail-production`:
