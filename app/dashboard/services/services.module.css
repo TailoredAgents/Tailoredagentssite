@@ -1,0 +1,4 @@
+.views { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px; border: 1px solid var(--workspace-line); border-radius: 12px; background: var(--workspace-surface); }
+.views a { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 14px; border-radius: 8px; color: var(--workspace-muted); font-size: 14px; font-weight: 550; }
+.views a:hover { background: var(--workspace-soft); color: var(--workspace-ink); }
+.views a[aria-current="page"] { background: var(--workspace-blue-soft); color: var(--workspace-blue); box-shadow: inset 0 -2px var(--workspace-blue); }

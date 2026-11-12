@@ -283,3 +283,6 @@ There is no remaining uninspected current dashboard page template in the 43-rout
 ## Audit handoff (before implementation)
 
 The deliverable is this report and its ordered implementation plan: **43 dashboard route templates, 20 primary workspaces, Mail/authentication coverage and 41 prioritized findings**. Application design code has not been changed. The report was built incrementally, then reconciled against the current route inventory and accepted screenshots. Markdown/file links, finding IDs, referenced evidence and the scoped diff were checked. Application tests were not rerun for this documentation-only change; preview build evidence is recorded above. The final staged diff is limited to this audit document; collaborators' implementation changes remain separate.
+
+
+November 11 final local acceptance: [the final report](SOFTWARE_FINAL_ACCEPTANCE_2026-11-11.md) records a fresh 43-template tablet sweep, targeted desktop/narrow light/dark and keyboard checks, and closes the remaining V28, V33, Services-filter V37 and statement-context V38 details. Phase 8 local review is complete within that recorded scope; separate Mail deployment, website live smoke checks, post-polish CSV mapping and physical-device acceptance remain explicit gates. Earlier dated claims are retained; the final report reconciles their practical limits.

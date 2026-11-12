@@ -38,7 +38,7 @@ export default async function SignInPage({
         <div className="signin-copy">
           <span className="signin-kicker"><LockKeyhole size={13} />Private workspace</span>
           <h1>One clear place to run the work behind the <em>growth.</em></h1>
-          <p>The Tailored Agents dashboard brings client operations, website health, measurement, and future growth tools into a secure internal workspace.</p>
+          <p>Bring your team, client relationships, AI services and automation work together in one private workspace.</p>
           <div className="signin-trust"><ShieldCheck size={17} /><span><strong>Team-only access</strong><small>Only approved team members can enter this private workspace.</small></span></div>
         </div>
 

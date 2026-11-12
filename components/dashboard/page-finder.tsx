@@ -9,9 +9,10 @@ export function PageFinder({ destinations }: { destinations: Destination[] }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const search = useRef<HTMLInputElement>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
   const [query, setQuery] = useState("");
   const titleId = useId();
-  function open() { setQuery(""); dialog.current?.showModal(); search.current?.focus(); }
+  function open() { previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setQuery(""); dialog.current?.showModal(); search.current?.focus(); }
   function close() { dialog.current?.close(); }
   useEffect(() => {
     function keydown(event: KeyboardEvent) {
@@ -25,7 +26,7 @@ export function PageFinder({ destinations }: { destinations: Destination[] }) {
   const results = destinations.filter(item => `${item.label} ${item.group} ${item.href === "/dashboard/sales/factory" ? "mockups website plans previews studio" : item.href === "/dashboard/leads" ? "leads referrals connections outreach" : item.href === "/dashboard/meetings" ? "meeting inbox capture conversation quick capture recordings audio transcripts omi" : ""}`.toLowerCase().includes(query.trim().toLowerCase()));
   return <>
     <button ref={trigger} className="workspace-page-finder-trigger" type="button" onClick={open}><Search size={16} aria-hidden="true" /><span>Find a page</span><kbd>Ctrl K</kbd></button>
-    <dialog className="workspace-page-finder" ref={dialog} aria-labelledby={titleId} onClose={() => trigger.current?.focus()} onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
+    <dialog className="workspace-page-finder" ref={dialog} aria-labelledby={titleId} onKeyDown={(event) => { if (event.key === "Escape") event.stopPropagation(); }} onClose={() => { const previous = previousFocus.current; if (previous?.isConnected && previous.getClientRects().length) previous.focus(); else trigger.current?.focus(); }} onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
       <div className="workspace-finder-content"><header><h2 id={titleId}>Find a page</h2><button type="button" aria-label="Close page finder" onClick={close}><X size={20} aria-hidden="true" /></button></header>
         <label className="workspace-finder-search"><Search size={19} aria-hidden="true" /><input ref={search} type="search" aria-label="Search dashboard pages" placeholder="Inbox, sales, projects…" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "ArrowDown") { event.preventDefault(); dialog.current?.querySelector<HTMLAnchorElement>(".workspace-finder-results a")?.focus(); } }} /></label>
         <nav className="workspace-finder-results" aria-label="Matching dashboard pages">{results.map(item => <Link href={item.href} key={item.href} onClick={close}><span><strong>{item.label}</strong><small>{item.group}</small></span><ArrowUpRight size={17} aria-hidden="true" /></Link>)}{!results.length ? <p>No pages match “{query}”. Try a page name such as Clients.</p> : null}</nav>

@@ -172,7 +172,8 @@ export async function getStatement(c:DashboardContext,id:string) {
   if(!permission.full&&!['approved','paid'].includes(statement.status))throw new SalesAccessError('That statement is not approved for partner access.');
   const items=(await db.query(`SELECT i.earning_id,i.amount_cents::float8,e.earned_on::text,e.reverses_id,e.agreement_id,a.version,s.source_key,s.kind,s.units,s.amount_cents::float8 source_amount_cents,e.allocation_bps,cl.name client_name FROM crm_referral_statement_items i JOIN crm_referral_earnings e ON e.id=i.earning_id AND e.workspace_id=$1 JOIN crm_referral_agreements a ON a.id=e.agreement_id AND a.workspace_id=e.workspace_id JOIN crm_referral_sources s ON s.id=e.source_id AND s.workspace_id=e.workspace_id LEFT JOIN clients cl ON cl.id=s.client_id AND cl.workspace_id=s.workspace_id WHERE i.statement_id=$2 ORDER BY e.earned_on,e.id`,[c.workspace.id,id])).rows;
   const events=(await db.query(`SELECT e.status,e.note,e.created_at,u.name actor FROM crm_referral_statement_events e LEFT JOIN "user" u ON u.id=e.actor_user_id WHERE e.statement_id=$1 ORDER BY e.created_at,e.id`,[id])).rows;
-  return {...permission,statement,items,events};
+  const partner=await partnerExists(db,c,statement.partner_id);
+  return {...permission,partner,statement,items,events};
  });
 }
 export async function changeStatement(c:DashboardContext,input:unknown) {
