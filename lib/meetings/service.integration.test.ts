@@ -147,6 +147,40 @@ describe.skipIf(!url)('Meeting Intelligence with isolated PostgreSQL',()=>{
  const d=await createMeetingDevice(owner,{label:'Budget fixture',uid:'budget'});await armMeetingDevice(owner,{id:d.id,minutes:60,consentNote:'Synthetic permission',autoProcess:false});await receiveOmi(d.secret,'budget',16000,Buffer.alloc(32000,1));await receiveOmi(d.secret,'budget',8000,Buffer.alloc(16000,2));const id=(await service.listMeetings(owner)).items[0].id;await service.finishUpload(owner,id);await service.saveMeetingBudget(owner,1);await db.query('UPDATE meeting_settings SET monthly_limit_micros=12000 WHERE workspace_id=$1',[ws]);await service.queueMeeting(owner,id,'Synthetic permission');for(let i=0;i<3;i++)await runMeetingWorker(id);expect((await getMeeting(owner,id)).error_code).toBe('allowance');expect((await service.meetingSettings(owner)).reserved).toBe(.012);expect(fixture.analyze).not.toHaveBeenCalled();
  await service.saveMeetingBudget(owner,10);await service.queueMeeting(owner,id,'Synthetic permission');await runMeetingWorker(id);expect(fixture.transcribe).toHaveBeenCalledTimes(2);expect(fixture.analyze).toHaveBeenCalledTimes(1);expect((await service.meetingSettings(owner)).reserved).toBe(.262);
  });
+ it('keeps always-ready sessions private and automatically processes each idle recording without rearming',async()=>{
+ const d=await createMeetingDevice(owner,{label:'Always ready fixture',uid:'always'});
+ const grant={id:d.id,mode:'always_ready',minutes:0,consentNote:'I start recording only with permission; synthetic test.',autoProcess:true};
+ await expect(armMeetingDevice(owner,{...grant,consentNote:''})).rejects.toThrow('acknowledgement');
+ await expect(armMeetingDevice(member,grant)).rejects.toThrow('unavailable');
+ await armMeetingDevice(owner,grant);await service.saveMeetingBudget(owner,10);
+ for(let i=1;i<=2;i++){
+  await receiveOmi(d.secret,'always',16000,Buffer.alloc(32000,i));
+  const id=(await db.query('SELECT current_meeting_id FROM meeting_devices WHERE id=$1',[d.id])).rows[0].current_meeting_id;
+  const m=await getMeeting(owner,id);expect(m.receiving).toBe(true);expect(m.consent_note).toContain('Standing recording-permission acknowledgement');expect(m.visibility).toBe('private');
+  expect(new Date(m.expires_at).getTime()-new Date(m.created_at).getTime()).toBeCloseTo(30*86400000,-3);
+  await runMeetingWorker();expect(fixture.transcribe).toHaveBeenCalledTimes(i-1);
+  await db.query("UPDATE meeting_devices SET last_received_at=now()-interval '4 minutes' WHERE id=$1",[d.id]);
+  for(let j=0;j<4;j++)await runMeetingWorker();
+  expect((await getMeeting(owner,id)).status).toBe('review');expect((await service.readAudio(owner,id)).bytes.subarray(44)).toEqual(Buffer.alloc(32000,i));
+  await expect(getMeeting(member,id)).rejects.toThrow('unavailable');await expect(service.readAudio(other,id)).rejects.toThrow('unavailable');
+  expect((await db.query('SELECT always_ready,armed_until,current_meeting_id,secret_hash FROM meeting_devices WHERE id=$1',[d.id])).rows[0]).toEqual({always_ready:true,armed_until:null,current_meeting_id:null,secret_hash:service.digest(d.secret)});
+ }
+ expect((await service.listMeetings(owner)).items).toHaveLength(2);expect(fixture.transcribe).toHaveBeenCalledTimes(2);expect(fixture.analyze).toHaveBeenCalledTimes(2);expect((await service.meetingSettings(owner)).reserved).toBe(.512);
+ await armMeetingDevice(owner,{id:d.id,minutes:0,consentNote:'',autoProcess:true});expect(await receiveOmi(d.secret,'always',16000,Buffer.alloc(32000,3))).toMatchObject({discarded:true});
+ await armMeetingDevice(owner,grant);await revokeMeetingDevice(owner,d.id);await expect(receiveOmi(d.secret,'always',16000,Buffer.alloc(32000,3))).rejects.toThrow('Unauthorized');
+ });
+ it('splits an idle always-ready recording on the next delivery even before the worker runs and respects the budget',async()=>{
+ const d=await createMeetingDevice(owner,{label:'Idle intake fixture',uid:'idle'});await armMeetingDevice(owner,{id:d.id,mode:'always_ready',minutes:0,consentNote:'Synthetic intentional recording',autoProcess:true});
+ await receiveOmi(d.secret,'idle',16000,Buffer.alloc(32000,1));const first=(await service.listMeetings(owner)).items[0].id;
+ await db.query("UPDATE meeting_devices SET last_received_at=now()-interval '4 minutes' WHERE id=$1",[d.id]);
+ await Promise.all([receiveOmi(d.secret,'idle',16000,Buffer.alloc(32000,2)),receiveOmi(d.secret,'idle',16000,Buffer.alloc(32000,2))]);
+ expect((await service.listMeetings(owner)).items).toHaveLength(2);expect((await getMeeting(owner,first)).receiving).toBe(false);
+ for(let i=0;i<4;i++)await runMeetingWorker();expect((await getMeeting(owner,first)).error_code).toBe('allowance');expect(fixture.transcribe).not.toHaveBeenCalled();
+ await nextOmiConversation(owner,d.id);await receiveOmi(d.secret,'idle',16000,Buffer.alloc(32000,3));const current=(await db.query('SELECT current_meeting_id FROM meeting_devices WHERE id=$1',[d.id])).rows[0].current_meeting_id;
+ await service.finishUpload(owner,current);expect((await db.query('SELECT always_ready FROM meeting_devices WHERE id=$1',[d.id])).rows[0].always_ready).toBe(true);
+ await receiveOmi(d.secret,'idle',16000,Buffer.alloc(32000,4));expect((await service.listMeetings(owner)).items).toHaveLength(4);
+ await db.query("UPDATE workspace_memberships SET status='suspended' WHERE user_id=$1",[owner.user.id]);await expect(receiveOmi(d.secret,'idle',16000,Buffer.alloc(32000,5))).rejects.toThrow('Unauthorized');
+ });
  it('does not turn retries into an unbounded stream of paid requests',async()=>{
  const id=await upload();await service.saveMeetingBudget(owner,10);fixture.transcribe.mockRejectedValue(new Error('uncertain provider failure'));
  for(let i=0;i<4;i++){await service.queueMeeting(owner,id,'Synthetic permission');await runMeetingWorker(id);}

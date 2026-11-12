@@ -7,6 +7,7 @@ import {finishRecording,settleMeeting,audioPrefix} from './service';
 import {MEETING_ANALYZE_RESERVE,transcriptionReserve,combineTranscripts,MAX_COMBINED_TRANSCRIPT_BYTES} from './grouping';
 import {transcribeMeeting,analyzeMeeting} from './provider';
 import type {MeetingRecord} from './contract';
+import {closeIdleOmiMeetings} from './omi-sessions';
 
 // Reservations are deliberately conservative, not an invoice. No uncertain
 // charge is released or silently retried. Separate from assistant/build budgets.
@@ -22,10 +23,14 @@ async function maintenance(){
  return false;
 }
 async function finishCapture(){
- const r=(await getDatabasePool().query(`SELECT m.*,u.name,u.email,w.name workspace_name,w.slug,wm.role FROM meetings m JOIN "user" u ON u.id=m.owner_user_id JOIN workspaces w ON w.id=m.workspace_id JOIN workspace_memberships wm ON wm.user_id=m.owner_user_id AND wm.workspace_id=m.workspace_id JOIN meeting_devices d ON d.id=m.device_id WHERE m.status='capturing' AND m.audio_key IS NULL AND m.expires_at>now() AND (m.part_closed_at IS NOT NULL OR COALESCE(m.last_audio_at,m.updated_at)<now()-interval '3 minutes' OR d.armed_until IS NULL OR d.armed_until<=now() OR d.revoked_at IS NOT NULL OR d.current_meeting_id IS DISTINCT FROM COALESCE(m.parent_meeting_id,m.id)) AND wm.status='active' AND wm.role<>'viewer' AND w.status='active' ORDER BY m.created_at,m.part_order LIMIT 1`)).rows[0];
+ // End an idle session without closing the owner's always-ready connection.
+ // Serialize with audio intake, then recheck the deadline under the same lock.
+ const idle=(await getDatabasePool().query("SELECT workspace_id FROM meeting_devices WHERE always_ready AND revoked_at IS NULL AND current_meeting_id IS NOT NULL AND last_received_at<now()-interval '3 minutes' LIMIT 1")).rows[0];
+ if(idle){const db=await getDatabasePool().connect();try{await db.query('BEGIN');await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[`meetings:${idle.workspace_id}`]);await closeIdleOmiMeetings(db,idle.workspace_id);await db.query('COMMIT');}catch(e){await db.query('ROLLBACK');throw e;}finally{db.release();}}
+ const r=(await getDatabasePool().query(`SELECT m.*,u.name,u.email,w.name workspace_name,w.slug,wm.role FROM meetings m JOIN "user" u ON u.id=m.owner_user_id JOIN workspaces w ON w.id=m.workspace_id JOIN workspace_memberships wm ON wm.user_id=m.owner_user_id AND wm.workspace_id=m.workspace_id JOIN meeting_devices d ON d.id=m.device_id WHERE m.status='capturing' AND m.audio_key IS NULL AND m.expires_at>now() AND (m.part_closed_at IS NOT NULL OR COALESCE(m.last_audio_at,m.updated_at)<now()-interval '3 minutes' OR (NOT d.always_ready AND (d.armed_until IS NULL OR d.armed_until<=now())) OR d.revoked_at IS NOT NULL OR d.current_meeting_id IS DISTINCT FROM COALESCE(m.parent_meeting_id,m.id)) AND wm.status='active' AND wm.role<>'viewer' AND w.status='active' ORDER BY m.created_at,m.part_order LIMIT 1`)).rows[0];
  if(r){const c:DashboardContext={user:{id:r.owner_user_id,name:r.name,email:r.email},workspace:{id:r.workspace_id,name:r.workspace_name,slug:r.slug},role:r.role};await finishRecording(c,r.parent_meeting_id||r.id,r.id);await settleMeeting(c,r.parent_meeting_id||r.id);return true;}
  // A window can end after its last part has already been saved.
- const ready=(await getDatabasePool().query(`SELECT m.*,u.name,u.email,w.name workspace_name,w.slug,wm.role FROM meetings m JOIN "user" u ON u.id=m.owner_user_id JOIN workspaces w ON w.id=m.workspace_id JOIN workspace_memberships wm ON wm.user_id=m.owner_user_id AND wm.workspace_id=m.workspace_id WHERE m.parent_meeting_id IS NULL AND m.status='capturing' AND m.expires_at>now() AND wm.status='active' AND wm.role<>'viewer' AND w.status='active' AND NOT EXISTS(SELECT 1 FROM meeting_devices d WHERE d.current_meeting_id=m.id AND d.armed_until>now() AND d.revoked_at IS NULL) AND NOT EXISTS(SELECT 1 FROM meetings p WHERE (p.id=m.id OR p.parent_meeting_id=m.id) AND p.audio_key IS NULL) ORDER BY m.updated_at LIMIT 1`)).rows[0];
+ const ready=(await getDatabasePool().query(`SELECT m.*,u.name,u.email,w.name workspace_name,w.slug,wm.role FROM meetings m JOIN "user" u ON u.id=m.owner_user_id JOIN workspaces w ON w.id=m.workspace_id JOIN workspace_memberships wm ON wm.user_id=m.owner_user_id AND wm.workspace_id=m.workspace_id WHERE m.parent_meeting_id IS NULL AND m.status='capturing' AND m.expires_at>now() AND wm.status='active' AND wm.role<>'viewer' AND w.status='active' AND NOT EXISTS(SELECT 1 FROM meeting_devices d WHERE d.current_meeting_id=m.id AND (d.always_ready OR d.armed_until>now()) AND d.revoked_at IS NULL) AND NOT EXISTS(SELECT 1 FROM meetings p WHERE (p.id=m.id OR p.parent_meeting_id=m.id) AND p.audio_key IS NULL) ORDER BY m.updated_at LIMIT 1`)).rows[0];
  if(ready){await settleMeeting({user:{id:ready.owner_user_id,name:ready.name,email:ready.email},workspace:{id:ready.workspace_id,name:ready.workspace_name,slug:ready.slug},role:ready.role},ready.id);return true;}
  return false;
 }
@@ -38,7 +43,7 @@ export async function reserveMeetingStep(id?:string){
  const parts=(await db.query(`SELECT * FROM meetings WHERE id=$1 OR parent_meeting_id=$1 ORDER BY part_order,id FOR UPDATE`,[m.id])).rows;
  // Preserve a transcript completed by the old worker during a rolling deploy.
  if(parts.length===1&&!parts[0].part_transcript&&m.transcript){parts[0].part_transcript=m.transcript;await db.query('UPDATE meetings SET part_transcript=transcript WHERE id=$1',[m.id]);}
- if(parts.some(p=>!p.audio_key)||!!(await db.query('SELECT 1 FROM meeting_devices WHERE current_meeting_id=$1 AND armed_until>now() AND revoked_at IS NULL',[m.id])).rowCount){await db.query('COMMIT');return null;}
+ if(parts.some(p=>!p.audio_key)||!!(await db.query('SELECT 1 FROM meeting_devices WHERE current_meeting_id=$1 AND (always_ready OR armed_until>now()) AND revoked_at IS NULL',[m.id])).rowCount){await db.query('COMMIT');return null;}
  const recording=parts.find(p=>!p.part_transcript),stage=recording?'transcribe':'analyze';
  const transcript=combineTranscripts(parts);
  if(stage==='analyze'&&Buffer.byteLength(transcript)>MAX_COMBINED_TRANSCRIPT_BYTES){await db.query("UPDATE meetings SET status='failed',error_code='transcript_too_long',transcript=$2 WHERE id=$1",[m.id,transcript]);await db.query('COMMIT');return null;}

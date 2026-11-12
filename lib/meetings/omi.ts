@@ -6,28 +6,31 @@ import {getDatabasePool,insertAuditLog} from '@/lib/dashboard/db';
 import {meetingError,meetingRole,meetingTransaction} from './access';
 import {digest} from './service';
 import {MAX_MEETING_PARTS} from './grouping';
-export async function listMeetingDevices(c:DashboardContext){await meetingRole(c);return (await getDatabasePool().query('SELECT id,label,uid,armed_until,auto_process,last_received_at,current_meeting_id,duplicate_deliveries,created_at FROM meeting_devices WHERE workspace_id=$1 AND user_id=$2 AND revoked_at IS NULL ORDER BY created_at',[c.workspace.id,c.user.id])).rows;}
+import {closeIdleOmiMeetings} from './omi-sessions';
+export async function listMeetingDevices(c:DashboardContext){await meetingRole(c);return (await getDatabasePool().query('SELECT id,label,uid,armed_until,always_ready,consent_note,auto_process,last_received_at,current_meeting_id,duplicate_deliveries,created_at FROM meeting_devices WHERE workspace_id=$1 AND user_id=$2 AND revoked_at IS NULL ORDER BY created_at',[c.workspace.id,c.user.id])).rows;}
 export async function createMeetingDevice(c:DashboardContext,input:unknown){
  const v=z.object({label:z.string().trim().min(2).max(100),uid:z.string().regex(/^[A-Za-z0-9_-]{1,128}$/)}).parse(input);
  return meetingTransaction(c,async db=>{await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[`device:${c.user.id}`]);if((await db.query('SELECT id FROM meeting_devices WHERE workspace_id=$1 AND user_id=$2 AND revoked_at IS NULL',[c.workspace.id,c.user.id])).rowCount!>=3)throw meetingError('Revoke an old connection before adding another.');const id=randomUUID(),secret=randomBytes(32).toString('base64url');await db.query('INSERT INTO meeting_devices(id,workspace_id,user_id,label,uid,secret_hash) VALUES($1,$2,$3,$4,$5,$6)',[id,c.workspace.id,c.user.id,v.label,v.uid,digest(secret)]);await insertAuditLog(db,{workspaceId:c.workspace.id,actorUserId:c.user.id,action:'meeting.device_created',targetType:'meeting_device',targetId:id});return {id,secret};});
 }
 export async function armMeetingDevice(c:DashboardContext,input:unknown){
- const v=z.object({id:z.uuid(),minutes:z.number().int().min(0).max(120),consentNote:z.string().trim().max(1000),autoProcess:z.boolean()}).refine(v=>v.minutes===0||v.consentNote.length>=3,{message:'Record permission before opening a receiving window.'}).parse(input);
+ const v=z.object({id:z.uuid(),mode:z.enum(['window','always_ready']).default('window'),minutes:z.number().int().min(0).max(120),consentNote:z.string().trim().max(1000),autoProcess:z.boolean()}).refine(v=>(v.mode==='window'&&v.minutes===0)||v.consentNote.length>=3,{message:'Record your recording-permission acknowledgement before enabling receiving.'}).parse(input);
+ const alwaysReady=v.mode==='always_ready',enabled=alwaysReady||v.minutes>0;
  return meetingTransaction(c,async db=>{
  await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[`meetings:${c.workspace.id}`]);
- const d=(await db.query('SELECT *,armed_until>now() active FROM meeting_devices WHERE workspace_id=$1 AND user_id=$2 AND id=$3 AND revoked_at IS NULL FOR UPDATE',[c.workspace.id,c.user.id,v.id])).rows[0];
+ await closeIdleOmiMeetings(db,c.workspace.id);
+ const d=(await db.query('SELECT *,(always_ready OR armed_until>now()) active FROM meeting_devices WHERE workspace_id=$1 AND user_id=$2 AND id=$3 AND revoked_at IS NULL FOR UPDATE',[c.workspace.id,c.user.id,v.id])).rows[0];
  if(!d)throw meetingError('This connection is unavailable.',404);
  if(d.current_meeting_id&&d.active)await db.query("UPDATE meetings SET auto_process_requested=$2 WHERE id=$1 AND status='capturing'",[d.current_meeting_id,v.autoProcess]);
- if(d.current_meeting_id&&(!v.minutes||!d.active))await db.query('UPDATE meetings SET part_closed_at=COALESCE(part_closed_at,now()) WHERE id=$1 OR parent_meeting_id=$1',[d.current_meeting_id]);
- await db.query("UPDATE meeting_devices SET armed_until=CASE WHEN $2=0 THEN NULL ELSE now()+$2*interval '1 minute' END,consent_note=CASE WHEN $2=0 THEN consent_note ELSE $3 END,auto_process=$4,current_meeting_id=CASE WHEN $2=0 OR NOT COALESCE($5,false) THEN NULL ELSE current_meeting_id END WHERE id=$1",[d.id,v.minutes,v.consentNote,v.autoProcess,d.active]);
- await insertAuditLog(db,{workspaceId:c.workspace.id,actorUserId:c.user.id,action:'meeting.device_receiving_changed',targetType:'meeting_device',targetId:v.id,metadata:{minutes:v.minutes,autoProcess:v.autoProcess}});
+ if(d.current_meeting_id&&(!enabled||!d.active))await db.query('UPDATE meetings SET part_closed_at=COALESCE(part_closed_at,now()) WHERE id=$1 OR parent_meeting_id=$1',[d.current_meeting_id]);
+ await db.query("UPDATE meeting_devices SET always_ready=$6,armed_until=CASE WHEN $2=0 OR $6 THEN NULL ELSE now()+$2*interval '1 minute' END,consent_note=CASE WHEN $7 THEN $3 ELSE consent_note END,auto_process=$4,current_meeting_id=CASE WHEN NOT $7 OR NOT COALESCE($5,false) THEN NULL ELSE current_meeting_id END WHERE id=$1",[d.id,v.minutes,v.consentNote,v.autoProcess,d.active,alwaysReady,enabled]);
+ await insertAuditLog(db,{workspaceId:c.workspace.id,actorUserId:c.user.id,action:'meeting.device_receiving_changed',targetType:'meeting_device',targetId:v.id,metadata:{mode:v.mode,minutes:alwaysReady?null:v.minutes,autoProcess:v.autoProcess}});
  });
 }
 export async function nextOmiConversation(c:DashboardContext,id:string){
  z.uuid().parse(id);return meetingTransaction(c,async db=>{
  await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[`meetings:${c.workspace.id}`]);
- const d=(await db.query('SELECT * FROM meeting_devices WHERE id=$1 AND workspace_id=$2 AND user_id=$3 AND revoked_at IS NULL AND armed_until>now() FOR UPDATE',[id,c.workspace.id,c.user.id])).rows[0];
- if(!d)throw meetingError('Open a receiving window first.',409);
+ const d=(await db.query('SELECT * FROM meeting_devices WHERE id=$1 AND workspace_id=$2 AND user_id=$3 AND revoked_at IS NULL AND (always_ready OR armed_until>now()) FOR UPDATE',[id,c.workspace.id,c.user.id])).rows[0];
+ if(!d)throw meetingError('Enable receiving first.',409);
  if(d.current_meeting_id)await db.query('UPDATE meetings SET part_closed_at=COALESCE(part_closed_at,now()) WHERE id=$1 OR parent_meeting_id=$1',[d.current_meeting_id]);
  await db.query('UPDATE meeting_devices SET current_meeting_id=NULL WHERE id=$1',[id]);
  await insertAuditLog(db,{workspaceId:c.workspace.id,actorUserId:c.user.id,action:'meeting.next_conversation',targetType:'meeting_device',targetId:id});
@@ -36,7 +39,7 @@ export async function nextOmiConversation(c:DashboardContext,id:string){
 export async function revokeMeetingDevice(c:DashboardContext,id:string){
  z.uuid().parse(id);return meetingTransaction(c,async db=>{
  await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[`meetings:${c.workspace.id}`]);
- await db.query('UPDATE meeting_devices SET revoked_at=now(),armed_until=NULL,current_meeting_id=NULL WHERE workspace_id=$1 AND user_id=$2 AND id=$3',[c.workspace.id,c.user.id,id]);
+ await db.query('UPDATE meeting_devices SET revoked_at=now(),always_ready=false,armed_until=NULL,current_meeting_id=NULL WHERE workspace_id=$1 AND user_id=$2 AND id=$3',[c.workspace.id,c.user.id,id]);
  await insertAuditLog(db,{workspaceId:c.workspace.id,actorUserId:c.user.id,action:'meeting.device_revoked',targetType:'meeting_device',targetId:id});
  });
 }
@@ -51,7 +54,8 @@ export async function receiveOmi(secret:string,uid:string,rate:number,bytes:Uint
  const {context:c,device:d}=await omiIdentity(secret,uid);
  return meetingTransaction(c,async db=>{
  await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[`meetings:${c.workspace.id}`]);
- const active=(await db.query('SELECT *,armed_until>clock_timestamp() receiving FROM meeting_devices WHERE id=$1 AND revoked_at IS NULL FOR UPDATE',[d.id])).rows[0];
+ await closeIdleOmiMeetings(db,c.workspace.id);
+ const active=(await db.query('SELECT *,(always_ready OR armed_until>clock_timestamp()) receiving FROM meeting_devices WHERE id=$1 AND revoked_at IS NULL FOR UPDATE',[d.id])).rows[0];
  if(!active)throw meetingError('Unauthorized.',401);
  // A successful acknowledgement keeps Omi from counting an intentional pause
  // as a delivery failure. Do not persist even a hash or timestamp of this audio.
@@ -74,7 +78,7 @@ export async function receiveOmi(secret:string,uid:string,rate:number,bytes:Uint
  if(!part){
  if(previous&&previous.part_order+1>=MAX_MEETING_PARTS){root=null;previous=null;}
  const id=randomUUID(),order=previous?previous.part_order+1:0;
- part=(await db.query(`INSERT INTO meetings(id,workspace_id,owner_user_id,title,source,status,device_id,sample_rate,consent_note,consent_at,consent_by,parent_meeting_id,part_order,gap_before_seconds,boundary_reason,auto_process_requested,expires_at) VALUES($1,$2,$3,$4,'omi','capturing',$5,$6,$7,now(),$3,$8,$9,$10,$11,$12,COALESCE($13::timestamptz,now()+interval '30 days')) RETURNING *`,[id,c.workspace.id,c.user.id,`${d.label} meeting`,d.id,rate,active.consent_note,root?.id??null,order,previous?gap:0,previous?(previous.sample_rate!==rate?'sample_rate':gap>30?'delivery_gap':'size'):null,active.auto_process,root?.expires_at??null])).rows[0];
+ part=(await db.query(`INSERT INTO meetings(id,workspace_id,owner_user_id,title,source,status,device_id,sample_rate,consent_note,consent_at,consent_by,parent_meeting_id,part_order,gap_before_seconds,boundary_reason,auto_process_requested,expires_at) VALUES($1,$2,$3,$4,'omi','capturing',$5,$6,$7,now(),$3,$8,$9,$10,$11,$12,COALESCE($13::timestamptz,now()+interval '30 days')) RETURNING *`,[id,c.workspace.id,c.user.id,`${d.label} meeting`,d.id,rate,active.always_ready?`Standing recording-permission acknowledgement: ${active.consent_note}`:active.consent_note,root?.id??null,order,previous?gap:0,previous?(previous.sample_rate!==rate?'sample_rate':gap>30?'delivery_gap':'size'):null,active.auto_process,root?.expires_at??null])).rows[0];
  if(!root){root=part;await db.query('UPDATE meeting_devices SET current_meeting_id=$2 WHERE id=$1',[d.id,root.id]);}
  }
  const sequence=Number((await db.query('SELECT COALESCE(max(sequence),-1)+1 sequence FROM meeting_upload_chunks WHERE meeting_id=$1',[part.id])).rows[0].sequence);
