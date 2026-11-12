@@ -236,6 +236,8 @@ November 11 implementation update: the [record polish pass](SOFTWARE_RECORD_POLI
 
 ### Page-level acceptance targets
 
+November 11 phase-7 update: [Mail/account implementation and evidence](SOFTWARE_MAIL_POLISH_2026-11-11.md) addresses V24–25, V32 and V40–41 in source with local desktop/mobile checks. Mail's separate Cloudflare release and live acceptance remain pending. The report explicitly records unrendered bootstrap, provider/device states and development-preview limits; phase 8 remains open.
+
 | Family | What the finished page should demonstrate |
 | --- | --- |
 | Overview / My day | An obvious primary next action, meaningful task priority and consistent metric alignment. Update feeds are compact by default and retain unread/review state. |

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { safeNextPath } from '$lib/next-url';
-	import Logo from '$lib/components/Logo.svelte';
 	import { APP_NAME } from '$lib/constants';
 	import { t } from '$lib/i18n';
 	import { untrack } from 'svelte';
@@ -74,10 +73,10 @@
 	<title>{t('accountSetup.title', { app: APP_NAME })}</title>
 </svelte:head>
 
-<div class="auth-shell">
-	<div class="auth-card">
+<div class="ta-welcome">
+	<div class="ta-auth-card">
+        <div class="ta-wordmark"><span>TA</span> TAILORED AGENTS</div>
 		<div class="auth-brand">
-			<div class="brand-icon"><Logo size={48} /></div>
 			<h1>{t('accountSetup.heading')}</h1>
 			<p>{t('accountSetup.description')}</p>
 		</div>
@@ -127,10 +126,10 @@
 			</div>
 
 			{#if error}
-				<p class="text-sm text-[var(--color-text-secondary)]">{error}</p>
+				<p role="alert" class="ta-error">{error}</p>
 			{/if}
 
-			<button type="submit" disabled={loading} class="btn-primary mt-2 w-full py-2.5">
+			<button type="submit" disabled={loading} class="ta-primary">
 				{loading ? t('accountSetup.saving') : t('accountSetup.continue')}
 			</button>
 		</form>
@@ -141,8 +140,8 @@
 	.auth-brand {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		text-align: center;
+		align-items: flex-start;
+		text-align: left;
 	}
 
 	.auth-brand p {
@@ -150,14 +149,6 @@
 		font-size: 0.875rem;
 		line-height: 1.5;
 		color: var(--color-muted);
-	}
-
-	.brand-icon {
-		display: flex;
-		margin-bottom: 1rem;
-		overflow: hidden;
-		border-radius: 0.775rem;
-		box-shadow: var(--shadow-sm);
 	}
 
 	.field-hint {

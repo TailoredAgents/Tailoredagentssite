@@ -1,0 +1,16 @@
+.page { min-height:100dvh; padding:40px 20px; background:radial-gradient(ellipse at 20% 0%,#dde7ff,transparent 60%),#e9eef5; color:#18253c; }
+.card { max-width:700px; margin:0 auto; padding:36px; border:1px solid #d4deea; border-radius:18px; background:#fff; box-shadow:0 8px 36px #16304c0d; }
+.card h1 { font-size:30px; font-weight:650; line-height:1.2; letter-spacing:-.04em; margin:12px 0 20px; }
+.card p { font-size:14px; line-height:1.75; margin:16px 0; color:#55657c; overflow-wrap:anywhere; }
+.card p strong { color:#18253c; }
+.card .eyebrow { color:#315cbe; font-size:11px; letter-spacing:.08em; font-weight:650; margin-top:28px; }
+.permission,.direct { display:block; padding:16px; margin:12px 0; border:1px solid #d4deea; border-radius:10px; font-size:14px; line-height:1.75; cursor:pointer; }
+.permission { display:flex; align-items:flex-start; gap:12px; }
+.direct { background:#f3f6fb; margin:24px 0; }
+.card input[type=checkbox] { width:18px; height:18px; flex-shrink:0; margin-top:4px; accent-color:#315cbe; }
+.direct input { margin-right:8px; }
+.actions { display:flex; flex-wrap:wrap; gap:12px; border-top:1px solid #d4deea; padding-top:22px; margin-top:24px; }
+.actions button { min-height:44px; padding:11px 18px; border:1px solid #bcc9dc; border-radius:9px; font-size:14px; font-weight:600; cursor:pointer; }
+.actions .primary { color:#fff; background:#315cbe; border-color:#315cbe; }
+.card :is(input,button,a):focus-visible { outline:2px solid #315cbe; outline-offset:3px; }
+@media(max-width:600px) { .page { padding:20px 12px; } .card { padding:24px 18px; } .card h1 { font-size:26px; } .actions button { flex:1; } }

@@ -19,6 +19,8 @@ statements below that MCP is entirely disabled; ordinary private APIs remain clo
 
 ## For the team
 
+November 11 source update: the [Mail/account visual pass](../../docs/SOFTWARE_MAIL_POLISH_2026-11-11.md) adds a clearer sender identity in Compose, selected appearance cards, folder-specific empty states and consistent account/permission screens. Local checks and the production build passed; Cloudflare authentication is unavailable on this machine, so this update still requires a separate Mail deployment. A website push does not release Mail.
+
 - Sign in with your email address and password. A temporary password must be changed before opening your inbox.
 - Use Compose to write messages, add CC/BCC and files, and choose one of your assigned sending addresses.
 - Drafts save automatically. Wait for **Saved** before leaving. Attachments are saved too, and unchanged files are reused during later saves. Unfinished replies and forwards also appear in Drafts.

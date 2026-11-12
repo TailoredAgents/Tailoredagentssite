@@ -69,7 +69,6 @@
 	let savedReplyFiles='';
 	let sendError = $state('');
 	let drafting = $state(false);
-	let dark = $state(false);
 	let detailsFor = $state<string | null>(null);
 	let menuFor = $state<string | null>(null);
 	let labelsBusy = $state(false);
@@ -82,9 +81,6 @@
 		)
 	);
 
-	$effect(() => {
-		dark = document.documentElement.dataset.theme === 'dark';
-	});
 
 	$effect(() => {
 		const current = id;
@@ -500,9 +496,9 @@
 />
 
 {#if !id}
-	<div class="z-empty">
-		<img src={dark ? '/themes/zero/empty-state.svg' : '/themes/zero/empty-state-light.svg'} alt="" />
-		<p class="z-empty-title">{t('mailbox.empty.zero')}</p>
+	<div class="z-empty ta-reading-empty">
+        <span class="ta-empty-mark" aria-hidden="true"><Icon name="Mail" size={28}/></span>
+		<p class="z-empty-title">Your conversations, in focus</p>
 		<p class="z-empty-copy">{t('thread.chooseEmail')}</p>
 		{#if onCompose}
 			<button type="button" class="z-ghost-btn" onclick={onCompose}>

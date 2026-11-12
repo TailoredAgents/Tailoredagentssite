@@ -14,17 +14,17 @@
 <svelte:head><title>Your team · Tailored Agents Mail</title></svelte:head>
 <div class="ta-panel"><p class="ta-eyebrow">OWNER SETTINGS</p><h1>Your team</h1><p>Each person gets a private inbox. You manage their access here.</p>
   {#if error}<p role="alert" class="ta-error">{error}</p>{/if}{#if notice}<p role="status">{notice}</p>{/if}
-  <section class="ta-card"><h2>Create an account</h2><form class="ta-form-grid" onsubmit={add}>
-    <label>Name<input bind:value={name} required maxlength="128" /></label>
-    <label>Email name<input bind:value={localPart} placeholder="name" required /><small>@{data.domains[0]?.name ?? 'tailoredagents.com'}</small></label>
-    <label>Temporary password<input type="password" bind:value={password} required minlength="12" maxlength="128" autocomplete="new-password" /></label>
-    <button class="ta-primary" disabled={busy || !data.domains.length}>Create account</button>
-  </form><p style="font-size:12px">They must choose a new password when they first sign in.</p></section>
   <section class="ta-card"><h2>Team members</h2>{#each data.users as user(user.id)}<div class="ta-team-row">
     <div><strong>{user.name}</strong><small>{user.email}{user.is_admin?' · Owner':''}{user.disabled_at?' · Disabled':''}</small><small>Website dashboard: {user.dashboard_access ? 'Approved' : 'Not approved'}</small></div>
     <div><button onclick={()=>{resetId=user.id;resetPassword='';}}>Reset password</button>
     {#if !user.is_admin}<button disabled={busy || !!user.disabled_at} onclick={()=>change(`/api/admin/users/${user.id}`,{dashboardAccess:!user.dashboard_access})}>{user.dashboard_access?'Remove dashboard access':'Allow dashboard access'}</button><button disabled={busy} onclick={()=>change(`/api/admin/users/${user.id}`,{disabled:!user.disabled_at})}>{user.disabled_at?'Enable access':'Disable access'}</button>{/if}</div>
   </div>{/each}</section>
+  <details class="ta-card ta-add-account"><summary>Add a team account</summary><form class="ta-form-grid" onsubmit={add}>
+    <label>Name<input bind:value={name} required maxlength="128" /></label>
+    <label>Email name<input bind:value={localPart} placeholder="name" required /><small>@{data.domains[0]?.name ?? 'tailoredagents.com'}</small></label>
+    <label>Temporary password<input type="password" bind:value={password} required minlength="12" maxlength="128" autocomplete="new-password" /></label>
+    <button class="ta-primary" disabled={busy || !data.domains.length}>Create account</button>
+  </form><p style="font-size:12px">They must choose a new password when they first sign in.</p></details>
   <section class="ta-card"><h2>Add an email address</h2><p>Extra addresses deliver to the selected person’s private inbox.</p><form class="ta-form-grid" onsubmit={async(e)=>{e.preventDefault();if(await change('/api/addresses',{userId:aliasUser,localPart:aliasName,domainId:data.domains[0]?.id})){aliasName='';notice='Address added.';}}}><label>Team member<select required bind:value={aliasUser}><option value="">Choose a person</option>{#each data.users.filter(u=>!u.disabled_at) as user}<option value={user.id}>{user.name}</option>{/each}</select></label><label>Email name<input required bind:value={aliasName}/><small>@{data.domains[0]?.name}</small></label><button class="ta-primary" disabled={busy}>Add address</button></form>{#each data.addresses as address}<p>{address.address} → {data.users.find(u=>u.id===address.user_id)?.name}</p>{/each}</section>
   <section class="ta-card"><h2>Website CRM inbox access</h2><p>Choose which mailboxes each teammate can open inside the website CRM. Sharing exposes messages received or sent through the selected email address, including its existing messages. Other addresses stay private. Dashboard approval alone gives no access to email; this also applies to your own mailbox.</p>
     <form class="ta-form-grid" onsubmit={async(e)=>{e.preventDefault();if(await change('/api/admin/crm-grants',{mailboxId:crmMailbox,granteeId:crmGrantee,canRead:true,canSend:crmSend})){notice='CRM mailbox approval saved.';crmSend=false;}}}>

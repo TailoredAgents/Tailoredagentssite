@@ -4,7 +4,7 @@
 	import { page } from '$app/stores';
 	import { formatRelativeDate } from '$lib/utils/date';
 	import { runMailAction } from '$lib/mail/client';
-	import { initials, participantName } from '$lib/mail/folders';
+	import { initials, participantName, folderTitle } from '$lib/mail/folders';
 	import { INBOX_CATEGORIES, categoryNavKey, categoryUnread } from '$lib/mail/categories';
 	import { t } from '$lib/i18n';
 	import Tooltip from '$lib/components/Tooltip.svelte';
@@ -52,11 +52,14 @@
 	const chip = $derived(
 		filters.unreadOnly ? 'unread' : filters.starredOnly ? 'starred' : 'all'
 	);
-	let dark = $state(false);
-
-	$effect(() => {
-		dark = document.documentElement.dataset.theme === 'dark';
-	});
+	const folderName = $derived(filters.labelId ? ($page.data.labels?.find((label: {id:string;name:string}) => label.id === filters.labelId)?.name ?? 'Label') : folderTitle(view, $page.data.locale));
+	const hasFilters = $derived(Boolean(filters.q || filters.unreadOnly || filters.starredOnly || filters.attachmentsOnly || filters.addressId));
+	const emptyCopy: Record<MailboxView, string> = {inbox:'New conversations will appear here.',drafts:'Messages you start are saved here so you can return to them.',sent:'Messages you send will appear here.',archive:'Archived conversations stay available here.',starred:'Star a conversation to keep it close at hand.',spam:'Messages marked as junk appear here.',trash:'Messages moved to Trash appear here until they expire or you restore them.'};
+	function clearFilters() {
+		const url = new URL($page.url);
+		for (const key of ['q','unread','starred','attachments','address','page']) url.searchParams.delete(key);
+		void goto(`${url.pathname}${url.search}`);
+	}
 
 	function setThread(id: string | null) {
 		const url = new URL($page.url);
@@ -217,7 +220,7 @@
 
 <div class="z-mail" class:reading={Boolean(threadId)}>
 	<section class="z-panel z-list">
-		<div class="z-list-head">
+		<div class="z-list-head"><div class="ta-folder-heading"><h1>{folderName}</h1><span>Tailored Agents Mail</span></div>
 			<div class="z-list-tools">
 				<Tooltip text={t('nav.toggleSidebar')}>
 					<button type="button" class="z-icon-btn" aria-label={t('nav.toggleSidebar')} onclick={toggleSidebar}>
@@ -323,15 +326,10 @@
 		<div class="z-rows">
 			{#if items.length === 0}
 				<div class="z-empty">
-					<img
-						src={dark ? '/themes/zero/empty-state.svg' : '/themes/zero/empty-state-light.svg'}
-						alt=""
-					/>
-					<p class="z-empty-title">{t('mailbox.empty.zero')}</p>
-					<p class="z-empty-copy">
-						{t('mailbox.empty.zeroHint')}
-						<button type="button" class="z-empty-link" onclick={() => setChip('all')}>{t('mailbox.empty.clearFiltersLink')}</button>
-					</p>
+					<span class="ta-empty-mark" aria-hidden="true"><Icon name="Inbox" size={26}/></span>
+					<p class="z-empty-title">{hasFilters ? 'No matching conversations' : `No messages in ${folderName}`}</p>
+					<p class="z-empty-copy">{hasFilters ? 'Try another search or clear the current filters.' : filters.labelId ? 'Conversations with this label will appear here.' : emptyCopy[view]}</p>
+					{#if hasFilters}<button type="button" class="z-empty-link" onclick={clearFilters}>{t('mailbox.empty.clearFiltersLink')}</button>{/if}
 				</div>
 			{:else}
 				{#each items as thread (thread.thread_id)}

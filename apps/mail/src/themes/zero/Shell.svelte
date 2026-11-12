@@ -103,10 +103,11 @@
 	]);
 
 	const settingsNav = $derived<NavItem[]>([
-		{ href: '/inbox', icon: 'ArrowLeft', label: t('common.back') },
+		{ href: '/inbox', icon: 'ArrowLeft', label: 'Back to Mail' },
 		{ href: '/settings/general', icon: 'SettingsGear', label: t('nav.general'), shortcut: 'g s' },
 		{ href: '/settings/appearance', icon: 'Stars', label: t('nav.appearance') },
 		{ href: '/settings/labels', icon: 'Tag', label: t('nav.labels') },
+        { href: '/settings/connections', icon: 'SettingsGear', label: 'Connected assistants' },
 		{ href: '/settings/shortcuts', icon: 'Tabs', label: t('nav.shortcuts'), shortcut: '?' },
 		...(data.user.is_admin ? [{ href: '/admin', icon: 'SettingsGear', label: t('nav.admin') }] : [])
 	]);
@@ -360,7 +361,7 @@
 	<div class="z-stage">
 		{#if settings}
 			<div class="z-settings-panel">
-				<div class="z-settings-bar">
+				<div class="z-settings-bar"><span>Tailored Agents / <strong>{pathname.startsWith('/admin') ? 'Administration' : 'Settings'}</strong></span>
 					<Tooltip text={t('nav.openSidebar')}>
 						<button type="button" class="z-icon-btn z-settings-toggle" aria-label={t('nav.openSidebar')} onclick={toggleSidebar}>
 							<Icon name="PanelLeftOpen" size={16} />

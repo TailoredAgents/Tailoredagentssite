@@ -3,7 +3,6 @@
 	import { untrack, onMount } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
 	import RichTextEditor from '$lib/components/RichTextEditor.svelte';
-	import Tooltip from '$lib/components/Tooltip.svelte';
 	import { htmlToPlainText, isHtmlEmpty } from '$lib/utils/html';
 	import type { MailAddress, OutboundAttachmentInput } from '$lib/types';
 	import Icon from '../icons/Icon.svelte';
@@ -212,12 +211,9 @@
 </script>
 <datalist id="mail-recipient-suggestions">{#each suggestions as address}<option value={address}></option>{/each}</datalist>
 
-<div use:focusTrap class="z-overlay" onkeydown={onKey} role="dialog" aria-modal="true" tabindex="-1">
+<div use:focusTrap class="z-overlay" onkeydown={onKey} role="dialog" aria-modal="true" aria-labelledby="mail-compose-title" tabindex="-1">
 	<div class="z-compose-stage">
-		<button type="button" class="z-esc" aria-label={t('common.close')} onclick={close}>
-			<Icon name="X" size={14} />
-			<span>esc</span>
-		</button>
+		<header class="ta-compose-heading"><div><span>Tailored Agents Mail</span><h1 id="mail-compose-title">{context ? 'Continue your draft' : 'New message'}</h1></div><button type="button" class="z-icon-btn" aria-label={t('common.close')} onclick={close} disabled={savingDraft || sending}><Icon name="X" size={18}/></button></header>
 
 		<form class="z-composer" onsubmit={send}>
 			<div class="z-composer-fields">
@@ -225,13 +221,9 @@
 					<span class="z-composer-label">{t('compose.toColon')}</span>
 					<input class="z-composer-input" bind:value={to} list="mail-recipient-suggestions" aria-label="To" required placeholder={t('compose.emailPlaceholder')} />
 					<div class="z-composer-row-actions">
-						<button type="button" class="z-composer-link" onclick={() => (showCc = !showCc)}>{t('compose.cc')}</button>
-						<button type="button" class="z-composer-link" onclick={() => (showBcc = !showBcc)}>{t('compose.bcc')}</button>
-						<Tooltip text={t('common.close')}>
-							<button type="button" class="z-composer-link" aria-label={t('common.close')} onclick={close}>
-								<Icon name="X" size={14} />
-							</button>
-						</Tooltip>
+						<button type="button" class="z-composer-link" aria-expanded={showCc} onclick={() => (showCc = !showCc)}>{t('compose.cc')}</button>
+						<button type="button" class="z-composer-link" aria-expanded={showBcc} onclick={() => (showBcc = !showBcc)}>{t('compose.bcc')}</button>
+
 					</div>
 				</div>
 				{#if showCc}
@@ -248,13 +240,14 @@
 				{/if}
 				<div class="z-composer-row">
 						<span class="z-composer-label">{t('compose.subjectColon')}</span>
-						<input class="z-composer-input" bind:value={subject} required placeholder={t('compose.subject')} />
+						<input class="z-composer-input" bind:value={subject} aria-label={t('compose.subject')} required placeholder={t('compose.subject')} />
 				</div>
-				{#if addresses.length > 1}
+				{#if addresses.length > 0}
 					<div class="z-composer-row">
 						<span class="z-composer-label">{t('compose.fromColon')}</span>
 						<select
 							class="z-composer-input"
+							aria-label="From"
 							value={fromAddressId}
 							onchange={(event) => (chosenAddressId = event.currentTarget.value)}
 						>
