@@ -87,5 +87,5 @@ export async function runMeetingWorker(id?:string){
  await connection.query("UPDATE meeting_requests SET state='completed' WHERE id=$1",[job.requestId]);await connection.query('COMMIT');
  }catch(e){await connection.query('ROLLBACK');throw e;}finally{connection.release();}
  return {checked:1,failed:0,more:true};
- }catch(e){const code=e instanceof Error&&['empty_audio','invalid_analysis'].includes(e.message)?e.message:'provider_unavailable';await db.query("UPDATE meeting_requests SET state='unknown' WHERE id=$1",[job.requestId]);await db.query("UPDATE meetings SET status='failed',error_code=$3,lease_token=NULL,lease_until=NULL,updated_at=now() WHERE id=$1 AND lease_token=$2 AND status IN ('transcribing','analyzing')",[job.meeting.id,job.lease,code]);return {checked:1,failed:1,more:false};}
+ }catch(e){const code=e instanceof Error&&['empty_audio','invalid_analysis','analysis_incomplete','analysis_refused','analysis_format','analysis_evidence'].includes(e.message)?e.message:'provider_unavailable';await db.query("UPDATE meeting_requests SET state='unknown' WHERE id=$1",[job.requestId]);await db.query("UPDATE meetings SET status='failed',error_code=$3,lease_token=NULL,lease_until=NULL,updated_at=now() WHERE id=$1 AND lease_token=$2 AND status IN ('transcribing','analyzing')",[job.meeting.id,job.lease,code]);return {checked:1,failed:1,more:false};}
 }
