@@ -9,6 +9,8 @@ Reconciled November 10, 2026 through `dd09c09`. This is the active implementatio
 
 ## Current development resume point
 
+**Referral finance and client success, November 15 planning:** the [code-backed gap analysis and delivery plan](REFERRAL_CLIENT_SUCCESS_GAP_ANALYSIS.md) is prepared. Recommended order: accepted attribution and dated roles, Stripe read-only billing/collection reconciliation, shadow recurring calculations and reviewed statements, client-success tasks/reminders, then permissioned assistant billing actions. Reuse the existing ledger and Services; private commercial terms remain outside this public repository. This is not implemented or activated, and it does not supersede the separate Mail/device acceptance gates.
+
 **SEO autonomy, November 11:** owner-requested automatic metadata publishing and scan dependency recovery are implemented. The [SEO runbook](SEO_MANAGER_SETUP.md) owns current tests, activation and observed live evidence. Older mandatory per-change SEO approval below describes manual mode. The $10/month allowance, exact source validation, independent AI critique, live verification/rollback and observation window remain; article/code publishing is separate work.
 
 **Relationship operating model, November 10:** Austin authorized [the full implementation plan](RELATIONSHIP_OPERATING_MODEL_PLAN.md). Release 1 adds a relationship overview, accountable handoffs in My day and permissioned assistant actions for discovery/introductions/account management. [Operating and verification guide](RELATIONSHIP_WORKSPACE.md). The referral ledger, finance/partner permissions, solution briefs and service outcomes remain later planned releases; do not treat an introduction as a payout agreement.

@@ -4,6 +4,8 @@ Prepared November 15, 2026. Planning only: this change adds documentation, not a
 
 ## Start here
 
+**November 15 source audit completed:** read the [gap analysis and phased implementation plan](REFERRAL_CLIENT_SUCCESS_GAP_ANALYSIS.md) for the existing/partial/missing matrix, compatible ledger migrations, Stripe-first billing recommendation and release gates. This is a planning result; implementation and financial activation remain pending. The local ignored supplement records private draft-policy mapping.
+
 Extend the existing CRM's relationship, partner-finance and managed-service workflows to support recurring-service commissions and accountable client management. Do not build another CRM or duplicate the existing ledger.
 
 This repository is public. Actual commercial rates, contract durations, named allocation policies, agreements and compensation records must remain in authorized private storage. Local reference material is available in the Git-ignored `docs/private/referral-program/` directory on the originating workstation. It is not included in a clone or GitHub checkout. If that directory is unavailable, obtain the private brief from the owner before implementing policy-specific behavior. Do not infer company terms from public examples or test fixtures.

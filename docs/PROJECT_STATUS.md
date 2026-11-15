@@ -26,7 +26,7 @@ The internal CRM supports relationship-led discovery, sales, client account mana
 
 ## Next work and ownership
 
-**November 15 planning handoff:** [Referral commissions and client success](REFERRAL_CLIENT_SUCCESS_PLAN.md) describes a proposed extension to the existing ledger, attribution and managed-service features. Begin with a code-backed gap analysis and additive migration plan using the owner's private reference pack. This documentation does not activate finance rules or replace the existing acceptance work below.
+**November 15 planning review:** the [referral/client-success gap analysis](REFERRAL_CLIENT_SUCCESS_GAP_ANALYSIS.md) completes the source audit requested by the [planning handoff](REFERRAL_CLIENT_SUCCESS_PLAN.md). It recommends Stripe as the first billing integration, accepted referral and dated role history, verified collection/service-period allocation, compatible ledger extensions and staged client-success operations. The owner delegated Square-versus-Stripe selection; neither provider was connected by this review. Implementation and financial activation remain pending. Actual commercial terms and detailed draft-policy mapping stay in the ignored local private pack. This documentation does not replace the existing acceptance work below.
 
 1. **Jeffrey:** complete the separate Cloudflare Mail release and record its exact version/checks. Follow the current addendum in [new jeffrey.md](../new%20jeffrey.md), not superseded initial setup instructions.
 2. **Austin with implementation help:** after Mail acceptance, explicitly activate/test desired background grants and employee preferences. Complete designated device/meeting checks; real sends require approved recipient/content. Native push also needs Apple account/signing work.
