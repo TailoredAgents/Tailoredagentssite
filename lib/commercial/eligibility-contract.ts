@@ -1,0 +1,10 @@
+import {z} from 'zod';
+import {roleSchema} from './contract';
+const date=z.iso.date(), evidence=z.string().trim().min(10).max(4000);
+const identity={requestId:z.uuid(),id:z.uuid(),revision:z.number().int().positive()};
+export const entitlementInput=z.object({requestId:z.uuid(),clientId:z.uuid(),documentId:z.uuid(),role:roleSchema,basis:z.enum(['accepted_referral','direct_origination','partner_recruitment','assignment']),referralId:z.uuid().optional(),evidence}).strict();
+export const periodInput=z.object({...identity,startsOn:date,endsBefore:date.optional(),assignmentId:z.uuid().optional(),evidence}).strict().refine(v=>!v.endsBefore||v.endsBefore>v.startsOn,'The first excluded day must follow the first eligible day.');
+export const endPeriodInput=z.object({...identity,periodId:z.uuid(),endsBefore:date,reason:z.enum(['transfer','term_end','departure']),evidence}).strict();
+export const reviewInput=z.object({...identity,kind:z.enum(['inactivity','performance']),observedFrom:date,observedThrough:date,noticeOn:date,cureDueOn:date,policyEvidence:evidence}).strict().refine(v=>v.observedThrough>=v.observedFrom&&v.noticeOn>=v.observedThrough&&v.cureDueOn>v.noticeOn,'Review the observation, actual notice and cure dates.');
+export const resolutionInput=z.object({...identity,reviewId:z.uuid(),outcome:z.enum(['retained','ended','dismissed']),endsBefore:date.optional(),evidence}).strict();
+export const eligibilityEvidenceInput=z.object({...identity,kind:z.enum(['protected_leave','substantive_work']),startsOn:date,endsBefore:date,evidence}).strict().refine(v=>v.endsBefore>v.startsOn,'The first excluded day must follow the start.');

@@ -8,6 +8,8 @@ The subsequent [operating-model releases](OPERATING_MODEL_GUIDE.md) add solution
 
 **November 15 assignment history:** changing a client's account manager now records the reason, operator and effective timestamp, including unassigned intervals. The client discovery panel shows the latest 30 assignment intervals. Existing assignments have a clearly labeled migration baseline; older history is not inferred. Sales/project ownership and financial eligibility stay separate. [Commercial preparation](COMMERCIAL_PREPARATION.md) describes the related finance workflow and current limits.
 
+**Later November 15 eligibility capture:** finance managers can reference these assignment intervals from [Customer eligibility](CUSTOMER_ELIGIBILITY.md), alongside exact signed versions, nonoverlapping service periods and human notice/cure decisions. Changing the operational manager still does not create or transfer commission eligibility. Changed coverage is flagged for finance reconciliation, and historical periods remain recorded.
+
 Record pages now lead with saved information and use explicit **Edit…** disclosures for prospect, opportunity, client, contact, project and service changes. **Cancel** discards unsaved changes; **Save** keeps the existing action and feedback. The relationship overview places solution design and delivery below the people/next-step columns, allowing longer briefs to use the page width. See the [November 11 record polish report](SOFTWARE_RECORD_POLISH_2026-11-11.md) for scope and verification.
 
 1. Open a prospect, sales opportunity, client or client contact. In Relationships & discovery, select **Open relationship overview**.

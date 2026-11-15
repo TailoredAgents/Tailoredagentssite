@@ -2,6 +2,8 @@
 
 November 15, 2026 implementation checkpoint. The owner requested building the software before Jeffrey sets up/connects Stripe. This release starts that sequence; it does not complete the full recurring-finance or client-success implementation.
 
+**Later November 15 eligibility checkpoint:** [Customer eligibility](CUSTOMER_ELIGIBILITY.md) now captures exact executed authority per customer, external/direct/recruiter attribution, dated nonoverlapping service periods, manager assignment evidence and distinct work/leave/notice/cure histories. It preserves attribution across supersession and offboarding. Verified receipts and window anchors remain pending; no payable rules are activated.
+
 ## Using the workspace
 
 Open **Partners → Agreements, referral decisions & billing drafts**. `/dashboard/finance` requires existing finance read/manage permission or an owner/admin role. Selecting a finance work focus does not grant access.
@@ -38,7 +40,7 @@ Apply migrations using the existing deployment process before serving the new pa
 
 ## Remaining sequence — Stripe activation last
 
-1. Finish customer-specific entitlements and distinct internal eligibility histories, including approved notice/cure exceptions and surviving rights. Submission decisions and current manager history alone do not implement these rules.
+1. Customer-specific attribution and internal eligibility capture are implemented in migration 0070. Complete private policy approval and the explicit lifecycle exceptions listed in [the eligibility runbook](CUSTOMER_ELIGIBILITY.md) before enabling an affected real cohort. Payment-window verification and financial consumption belong to the collection/posting phases below.
 2. Build verified collection/service-period records and the Stripe read-only adapter against local fixtures, including stable business deduplication, refunds, credits, disputes and reconciliation recovery.
 3. Extend the existing ledger and monthly statements for recurring allocations and internal recipients. Reconcile shadow results, including partial-month cases, against approved private examples before enabling posting.
 4. Add client-success calendars, client tasks, check-in/response evidence and permissioned employee notifications. Reuse My day/Services; keep automatic forfeiture and customer outreach disabled.
@@ -48,5 +50,7 @@ Apply migrations using the existing deployment process before serving the new pa
 The private pack and [gap analysis](REFERRAL_CLIENT_SUCCESS_GAP_ANALYSIS.md) retain detailed requirements. Legal review, actual signatures and final policy decisions remain business-owner work; this release does not certify or replace them.
 
 ## Verification
+
+**Eligibility checkpoint, November 15:** 22 commercial database cases, ten pure calculation cases and 15 existing operating-model cases passed against isolated PostgreSQL after migration 0070 (47 total). Six desktop/phone browser journeys passed, covering invoice preparation, finance access denial and customer attribution → service period → protected-leave evidence, with accessibility and overflow checks. Eligibility screenshots were visually reviewed at desktop and phone sizes. TypeScript, lint and production build passed. These are local results; no production, payment, signature or Stripe acceptance is implied. The original checkpoint below is preserved as dated evidence.
 
 Local checks use isolated PostgreSQL databases and synthetic counterparties/terms. The existing operating-model integration suite passed all 15 cases after migration 0069; ten new commercial integration cases and ten pure calculation cases passed. TypeScript, lint and production build passed. Four desktop/phone browser journeys passed for invoice preparation/review/simulation and finance access restrictions, including accessibility and overflow assertions. Desktop and phone screenshots were visually reviewed and panel spacing/headings corrected before the final browser pass. All 154 local links across the eight affected/new runbooks and planning documents resolve; `git diff --check` passed. Private reference files remain Git-ignored. These are local results, not production, signature, payment or Stripe acceptance.

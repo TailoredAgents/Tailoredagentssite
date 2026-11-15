@@ -19,7 +19,7 @@ The [commercial preparation release](COMMERCIAL_PREPARATION.md) supports private
 | Gate | Current state |
 | --- | --- |
 | Private commercial preparation and manager history | Implemented locally in migration 0069; release verification in the runbook |
-| Customer-specific role entitlements and eligibility intervals | Pending |
+| Customer-specific role entitlements and eligibility intervals | Capture implemented in migration 0070: exact executed versions, customer/source identity, manager periods, work/leave and separate notice/cure reviews. [Limits and financial activation gates](CUSTOMER_ELIGIBILITY.md); receipt anchors and financial consumption still pending |
 | Verified receipt, invoice-line and service-period model | Pending |
 | Stripe adapter, signed webhook intake and recoverable reconciliation worker | Pending |
 | Compatible recurring/internal-recipient ledger and reviewed statements | Pending |

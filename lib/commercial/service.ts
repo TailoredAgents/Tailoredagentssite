@@ -45,6 +45,7 @@ export async function changeCommercialDocument(c:DashboardContext,input:unknown)
   const d=(await db.query('SELECT * FROM crm_commercial_documents WHERE workspace_id=$1 AND id=$2 FOR UPDATE',[c.workspace.id,v.id])).rows[0];
   if(!d||d.revision!==v.revision)throw new SalesAccessError('The document changed. Review its current revision.');
   if(v.operation==='review'&&d.status!=='draft'||v.operation==='execute'&&(d.status!=='reviewed'||d.kind==='invoice'||!v.effectiveOn)||v.operation==='supersede'&&d.status==='superseded')throw new SalesAccessError('This transition is unavailable. Invoices cannot be issued from preparation.');
+  if(v.operation!=='execute'&&v.effectiveOn)throw new SalesAccessError('Only execution records an effective date. Preserve the signed version when superseding.');
   const status={review:'reviewed',execute:'executed',supersede:'superseded'}[v.operation];
   if(status==='executed'){
    await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[`commercial:${c.workspace.id}:${d.family_id}`]);

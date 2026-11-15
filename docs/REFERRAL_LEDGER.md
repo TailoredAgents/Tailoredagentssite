@@ -51,3 +51,5 @@ The existing Render website build applies migration `0064`; subsequent operating
 ## Commercial preparation — November 15
 
 Finance users can now open **Partners → Agreements, referral decisions & billing drafts**. See [the preparation runbook](COMMERCIAL_PREPARATION.md). These new private document versions and hypothetical calculations do not activate existing ledger agreements, create payable earnings or issue invoices. The existing ledger workflow below remains authoritative for its supported manual entries/statements. Stripe connection is deferred until the remaining implementation and acceptance gates in [Jeffrey's handoff](JEFFREY_STRIPE_SETUP.md) are complete.
+
+The later [customer eligibility checkpoint](CUSTOMER_ELIGIBILITY.md) records exact executed authority per customer, eligible periods and human notice/cure history while preserving prior evidence after supersession or departure. It does not change this ledger's active-agreement requirements or automatically post earnings. Verified receipts, anchors, recurring/internal-recipient posting and reviewed lifecycle exceptions remain separate implementation gates.
