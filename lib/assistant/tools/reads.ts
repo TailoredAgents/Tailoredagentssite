@@ -14,6 +14,7 @@ import {serviceSearchSchema} from '@/lib/client-services/contract';
 import {partnersWorkspace,partnerWorkspace,getStatement} from '@/lib/partners/service';
 import {commercialWorkspace,getCommercialDocument} from '@/lib/commercial/service';
 import {listCustomerEligibility,getCustomerEligibility} from '@/lib/commercial/eligibility';
+import {billingWorkspace,getBillingInvoice} from '@/lib/billing/service';
 import {z} from 'zod';
 import type {Principal} from '../oauth';
 import type {AssistantScope} from '../config';
@@ -50,6 +51,8 @@ function read<S extends z.ZodRawShape>(name:string,description:string,shape:S,ru
 }
 const id=z.uuid(),page=z.number().int().min(1).max(500).default(1),q=z.string().max(120).optional(),text=z.string().max(200).optional();
 const search={q,page};const byId={id};
+read('list_billing_collections','Read finance-authorized imported invoice evidence and reconciliation jobs. Read-only import; source review does not activate commissions or imply bank settlement.',{page},(p,v)=>billingWorkspace(p.context,v.page),'50 invoices and latest 100 pending jobs; finance access required.');
+read('get_billing_collection','Read a finance-authorized invoice snapshot, classified service periods, receipt/refund/dispute evidence, source holds and unposted calculation preview. Do not call held amounts verified income or create payment-window dates. No provider writes or commission posting.',{id},(p,v)=>getBillingInvoice(p.context,v.id),'Finance access required; last 100 source/review versions with explicit truncation.');
 read('list_customer_eligibility','Read finance-authorized customer attribution pinned to signed versions. These preparation records do not establish cleared payments, active payable rules or window anchors.',{clientId:id.optional(),page},(p,v)=>listCustomerEligibility(p.context,v.clientId,v.page),'50 per page. Finance access required.');
 read('get_customer_eligibility','Read exact customer role authority, eligible periods, manager assignment references, protected-leave/work evidence and human notice/cure decisions. Current employment or agreement supersession never erases historical eligibility. Do not infer payment eligibility or automatic forfeiture.',{id},(p,v)=>getCustomerEligibility(p.context,v.id),'Finance access required. Up to 500 periods and 100 records per other history; truncation explicitly indicated.');
 read('get_commercial_workspace','Read finance-authorized agreement versions, referral decisions and internal invoice/project budget drafts. Preparation only: these records are not issued invoices, activated commission rules or payment evidence.',{page},(p,v)=>commercialWorkspace(p.context,v.page),'50 documents/referrals per page; finance access required.');

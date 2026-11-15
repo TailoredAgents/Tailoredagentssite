@@ -4,6 +4,8 @@ November 15, 2026 implementation checkpoint. The owner requested building the so
 
 **Later November 15 eligibility checkpoint:** [Customer eligibility](CUSTOMER_ELIGIBILITY.md) now captures exact executed authority per customer, external/direct/recruiter attribution, dated nonoverlapping service periods, manager assignment evidence and distinct work/leave/notice/cure histories. It preserves attribution across supersession and offboarding. Verified receipts and window anchors remain pending; no payable rules are activated.
 
+**Later November 15 billing checkpoint:** [Billing reconciliation](BILLING_RECONCILIATION.md) adds the disabled-by-default Stripe reader, signed webhook queue, recovery worker, immutable source snapshots, explicit customer/line/clearing review and receipt-based unposted previews. Source-derived internal-role calculations retain historical service eligibility; fixed external windows stay held for original receipt-anchor approval in the next phase. Jeffrey's account connection, restricted-key verification and provider-backed acceptance remain last.
+
 ## Using the workspace
 
 Open **Partners → Agreements, referral decisions & billing drafts**. `/dashboard/finance` requires existing finance read/manage permission or an owner/admin role. Selecting a finance work focus does not grant access.
@@ -41,7 +43,7 @@ Apply migrations using the existing deployment process before serving the new pa
 ## Remaining sequence — Stripe activation last
 
 1. Customer-specific attribution and internal eligibility capture are implemented in migration 0070. Complete private policy approval and the explicit lifecycle exceptions listed in [the eligibility runbook](CUSTOMER_ELIGIBILITY.md) before enabling an affected real cohort. Payment-window verification and financial consumption belong to the collection/posting phases below.
-2. Build verified collection/service-period records and the Stripe read-only adapter against local fixtures, including stable business deduplication, refunds, credits, disputes and reconciliation recovery.
+2. Collection/source review and the Stripe read-only adapter are implemented and locally tested with synthetic responses. Complete the [documented provider acceptance](BILLING_RECONCILIATION.md) at Jeffrey's final stage; unresolved split/out-of-band/credit/dispute cases remain held for explicit adjustment support before any affected financial cohort is enabled.
 3. Extend the existing ledger and monthly statements for recurring allocations and internal recipients. Reconcile shadow results, including partial-month cases, against approved private examples before enabling posting.
 4. Add client-success calendars, client tasks, check-in/response evidence and permissioned employee notifications. Reuse My day/Services; keep automatic forfeiture and customer outreach disabled.
 5. Add explicitly reviewed assistant billing actions after the underlying services and approval contracts are tested.
@@ -50,6 +52,8 @@ Apply migrations using the existing deployment process before serving the new pa
 The private pack and [gap analysis](REFERRAL_CLIENT_SUCCESS_GAP_ANALYSIS.md) retain detailed requirements. Legal review, actual signatures and final policy decisions remain business-owner work; this release does not certify or replace them.
 
 ## Verification
+
+**Billing checkpoint, November 15:** 12 new billing database cases and 12 reader/allocation cases passed, followed by all 47 existing commercial/calculation/operating-model regression cases (71 total). Eight desktop/phone browser journeys passed, including collection mapping/classification and unposted calculation, existing draft/eligibility flows and finance access denial. Accessibility, overflow and desktop/phone screenshot review passed. TypeScript, lint and production build passed. Stripe calls were mocked; no provider sandbox/live acceptance or production deployment acceptance was performed. Source snapshots and review immutability were exercised against isolated PostgreSQL with migration 0071.
 
 **Eligibility checkpoint, November 15:** 22 commercial database cases, ten pure calculation cases and 15 existing operating-model cases passed against isolated PostgreSQL after migration 0070 (47 total). Six desktop/phone browser journeys passed, covering invoice preparation, finance access denial and customer attribution → service period → protected-leave evidence, with accessibility and overflow checks. Eligibility screenshots were visually reviewed at desktop and phone sizes. TypeScript, lint and production build passed. These are local results; no production, payment, signature or Stripe acceptance is implied. The original checkpoint below is preserved as dated evidence.
 

@@ -11,6 +11,7 @@
     "test": "vitest run lib",
     "db:migrate": "node scripts/migrate.mjs",
     "db:retention": "node scripts/retention.mjs",
+    "billing:worker": "node --conditions=react-server --import tsx scripts/run-billing-worker.ts",
     "search-console:sync": "node scripts/trigger-search-console-sync.mjs",
     "mail:dev": "npm --prefix apps/mail run dev",
     "mail:check": "npm --prefix apps/mail run check",

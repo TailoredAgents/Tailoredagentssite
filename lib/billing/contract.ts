@@ -1,0 +1,11 @@
+import {z} from 'zod';
+import {invoiceLineSchema,money} from '@/lib/commercial/contract';
+export const providerId=z.string().regex(/^[a-z]+_[A-Za-z0-9_]+$/).max(200);
+const day=z.iso.date(),amount=z.number().int().min(-1_000_000_000).max(1_000_000_000),evidence=z.string().trim().min(10).max(4000);
+export const receiptSchema=z.object({paymentId:providerId,chargeId:providerId,amountCents:money,allocatedCents:money,currency:z.string(),paid:z.boolean(),collectedOn:day,balanceId:providerId.nullable(),balanceStatus:z.string(),availableOn:day.nullable(),feeCents:money,refundedCents:money,refunds:z.array(z.object({id:providerId,amountCents:money,status:z.string(),createdOn:day})),disputes:z.array(z.object({id:providerId,amountCents:money,status:z.string()})),holds:z.array(z.string())}).strict();
+export const invoiceFactsSchema=z.object({providerId,customerId:providerId.nullable(),currency:z.string(),status:z.string(),totalCents:amount,paidCents:money,remainingCents:money,lines:z.array(z.object({id:providerId,description:z.string().max(240),amountCents:amount,discountCents:money,taxCents:money,periodStart:z.number().nullable(),periodEnd:z.number().nullable(),subscriptionId:providerId.nullable()})).max(500),receipts:z.array(receiptSchema).max(100),credits:z.array(z.object({id:providerId,amountCents:money,status:z.string(),refundId:providerId.nullable()})).max(500),holds:z.array(z.string())}).strict();
+export type InvoiceFacts=z.infer<typeof invoiceFactsSchema>;
+export const reviewLine=invoiceLineSchema.extend({sourceId:z.string().min(1).max(220)});
+export const reviewInput=z.object({requestId:z.uuid(),invoiceId:z.uuid(),snapshotId:z.uuid(),revision:z.number().int().positive(),clientId:z.uuid(),policy:z.enum(['processor_available','bank_verified']),lines:z.array(reviewLine).min(1).max(50),bankEvidence:z.array(z.object({chargeId:providerId,clearedOn:day,reference:evidence})).max(100),evidence}).strict();
+export const retryInput=z.object({requestId:z.uuid(),connectionId:z.uuid()}).strict();
+export type BillingReview=z.infer<typeof reviewInput>;

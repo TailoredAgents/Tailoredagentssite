@@ -2,6 +2,8 @@
 
 November 15, 2026. This extends [commercial preparation](COMMERCIAL_PREPARATION.md) with durable customer attribution and human-reviewed service eligibility. It does not enable financial posting, calculate actual commissions, connect Stripe or start a payment window.
 
+**Later billing checkpoint:** [Billing reconciliation](BILLING_RECONCILIATION.md) now reads these pinned internal rules and service periods for unposted, source-reviewed collection previews. Historical eligibility remains usable after offboarding. Fixed customer windows still require their original approved receipt anchors in the next recurring-ledger phase. The earlier checkpoint below describes the eligibility-capture release; the new preview does not activate payouts or alter eligibility.
+
 ## Where to work
 
 Open **Partners → Agreements, referral decisions & billing drafts → Customer eligibility**. Existing finance read/manage permissions apply to every page, service call and assistant read. Selecting a work focus or knowing a URL does not grant financial access. Readers see history; finance managers can record evidence and decisions.

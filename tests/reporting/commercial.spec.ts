@@ -2,6 +2,7 @@ import {randomUUID} from 'node:crypto';
 import {test,expect,type Page} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import {Pool} from 'pg';
+import {invoiceFixture} from '../../lib/billing/test-fixtures';
 const url=process.env.REPORTING_TEST_DATABASE_URL||'postgresql://ta_test@127.0.0.1:55469/ta_reporting_browser_test';
 const parsed=new URL(url);if(!['127.0.0.1','localhost'].includes(parsed.hostname)||parsed.pathname!=='/ta_reporting_browser_test')throw new Error('Only the isolated browser-test database is allowed.');
 async function sql(query:string,values:unknown[]=[]){const db=new Pool({connectionString:url,max:1});try{return await db.query(query,values);}finally{await db.end();}}
@@ -26,6 +27,19 @@ test('prepares a mixed invoice, reviews it and simulates without sending or post
 test('finance access is required even when the route is known',async({page})=>{
  await login(page,true);const response=await page.goto('/dashboard/finance');expect(response?.status()).toBe(404);await expect(page.getByRole('heading',{name:'Agreements & billing'})).toHaveCount(0);
  const eligibility=await page.goto('/dashboard/finance/eligibility');expect(eligibility?.status()).toBe(404);
+ const collections=await page.goto('/dashboard/finance/collections');expect(collections?.status()).toBe(404);
+});
+test('reviews imported collections, maps a customer and preserves source evidence without posting',async({page},info)=>{
+ const ws='00000000-0000-4000-8000-000000000001',client=randomUUID(),connection=randomUUID(),invoice=randomUUID(),snapshot=randomUUID(),name=`Synthetic collection ${info.project.name}`;
+ const facts=invoiceFixture();facts.providerId='in_'+invoice.replaceAll('-','');facts.customerId='cus_'+client.replaceAll('-','');
+ await sql('INSERT INTO clients(id,workspace_id,name) VALUES($1,$2,$3)',[client,ws,name]);
+ await sql("INSERT INTO crm_billing_connections(id,workspace_id,account_id,mode,api_version,last_scan_at) VALUES($1,$2,$3,'test','2026-10-28.endive',now())",[connection,ws,'acct_'+connection.replaceAll('-','')]);
+ await sql('INSERT INTO crm_billing_invoices(id,workspace_id,connection_id,provider_id,revision) VALUES($1,$2,$3,$4,1)',[invoice,ws,connection,facts.providerId]);
+ await sql('INSERT INTO crm_billing_snapshots(id,invoice_id,fingerprint,facts) VALUES($1,$2,$3,$4)',[snapshot,invoice,'synthetic-browser-fixture',facts]);await sql('UPDATE crm_billing_invoices SET snapshot_id=$2 WHERE id=$1',[invoice,snapshot]);
+ await login(page);await page.goto('/dashboard/finance');await page.getByRole('link',{name:'Collections & reconciliation',exact:true}).click();await expect(page.getByRole('heading',{name:'Collections & reconciliation',exact:true})).toBeVisible();await page.goto(`/dashboard/finance/collections/${invoice}`);await expect(page.getByRole('heading',{name:'Review collection evidence'})).toBeVisible();
+ const form=page.getByRole('form',{name:'Save collection review'});await form.getByRole('combobox',{name:'CRM customer',exact:true}).selectOption(client);await form.getByRole('combobox',{name:'Reviewed clearing requirement'}).selectOption('processor_available');await form.getByRole('combobox',{name:'Revenue classification'}).nth(0).selectOption('recurring');await form.getByLabel('Covered service start').nth(0).fill('2026-01-01');await form.getByLabel('Covered service last day').nth(0).fill('2026-01-31');await form.getByRole('combobox',{name:'Revenue classification'}).nth(1).selectOption('upfront');await form.getByLabel('Customer mapping, amounts and clearing-policy approval evidence').fill('Synthetic reviewed mapping, amounts and processor clearing terms');await form.getByRole('checkbox').check();await form.getByRole('button',{name:'Save collection review',exact:true}).click();await expect(page.getByText('Eligible service basis',{exact:true})).toBeVisible();await expect(page.getByText('Calculated components (unposted)',{exact:true})).toBeVisible();
+ expect(Number((await sql('SELECT count(*) FROM crm_billing_reviews WHERE invoice_id=$1',[invoice])).rows[0].count)).toBe(1);expect(Number((await sql('SELECT count(*) FROM crm_referral_earnings WHERE workspace_id=$1',[ws])).rows[0].count)).toBe(0);
+ expect(await page.evaluate(()=>window.document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);const axe=await new AxeBuilder({page}).include('.dashboard-content').withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();expect(axe.violations).toEqual([]);await page.screenshot({path:info.outputPath('billing-collection.png'),fullPage:true});
 });
 test('records signed customer attribution, service history and protected leave without posting',async({page},info)=>{
  const client=randomUUID(),document=randomUUID(),ws='00000000-0000-4000-8000-000000000001',name=`Synthetic eligibility ${info.project.name}`;

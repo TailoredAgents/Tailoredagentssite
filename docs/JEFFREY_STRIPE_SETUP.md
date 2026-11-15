@@ -2,7 +2,7 @@
 
 Prepared November 15, 2026. **Status: preparation handoff; not ready for provider connection yet.** Austin requested that implementation happen first and that Jeffrey own Stripe account setup and connection as the final activation step.
 
-The [commercial preparation release](COMMERCIAL_PREPARATION.md) supports private agreement versions, referral decisions, assignment history, project budgets, invoice drafts and hypothetical calculation previews. It does not yet contain the Stripe adapter, webhook endpoint, verified-collection pipeline or automatic recurring ledger posting. There are currently no Stripe environment-variable names or webhook URLs to copy from this repository into a live account. Do not substitute an old Meta, Mail or other integration endpoint.
+The [commercial preparation release](COMMERCIAL_PREPARATION.md) supports private agreement versions, referral decisions, assignment history, project budgets and invoice drafts. The later [billing reconciliation checkpoint](BILLING_RECONCILIATION.md) adds the read-only Stripe adapter, signed webhook queue, recoverable worker, source reviews and unposted receipt-based previews. Configuration names and the endpoint now exist, but import remains disabled and actual provider acceptance has not occurred. Recurring window anchors, ledger posting/statements, client-success workflows and reviewed provider-write actions remain implementation gates. Keep Stripe connection last; do not substitute a Meta or Mail endpoint.
 
 ## What Jeffrey will own once the implementation gates pass
 
@@ -20,27 +20,27 @@ The [commercial preparation release](COMMERCIAL_PREPARATION.md) supports private
 | --- | --- |
 | Private commercial preparation and manager history | Implemented locally in migration 0069; release verification in the runbook |
 | Customer-specific role entitlements and eligibility intervals | Capture implemented in migration 0070: exact executed versions, customer/source identity, manager periods, work/leave and separate notice/cure reviews. [Limits and financial activation gates](CUSTOMER_ELIGIBILITY.md); receipt anchors and financial consumption still pending |
-| Verified receipt, invoice-line and service-period model | Pending |
-| Stripe adapter, signed webhook intake and recoverable reconciliation worker | Pending |
+| Verified receipt, invoice-line and service-period model | Source snapshots, explicit mapping/classification, processor/bank evidence gates and unposted full-month previews implemented in migration 0071; approved anchors and financial posting pending |
+| Stripe adapter, signed webhook intake and recoverable reconciliation worker | Implemented and locally tested with synthetic responses; disabled, unscheduled and not provider-verified |
 | Compatible recurring/internal-recipient ledger and reviewed statements | Pending |
 | Client-success task/calendar/notification workflows | Pending |
 | Reviewed assistant billing actions | Pending |
-| Exact account scopes, environment variables, API version, webhook URL/events and worker settings | To be filled from implemented code; do not guess |
-| Sandbox fixtures, provider acceptance script and rollback procedure | To be finalized with adapter release |
+| Exact account scopes, environment variables, API version, webhook URL/events and worker settings | Implemented names/GET resources and proposed schedule are in [the import runbook](BILLING_RECONCILIATION.md); actual restricted permissions and hosting schedule need sandbox acceptance |
+| Sandbox fixtures, provider acceptance script and rollback procedure | Synthetic local tests and future provider checklist documented; no provider sandbox or live test has run |
 | Approved private terms, signatures and live cohort | Business/finance confirmation required |
 
-## Final connection block — deliberately unfilled until code exists
+## Final connection block — implementation facts and pending acceptance
 
 - Verified implementation commit and migration set:
 - Website/worker service names and deployment version:
 - Stripe account ID and workspace mapping:
 - Sandbox/live mode separation:
-- Required environment-variable names (names only; never values):
-- API version and restricted permissions:
-- Webhook endpoint, subscribed events and signing-secret location:
-- Reconciliation schedule, replay/backfill procedure and stale-data indicators:
-- Exact sandbox test commands and expected results:
-- Rollback switches and evidence-preserving recovery:
+- Required environment-variable names (names only; never values): `BILLING_STRIPE_IMPORT_ENABLED`, `BILLING_STRIPE_MODE`, `BILLING_STRIPE_ACCOUNT_ID`, `BILLING_STRIPE_WORKSPACE_ID`, `BILLING_STRIPE_READ_KEY`, `BILLING_STRIPE_WEBHOOK_SECRET`.
+- API version and restricted permissions: `2026-10-28.endive`; GET-only resources listed in the import runbook. Verify actual account permissions during sandbox acceptance.
+- Webhook endpoint: `/api/integrations/stripe/events` on the existing website host, snapshot events on the company account; event list and secret location in the runbook.
+- Reconciliation schedule: `npm run billing:worker`, proposed every five minutes, with durable page cursors and daily full listing. Deployment/scheduling is pending; source evidence older than one day is held.
+- Exact sandbox test commands and expected results: local synthetic commands and provider acceptance matrix in the runbook. Actual provider acceptance remains pending.
+- Rollback: disable `BILLING_STRIPE_IMPORT_ENABLED`, stop the scheduled worker/webhook, preserve all source/review/history tables and requeue after repair.
 - Approved live pilot and finance sign-off:
 - Observed provider acceptance date/result:
 
