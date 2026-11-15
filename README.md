@@ -12,6 +12,8 @@ Documentation reconciled with source through `dd09c09` on November 10, 2026. [Cu
 
 ## Agency operating-system expansion
 
+The [referral commissions and client-success handoff](docs/REFERRAL_CLIENT_SUCCESS_PLAN.md) describes the next proposed extension to existing partner finance and client-management workflows. It is a planning brief, not implemented behavior or activation approval; actual commercial terms remain private.
+
 The internal operating system supports relationship-led prospects, discovery, introductions, opportunities, client account management, delivery and ongoing service. Prospects retains the existing `/dashboard/leads` route and data. Team calendar supports staff scheduling; Meeting Inbox adds independent meeting review. Calling Lists is no longer a navigation destination; legacy records/imports are not implicitly deleted. Website Builder starts only when a teammate requests a mockup, then retains planning chat and exact-version approval before a build.
 
 Read [the active agency OS roadmap](docs/AGENCY_OS_ROADMAP.md) for implemented scope, deployment acceptance and the next releases. [Communications setup](docs/COMMUNICATIONS_SETUP.md) covers the implemented unified Inbox, separate Mail activation and owner-managed Twilio SMS/calling activation. Source implementation and production provider acceptance are tracked separately.

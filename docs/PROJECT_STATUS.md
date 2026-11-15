@@ -26,6 +26,8 @@ The internal CRM supports relationship-led discovery, sales, client account mana
 
 ## Next work and ownership
 
+**November 15 planning handoff:** [Referral commissions and client success](REFERRAL_CLIENT_SUCCESS_PLAN.md) describes a proposed extension to the existing ledger, attribution and managed-service features. Begin with a code-backed gap analysis and additive migration plan using the owner's private reference pack. This documentation does not activate finance rules or replace the existing acceptance work below.
+
 1. **Jeffrey:** complete the separate Cloudflare Mail release and record its exact version/checks. Follow the current addendum in [new jeffrey.md](../new%20jeffrey.md), not superseded initial setup instructions.
 2. **Austin with implementation help:** after Mail acceptance, explicitly activate/test desired background grants and employee preferences. Complete designated device/meeting checks; real sends require approved recipient/content. Native push also needs Apple account/signing work.
 3. **Development:** follow [the relationship operating-model plan](RELATIONSHIP_OPERATING_MODEL_PLAN.md): complete production acceptance of the overview, handoffs, capture/solution/service and referral-ledger releases. Conner configures the actual finance rules and owners grant any needed finance access before activation; see [referral setup](REFERRAL_LEDGER.md). Solution planning uses the existing employee assistant and follows the [roadmap](AGENCY_OS_ROADMAP.md). Agree research budget/model/activation before new paid automatic work. Service records, reviews and measured outcomes are implemented; automatic billing, external financial imports, live telemetry and the client portal remain separate tracks.

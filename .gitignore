@@ -26,6 +26,9 @@ yarn-error.log*
 /test-results
 /playwright-report
 
+# Local commercial planning references; never publish to this public repository.
+/docs/private/
+
 # Separate mail app
 apps/mail/node_modules/
 apps/mail/.svelte-kit/
