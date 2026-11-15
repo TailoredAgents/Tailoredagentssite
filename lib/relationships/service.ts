@@ -63,6 +63,7 @@ export async function setAccountManager(c:DashboardContext,input:unknown){
   const current=(await db.query('SELECT updated_at FROM clients WHERE workspace_id=$1 AND id=$2 FOR UPDATE',[c.workspace.id,v.clientId])).rows[0];
   if(!current||(v.expectedUpdatedAt&&new Date(current.updated_at).getTime()!==Date.parse(v.expectedUpdatedAt)))throw new SalesAccessError('This client changed. Refresh before assigning its account manager.');
   if(v.userId&&!(await db.query("SELECT 1 FROM workspace_memberships WHERE workspace_id=$1 AND user_id=$2 AND status='active' AND role<>'viewer' FOR SHARE",[c.workspace.id,v.userId])).rowCount)throw new SalesAccessError('Choose an active teammate.');
+  await db.query("SELECT set_config('app.actor_id',$1,true),set_config('app.assignment_reason',$2,true)",[c.user.id,v.reason]);
   await db.query('UPDATE clients SET account_manager_user_id=$3,updated_at=now() WHERE workspace_id=$1 AND id=$2',[c.workspace.id,v.clientId,v.userId||null]);await insertAuditLog(db,{workspaceId:c.workspace.id,actorUserId:c.user.id,action:'client.account_manager_changed',targetType:'client',targetId:v.clientId,metadata:{userId:v.userId||null}});
  });
 }

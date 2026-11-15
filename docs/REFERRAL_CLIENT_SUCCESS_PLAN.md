@@ -4,6 +4,8 @@ Prepared November 15, 2026. Planning only: this change adds documentation, not a
 
 ## Start here
 
+**Later November 15 implementation start:** the owner requested Stripe setup/connection last, handled by Jeffrey. Read [the commercial preparation checkpoint](COMMERCIAL_PREPARATION.md) for the implemented first foundation and remaining releases. [Jeffrey's handoff](JEFFREY_STRIPE_SETUP.md) is explicitly a preparation document until the adapter and financial acceptance gates are complete.
+
 **November 15 source audit completed:** read the [gap analysis and phased implementation plan](REFERRAL_CLIENT_SUCCESS_GAP_ANALYSIS.md) for the existing/partial/missing matrix, compatible ledger migrations, Stripe-first billing recommendation and release gates. This is a planning result; implementation and financial activation remain pending. The local ignored supplement records private draft-policy mapping.
 
 Extend the existing CRM's relationship, partner-finance and managed-service workflows to support recurring-service commissions and accountable client management. Do not build another CRM or duplicate the existing ledger.

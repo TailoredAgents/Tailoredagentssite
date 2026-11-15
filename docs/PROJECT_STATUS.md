@@ -26,6 +26,8 @@ The internal CRM supports relationship-led discovery, sales, client account mana
 
 ## Next work and ownership
 
+**November 15 implementation start:** [Commercial preparation](COMMERCIAL_PREPARATION.md) adds finance-scoped private document versions, referral decisions, manager assignment history, project budgets, invoice drafts and hypothetical calculation previews. Stripe account setup/connection is deferred to Jeffrey as the final activation stage. [Jeffrey's preparation handoff](JEFFREY_STRIPE_SETUP.md) explicitly lists the remaining adapter, entitlement, ledger and client-success work; it is not yet a ready-to-connect guide. No terms, billing, provider connection or payouts were activated by this release.
+
 **November 15 planning review:** the [referral/client-success gap analysis](REFERRAL_CLIENT_SUCCESS_GAP_ANALYSIS.md) completes the source audit requested by the [planning handoff](REFERRAL_CLIENT_SUCCESS_PLAN.md). It recommends Stripe as the first billing integration, accepted referral and dated role history, verified collection/service-period allocation, compatible ledger extensions and staged client-success operations. The owner delegated Square-versus-Stripe selection; neither provider was connected by this review. Implementation and financial activation remain pending. Actual commercial terms and detailed draft-policy mapping stay in the ignored local private pack. This documentation does not replace the existing acceptance work below.
 
 1. **Jeffrey:** complete the separate Cloudflare Mail release and record its exact version/checks. Follow the current addendum in [new jeffrey.md](../new%20jeffrey.md), not superseded initial setup instructions.

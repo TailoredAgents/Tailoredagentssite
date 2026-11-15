@@ -4,6 +4,8 @@ Prepared November 15, 2026 against source at `fec378a81ec799358546998b0bb2a2393b
 
 ## Recommended direction
 
+**Later November 15 sequencing decision:** the owner asked to leave Stripe account setup/connection to Jeffrey until the software is ready. The [commercial preparation checkpoint](COMMERCIAL_PREPARATION.md) records the first implemented foundation and remaining releases. Build/test billing against local fixtures first; provider-backed sandbox/live acceptance remains the final activation gate. The phase table below preserves the original analysis, with its account-setup prerequisite superseded by this ordering.
+
 Extend the existing relationship workspace, partner ledger, Services and My day. The ledger already has useful finance permissions, agreement versions, source deduplication, integer calculations, reversals and reviewed statements. The missing foundation is **verified customer collections, accepted referral attribution and dated role eligibility**. Adding percentage fields or connecting a payment webhook alone would not implement the proposed program correctly.
 
 Use **Stripe Payments, Invoicing and Billing as the first billing integration**. The owner initially proposed signing up for Square, then requested whichever provider best fits this system. The comparison below favors Stripe for API-operated recurring services and bank payments. This is a design recommendation, not an account signup or a claim that either provider is connected. Keep a small provider adapter boundary; do not build two integrations initially.

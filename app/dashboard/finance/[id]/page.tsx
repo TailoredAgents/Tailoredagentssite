@@ -1,0 +1,29 @@
+import Link from 'next/link';
+import {notFound} from 'next/navigation';
+import {z} from 'zod';
+import {SalesAccessError} from '@/lib/sales/data';
+import {requireDashboardContext} from '@/lib/dashboard/data';
+import {getCommercialDocument,commercialWorkspace} from '@/lib/commercial/service';
+import {commercialAction} from '@/lib/commercial/actions';
+import {commercialDocumentSchema,agreementDetails,budgetDetails,invoiceDetails} from '@/lib/commercial/contract';
+import {CommercialEditor} from '@/components/relationships/commercial-editor';
+import {CommercialSimulation} from '@/components/relationships/commercial-simulation';
+import {OperationForm} from '@/components/dashboard/operation-form';
+import {Field,RequestIdentity,Confirm,dollars,dateOnly} from '@/components/relationships/fields';
+import styles from '@/components/dashboard/record-workspace.module.css';
+import deliveryStyles from '@/components/dashboard/delivery-workspace.module.css';
+export const metadata={title:'Commercial document'};
+export default async function CommercialDocumentPage({params}:{params:Promise<{id:string}>}){
+ const c=await requireDashboardContext(),{id}=await params;if(!z.uuid().safeParse(id).success)notFound();
+ const data=await getCommercialDocument(c,id).catch(e=>{if(e instanceof SalesAccessError)notFound();throw e;}),d=data.document,choices=await commercialWorkspace(c),kind=commercialDocumentSchema.shape.kind.parse(d.kind);
+ const invoice=kind==='invoice'?invoiceDetails.parse(d.details):null,budget=kind==='project_budget'?budgetDetails.parse(d.details):null,agreement=!invoice&&!budget?agreementDetails.parse(d.details):null;
+ return <><header className="dashboard-topbar"><div><span>Finance</span><strong>Document review</strong></div></header><div className={`dashboard-content operating-workspace ${styles.workspace} ${deliveryStyles.workspace}`}><Link className="dashboard-back-link" href="/dashboard/finance">← Agreements & billing</Link><section className="dashboard-record-heading work-heading"><div><span className="relationship-eyebrow">{d.counterparty} · Version {d.version}</span><h1>{d.title}</h1><p>{d.status} · {kind.replaceAll('_',' ')}</p></div></section>
+ <section className="dashboard-panel work-section"><h2>Recorded details</h2>{invoice&&<><p>Billing email: {invoice.recipientEmail} · Due {invoice.dueOn}</p>{invoice.lines.map((l,i)=><article key={i} className="relationship-note"><strong>{l.description} · {dollars(l.amountCents)}</strong><p>{l.classification.replaceAll('_',' ')}{l.startsOn&&` · ${l.startsOn} through ${l.endsOn}`}</p></article>)}<p><strong>Total {dollars(invoice.lines.reduce((s,l)=>s+l.amountCents,0))}</strong></p><p>{invoice.notes}</p><p>Internal draft only. This document has not been issued through Stripe.</p></>}
+ {budget&&<><p>Project fee: {dollars(budget.expectedCents)} · Direct costs: {dollars(budget.directCostCents)}</p>{budget.participants.map((p,i)=><article key={i} className="relationship-note"><strong>{choices.members.find(m=>m.id===p.userId)?.name??'Recorded contributor'} · {p.role} · {dollars(p.amountCents)}</strong><p>{p.condition}</p></article>)}<p>{budget.approval}</p></>}
+ {agreement&&<><p><strong>Private document reference</strong><br/>{agreement.documentReference}</p><p><strong>Scope</strong><br/>{agreement.scope}</p><p><strong>Exclusions</strong><br/>{agreement.exclusions}</p><p><strong>Payment terms</strong><br/>{agreement.paymentTerms}</p>{agreement.rules.map(r=><article className="relationship-note" key={r.role}><strong>{r.role} · {r.rateBps/100}%{r.windowMonths?` · ${r.windowMonths} months`:' · no fixed window recorded'}</strong><p>{r.eligibility}</p><p>{r.termination}</p><p>{r.refunds}</p></article>)}<p>{agreement.reviewNotes}</p></>}
+ {d.evidence&&<p><strong>Latest review evidence</strong><br/>{d.evidence}</p>}{d.effective_on&&<p>Effective {dateOnly(d.effective_on)}</p>}</section>
+ {data.manage&&d.status!=='superseded'&&<section className="dashboard-panel work-section"><h2>Review & record</h2><p>Record evidence of an action that actually occurred. This does not sign a contract, activate a commission rule, send an invoice or transfer money.</p><OperationForm action={commercialAction} submitLabel="Save review"><RequestIdentity action="transition" values={{id:d.id,revision:d.revision}}/><Field name="operation" label="Review action"><select name="operation">{d.status==='draft'&&<option value="review">Record internal review</option>}{d.status==='reviewed'&&kind!=='invoice'&&<option value="execute">Record signed agreement / authorized budget</option>}<option value="supersede">Mark superseded; preserve history</option></select></Field><Field name="evidence" label="Evidence / document reference and reason" required rows={3}/><Field name="effectiveOn" label="Effective date (required for signed / authorized record)" type="date"/><Confirm>I reviewed this exact version and have evidence for this action.</Confirm></OperationForm></section>}
+ <section className="dashboard-panel work-section"><h2>Version and review history</h2>{data.versions.map(v=><p key={v.id}><Link href={`/dashboard/finance/${v.id}`}>Version {v.version}</Link> · {v.status}</p>)}{data.events.map(e=><article key={e.id} className="relationship-note"><strong>{e.operation} · {e.actor||'Recorded operator'}</strong><p>{e.note}</p><small>{dateOnly(e.created_at)}</small></article>)}</section>
+ {invoice&&<CommercialSimulation invoiceId={d.id} agreements={choices.documents.filter(a=>['external_referral','internal_commission'].includes(a.kind)).map(a=>({id:String(a.id),title:String(a.title),version:Number(a.version)}))}/>}
+ {data.manage&&data.versions[0]?.id===d.id&&<details className="dashboard-panel work-section"><summary>Create a revised draft</summary><CommercialEditor kind={kind} {...choices} previous={d}/></details>}</div></>;
+}
