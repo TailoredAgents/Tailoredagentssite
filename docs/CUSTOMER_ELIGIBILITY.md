@@ -1,5 +1,7 @@
 # Customer-specific eligibility preparation
 
+**November 15 recurring-ledger update:** [Recurring commissions](RECURRING_COMMISSIONS.md) now connects reviewed source evidence and pinned eligibility to original receipt windows, saved calculations, typed-recipient ledger differences and monthly statements. Posting stays disabled and requires separate customer/mode approval. This later checkpoint supersedes earlier references below to the recurring ledger being entirely unimplemented; historical release evidence remains intact.
+
 November 15, 2026. This extends [commercial preparation](COMMERCIAL_PREPARATION.md) with durable customer attribution and human-reviewed service eligibility. It does not enable financial posting, calculate actual commissions, connect Stripe or start a payment window.
 
 **Later billing checkpoint:** [Billing reconciliation](BILLING_RECONCILIATION.md) now reads these pinned internal rules and service periods for unposted, source-reviewed collection previews. Historical eligibility remains usable after offboarding. Fixed customer windows still require their original approved receipt anchors in the next recurring-ledger phase. The earlier checkpoint below describes the eligibility-capture release; the new preview does not activate payouts or alter eligibility.

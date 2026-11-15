@@ -122,7 +122,7 @@ export async function recordEarning(c:DashboardContext,input:unknown) {
    if(!(await db.query('SELECT 1 FROM clients WHERE workspace_id=$1 AND id=$2 FOR SHARE',[c.workspace.id,v.clientId])).rowCount)throw new SalesAccessError('That client is unavailable.');
    if(!(await db.query(`SELECT 1 FROM crm_introductions WHERE workspace_id=$1 AND id=$2 AND partner_id=$3 AND COALESCE(lead_id,business_id,opportunity_id,client_id,contact_id)=ANY($4::uuid[]) FOR SHARE`,[c.workspace.id,v.introductionId,a.partner_id,linked.map(r=>r.id)])).rowCount)throw new SalesAccessError('Choose this partner’s recorded introduction for the connected client.');
    let source=(await db.query('SELECT * FROM crm_referral_sources WHERE workspace_id=$1 AND source_key=$2',[c.workspace.id,v.sourceKey])).rows[0];
-   if(source){if(source.client_id!==v.clientId||source.kind!==v.kind||Number(source.units)!==v.units||Number(source.amount_cents)!==v.amountCents||source.basis!==v.basis||new Date(source.occurred_on).toISOString().slice(0,10)!==v.occurredOn||source.reference!==v.reference)throw new SalesAccessError('That source ID already has different facts. Record a reversal and a corrected source instead.');}
+   if(source){if(source.program!=='legacy')throw new SalesAccessError('Recurring sources use their reviewed calculation ledger.');if(source.client_id!==v.clientId||source.kind!==v.kind||Number(source.units)!==v.units||Number(source.amount_cents)!==v.amountCents||source.basis!==v.basis||new Date(source.occurred_on).toISOString().slice(0,10)!==v.occurredOn||source.reference!==v.reference)throw new SalesAccessError('That source ID already has different facts. Record a reversal and a corrected source instead.');}
    else {const id=randomUUID();source=(await db.query('INSERT INTO crm_referral_sources(id,workspace_id,source_key,client_id,kind,units,amount_cents,basis,occurred_on,reference) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *',[id,c.workspace.id,v.sourceKey,v.clientId,v.kind,v.units,v.amountCents,v.basis,v.occurredOn,v.reference])).rows[0];}
    const allocations=(await db.query('SELECT partner_id,allocation_bps FROM crm_referral_earnings WHERE workspace_id=$1 AND source_id=$2 AND reverses_id IS NULL',[c.workspace.id,source.id])).rows;
    if(allocations.some(e=>e.partner_id===a.partner_id))throw new SalesAccessError('This partner already has an entry for this source. It cannot be counted twice.');
@@ -139,7 +139,7 @@ export async function reverseEarning(c:DashboardContext,input:unknown) {
   await access(db,c,role,undefined,true);
   return once(db,c,'earning_reverse',v.requestId,v,async()=>{
    const e=(await db.query('SELECT * FROM crm_referral_earnings WHERE workspace_id=$1 AND id=$2 FOR UPDATE',[c.workspace.id,v.earningId])).rows[0];
-   if(!e||e.reverses_id||(await db.query('SELECT 1 FROM crm_referral_earnings WHERE workspace_id=$1 AND reverses_id=$2',[c.workspace.id,e.id])).rowCount)throw new SalesAccessError('Choose an original earning that has not already been reversed.');
+   if(!e||e.program!=='legacy'||e.reverses_id||(await db.query('SELECT 1 FROM crm_referral_earnings WHERE workspace_id=$1 AND reverses_id=$2',[c.workspace.id,e.id])).rowCount)throw new SalesAccessError('Choose an original earning that has not already been reversed.');
    const id=randomUUID();
    await db.query('INSERT INTO crm_referral_earnings(id,workspace_id,partner_id,agreement_id,source_id,introduction_id,allocation_bps,amount_cents,earned_on,eligibility_note,reverses_id,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)',[id,c.workspace.id,e.partner_id,e.agreement_id,e.source_id,e.introduction_id,e.allocation_bps,-Number(e.amount_cents),v.occurredOn,v.reason,e.id,c.user.id]);
    await audit(db,c,'earning_reversed',id);return {id,amountCents:-Number(e.amount_cents)};
@@ -167,7 +167,7 @@ export async function createStatement(c:DashboardContext,input:unknown) {
 export async function getStatement(c:DashboardContext,id:string) {
  return workTransaction(c,false,async(db,role)=>{
   const statement=(await db.query('SELECT * FROM crm_referral_statements WHERE workspace_id=$1 AND id=$2',[c.workspace.id,id])).rows[0];
-  if(!statement)throw new SalesAccessError('That statement is unavailable.');
+  if(!statement||statement.program!=='legacy')throw new SalesAccessError('That statement is unavailable.');
   const permission=await access(db,c,role,statement.partner_id);
   if(!permission.full&&!['approved','paid'].includes(statement.status))throw new SalesAccessError('That statement is not approved for partner access.');
   const items=(await db.query(`SELECT i.earning_id,i.amount_cents::float8,e.earned_on::text,e.reverses_id,e.agreement_id,a.version,s.source_key,s.kind,s.units,s.amount_cents::float8 source_amount_cents,e.allocation_bps,cl.name client_name FROM crm_referral_statement_items i JOIN crm_referral_earnings e ON e.id=i.earning_id AND e.workspace_id=$1 JOIN crm_referral_agreements a ON a.id=e.agreement_id AND a.workspace_id=e.workspace_id JOIN crm_referral_sources s ON s.id=e.source_id AND s.workspace_id=e.workspace_id LEFT JOIN clients cl ON cl.id=s.client_id AND cl.workspace_id=s.workspace_id WHERE i.statement_id=$2 ORDER BY e.earned_on,e.id`,[c.workspace.id,id])).rows;
@@ -182,7 +182,7 @@ export async function changeStatement(c:DashboardContext,input:unknown) {
   await access(db,c,role,undefined,true);
   return once(db,c,'statement_state',v.requestId,v,async()=>{
    const s=(await db.query('SELECT * FROM crm_referral_statements WHERE workspace_id=$1 AND id=$2 FOR UPDATE',[c.workspace.id,v.statementId])).rows[0];
-   if(!s||s.revision!==v.revision||Number(s.total_cents)!==v.expectedTotalCents)throw new SalesAccessError('The statement changed. Review the current total and revision.');
+   if(!s||s.program!=='legacy'||s.revision!==v.revision||Number(s.total_cents)!==v.expectedTotalCents)throw new SalesAccessError('The statement changed. Review the current total and revision.');
    const expected={review:'draft',approve:'reviewed',record_paid:'approved',void:''}[v.operation];
    if(v.operation==='void'?!['draft','reviewed'].includes(s.status):s.status!==expected)throw new SalesAccessError('That transition is not available. Approved records require a separate correction.');
    const status={review:'reviewed',approve:'approved',record_paid:'paid',void:'void'}[v.operation];

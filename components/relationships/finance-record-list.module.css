@@ -1,0 +1,22 @@
+.list { display: grid; min-width: 0; }
+.list > a {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 4px;
+  border-bottom: 1px solid var(--workspace-line);
+  color: var(--workspace-ink);
+  text-decoration: none;
+}
+.list > a > div { min-width: 0; }
+.list strong, .list small { display: block; overflow-wrap: anywhere; }
+.list strong { font-size: 1rem; font-weight: 650; line-height: 1.5; }
+.list small { margin-top: 5px; color: var(--workspace-muted); line-height: 1.6; }
+.list > a > span { color: var(--workspace-blue); white-space: nowrap; }
+.list > a:hover strong { color: var(--workspace-blue); }
+.list > a:last-child { border-bottom: 0; }
+@media (max-width: 600px) {
+  .list > a { grid-template-columns: minmax(0, 1fr); align-items: start; gap: 10px; }
+  .list > a > span { justify-self: start; }
+}

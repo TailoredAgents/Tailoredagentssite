@@ -1,5 +1,7 @@
 # Private referral agreements and earnings ledger
 
+**November 15 recurring-ledger update:** [Recurring commissions](RECURRING_COMMISSIONS.md) now connects reviewed source evidence and pinned eligibility to original receipt windows, saved calculations, typed-recipient ledger differences and monthly statements. Posting stays disabled and requires separate customer/mode approval. This later checkpoint supersedes earlier references below to the recurring ledger being entirely unimplemented; historical release evidence remains intact.
+
 November 10, 2026: Austin chose **“Let Conner configure the rules before activation.”** The software is implemented; no real agreement, policy, earning, access grant or payment was created during development. This repository is public: never commit actual commercial rates, private agreements, customer exports or settlement references.
 
 ## Owner and Conner checklist

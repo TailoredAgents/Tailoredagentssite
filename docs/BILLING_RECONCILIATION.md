@@ -1,5 +1,7 @@
 # Billing evidence and read-only Stripe reconciliation
 
+**November 15 recurring-ledger update:** [Recurring commissions](RECURRING_COMMISSIONS.md) now connects reviewed source evidence and pinned eligibility to original receipt windows, saved calculations, typed-recipient ledger differences and monthly statements. Posting stays disabled and requires separate customer/mode approval. This later checkpoint supersedes earlier references below to the recurring ledger being entirely unimplemented; historical release evidence remains intact.
+
 November 15, 2026 source checkpoint. This implements the next preparation phase after [customer eligibility](CUSTOMER_ELIGIBILITY.md). Stripe connection remains Jeffrey's final activation responsibility. Import is disabled by default; no credentials, provider calls, customers, invoices, payments, signatures or payable entries were activated during development.
 
 ## Employee workflow

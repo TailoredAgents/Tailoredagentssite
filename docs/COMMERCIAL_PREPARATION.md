@@ -6,6 +6,8 @@ November 15, 2026 implementation checkpoint. The owner requested building the so
 
 **Later November 15 billing checkpoint:** [Billing reconciliation](BILLING_RECONCILIATION.md) adds the disabled-by-default Stripe reader, signed webhook queue, recovery worker, immutable source snapshots, explicit customer/line/clearing review and receipt-based unposted previews. Source-derived internal-role calculations retain historical service eligibility; fixed external windows stay held for original receipt-anchor approval in the next phase. Jeffrey's account connection, restricted-key verification and provider-backed acceptance remain last.
 
+**Later November 15 recurring-ledger checkpoint:** [Recurring commissions](RECURRING_COMMISSIONS.md) implements original window approval, saved partial-month/prepaid calculations, typed recipients, append-only differences and reviewed monthly statements in migration 0072. Posting stays disabled; original draft previews remain hypothetical. Lifecycle/settlement exceptions and private/provider acceptance remain gates.
+
 ## Using the workspace
 
 Open **Partners → Agreements, referral decisions & billing drafts**. `/dashboard/finance` requires existing finance read/manage permission or an owner/admin role. Selecting a finance work focus does not grant access.
@@ -44,7 +46,7 @@ Apply migrations using the existing deployment process before serving the new pa
 
 1. Customer-specific attribution and internal eligibility capture are implemented in migration 0070. Complete private policy approval and the explicit lifecycle exceptions listed in [the eligibility runbook](CUSTOMER_ELIGIBILITY.md) before enabling an affected real cohort. Payment-window verification and financial consumption belong to the collection/posting phases below.
 2. Collection/source review and the Stripe read-only adapter are implemented and locally tested with synthetic responses. Complete the [documented provider acceptance](BILLING_RECONCILIATION.md) at Jeffrey's final stage; unresolved split/out-of-band/credit/dispute cases remain held for explicit adjustment support before any affected financial cohort is enabled.
-3. Extend the existing ledger and monthly statements for recurring allocations and internal recipients. Reconcile shadow results, including partial-month cases, against approved private examples before enabling posting.
+3. Recurring/internal-recipient ledger and reviewed monthly statements are implemented in migration 0072. Reconcile shadow results against approved private examples. Complete the explicit exception, credit/partial-settlement and statement-delivery requirements in [the ledger runbook](RECURRING_COMMISSIONS.md) before enabling an affected real cohort.
 4. Add client-success calendars, client tasks, check-in/response evidence and permissioned employee notifications. Reuse My day/Services; keep automatic forfeiture and customer outreach disabled.
 5. Add explicitly reviewed assistant billing actions after the underlying services and approval contracts are tested.
 6. Finalize [Jeffrey's Stripe handoff](JEFFREY_STRIPE_SETUP.md) from the implemented adapter, then let Jeffrey create/verify/connect the account and complete provider-backed sandbox/live acceptance. Connecting keys alone is not final financial acceptance.
@@ -52,6 +54,8 @@ Apply migrations using the existing deployment process before serving the new pa
 The private pack and [gap analysis](REFERRAL_CLIENT_SUCCESS_GAP_ANALYSIS.md) retain detailed requirements. Legal review, actual signatures and final policy decisions remain business-owner work; this release does not certify or replace them.
 
 ## Verification
+
+**Recurring-ledger checkpoint, November 15:** 14 new database cases and ten allocation cases passed, together with all 71 prior commercial/billing/operating-model checks (95 total). Migration 0072 was applied from a fresh isolated PostgreSQL database. After the final calculation bounds, all 24 recurring-ledger cases passed again. Ten desktop/phone journeys passed, including original-window approval, saved shadow calculations, disabled-posting controls and synthetic statement review/approval/settlement. The two new journeys passed again after the shared finance-list layout correction. Accessibility/overflow assertions and desktop/phone screenshot review passed. TypeScript, lint, production build and whitespace checks passed; all 143 local links across the eight affected runbooks/summaries resolve. These are local synthetic checks: no actual policy, provider connection, payment, message or production acceptance was activated.
 
 **Billing checkpoint, November 15:** 12 new billing database cases and 12 reader/allocation cases passed, followed by all 47 existing commercial/calculation/operating-model regression cases (71 total). Eight desktop/phone browser journeys passed, including collection mapping/classification and unposted calculation, existing draft/eligibility flows and finance access denial. Accessibility, overflow and desktop/phone screenshot review passed. TypeScript, lint and production build passed. Stripe calls were mocked; no provider sandbox/live acceptance or production deployment acceptance was performed. Source snapshots and review immutability were exercised against isolated PostgreSQL with migration 0071.
 

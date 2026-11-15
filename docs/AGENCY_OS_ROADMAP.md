@@ -1,5 +1,7 @@
 # Tailored Agents internal operating system
 
+**November 15 recurring-ledger update:** [Recurring commissions](RECURRING_COMMISSIONS.md) now connects reviewed source evidence and pinned eligibility to original receipt windows, saved calculations, typed-recipient ledger differences and monthly statements. Posting stays disabled and requires separate customer/mode approval. This later checkpoint supersedes earlier references below to the recurring ledger being entirely unimplemented; historical release evidence remains intact.
+
 ## Relationship operating-model releases 2–5 — November 10 source update
 
 The remaining [relationship plan](RELATIONSHIP_OPERATING_MODEL_PLAN.md) phases are implemented locally: private referral agreements/earnings/statements, solution design briefs, sparse encounter capture and work-focus views, and ongoing service reviews/incidents/outcomes. Follow [the employee guide](OPERATING_MODEL_GUIDE.md) and [the finance setup guide](REFERRAL_LEDGER.md). Conner configures real commercial rules before activation; no rates, finance grants, payables or provider changes are seeded by the release. Final browser/release evidence is recorded in the plan. Earlier “planned” ledger/solution references below describe their dated milestones, not the current source state.

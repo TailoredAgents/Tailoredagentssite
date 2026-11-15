@@ -89,7 +89,7 @@ export async function getBillingInvoice(c:DashboardContext,id:string){
    const entitlements=(await db.query('SELECT * FROM crm_customer_entitlements WHERE workspace_id=$1 AND client_id=$2 ORDER BY role,id LIMIT 101',[c.workspace.id,review.client_id])).rows;
    if(entitlements.length>100)holds.push('Eligibility exceeds the complete-calculation limit.');
    for(const e of entitlements){
-    if(e.rule_snapshot.windowMonths!==null)holds.push('A fixed customer window needs its verified, approved original receipt anchor. Anchor approval belongs to the recurring-ledger phase.');
+    if(e.rule_snapshot.windowMonths!==null)holds.push('A fixed customer window needs its verified, approved original receipt anchor. Review it in Finance → Recurring commissions.');
     if(e.referral_id){const r=(await db.query('SELECT revision,status FROM crm_referral_submissions WHERE workspace_id=$1 AND id=$2',[c.workspace.id,e.referral_id])).rows[0];if(!r||r.status!=='accepted'||r.revision!==e.source_snapshot.referralRevision)holds.push('Referral attribution changed; review its preserved acceptance and deadline.');}
     if((await db.query("SELECT 1 FROM crm_eligibility_reviews WHERE workspace_id=$1 AND entitlement_id=$2 AND status='open'",[c.workspace.id,e.id])).rowCount)holds.push('An eligibility review is unresolved.');
     const periods=(await db.query('SELECT p.*,a.ends_at assignment_end FROM crm_eligibility_periods p LEFT JOIN crm_client_manager_history a ON a.workspace_id=p.workspace_id AND a.id=p.assignment_id WHERE p.workspace_id=$1 AND p.entitlement_id=$2 ORDER BY p.starts_on,p.id LIMIT 101',[c.workspace.id,e.id])).rows;
