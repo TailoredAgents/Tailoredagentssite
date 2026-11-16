@@ -10,6 +10,8 @@ import {createCustomerEntitlement,addEligibilityPeriod} from '@/lib/commercial/e
 import {billingConnection,runBillingWorkerStep,receiveBillingEvent,queueBillingJob,claimBillingJob,finishBillingInvoice} from './reconciliation';
 import {reviewBillingInvoice,billingWorkspace,getBillingInvoice,retryBillingReconciliation} from './service';
 import {invoiceFixture,reviewFixture,billingTestConfig} from './test-fixtures';
+import {createStripeDraft,stripeDraftReview,getStripeDraftExport} from './draft-exports';
+import {StripeDraftClient} from './stripe-drafts';
 import {STRIPE_VERSION} from './config';
 import {StripeReadError,type StripeReader} from './stripe';
 import {POST} from '@/app/api/integrations/stripe/events/route';
@@ -102,4 +104,23 @@ describe.skipIf(!url)('Billing reconciliation',()=>{
   expect((await POST(new Request('http://localhost/api/integrations/stripe/events',{method:'POST',body:body+' ',headers:{'stripe-signature':`t=${t},v1=${signature}`}}))).status).toBe(400);
   await expect(receiveBillingEvent(billingTestConfig,body.replace('"livemode":false','"livemode":true'))).rejects.toThrow(/IDENTITY_MISMATCH/);
  });
+ async function exportInput(){
+  const i=await imported();await reviewBillingInvoice(owner,await review(i.id));
+  vi.stubEnv('BILLING_STRIPE_DRAFT_WRITES_ENABLED','true');vi.stubEnv('BILLING_STRIPE_MODE','test');vi.stubEnv('BILLING_STRIPE_WORKSPACE_ID',ws);vi.stubEnv('BILLING_STRIPE_ACCOUNT_ID',billingTestConfig.accountId);vi.stubEnv('BILLING_STRIPE_WRITE_KEY','rk_test_SYNTHETIC');
+  const d=await saveCommercialDocument(owner,{requestId:req(),kind:'invoice',clientId:client,title:'Synthetic export',details:{currency:'USD',dueOn:'2028-12-01',recipientEmail:'billing@example.test',lines:[{description:'Synthetic support',classification:'recurring',amountCents:10000,startsOn:'2028-11-01',endsOn:'2028-11-30'}],notes:''}});
+  await changeCommercialDocument(owner,{requestId:req(),id:d.id,revision:1,operation:'review',evidence:'Synthetic exact finance approval'});return {documentId:d.id,revision:2,customerId:'cus_Synthetic'};
+ }
+ it('claims a single provider export across concurrent and repeated approvals',async()=>{
+  const v=await exportInput(),write=vi.spyOn(StripeDraftClient.prototype,'create').mockImplementation(async(_id,_customer,_title,_details,checkpoint)=>{await checkpoint('in_Export');return 'in_Export';});
+  try{const [a,b]=await Promise.all([createStripeDraft(owner,v),createStripeDraft(owner,v)]);expect(a.id).toBe(b.id);expect((await createStripeDraft(owner,v)).status).toBe('ready');expect(write).toHaveBeenCalledTimes(1);expect((await getStripeDraftExport(owner,a.id!)).provider_invoice_id).toBe('in_Export');await expect(getStripeDraftExport(foreign,a.id!)).rejects.toThrow(/unavailable/);}finally{write.mockRestore();}
+ });
+ it('preserves a partially created invoice and never automatically retries it',async()=>{
+  const v=await exportInput(),write=vi.spyOn(StripeDraftClient.prototype,'create').mockImplementation(async(_id,_customer,_title,_details,checkpoint)=>{await checkpoint('in_Partial');throw Error('Synthetic timeout');});
+  try{const r=await createStripeDraft(owner,v);expect(r.status).toBe('needs_review');expect((await getStripeDraftExport(owner,r.id!)).provider_invoice_id).toBe('in_Partial');await createStripeDraft(owner,v);expect(write).toHaveBeenCalledTimes(1);}finally{write.mockRestore();}
+ });
+ it('checks rollout, finance authority, exact revision and customer mapping before provider access',async()=>{
+  const v=await exportInput(),read=vi.spyOn(StripeDraftClient.prototype,'customer').mockResolvedValue({id:'cus_Synthetic',name:'Synthetic',email:'billing@example.test'});
+  try{await expect(stripeDraftReview(member,v)).rejects.toThrow(/Finance access/);await expect(stripeDraftReview(owner,{...v,revision:1})).rejects.toThrow(/finance-reviewed/);await expect(stripeDraftReview(owner,{...v,customerId:'cus_Other'})).rejects.toThrow(/mapping/);expect(read).not.toHaveBeenCalled();expect((await stripeDraftReview(owner,v)).totalCents).toBe(10000);vi.stubEnv('BILLING_STRIPE_DRAFT_WRITES_ENABLED','false');await expect(createStripeDraft(owner,v)).rejects.toThrow(/not enabled/);}finally{read.mockRestore();}
+ });
+
 });

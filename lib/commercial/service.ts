@@ -116,6 +116,7 @@ export async function getCommercialDocument(c:DashboardContext,id:string){
   if(!document)throw new SalesAccessError('That commercial document is unavailable.');
   const events=(await db.query('SELECT e.*,u.name actor FROM crm_commercial_events e LEFT JOIN "user" u ON u.id=e.actor_user_id WHERE e.workspace_id=$1 AND e.document_id=$2 ORDER BY e.created_at,e.id LIMIT 100',[c.workspace.id,id])).rows;
   const versions=(await db.query('SELECT id,version,status FROM crm_commercial_documents WHERE workspace_id=$1 AND family_id=$2 ORDER BY version DESC LIMIT 100',[c.workspace.id,document.family_id])).rows;
-  return {...access,document,events,versions};
+  const exports=document.kind==='invoice'?(await db.query('SELECT e.id,e.status,e.document_id,e.provider_invoice_id,e.last_error,e.created_at,b.account_id,b.mode FROM crm_billing_draft_exports e JOIN crm_billing_connections b ON b.id=e.connection_id WHERE e.workspace_id=$1 AND e.family_id=$2 ORDER BY e.created_at DESC LIMIT 100',[c.workspace.id,document.family_id])).rows:[];
+  return {...access,document,events,versions,exports};
  });
 }

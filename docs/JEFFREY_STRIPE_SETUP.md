@@ -24,7 +24,7 @@ The [commercial preparation release](COMMERCIAL_PREPARATION.md) supports private
 | Stripe adapter, signed webhook intake and recoverable reconciliation worker | Implemented and locally tested with synthetic responses; disabled, unscheduled and not provider-verified |
 | Compatible recurring/internal-recipient ledger and reviewed statements | Implemented in migration 0072; disabled. Local synthetic acceptance only; documented credit/settlement and exception workflows still require completion for affected cohorts |
 | Client-success task/calendar/notification workflows | Implemented in migration 0073 with local tests and the existing cron; disabled pending reviewed calendars, enrollment, employee opt-in and observed production acceptance. [Runbook](CLIENT_SUCCESS.md) |
-| Reviewed assistant billing actions | [Local invoice proposals and recurring reads](ASSISTANT_BILLING.md) implemented and locally tested. Provider draft/issue/send/subscription approval contracts remain pending; no Stripe writes enabled |
+| Reviewed assistant billing actions | [Local invoice proposals and recurring reads](ASSISTANT_BILLING.md) implemented and locally tested. [Provider draft creation](STRIPE_DRAFT_EXPORTS.md) implemented in 0074, disabled and awaiting sandbox acceptance. Issue/send/subscription actions remain pending; no Stripe writes enabled |
 | Exact account scopes, environment variables, API version, webhook URL/events and worker settings | Implemented names/GET resources and proposed schedule are in [the import runbook](BILLING_RECONCILIATION.md); actual restricted permissions and hosting schedule need sandbox acceptance |
 | Sandbox fixtures, provider acceptance script and rollback procedure | Synthetic local tests and future provider checklist documented; no provider sandbox or live test has run |
 | Approved private terms, signatures and live cohort | Business/finance confirmation required |
@@ -45,3 +45,5 @@ The [commercial preparation release](COMMERCIAL_PREPARATION.md) supports private
 - Observed provider acceptance date/result:
 
 Keep private commercial rates, signed agreements, credentials, bank/tax data and customer financial exports out of this public repository. Use authorized private storage for the actual configuration and acceptance evidence. A future update will replace the pending entries with verified implementation details rather than presenting this draft as a finished connection guide.
+
+**November 16 draft-export checkpoint:** [Draft export runbook](STRIPE_DRAFT_EXPORTS.md) supplies the separate write switch/key, reviewed mapping prerequisites, duplicate protection, interrupted-operation handling and proposed sandbox checks. This does not make the overall handoff ready for final connection; issue/send/subscription and financial exception work remains.

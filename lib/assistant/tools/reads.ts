@@ -1,3 +1,4 @@
+import {getStripeDraftExport} from '@/lib/billing/draft-exports';
 import {commissionWorkspace,getCommissionPolicy,getCommissionStatement} from '@/lib/commissions/service';
 import {checkInboxSend} from '@/lib/inbox/service';
 import 'server-only';
@@ -56,6 +57,7 @@ const search={q,page};const byId={id};
 read('list_recurring_commissions','Read finance-authorized recurring policies, calculations and statements. A calculated or approved amount is not a customer payment or partner payout.',{},p=>commissionWorkspace(p.context),'Bounded finance workspace; use record reads for evidence.');
 read('get_recurring_commission','Read a finance-authorized policy, original receipt anchors, source holds and saved calculations. Do not infer entitlement or cleared funds.',{id},(p,v)=>getCommissionPolicy(p.context,v.id),'Existing finance permissions and source limits apply.');
 read('get_recurring_statement','Read a recurring commission statement and its immutable items and settlement history. Paid means recorded external settlement evidence; this tool does not move money.',{id},(p,v)=>getCommissionStatement(p.context,v.id),'Existing finance/recipient authorization and source limits apply.');
+read('get_stripe_draft_export','Read a finance-authorized external draft operation. Running or needs_review requires reconciliation; never infer sent, paid or safe to retry.',{id},(p,v)=>getStripeDraftExport(p.context,v.id),'One operation, current workspace and finance access only.');
 read('list_billing_collections','Read finance-authorized imported invoice evidence and reconciliation jobs. Read-only import; source review does not activate commissions or imply bank settlement.',{page},(p,v)=>billingWorkspace(p.context,v.page),'50 invoices and latest 100 pending jobs; finance access required.');
 read('get_billing_collection','Read a finance-authorized invoice snapshot, classified service periods, receipt/refund/dispute evidence, source holds and unposted calculation preview. Do not call held amounts verified income or create payment-window dates. No provider writes or commission posting.',{id},(p,v)=>getBillingInvoice(p.context,v.id),'Finance access required; last 100 source/review versions with explicit truncation.');
 read('list_customer_eligibility','Read finance-authorized customer attribution pinned to signed versions. These preparation records do not establish cleared payments, active payable rules or window anchors.',{clientId:id.optional(),page},(p,v)=>listCustomerEligibility(p.context,v.clientId,v.page),'50 per page. Finance access required.');
