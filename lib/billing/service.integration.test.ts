@@ -20,6 +20,7 @@ import {previewStripeCustomerMapping,mapStripeCustomer} from './customer-mapping
 import {STRIPE_VERSION} from './config';
 import {StripeReadError,type StripeReader} from './stripe';
 import {POST} from '@/app/api/integrations/stripe/events/route';
+import {reviewBillingExceptions} from './exceptions';
 const url=process.env.OPERATING_TEST_DATABASE_URL,ws=billingTestConfig.workspaceId,other='183f6ee6-e2eb-4e47-a576-adf6c1228135',req=()=>randomUUID();
 function actor(id:string,role:DashboardContext['role']='member',workspace=ws):DashboardContext{return {user:{id,name:id,email:id+'@example.test'},workspace:{id:workspace,name:'Synthetic billing workspace',slug:'test'},role};}
 const owner=actor('billing-owner','owner'),member=actor('billing-member'),viewer=actor('billing-viewer','viewer'),foreign=actor('billing-foreign','owner',other);
@@ -191,6 +192,15 @@ describe.skipIf(!url)('Billing reconciliation',()=>{
    const otherClient=req();await db.query("INSERT INTO clients(id,workspace_id,name) VALUES($1,$2,'Other synthetic customer')",[otherClient,ws]);await expect(previewStripeCustomerMapping(owner,{...v,clientId:otherClient})).rejects.toThrow(/already mapped/);
    read.mockResolvedValue({id:'cus_New',name:'Changed customer',email:'changed@example.test'});await expect(mapStripeCustomer(owner,{...input,requestId:req()})).rejects.toThrow(/identity changed/);
   }finally{read.mockRestore();}
+ });
+
+ it('requires a current exact finance exception review and canonical closed dispute movements; a new review invalidates the approval',async()=>{
+  source.receipts[0].disputes=[{id:'du_Final',status:'lost',amountCents:3000,movements:[{id:'txn_Loss',amountCents:-3000,currency:'usd',status:'available',availableOn:'2026-02-01'}]}];const i=await imported();await reviewBillingInvoice(owner,await review(i.id));let d=await getBillingInvoice(owner,i.id);
+  expect(d.collection?.netCents).toBe(12000);expect(d.holds.join()).toMatch(/explicit finance exception review/);
+  const v={requestId:req(),invoiceId:i.id,snapshotId:d.invoice.snapshot_id,reviewId:d.review.id,revision:d.invoice.revision,fingerprint:d.exceptionFingerprint,evidence:'Synthetic final dispute reconciliation',bankEvidence:[]};await expect(reviewBillingExceptions(member,v)).rejects.toThrow(/Finance access/);await expect(reviewBillingExceptions(foreign,v)).rejects.toThrow(/changed/);
+  await reviewBillingExceptions(owner,v);d=await getBillingInvoice(owner,i.id);expect(d.exceptionApproval).toBeTruthy();expect(d.collection?.holds).toEqual([]);await expect(db.query('DELETE FROM crm_billing_exception_reviews WHERE id=$1',[d.exceptionApproval!.id])).rejects.toThrow(/append-only/);
+  await reviewBillingInvoice(owner,await review(i.id));expect((await getBillingInvoice(owner,i.id)).exceptionApproval).toBeNull();await expect(reviewBillingExceptions(owner,{...v,requestId:req()})).rejects.toThrow(/changed/);
+  source.receipts[0].disputes[0].status='needs_response';await queue();await drain();await reviewBillingInvoice(owner,await review(i.id));d=await getBillingInvoice(owner,i.id);await expect(reviewBillingExceptions(owner,{...v,requestId:req(),snapshotId:d.invoice.snapshot_id,reviewId:d.review.id,revision:d.invoice.revision,fingerprint:d.exceptionFingerprint})).rejects.toThrow(/open dispute/);
  });
 
 });

@@ -6,6 +6,7 @@ import {SalesAccessError} from '@/lib/sales/data';
 import type {OperationActionState} from '@/lib/operations/validation';
 import {decimalCents} from '@/lib/commercial/contract';
 import {reviewBillingInvoice,retryBillingReconciliation} from './service';
+import {reviewBillingExceptions} from './exceptions';
 export async function billingAction(_:OperationActionState,form:FormData):Promise<OperationActionState>{
  const c=await requireDashboardContext(),v=Object.fromEntries(form);
  try{
@@ -16,6 +17,9 @@ export async function billingAction(_:OperationActionState,form:FormData):Promis
    await reviewBillingInvoice(c,{requestId:v.requestId,invoiceId:v.invoiceId,snapshotId:v.snapshotId,revision:Number(v.revision),clientId:v.clientId,policy:v.policy,evidence:v.evidence,
     lines:all('sourceId').map((sourceId,i)=>({sourceId,description:all('description')[i],classification:all('classification')[i],amountCents:decimalCents(all('amount')[i]),startsOn:all('startsOn')[i]||null,endsOn:all('endsOn')[i]||null})),
     bankEvidence:all('chargeId').map((chargeId,i)=>({chargeId,clearedOn:all('clearedOn')[i],reference:all('bankReference')[i]})).filter(b=>b.clearedOn||b.reference)});
+  }else if(v.action==='exception_review'){
+   const all=(key:string)=>form.getAll(key).map(String);
+   await reviewBillingExceptions(c,{requestId:v.requestId,invoiceId:v.invoiceId,snapshotId:v.snapshotId,reviewId:v.reviewId,revision:Number(v.revision),fingerprint:v.fingerprint,evidence:v.evidence,bankEvidence:all('disputeId').map((disputeId,i)=>({disputeId,clearedOn:all('recoveryDate')[i],reference:all('recoveryReference')[i]})).filter(b=>b.clearedOn||b.reference)});
   }else throw new SalesAccessError('Choose a supported billing action.');
   revalidatePath('/dashboard/finance','layout');
  }catch(e){return {status:'error',message:e instanceof SalesAccessError?e.message:e instanceof ZodError?'Check every line, date and evidence reference (at least ten characters).':'The billing review could not be saved. Refresh the current source and try again.'};}

@@ -2,6 +2,8 @@
 
 November 15, 2026 implementation checkpoint. Open **Finance → Recurring commissions**. This extends the existing referral ledger for internal and external recipients. Stripe import and recurring posting remain disabled by default; no actual commercial policy, customer cohort, receipt, payment or provider connection was activated by this release.
 
+**November 16 update:** [Financial exceptions and settlement](FINANCIAL_EXCEPTIONS.md) adds reviewed closed-dispute/credit allocation, owner original-window corrections, partial payments, paired offsets, reversals and statement delivery/dispute records. Migration 0077 and the later workflow below supersede the earlier release’s missing exception paths. Provider acceptance remains pending.
+
 ## Preparation workflow
 
 1. Record the exact executed agreement and customer attribution in [Customer eligibility](CUSTOMER_ELIGIBILITY.md). Preserve service periods, assignment history, work/leave and review evidence.
@@ -32,7 +34,7 @@ Anchors bind the customer entitlement, mode-specific policy, source invoice, exa
 
 The review checks the complete bounded mapped customer history across connections in the selected mode. Every mapped source must be current and reviewed; scans and pending/retry/failed jobs must be resolved, and source/scan evidence must be no more than one day old. Shared receipt allocations, open eligibility reviews, changed referral acceptance/deadlines, missing periods and invalid manager coverage are held. Bounds are explicit: at most 500 invoices, 100 entitlements and 100 periods per entitlement and 200 combined eligibility segments in one complete calculation. Calculation schedules are bounded to 600 line/month segments and 1,000 recipient components; excess history is held, never silently truncated.
 
-A newly found earlier receipt or changed clearing date holds the original window. A full refund of an already anchored first receipt requires a specific, evidence-backed **retain original window** decision for that refund snapshot before calculation can resume. The decision permits a zeroed/refunded calculation without granting a replacement window. A fully refunded receipt discovered before an anchor exists, or a policy requiring an anchor correction, remains held for a separately reviewed exception workflow. The application never chooses the next receipt to reset the clock.
+A newly found earlier receipt or changed clearing date holds the original window. A full refund of an already anchored first receipt requires a specific, evidence-backed **retain original window** decision for that refund snapshot before calculation can resume. The decision permits a zeroed/refunded calculation without granting a replacement window. A fully reversed receipt discovered before an anchor exists requires explicit owner/admin authority to preserve that original date. A changed original receipt can now be corrected through the owner/admin workflow, preserving every version and the signed window length. The application never chooses the next receipt to reset the clock.
 
 ## Posting and adjustments
 
@@ -44,7 +46,7 @@ The target is the cumulative calculated amount for each invoice line, service mo
 
 Source records and typed recipients extend `crm_referral_sources`, `crm_referral_earnings` and `crm_referral_statements` with a program discriminator. Legacy manual earning/reversal/statement routes cannot mutate the recurring records. No existing agreement, earning, partner grant or historical statement is converted or reseeded.
 
-Unresolved disputes (including recovery), unmatched credits, split charges and unsupported source exceptions remain held. The current release does not invent arbitrary manual commission adjustments or override contractual authority to clear these holds.
+Open disputes, unmatched credits, split charges and unsupported source exceptions remain held. Supported final disputes/recoveries and canonical credit allocations can now receive exact finance exception review; see the linked exception runbook. The current release does not invent arbitrary manual commission adjustments or override contractual authority to clear these holds.
 
 ## Monthly statements
 
@@ -54,11 +56,11 @@ The existing statement lifecycle is reused: draft → reviewed → approved → 
 
 Paid statement amounts and items are immutable. A later refund creates a new adjustment available to a later statement. Recording payment requires a positive statement balance and actual external settlement evidence; **it does not transfer money**. Test statements explicitly carry no live payment obligation.
 
-Negative or zero balances remain for finance reconciliation and cannot be marked as a positive payment. Cross-statement credit offsets, partial settlements, statement delivery/dispute tracking, recipient self-service and exports are not automated in this release. Those flows must be agreed and completed before enabling a cohort that needs them. No statement is emailed or texted automatically.
+Partial external payments and same-recipient/mode credit offsets now preserve individual allocations. Reversals reopen balances without rewriting snapshots. Delivery performed elsewhere and specific dispute/resolution events are recorded; open disputes block approval/settlement. Zero/negative balances cannot be marked as positive payments. Recipient self-service and exports remain outside this release. No statement is emailed or texted automatically.
 
 ## Deployment and rollback
 
-Apply [migration 0072](../db/migrations/0072_recurring_commission_ledger.sql) before deploying these routes. It adds policy/anchor/calculation/posting history, typed recipients, compatible ledger fields and database guards for immutable evidence, recurring earnings and statement snapshots. It seeds no rates, payees or approvals.
+Apply all migrations through [0077](../db/migrations/0077_financial_exception_evidence.sql), including [migration 0072](../db/migrations/0072_recurring_commission_ledger.sql) before deploying these routes. It adds policy/anchor/calculation/posting history, typed recipients, compatible ledger fields and database guards for immutable evidence, recurring earnings and statement snapshots. It seeds no rates, payees or approvals.
 
 Keep both billing import and posting switches off until [Jeffrey's final acceptance](JEFFREY_STRIPE_SETUP.md). No recurring calculation worker is scheduled: importing or reviewing a receipt does not automatically post or create a statement. Finance explicitly reconciles each invoice, including prepaid months as they mature.
 

@@ -13,10 +13,10 @@ describe('Collection allocation evidence',()=>{
  it('deducts a linked refund exactly once even when a credit note describes it',()=>{
   const f=invoiceFixture();f.receipts[0].refundedCents=3000;f.receipts[0].refunds=[{id:'re_Synthetic',amountCents:3000,status:'succeeded',createdOn:'2026-02-01'}];f.credits=[{id:'cn_Synthetic',amountCents:3000,status:'issued',refundId:'re_Synthetic'}];
   const r=collectionEvidence(f,reviewFixture());expect(r.holds).toEqual([]);expect(r.netCents).toBe(12000);expect(r.lineCents).toEqual([8000,4000]);
-  f.credits.push({...f.credits[0],id:'cn_Duplicate'});expect(collectionEvidence(f,reviewFixture()).holds.join()).toMatch(/twice/);
+  f.credits.push({...f.credits[0],id:'cn_Duplicate'});expect(collectionEvidence(f,reviewFixture()).holds.join()).toMatch(/more than once/);
  });
  it('holds unmatched credits, pending refunds and all dispute recovery states for reconciliation',()=>{
-  const f=invoiceFixture();f.credits=[{id:'cn_Unknown',amountCents:3000,status:'issued',refundId:null}];expect(collectionEvidence(f,reviewFixture()).holds.join()).toMatch(/Credit-note/);
+  const f=invoiceFixture();f.credits=[{id:'cn_Unknown',amountCents:3000,status:'issued',refundId:null}];expect(collectionEvidence(f,reviewFixture()).holds.join()).toMatch(/Credit allocation/);
   f.credits=[];f.receipts[0].refunds=[{id:'re_Pending',amountCents:1000,status:'pending',createdOn:'2026-02-01'}];expect(collectionEvidence(f,reviewFixture()).holds.join()).toMatch(/pending/);
   f.receipts[0].refunds=[];for(const status of ['needs_response','lost','won']){f.receipts[0].disputes=[{id:'du_Synthetic',amountCents:1000,status}];expect(collectionEvidence(f,reviewFixture()).holds.join()).toMatch(/Dispute/);}
  });

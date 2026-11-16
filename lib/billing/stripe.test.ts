@@ -45,4 +45,10 @@ describe('Stripe read-only adapter',()=>{
   expect(verifyStripeSignature(body,`t=${stamp},t=${stamp},v1=${valid}`,secret,stamp)).toBe(false);
   await expect(boundedBody(new Response('oversized'),3)).rejects.toThrow(/PAYLOAD_LIMIT/);
  });
+ it('fetches canonical dispute balance movements and complete pre-payment credit lines',async()=>{
+  const fetcher=transport({'/v1/disputes':{data:[{id:'du_Final',charge:'ch_Synthetic',currency:'usd',amount:3000,status:'lost',balance_transactions:[{id:'txn_Loss',amount:-1}]}],has_more:false},'/v1/balance_transactions/txn_Loss':{id:'txn_Loss',source:'du_Final',amount:-3000,net:-4500,fee:1500,currency:'usd',status:'available',available_on:1767589200},'/v1/credit_notes':{data:[{id:'cn_Unpaid',invoice:'in_Synthetic',currency:'usd',amount:2000,status:'issued',pre_payment_amount:2000,post_payment_amount:0,refunds:[]}],has_more:false},'/v1/credit_notes/cn_Unpaid/lines':{data:[{id:'cnli_Original',invoice_line_item:'il_Recurring',amount:2100,discount_amount:100,taxes:[]}],has_more:false}});
+  const f=await new StripeReadClient(billingTestConfig,fetcher).invoice('in_Synthetic');expect(f.receipts[0].disputes[0].movements?.[0].amountCents).toBe(-3000);expect(f.receipts[0].holds).toEqual([]);expect(f.credits[0].lines).toEqual([{sourceId:'il_Recurring',amountCents:2000,taxCents:0}]);
+ });
+ it('holds dispute balances belonging to another source or currency',async()=>{const f=await new StripeReadClient(billingTestConfig,transport({'/v1/disputes':{data:[{id:'du_Final',charge:'ch_Synthetic',currency:'usd',amount:3000,status:'lost',balance_transactions:[{id:'txn_Loss'}]}],has_more:false},'/v1/balance_transactions/txn_Loss':{id:'txn_Loss',source:'du_Other',amount:-3000,net:-3000,fee:0,currency:'eur',status:'available',available_on:1767589200}})).invoice('in_Synthetic');expect(f.receipts[0].holds.join()).toMatch(/identity/);});
+
 });

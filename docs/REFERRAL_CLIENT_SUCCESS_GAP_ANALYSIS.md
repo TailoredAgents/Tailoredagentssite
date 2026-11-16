@@ -215,3 +215,7 @@ Documentation verification: all 132 local Markdown links across this report, the
 ## November 16 reviewed billing implementation checkpoint
 
 [Invoice actions and recurring setup](STRIPE_INVOICE_ACTIONS.md) implement the core reviewed-provider-action portion of phase 5: customer identity linking, separate issue/send approvals, finite monthly schedules, exact source/provider revalidation and durable duplicate/uncertainty receipts. All provider gates remain off. Remaining lifecycle/settlement exceptions in the ledger runbook and actual provider acceptance are still open; this checkpoint does not complete financial rollout or activate actual terms.
+
+## November 16 financial preparation completion
+
+[Financial exceptions and settlement](FINANCIAL_EXCEPTIONS.md) supplies the core remaining phase-3 workflows: exact snapshot/review-bound closed-dispute and credit allocation, immutable original-window corrections, statement partial payments/offsets/reversals and delivery/dispute evidence. Default-off provider writes and posting are unchanged. [Jeffrey's current handoff](JEFFREY_STRIPE_SETUP.md) now moves to account setup, sandbox/permission/worker acceptance, private financial sign-off and a supported live pilot. Historical pending implementation statements above describe earlier checkpoints; unsupported source allocations, recipient self-service, exports and automatic payouts remain outside this bounded release.

@@ -8,6 +8,7 @@ import {SalesAccessError} from '@/lib/sales/data';
 import {businessDateKey} from '@/lib/time';
 import {commercialAccess} from '@/lib/commercial/access';
 import {previewRecurringCalculation,type CalculationInput} from '@/lib/commercial/calculation';
+import {currentExceptionApproval,exceptionFingerprint} from './exceptions';
 import {collectionEvidence} from './allocation';
 import {invoiceFactsSchema,reviewInput,retryInput,type BillingReview} from './contract';
 import {queueBillingJob} from './reconciliation';
@@ -82,7 +83,8 @@ export async function getBillingInvoice(c:DashboardContext,id:string){
   const duplicates=(await db.query('SELECT charge_id FROM crm_billing_payment_links WHERE connection_id=$1 AND charge_id=ANY($2::text[]) GROUP BY charge_id HAVING count(*)>1',[i.connection_id,facts.receipts.map(r=>r.chargeId)])).rows;
   if(duplicates.length)holds.push('A processor charge is linked more than once. Its invoice allocations require review.');
   const current=review&&review.snapshot_id===i.snapshot_id?{policy:review.policy,lines:review.lines,bankEvidence:review.bank_evidence} as Pick<BillingReview,'policy'|'lines'|'bankEvidence'>:null;
-  const collection=current?collectionEvidence(facts,current):null;
+  const exceptionApproval=current?await currentExceptionApproval(db,id,i.snapshot_id,review.id):undefined;
+  const collection=current?collectionEvidence(facts,current,businessDateKey(),exceptionApproval):null;
   if(collection)holds.push(...collection.holds);
   const roles:CalculationInput['roles']=[];
   if(current){
@@ -103,8 +105,9 @@ export async function getBillingInvoice(c:DashboardContext,id:string){
   }
   let calculation:ReturnType<typeof previewRecurringCalculation>|null=null;
   if(collection&&current&&!holds.length){
-   try{calculation=previewRecurringCalculation({asOf:businessDateKey(),collectedOn:collection.cleared.map(r=>r.clearedOn).sort().at(-1)??businessDateKey(),cleared:true,collectedCents:collection.grossCents,refundedCents:collection.refundCents,lines:current.lines.map(l=>({description:l.description,classification:l.classification,amountCents:l.amountCents,startsOn:l.startsOn,endsOn:l.endsOn})),roles});holds.push(...calculation.holds);}catch{holds.push('Source allocations or eligibility do not reconcile; review before calculating.');}
+   try{calculation=previewRecurringCalculation({asOf:businessDateKey(),collectedOn:collection.cleared.map(r=>r.clearedOn).sort().at(-1)??businessDateKey(),cleared:true,collectedCents:collection.netCents,refundedCents:0,lines:collection.effectiveLines.map(l=>({description:l.description,classification:l.classification,amountCents:l.amountCents,startsOn:l.startsOn,endsOn:l.endsOn})),roles});holds.push(...calculation.holds);}catch{holds.push('Source allocations or eligibility do not reconcile; review before calculating.');}
   }
-  return {...access,invoice:{...i,facts},review:review??null,reviews:reviews.slice(0,100),versions:versions.slice(0,100),clients:clients.slice(0,500),historyTruncated:reviews.length>100||versions.length>100,choicesTruncated:clients.length>500,collection,calculation:holds.length?null:calculation,holds:[...new Set(holds)],postingEnabled:false,moneyMoved:false};
+  const exceptionReviews=(await db.query('SELECT * FROM crm_billing_exception_reviews WHERE workspace_id=$1 AND invoice_id=$2 ORDER BY created_at DESC LIMIT 101',[c.workspace.id,id])).rows;
+  return {...access,exceptionApproval:exceptionApproval??null,exceptionFingerprint:current?exceptionFingerprint(i.snapshot_id,review.id):null,exceptionReviews:exceptionReviews.slice(0,100),exceptionsTruncated:exceptionReviews.length>100,invoice:{...i,facts},review:review??null,reviews:reviews.slice(0,100),versions:versions.slice(0,100),clients:clients.slice(0,500),historyTruncated:reviews.length>100||versions.length>100,choicesTruncated:clients.length>500,collection,calculation:holds.length?null:calculation,holds:[...new Set(holds)],postingEnabled:false,moneyMoved:false};
  });
 }

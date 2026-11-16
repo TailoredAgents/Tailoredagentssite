@@ -4,6 +4,8 @@ Prepared November 15, 2026. Planning only: this change adds documentation, not a
 
 ## Start here
 
+**Current November 16 handoff:** core preparation is implemented for the supported pilot. Read [Financial exceptions and settlement](FINANCIAL_EXCEPTIONS.md) and [Jeffrey’s current setup sequence](JEFFREY_STRIPE_SETUP.md). Historical planning-only/pending statements below are preserved release context; actual provider connection, private terms and live activation remain unverified.
+
 **Later November 15 implementation start:** the owner requested Stripe setup/connection last, handled by Jeffrey. Read [the commercial preparation checkpoint](COMMERCIAL_PREPARATION.md) for the implemented first foundation and remaining releases. [Jeffrey's handoff](JEFFREY_STRIPE_SETUP.md) is explicitly a preparation document until the adapter and financial acceptance gates are complete.
 
 **November 15 source audit completed:** read the [gap analysis and phased implementation plan](REFERRAL_CLIENT_SUCCESS_GAP_ANALYSIS.md) for the existing/partial/missing matrix, compatible ledger migrations, Stripe-first billing recommendation and release gates. This is a planning result; implementation and financial activation remain pending. The local ignored supplement records private draft-policy mapping.
