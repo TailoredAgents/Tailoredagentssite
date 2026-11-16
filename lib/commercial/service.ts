@@ -31,6 +31,7 @@ export async function saveCommercialDocument(c:DashboardContext,input:unknown){
   if(v.previousId){
    const old=(await db.query('SELECT * FROM crm_commercial_documents WHERE workspace_id=$1 AND id=$2 FOR UPDATE',[c.workspace.id,v.previousId])).rows[0];
    if(!old||old.kind!==v.kind||old.client_id!==(v.clientId??null)||old.partner_id!==(v.partnerId??null)||old.user_id!==(v.userId??null))throw new SalesAccessError('Revisions must retain the same document type and counterparty.');
+   if(v.expectedPreviousRevision!==undefined&&old.revision!==v.expectedPreviousRevision)throw new SalesAccessError('The document changed after review. Prepare a new proposal.');
    family=old.family_id;await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[`commercial:${c.workspace.id}:${family}`]);
    const latest=Number((await db.query('SELECT max(version) AS version FROM crm_commercial_documents WHERE workspace_id=$1 AND family_id=$2',[c.workspace.id,family])).rows[0].version);
    if(latest!==old.version)throw new SalesAccessError('A newer version exists. Start from the latest document.');version=latest+1;

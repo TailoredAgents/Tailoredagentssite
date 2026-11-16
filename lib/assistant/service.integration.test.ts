@@ -372,4 +372,20 @@ describe.skipIf(!url)('Operations OAuth and execution integration',()=>{
    const t=readTools.find(t=>t.name===name)!;const result=await t.run(c.p,{});expect(JSON.stringify(result)).not.toContain('synthetic-assistant-only-secret');
   }
  });
+ it('invoice proposals require exact human approval even with direct actions enabled',async()=>{
+  const {p}=await connection(allScopes,true),client=randomUUID();await pool.query('INSERT INTO clients(id,workspace_id,name) VALUES($1,$2,$3)',[client,workspace,'Synthetic invoice customer']);
+  const input={requestId:randomUUID(),clientId:client,title:'Synthetic support invoice',details:{currency:'USD',dueOn:'2026-12-20',recipientEmail:'billing@example.test',lines:[{description:'Synthetic support',classification:'recurring',amountCents:15200,startsOn:'2026-12-01',endsOn:'2026-12-31'}],notes:''}};
+  const proposal=await executeAction(p,'draft_customer_invoice',input,'invoice-proposal-one');expect(proposal.status).toBe('awaiting_approval');expect((await pool.query('SELECT 1 FROM crm_commercial_documents WHERE client_id=$1',[client])).rowCount).toBe(0);
+  const hash=(await pool.query('SELECT input_hash FROM assistant_actions WHERE id=$1',[proposal.id])).rows[0].input_hash;
+  await expect(reviewAction(owner,proposal.id,'approve','incorrect-hash')).rejects.toThrow(/changed/);
+  expect((await reviewAction(owner,proposal.id,'approve',hash)).status).toBe('succeeded');await reviewAction(owner,proposal.id,'approve',hash);
+  const docs=(await pool.query('SELECT status FROM crm_commercial_documents WHERE client_id=$1',[client])).rows;expect(docs).toEqual([{status:'draft'}]);
+ });
+ it('invoice proposals become stale when the reviewed customer changes',async()=>{
+  const {p}=await connection(),client=randomUUID();await pool.query('INSERT INTO clients(id,workspace_id,name) VALUES($1,$2,$3)',[client,workspace,'Synthetic initial identity']);
+  const input={requestId:randomUUID(),clientId:client,title:'Synthetic invoice',details:{currency:'USD',dueOn:'2026-12-20',recipientEmail:'billing@example.test',lines:[{description:'Synthetic setup',classification:'upfront',amountCents:10000,startsOn:null,endsOn:null}],notes:''}};
+  const proposal=await prepareAction(p,'draft_customer_invoice',input,'invoice-proposal-stale');await pool.query('UPDATE clients SET name=$2,updated_at=now() WHERE id=$1',[client,'Changed synthetic customer']);
+  expect((await reviewAction(owner,proposal.id,'approve')).status).toBe('failed');expect((await pool.query('SELECT 1 FROM crm_commercial_documents WHERE client_id=$1',[client])).rowCount).toBe(0);
+ });
+
 });

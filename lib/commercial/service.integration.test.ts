@@ -7,6 +7,7 @@ import {getDatabasePool} from '@/lib/dashboard/db';
 import {createPartner,changeFinanceAccess} from '@/lib/partners/service';
 import {setAccountManager} from '@/lib/relationships/service';
 import {saveCommercialDocument,changeCommercialDocument,commercialWorkspace,getCommercialDocument,submitReferral,decideReferral} from './service';
+import {invoiceProposalReview,saveAssistantInvoice,assistantInvoiceSchema} from './assistant-invoices';
 import {simulateCommercialInvoice} from './simulation';
 import {createCustomerEntitlement,addEligibilityPeriod,endEligibilityPeriod,recordEligibilityEvidence,openEligibilityReview,resolveEligibilityReview,listCustomerEligibility,getCustomerEligibility} from './eligibility';
 const url=process.env.OPERATING_TEST_DATABASE_URL,ws='00000000-0000-4000-8000-000000000001',other='183f6ee6-e2eb-4e47-a576-adf6c1228135';
@@ -239,4 +240,35 @@ describe.skipIf(!url)('Commercial preparation',()=>{
   await decideReferral(owner,{requestId:req(),id:referralId,revision:2,status:'disputed',note:'Synthetic later source dispute'});
   expect((await getCustomerEligibility(owner,ext.id)).holds.join(' ')).toMatch(/referral decision changed/);
  });
+ it('previews exact invoice details and creates only a replay-safe local draft',async()=>{
+  const v={requestId:req(),clientId:client,title:'Synthetic reviewed invoice',details:invoice};
+  const preview=await invoiceProposalReview(owner,v);expect(preview.totalCents).toBe(12345);expect(preview.recipient).toBe(invoice.recipientEmail);expect(preview.collection).toMatch(/Local draft/);
+  const [a,b]=await Promise.all([saveAssistantInvoice(owner,v),saveAssistantInvoice(owner,v)]);expect(a).toEqual(b);expect(a.providerInvoiceCreated).toBe(false);expect(a.customerNotified).toBe(false);expect(a.status).toBe('draft');expect(a.url).toBe('/dashboard/finance/'+a.id);
+  await expect(saveAssistantInvoice(owner,{...v,title:'Changed content'})).rejects.toThrow(/different details/);
+ });
+ it('requires finance management at both proposal and saving time',async()=>{
+  const v={requestId:req(),clientId:client,title:'Synthetic proposal',details:invoice};
+  await expect(invoiceProposalReview(member,v)).rejects.toThrow(/Finance access/);await expect(saveAssistantInvoice(member,v)).rejects.toThrow(/Finance access/);
+  await changeFinanceAccess(owner,{requestId:req(),userId:member.user.id,permission:'manage'});await invoiceProposalReview(member,v);
+  await changeFinanceAccess(owner,{requestId:req(),userId:member.user.id,permission:'read'});await expect(saveAssistantInvoice(member,v)).rejects.toThrow(/Finance access/);
+  await expect(invoiceProposalReview(foreign,v)).rejects.toThrow(/client in this workspace/);
+ });
+ it('refuses a changed source revision or a newer invoice version after proposal review',async()=>{
+  const original=await saveAssistantInvoice(owner,{requestId:req(),clientId:client,title:'Synthetic original',details:invoice});
+  const next={requestId:req(),clientId:client,previousId:original.id,expectedPreviousRevision:1,title:'Synthetic revision',details:invoice};await invoiceProposalReview(owner,next);
+  await changeCommercialDocument(owner,{requestId:req(),id:original.id,revision:1,operation:'review',evidence:'Synthetic finance review'});
+  await expect(saveAssistantInvoice(owner,next)).rejects.toThrow(/changed after review/);
+  const revised=await saveAssistantInvoice(owner,{...next,expectedPreviousRevision:2});expect(revised.version).toBe(2);
+  await expect(invoiceProposalReview(owner,{...next,expectedPreviousRevision:2})).rejects.toThrow(/newer invoice/);
+ });
+ it('rejects incomplete periods, missing revision pins and provider/approval fields',()=>{
+  const v={requestId:req(),clientId:client,title:'Synthetic draft',details:invoice};
+  expect(assistantInvoiceSchema.safeParse({...v,previousId:req()}).success).toBe(false);
+  expect(assistantInvoiceSchema.safeParse({...v,autoAdvance:true}).success).toBe(false);
+  expect(assistantInvoiceSchema.safeParse({...v,details:{...invoice,lines:[{...invoice.lines[0],startsOn:null}]}}).success).toBe(false);
+ });
+ it('pauses assistant proposals and saves without disabling the manual finance workspace',async()=>{
+  vi.stubEnv('ASSISTANT_BILLING_DRAFTS_ENABLED','false');try{const v={requestId:req(),clientId:client,title:'Synthetic paused',details:invoice};await expect(invoiceProposalReview(owner,v)).rejects.toThrow(/paused/);await expect(saveAssistantInvoice(owner,v)).rejects.toThrow(/paused/);expect((await saveCommercialDocument(owner,{...v,kind:'invoice'})).status).toBe('draft');}finally{vi.stubEnv('ASSISTANT_BILLING_DRAFTS_ENABLED','true');}
+ });
+
 });

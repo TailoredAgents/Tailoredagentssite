@@ -1,4 +1,5 @@
 import 'server-only';
+import {invoiceProposalReview} from '@/lib/commercial/assistant-invoices';
 import {getSalesRecord} from '@/lib/sales/data';
 import {getWorkspaceMembers,getLead,getClient,getContact,getSite,getProject} from '@/lib/operations/data';
 import {listConversationWorkspace} from '@/lib/conversations/data';
@@ -23,6 +24,7 @@ import {financeReviewContext} from '@/lib/partners/service';
 // Save human-readable target identity alongside the exact proposed input. Never
 // accept these labels from the assistant. Re-resolve before executing the change.
 export async function reviewContext(p:Principal,tool:string,input:Record<string,unknown>){
+ if(tool==='draft_customer_invoice')return {invoice:await invoiceProposalReview(p.context,input)};
  const context=p.context;const result:Record<string,unknown>={requestedFor:context.user.name,workspace:context.workspace.name};
  if(['create_referral_partner','draft_referral_agreement','record_referral_earning','reverse_referral_earning','draft_referral_statement'].includes(tool))result.finance=await financeReviewContext(context,input);
  if(tool==='save_solution_brief'){
