@@ -1,4 +1,7 @@
 import 'server-only';
+import {stripeCustomerMappingReview} from '@/lib/billing/customer-mapping';
+import {stripeRecurringReview} from '@/lib/billing/recurring-setups';
+import {stripeInvoiceActionReview} from '@/lib/billing/invoice-actions';
 import {stripeDraftReview} from '@/lib/billing/draft-exports';
 import {invoiceProposalReview} from '@/lib/commercial/assistant-invoices';
 import {getSalesRecord} from '@/lib/sales/data';
@@ -25,6 +28,9 @@ import {financeReviewContext} from '@/lib/partners/service';
 // Save human-readable target identity alongside the exact proposed input. Never
 // accept these labels from the assistant. Re-resolve before executing the change.
 export async function reviewContext(p:Principal,tool:string,input:Record<string,unknown>){
+ if(tool==='map_stripe_customer')return {customerMapping:await stripeCustomerMappingReview(p.context,input)};
+ if(tool==='create_stripe_recurring_schedule')return {recurringSchedule:await stripeRecurringReview(p.context,input)};
+ if(tool==='perform_stripe_invoice_action')return {invoiceAction:await stripeInvoiceActionReview(p.context,input)};
  if(tool==='create_stripe_invoice_draft')return {stripeDraft:await stripeDraftReview(p.context,input)};
  if(tool==='draft_customer_invoice')return {invoice:await invoiceProposalReview(p.context,input)};
  const context=p.context;const result:Record<string,unknown>={requestedFor:context.user.name,workspace:context.workspace.name};

@@ -3,6 +3,8 @@ import {randomUUID,createHash,randomBytes} from 'node:crypto';
 import {readdir,readFile} from 'node:fs/promises';
 import type {Pool} from 'pg';
 vi.mock('server-only',()=>({}));
+import {StripeInvoiceClient} from '@/lib/billing/stripe-invoice-actions';
+import {billingChanges} from './tools/billing-changes';
 import {getDatabasePool} from '@/lib/dashboard/db';
 import {registerClient,validateAuthorization,createConsent,finishConsent,exchange,authenticate,hash} from './oauth';
 import {prepareAction,executeAction,reviewAction,manageConnection,listActions,readAction} from './actions';
@@ -386,6 +388,32 @@ describe.skipIf(!url)('Operations OAuth and execution integration',()=>{
   const input={requestId:randomUUID(),clientId:client,title:'Synthetic invoice',details:{currency:'USD',dueOn:'2026-12-20',recipientEmail:'billing@example.test',lines:[{description:'Synthetic setup',classification:'upfront',amountCents:10000,startsOn:null,endsOn:null}],notes:''}};
   const proposal=await prepareAction(p,'draft_customer_invoice',input,'invoice-proposal-stale');await pool.query('UPDATE clients SET name=$2,updated_at=now() WHERE id=$1',[client,'Changed synthetic customer']);
   expect((await reviewAction(owner,proposal.id,'approve')).status).toBe('failed');expect((await pool.query('SELECT 1 FROM crm_commercial_documents WHERE client_id=$1',[client])).rowCount).toBe(0);
+ });
+
+ async function invoiceActionFixture(){
+  const client=randomUUID(),document=randomUUID(),family=randomUUID(),con=randomUUID(),exportId=randomUUID(),account='acct_'+con.replaceAll('-','');
+  await pool.query("INSERT INTO clients(id,workspace_id,name) VALUES($1,$2,'Synthetic action customer')",[client,workspace]);
+  await pool.query("INSERT INTO crm_billing_connections(id,workspace_id,account_id,mode,api_version) VALUES($1,$2,$3,'test','2026-10-28.endive')",[con,workspace,account]);
+  await pool.query("INSERT INTO crm_billing_customer_maps(connection_id,customer_id,workspace_id,client_id,evidence) VALUES($1,'cus_Synthetic',$2,$3,'Synthetic reviewed mapping')",[con,workspace,client]);
+  const details={currency:'USD',dueOn:'2028-12-01',recipientEmail:'billing@example.test',lines:[{description:'Synthetic support',classification:'upfront',amountCents:10000,startsOn:null,endsOn:null}],notes:''};
+  await pool.query("INSERT INTO crm_commercial_documents(id,workspace_id,family_id,version,kind,client_id,title,details,status,revision) VALUES($1,$2,$3,1,'invoice',$4,'Synthetic reviewed invoice',$5,'reviewed',2)",[document,workspace,family,client,details]);
+  await pool.query("INSERT INTO crm_billing_draft_exports(id,workspace_id,connection_id,document_id,family_id,document_revision,customer_id,status,provider_invoice_id) VALUES($1,$2,$3,$4,$5,2,'cus_Synthetic','ready','in_Synthetic')",[exportId,workspace,con,document,family]);
+  vi.stubEnv('BILLING_STRIPE_DRAFT_WRITES_ENABLED','true');vi.stubEnv('BILLING_STRIPE_INVOICE_ISSUE_ENABLED','true');vi.stubEnv('BILLING_STRIPE_MODE','test');vi.stubEnv('BILLING_STRIPE_ACCOUNT_ID',account);vi.stubEnv('BILLING_STRIPE_WORKSPACE_ID',workspace);vi.stubEnv('BILLING_STRIPE_WRITE_KEY','rk_test_SYNTHETIC');
+  return {exportId,operation:'issue',fingerprint:'e'.repeat(64)};
+ }
+ it('requires human approval for every provider billing action including direct-action connections',async()=>{
+  for(const t of billingChanges)expect(t.reviewRequired).toBe(true);
+  const {p}=await connection(allScopes,true),v=await invoiceActionFixture(),inspect=vi.spyOn(StripeInvoiceClient.prototype,'inspect').mockResolvedValue({terms:{recipient:'billing@example.test'} as never,fingerprint:v.fingerprint}),write=vi.spyOn(StripeInvoiceClient.prototype,'perform').mockResolvedValue({providerAccepted:true} as never);
+  try{const a=await executeAction(p,'perform_stripe_invoice_action',v,'reviewed-stripe-issue');expect(a.status).toBe('awaiting_approval');expect(write).not.toHaveBeenCalled();await expect(reviewAction(other,a.id,'approve')).rejects.toThrow(/unavailable/);expect((await reviewAction(owner,a.id,'approve')).status).toBe('succeeded');await reviewAction(owner,a.id,'approve');expect(write).toHaveBeenCalledTimes(1);}finally{inspect.mockRestore();write.mockRestore();}
+ });
+ it('blocks stale provider invoice approval before a request is claimed or sent',async()=>{
+  const {p}=await connection(allScopes,true),v=await invoiceActionFixture(),inspect=vi.spyOn(StripeInvoiceClient.prototype,'inspect').mockResolvedValue({terms:{recipient:'billing@example.test'} as never,fingerprint:v.fingerprint}),write=vi.spyOn(StripeInvoiceClient.prototype,'perform');
+  try{const a=await executeAction(p,'perform_stripe_invoice_action',v,'reviewed-stripe-stale');inspect.mockResolvedValue({terms:{recipient:'different@example.test'} as never,fingerprint:v.fingerprint});expect((await reviewAction(owner,a.id,'approve')).status).toBe('failed');expect(write).not.toHaveBeenCalled();expect((await pool.query('SELECT 1 FROM crm_billing_invoice_actions WHERE export_id=$1',[v.exportId])).rowCount).toBe(0);}finally{inspect.mockRestore();write.mockRestore();}
+ });
+
+ it('keeps uncertain invoice actions out of success status and requires communication consent',async()=>{
+  const v=await invoiceActionFixture(),inspect=vi.spyOn(StripeInvoiceClient.prototype,'inspect').mockResolvedValue({terms:{} as never,fingerprint:v.fingerprint}),write=vi.spyOn(StripeInvoiceClient.prototype,'perform').mockRejectedValue(Error('Synthetic timeout'));
+  try{const restricted=await connection(['operations:read','operations:write'],true);await expect(executeAction(restricted.p,'perform_stripe_invoice_action',v,'stripe-no-send-consent')).rejects.toThrow();const {p}=await connection(allScopes,true),a=await executeAction(p,'perform_stripe_invoice_action',v,'stripe-uncertain-outcome');const result=await reviewAction(owner,a.id,'approve');expect(result.status).toBe('outcome_unknown');expect(result.result).toMatchObject({status:'needs_review'});await reviewAction(owner,a.id,'approve');expect(write).toHaveBeenCalledTimes(1);}finally{inspect.mockRestore();write.mockRestore();}
  });
 
 });

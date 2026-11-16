@@ -21,3 +21,8 @@ Next implementation stages remain permissioned provider draft creation, separate
 Local release evidence: 27 commercial integration cases and 42 Assistant OAuth/execution/security cases passed (69 total), including seven new invoice-proposal scenarios. The production build, TypeScript checks within that build, lint and whitespace checks passed. These are isolated local checks; production deployment, paid assistant quality and Stripe sandbox/live acceptance are not claimed.
 
 **November 16 update:** [Reviewed provider draft creation](STRIPE_DRAFT_EXPORTS.md) now exists behind a separate disabled write switch. It requires a finance-reviewed local invoice and verified mapping, saves durable operation identity, and never issues, sends or charges. Remaining issue/send/subscription capabilities and financial exceptions are unchanged.
+
+
+## November 16 provider-action update
+
+[Reviewed invoice actions and recurring setup](STRIPE_INVOICE_ACTIONS.md) now extend local proposals with customer identity linking before the first invoice, separate issue/send approvals and finite monthly invoice schedules under an executed customer agreement. These capabilities are disabled pending acceptance. Tools that can send invoices require the conversation-send scope as well as operations-write and fresh finance-management access. Uncertain provider results are shown as `outcome_unknown`, and must be reconciled rather than retried. Local document status remains separate from provider outcomes and actual collected cash.

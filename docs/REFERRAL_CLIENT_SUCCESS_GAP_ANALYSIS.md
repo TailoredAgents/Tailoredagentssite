@@ -210,3 +210,8 @@ Documentation verification: all 132 local Markdown links across this report, the
 ## November 15 client-success implementation checkpoint
 
 [Client success](CLIENT_SUCCESS.md) now implements versioned business calendars, explicit after-hours/holiday coverage, client obligations in existing CRM tasks/My day, personal cadence exceptions, human versus automatic response evidence, manager pool/capacity/availability and reviewed transfers. The deterministic worker uses the existing authenticated cron independently of AI, with default-off observation/reminder activation and individual employee opt-in. The assistant can read authorized operational evidence. This addresses the core client-success source gap; it does not automatically ingest private Inbox messages, infer performance forfeiture or activate financial rules. Read the runbook’s limits and production acceptance steps. Reviewed billing writes and remaining finance exceptions still precede Jeffrey’s provider connection.
+
+
+## November 16 reviewed billing implementation checkpoint
+
+[Invoice actions and recurring setup](STRIPE_INVOICE_ACTIONS.md) implement the core reviewed-provider-action portion of phase 5: customer identity linking, separate issue/send approvals, finite monthly schedules, exact source/provider revalidation and durable duplicate/uncertainty receipts. All provider gates remain off. Remaining lifecycle/settlement exceptions in the ledger runbook and actual provider acceptance are still open; this checkpoint does not complete financial rollout or activate actual terms.

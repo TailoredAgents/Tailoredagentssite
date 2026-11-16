@@ -1,5 +1,7 @@
 # Reviewed Stripe draft exports
 
+**Later November 16 update:** [Reviewed issue/send and recurring setup](STRIPE_INVOICE_ACTIONS.md) now implements the next provider-action steps, separately gated and disabled. The checkpoint below describes draft creation only; its original pending issue/send references are superseded by that runbook.
+
 November 16, 2026 source checkpoint, migration 0074. **Disabled by default; no provider account was connected or exercised.** This is the draft-creation step. Invoice finalization/sending, subscriptions and the remaining financial exception workflows are still pending.
 
 ## Workflow

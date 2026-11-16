@@ -13,8 +13,8 @@ export function stripeDraftConfig():DraftConfig|null{
 export class DraftProviderError extends Error{}
 export class StripeDraftClient{
  private signal=AbortSignal.timeout(80000);
- constructor(private config:DraftConfig,private transport:typeof fetch=fetch){}
- private async call(path:string,body?:URLSearchParams,key?:string):Promise<Record<string,unknown>>{
+ constructor(protected config:DraftConfig,private transport:typeof fetch=fetch){}
+ protected async call(path:string,body?:URLSearchParams,key?:string):Promise<Record<string,unknown>>{
   let response:Response;try{response=await this.transport('https://api.stripe.com/v1/'+path,{method:body?'POST':'GET',redirect:'error',cache:'no-store',signal:AbortSignal.any([this.signal,AbortSignal.timeout(15000)]),headers:{Authorization:'Bearer '+this.config.key,'Stripe-Version':STRIPE_VERSION,...(body?{'Content-Type':'application/x-www-form-urlencoded','Idempotency-Key':key!}:{})},body});}catch{throw new DraftProviderError('PROVIDER_OUTCOME_UNCONFIRMED');}
   if(!response.ok)throw new DraftProviderError('PROVIDER_REQUEST_NOT_CONFIRMED');
   try{return z.record(z.string(),z.unknown()).parse(JSON.parse(await boundedBody(response,2_000_000)));}catch{throw new DraftProviderError('PROVIDER_RESPONSE_UNCONFIRMED');}

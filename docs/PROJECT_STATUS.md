@@ -26,6 +26,8 @@ The internal CRM supports relationship-led discovery, sales, client account mana
 
 ## Next work and ownership
 
+**November 16 reviewed-billing checkpoint:** [Invoice issue/send and recurring setup](STRIPE_INVOICE_ACTIONS.md) adds read-only customer identity linking before the first invoice, separately approved issue/send actions, and finite future monthly invoice schedules tied to executed customer-service agreements. Migrations 0075–0076 preserve exact approvals, duplicate protection and uncertain outcomes; Finance exposes provider receipts. All write switches remain off. Financial exception/settlement implementation and actual Stripe sandbox/live acceptance remain; Jeffrey’s overall final-activation handoff is not yet complete.
+
 **November 16 Stripe draft checkpoint:** [Reviewed Stripe draft exports](STRIPE_DRAFT_EXPORTS.md) adds separately gated provider draft creation from an exact finance-reviewed invoice, verified customer mapping, mandatory human approval, durable duplicate protection and visible interrupted-operation receipts. Source/local verification only; the write switch remains off and no provider connection/test was made. Finalization/sending, subscriptions, financial exceptions and sandbox/live acceptance remain before Jeffrey’s final connection.
 
 **November 15 assistant invoice checkpoint:** [Assistant billing proposals](ASSISTANT_BILLING.md) adds finance-authorized local invoice drafting with mandatory exact human review, current customer/version checks and replay protection, plus recurring statement/calculation reads. It creates only internal drafts. Provider draft/issue/send/subscription actions and documented financial exceptions remain implementation gates; Jeffrey’s Stripe connection remains last.

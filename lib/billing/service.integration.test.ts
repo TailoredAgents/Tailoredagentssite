@@ -12,6 +12,11 @@ import {reviewBillingInvoice,billingWorkspace,getBillingInvoice,retryBillingReco
 import {invoiceFixture,reviewFixture,billingTestConfig} from './test-fixtures';
 import {createStripeDraft,stripeDraftReview,getStripeDraftExport} from './draft-exports';
 import {StripeDraftClient} from './stripe-drafts';
+import {previewStripeInvoiceAction,performStripeInvoiceAction} from './invoice-actions';
+import {StripeInvoiceClient} from './stripe-invoice-actions';
+import {previewStripeRecurring,createStripeRecurring,getStripeRecurringSetup} from './recurring-setups';
+import {StripeRecurringClient} from './stripe-recurring';
+import {previewStripeCustomerMapping,mapStripeCustomer} from './customer-mapping';
 import {STRIPE_VERSION} from './config';
 import {StripeReadError,type StripeReader} from './stripe';
 import {POST} from '@/app/api/integrations/stripe/events/route';
@@ -121,6 +126,71 @@ describe.skipIf(!url)('Billing reconciliation',()=>{
  it('checks rollout, finance authority, exact revision and customer mapping before provider access',async()=>{
   const v=await exportInput(),read=vi.spyOn(StripeDraftClient.prototype,'customer').mockResolvedValue({id:'cus_Synthetic',name:'Synthetic',email:'billing@example.test'});
   try{await expect(stripeDraftReview(member,v)).rejects.toThrow(/Finance access/);await expect(stripeDraftReview(owner,{...v,revision:1})).rejects.toThrow(/finance-reviewed/);await expect(stripeDraftReview(owner,{...v,customerId:'cus_Other'})).rejects.toThrow(/mapping/);expect(read).not.toHaveBeenCalled();expect((await stripeDraftReview(owner,v)).totalCents).toBe(10000);vi.stubEnv('BILLING_STRIPE_DRAFT_WRITES_ENABLED','false');await expect(createStripeDraft(owner,v)).rejects.toThrow(/not enabled/);}finally{read.mockRestore();}
+ });
+
+ async function actionable(){
+  const v=await exportInput();const d=(await db.query('SELECT * FROM crm_commercial_documents WHERE id=$1',[v.documentId])).rows[0],connection=(await billingWorkspace(owner)).connections[0];
+  const id=req();await db.query("INSERT INTO crm_billing_draft_exports(id,workspace_id,connection_id,document_id,family_id,document_revision,customer_id,status,provider_invoice_id) VALUES($1,$2,$3,$4,$5,2,'cus_Synthetic','ready','in_Action')",[id,ws,connection.id,d.id,d.family_id]);
+  vi.stubEnv('BILLING_STRIPE_INVOICE_ISSUE_ENABLED','true');vi.stubEnv('BILLING_STRIPE_INVOICE_SEND_ENABLED','true');
+  return {exportId:id,operation:'issue' as const,fingerprint:'a'.repeat(64)};
+ }
+ it('serializes issue/send receipts and keeps them immutable across replay and new approval keys',async()=>{
+  const v=await actionable(),inspect=vi.spyOn(StripeInvoiceClient.prototype,'inspect').mockResolvedValue({terms:{synthetic:true} as never,fingerprint:v.fingerprint}),write=vi.spyOn(StripeInvoiceClient.prototype,'perform').mockResolvedValue({providerAccepted:true} as never);
+  try{
+   expect((await previewStripeInvoiceAction(owner,{exportId:v.exportId,operation:'issue'})).fingerprint).toBe(v.fingerprint);
+   await expect(performStripeInvoiceAction(owner,{...v,operation:'send'})).rejects.toThrow(/issue operation/);
+   const [a,b]=await Promise.all([performStripeInvoiceAction(owner,v),performStripeInvoiceAction(owner,v)]);expect(a.id).toBe(b.id);expect(write).toHaveBeenCalledTimes(1);expect((await performStripeInvoiceAction(owner,v)).status).toBe('confirmed');
+   await expect(performStripeInvoiceAction(owner,{...v,fingerprint:'b'.repeat(64)})).rejects.toThrow(/different reviewed/);
+   await expect(db.query("UPDATE crm_billing_invoice_actions SET fingerprint=$2 WHERE id=$1",[a.id,'b'.repeat(64)])).rejects.toThrow(/immutable/);
+   await performStripeInvoiceAction(owner,{...v,operation:'send'});expect(write).toHaveBeenCalledTimes(2);expect((await getStripeDraftExport(owner,v.exportId)).actions).toHaveLength(2);
+  }finally{inspect.mockRestore();write.mockRestore();}
+ });
+ it('preserves uncertain send receipts and blocks every automatic retry',async()=>{
+  const v=await actionable(),inspect=vi.spyOn(StripeInvoiceClient.prototype,'inspect').mockResolvedValue({terms:{} as never,fingerprint:v.fingerprint}),write=vi.spyOn(StripeInvoiceClient.prototype,'perform').mockRejectedValue(Error('Synthetic timeout'));
+  try{const r=await performStripeInvoiceAction(owner,v);expect(r.status).toBe('needs_review');await performStripeInvoiceAction(owner,v);expect(write).toHaveBeenCalledTimes(1);await expect(performStripeInvoiceAction(owner,{...v,operation:'send'})).rejects.toThrow(/issue operation/);expect((await getStripeDraftExport(owner,v.exportId)).actions[0].last_error).toBe('OUTCOME_UNCONFIRMED');}finally{inspect.mockRestore();write.mockRestore();}
+ });
+ it('rejects disabled, unauthorized, cross-workspace, stale and superseded invoice actions before writing',async()=>{
+  const v=await actionable(),inspect=vi.spyOn(StripeInvoiceClient.prototype,'inspect').mockResolvedValue({terms:{} as never,fingerprint:'b'.repeat(64)}),write=vi.spyOn(StripeInvoiceClient.prototype,'perform');
+  try{
+   await expect(performStripeInvoiceAction(member,v)).rejects.toThrow(/Finance access/);await expect(performStripeInvoiceAction(foreign,v)).rejects.toThrow(/not enabled/);await expect(performStripeInvoiceAction(owner,v)).rejects.toThrow(/reviewed invoice changed/);
+   vi.stubEnv('BILLING_STRIPE_INVOICE_ISSUE_ENABLED','false');await expect(performStripeInvoiceAction(owner,v)).rejects.toThrow(/not enabled/);vi.stubEnv('BILLING_STRIPE_INVOICE_ISSUE_ENABLED','true');
+   const d=(await getStripeDraftExport(owner,v.exportId)).document_id;await changeCommercialDocument(owner,{requestId:req(),id:d,revision:2,operation:'supersede',evidence:'Synthetic revised billing instructions'});await expect(performStripeInvoiceAction(owner,v)).rejects.toThrow(/local invoice changed/);expect(write).not.toHaveBeenCalled();expect((await getStripeDraftExport(owner,v.exportId)).actions).toHaveLength(0);
+  }finally{inspect.mockRestore();write.mockRestore();}
+ });
+
+ async function recurringInput(){
+  await exportInput();vi.stubEnv('BILLING_STRIPE_RECURRING_ENABLED','true');
+  const d=await saveCommercialDocument(owner,{requestId:req(),kind:'customer_service',clientId:client,title:'Synthetic executed recurring service',details:{documentReference:'Synthetic signed customer agreement',scope:'Synthetic monthly support',rules:[],exclusions:'Synthetic optional projects excluded',paymentTerms:'Synthetic approved monthly invoicing',reviewNotes:''}});
+  await changeCommercialDocument(owner,{requestId:req(),id:d.id,revision:1,operation:'review',evidence:'Synthetic finance review'});await changeCommercialDocument(owner,{requestId:req(),id:d.id,revision:2,operation:'execute',effectiveOn:'2026-01-01',evidence:'Synthetic signed customer authorization'});
+  return {documentId:d.id,revision:3,customerId:'cus_Synthetic',priceId:'price_Synthetic',quantity:1,startsAt:'2028-01-05T14:00:00Z',months:3,daysUntilDue:15,recipientEmail:'billing@example.test',authorizationReference:'Synthetic recurring authorization',taxReviewReference:'Synthetic inclusive tax review'};
+ }
+ it('requires signed customer authority and protects recurring setup from concurrent duplicate subscriptions',async()=>{
+  const v=await recurringInput(),inspect=vi.spyOn(StripeRecurringClient.prototype,'inspect').mockResolvedValue({terms:{synthetic:true} as never,fingerprint:'c'.repeat(64)}),write=vi.spyOn(StripeRecurringClient.prototype,'createSchedule').mockImplementation(async(_id,_v,_hash,checkpoint)=>{await checkpoint('sub_sched_Test');return {scheduleId:'sub_sched_Test'} as never;});
+  try{
+   await expect(previewStripeRecurring(member,v)).rejects.toThrow(/Finance access/);await expect(previewStripeRecurring(owner,{...v,revision:2})).rejects.toThrow(/executed/);await expect(previewStripeRecurring(owner,{...v,customerId:'cus_Other'})).rejects.toThrow(/mapping/);
+   const r=await previewStripeRecurring(owner,v),input={...v,fingerprint:r.fingerprint};const [a,b]=await Promise.all([createStripeRecurring(owner,input),createStripeRecurring(owner,input)]);expect(a.id).toBe(b.id);expect(write).toHaveBeenCalledTimes(1);expect((await createStripeRecurring(owner,input)).status).toBe('confirmed');
+   expect((await getStripeRecurringSetup(owner,a.id!)).provider_schedule_id).toBe('sub_sched_Test');await expect(getStripeRecurringSetup(foreign,a.id!)).rejects.toThrow(/unavailable/);await expect(previewStripeRecurring(owner,v)).rejects.toThrow(/already has/);
+   await expect(db.query("UPDATE crm_billing_recurring_setups SET review='{}' WHERE id=$1",[a.id])).rejects.toThrow(/immutable/);
+  }finally{inspect.mockRestore();write.mockRestore();}
+ });
+ it('preserves uncertain future schedules and never automatically creates another',async()=>{
+  const v=await recurringInput(),inspect=vi.spyOn(StripeRecurringClient.prototype,'inspect').mockResolvedValue({terms:{} as never,fingerprint:'c'.repeat(64)}),write=vi.spyOn(StripeRecurringClient.prototype,'createSchedule').mockImplementation(async(_id,_v,_hash,checkpoint)=>{await checkpoint('sub_sched_Unknown');throw Error('Synthetic timeout');});
+  try{const r=await previewStripeRecurring(owner,v),input={...v,fingerprint:r.fingerprint},a=await createStripeRecurring(owner,input);expect(a.status).toBe('needs_review');await createStripeRecurring(owner,input);expect(write).toHaveBeenCalledTimes(1);expect((await getStripeRecurringSetup(owner,a.id!)).provider_schedule_id).toBe('sub_sched_Unknown');}finally{inspect.mockRestore();write.mockRestore();}
+ });
+ it('blocks changed recurring terms and disabled setup before any schedule is created',async()=>{
+  const v=await recurringInput(),inspect=vi.spyOn(StripeRecurringClient.prototype,'inspect').mockResolvedValue({terms:{} as never,fingerprint:'c'.repeat(64)}),write=vi.spyOn(StripeRecurringClient.prototype,'createSchedule');
+  try{const r=await previewStripeRecurring(owner,v);inspect.mockResolvedValue({terms:{changed:true} as never,fingerprint:'d'.repeat(64)});await expect(createStripeRecurring(owner,{...v,fingerprint:r.fingerprint})).rejects.toThrow(/terms changed/);vi.stubEnv('BILLING_STRIPE_RECURRING_ENABLED','false');await expect(createStripeRecurring(owner,{...v,fingerprint:r.fingerprint})).rejects.toThrow(/not enabled/);expect(write).not.toHaveBeenCalled();}finally{inspect.mockRestore();write.mockRestore();}
+ });
+
+ it('maps a verified existing Stripe customer before any invoice or receipt exists',async()=>{
+  await billingConnection(billingTestConfig,reader);vi.stubEnv('BILLING_STRIPE_IMPORT_ENABLED','true');vi.stubEnv('BILLING_STRIPE_MODE','test');vi.stubEnv('BILLING_STRIPE_WORKSPACE_ID',ws);vi.stubEnv('BILLING_STRIPE_ACCOUNT_ID',billingTestConfig.accountId);vi.stubEnv('BILLING_STRIPE_READ_KEY',billingTestConfig.key);vi.stubEnv('BILLING_STRIPE_WEBHOOK_SECRET',billingTestConfig.webhookSecret);
+  const v={clientId:client,customerId:'cus_New'},read=vi.spyOn(StripeDraftClient.prototype,'customer').mockResolvedValue({id:'cus_New',name:'Synthetic new customer',email:'new@example.test'});
+  try{
+   await expect(previewStripeCustomerMapping(member,v)).rejects.toThrow(/Finance access/);const r=await previewStripeCustomerMapping(owner,v),input={...v,requestId:req(),fingerprint:r.fingerprint,evidence:'Synthetic verified legal customer identity'};expect((await mapStripeCustomer(owner,input)).providerWrites).toBe(false);await mapStripeCustomer(owner,input);
+   expect(Number((await db.query('SELECT count(*) FROM crm_billing_customer_maps')).rows[0].count)).toBe(1);expect(Number((await db.query('SELECT count(*) FROM crm_billing_invoices')).rows[0].count)).toBe(0);
+   const otherClient=req();await db.query("INSERT INTO clients(id,workspace_id,name) VALUES($1,$2,'Other synthetic customer')",[otherClient,ws]);await expect(previewStripeCustomerMapping(owner,{...v,clientId:otherClient})).rejects.toThrow(/already mapped/);
+   read.mockResolvedValue({id:'cus_New',name:'Changed customer',email:'changed@example.test'});await expect(mapStripeCustomer(owner,{...input,requestId:req()})).rejects.toThrow(/identity changed/);
+  }finally{read.mockRestore();}
  });
 
 });
