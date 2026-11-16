@@ -1,3 +1,5 @@
+import {getSuccessTask} from "@/lib/client-success/service";
+import {ClientSuccessTask} from "@/components/relationships/client-success";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,9 +12,10 @@ import { OperationForm } from "@/components/dashboard/operation-form";
 import { DateTimeField, LocalTime } from "@/components/sales/date-time-field";
 import { SalesHeader, SalesPanel, SalesStatus } from "@/components/sales/workspace";
 import "@/app/dashboard/sales/sales.css";
-export const metadata:Metadata={title:"Call follow-up task"};
+export const metadata:Metadata={title:"Follow-up task"};
 export default async function CallFollowUpPage({params}:{params:Promise<{id:string}>}) {
   const context=await requireDashboardContext(),{id}=await params;
+  if(await getSuccessTask(context,id))return <ClientSuccessTask context={context} id={id}/>;
   let task;
   try{task=await getCallFollowUpTask(context,id);}catch(error){if(error instanceof VoiceAccessError || error instanceof VoiceInputError)notFound();throw error;}
   const mutable=task.canEdit && task.status==='open';

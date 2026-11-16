@@ -30,7 +30,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
         <Link className="dashboard-back-link" href="/dashboard/clients"><ArrowLeft size={14} />Back to clients</Link>
         <section className="dashboard-page-heading dashboard-page-heading-compact dashboard-record-heading"><div><span>Client workspace</span><h1>{client.name}</h1><p>Created {formatOperationalDate(client.createdAt)} · Last updated {formatOperationalDate(client.updatedAt)}</p></div><em className={`dashboard-status status-${client.status}`}>{statusLabel(client.status)}</em></section>
         <RecordFacts facts={[{label:"Primary contact",value:client.contacts.find(contact=>contact.isPrimary)?.name || "Not assigned"},{label:"Managed sites",value:client.sites.length},{label:"Projects",value:client.projects.length}]} />
-        <nav className="workspace-section-links" aria-label="Client sections"><a href="#client-contacts">Contacts</a><a href="#client-assets">Sites & projects</a><a href="#client-settings">Account details</a></nav>
+        <nav className="workspace-section-links" aria-label="Client sections"><Link href={`/dashboard/clients/${client.id}/success`}>Client success</Link><a href="#client-contacts">Contacts</a><a href="#client-assets">Sites & projects</a><a href="#client-settings">Account details</a></nav>
         <div className="dashboard-record-grid">
           <div className="dashboard-record-main">
 

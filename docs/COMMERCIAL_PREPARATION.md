@@ -8,6 +8,8 @@ November 15, 2026 implementation checkpoint. The owner requested building the so
 
 **Later November 15 recurring-ledger checkpoint:** [Recurring commissions](RECURRING_COMMISSIONS.md) implements original window approval, saved partial-month/prepaid calculations, typed recipients, append-only differences and reviewed monthly statements in migration 0072. Posting stays disabled; original draft previews remain hypothetical. Lifecycle/settlement exceptions and private/provider acceptance remain gates.
 
+**Later November 15 client-success checkpoint:** [Client success](CLIENT_SUCCESS.md) implements versioned business calendars, recurring and event-based obligations in My day, actual human-response evidence, manager availability/assignment controls and opted-in employee alerts in migration 0073. Source/local acceptance is separate from activation; scheduling and reminders remain disabled until reviewed operational enrollment. Financial eligibility and payment rights are unchanged.
+
 ## Using the workspace
 
 Open **Partners → Agreements, referral decisions & billing drafts**. `/dashboard/finance` requires existing finance read/manage permission or an owner/admin role. Selecting a finance work focus does not grant access.

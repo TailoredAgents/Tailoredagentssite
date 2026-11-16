@@ -10,6 +10,7 @@ import {listSolutionBriefs} from '@/lib/relationships/solutions';
 import {encounterMatches,listEncounters,getWorkFocus} from '@/lib/relationships/capture';
 import {companyOperatingGuide} from '@/lib/relationships/company-guide';
 import {listClientServices,getClientService} from '@/lib/client-services/service';
+import {successWorkspace,getSuccessClient,getSuccessTask} from '@/lib/client-success/service';
 import {serviceSearchSchema} from '@/lib/client-services/contract';
 import {partnersWorkspace,partnerWorkspace,getStatement} from '@/lib/partners/service';
 import {commercialWorkspace,getCommercialDocument} from '@/lib/commercial/service';
@@ -65,6 +66,9 @@ read('get_company_operating_guide','Read current owner-confirmed business direct
 read('get_solution_briefs','Read current solution briefs and preserved revisions for a connected relationship. Drafts and internal review are not client acceptance.',targetSchema.shape,(p,v)=>listSolutionBriefs(p.context,v),'Latest 50 briefs and 200 version snapshots; team-visible records only.');
 read('find_encounter_matches','Check exact normalized phone/email matches before saving a business conversation. Choose a record explicitly; no name-based merge.',{email:z.string().max(254).optional(),phone:z.string().max(40).optional()},(p,v)=>encounterMatches(p.context,v.email,v.phone),'Up to 20 matching active prospects. Does not change records.');
 read('get_relationship_encounters','Read captured meetup, business-visit, phone or referral context. Campaign source and introducer remain distinct.',targetSchema.shape,(p,v)=>listEncounters(p.context,v),'Latest 50 encounters.');
+read('list_client_success','Read client follow-through plans, manager workload, scheduling holds and open task counts. Read-only operational evidence; does not change commissions or send customer messages.',{scope:z.enum(['mine','team']).default('mine'),page},(p,v)=>successWorkspace(p.context,v),'50 clients per page (51st row signals another page), up to 50 calendars and 100 availability periods. Shared CRM data only.');
+read('get_client_success','Read a client’s scheduled obligations and recorded human outcomes. Automatic acknowledgements do not complete human-response tasks.',{id},(p,v)=>getSuccessClient(p.context,v.id),'Most recent 100 tasks, open first. No private inbox or financial eligibility access.');
+read('get_client_success_task','Read original and current deadlines, human-response evidence, exceptions and manager-transfer history. These records never establish automatic commission forfeiture.',{id},(p,v)=>getSuccessTask(p.context,v.id),'Most recent 100 history records. Read only.');
 read('list_client_services','Read services, responsible teammates, recorded health, review dates and renewal exceptions. Health is team-recorded, not a live uptime probe.',serviceSearchSchema.shape,(p,v)=>listClientServices(p.context,v),'50 per page; no provider costs.');
 read('get_client_service','Read service details, review history, incidents, measured/estimated outcomes and current revisions. Provider costs are returned only with separate finance access.',{id},(p,v)=>getClientService(p.context,v.id),'Latest 100 records per history. No deployments, sends or telemetry requests.');
 read('list_referral_partners','Read partners allowed by explicit finance or bounded partner grants. Operations scope alone grants no financial access.',{},p=>partnersWorkspace(p.context),'Up to 200 permitted partner identities.');

@@ -10,6 +10,9 @@ import { runVoiceMaintenance } from "@/lib/voice/maintenance";
 import { runCallRecordingWorker } from "@/lib/voice/recording-worker";
 import { runMetaLeadWorker } from "@/lib/meta/service";
 import { runMetaConversionWorker } from "@/lib/meta/conversions";
+import {runClientSuccessWorker} from '@/lib/client-success/worker';
+import {clientSuccessRemindersEnabled} from '@/lib/client-success/notifications';
+import {runEmployeeNotificationWorker} from '@/lib/assistant/notification-worker';
 import {runAssistantWorker} from '@/lib/assistant/chat-worker';
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,6 +31,9 @@ export async function POST(request: Request) {
   )
     return privateJson({ ok: false }, 401);
   try {
+    // Operational deadlines run even if a reporting or paid-assistant lane is unavailable.
+    const clientSuccess=await runClientSuccessWorker().catch(()=>{console.error('client_success_worker_failed');return {checked:0,created:0,held:1,disabled:false};});
+    const clientAlerts=clientSuccessRemindersEnabled()?await runEmployeeNotificationWorker().catch(()=>({checked:0,failed:1,more:false})):null;
     await runReportingMaintenance();
     // A single leased recording deletion keeps this shared worker bounded.
     // Voice outages must not prevent the reporting queue from advancing.
@@ -56,6 +62,8 @@ export async function POST(request: Request) {
       ok: true,
       more: assistant.more || introductions.more || Boolean(due.rowCount) || callRecordings.more || metaLeads.more || metaConversions.more || leadAlerts.more || textAlerts.more,
       assistant,
+      clientSuccess,
+      clientAlerts,
       checked: outcomes.length,
       failed: outcomes.filter((outcome) => outcome.status === "failed").length,
       voice,
