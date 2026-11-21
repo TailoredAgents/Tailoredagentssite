@@ -1,6 +1,6 @@
 # Meeting Intelligence and relationship discovery
 
-Implementation and release runbook · updated November 12, 2026
+Implementation and release runbook · updated November 21, 2026
 
 ## What this adds
 
@@ -260,3 +260,36 @@ This supersedes the pending-activation status immediately above; the earlier dep
 - Follow-up implementation aligns the prompt with the existing exact-evidence validator for every finding basis, explicitly permits sparse input and empty findings, and returns bounded `analysis_incomplete`, `analysis_refused`, `analysis_format` or `analysis_evidence` diagnostics without persisting raw provider output. Exact-quote checks, model, private ownership, budget reservations and explicit retry behavior remain intact. The receiving-status copy now explains Always ready's automatic closure instead of requiring a manual finish.
 - Local follow-up checks: **55/55** meeting provider/unit/isolated PostgreSQL tests, TypeScript, project lint and the production Webpack build passed. A direct ESLint invocation was inapplicable because this repository uses Oxlint; `npm run lint` is the passed project check. Deployment and a reviewed live analysis retry are recorded separately when complete.
 - Current timing: three minutes without deliveries, then the existing five-minute worker schedule. Finish receiving is an optional immediate close of the current meeting; it does not stop Omi recording or disable Always ready. A faster dedicated meeting schedule is a possible improvement, not an implemented change in this follow-up.
+
+## Failed-recording investigation — November 21, 2026
+
+### Observed in production before this repair
+
+- Austin's authenticated list contained 12 private meetings: 10 failed and 2 in review. Nine failures reported `empty_audio`; one reported `processing_interrupted`. The existing connection still showed Always ready. The shared allowance showed **$1.15 reserved of $10**, so exhaustion was not the cause.
+- The November 18, 6:54 PM meeting retained about 48 minutes across 12 audio parts. Its combined transcript held 6,958 characters, with parts 1–5 transcribed and parts 6–12 pending. Part 6 played as a valid 20.1-second audio resource with no browser media error. A November 20 meeting also retained a partial transcript. This establishes saved audio and partial processing, not complete or accurate transcription.
+- Render showed `686bea4` live. Application logs recorded an instance restart November 20 at 3:50:17 PM Eastern, in the same period as the interrupted meeting. This is consistent with a lost in-flight job; the restart's underlying cause and exact interrupted request were not established. The scheduled worker continued running every five minutes, including a processing failure at 11:25:13 AM November 21, then empty-queue checks.
+- The old provider code mapped both an empty string and a missing/non-string `text` response to `empty_audio`. It did not preserve the raw provider response. Therefore these historical failures **do not prove the recordings were silent**. Distinguish audio captured by Omi, audio forwarded to our webhook, and text recognized by OpenAI. Compare an affected recording in Omi with the saved CRM audio before blaming the microphone or delivery.
+- Austin confirmed that Omi has full transcripts and summaries. Authenticated Omi web inspection confirmed a November 21, 9:41 AM conversation with a summary and transcript, lasting 3m 56s, followed by another at 9:45 AM lasting 11m 18s. The CRM's 9:41 AM entry instead groups about 18 minutes into two audio parts. This verifies different conversation boundaries, not the cause of empty transcription. Downloading an affected CRM part through the browser timed out; an audible comparison of that audio remains pending. No Omi settings were changed.
+- Austin subsequently confirmed that playback in a failed CRM recording is clear. This shifts the investigation toward the CRM-to-provider transcription step; it is not evidence that every part was delivered or that every failed recording has been checked. A controlled post-deployment retry will distinguish the actual new provider outcome while preserving the original audio.
+
+### Repair
+
+- A successful empty transcription is now stored as an empty completed part (`part_transcript=''`); NULL still means not processed. One empty part no longer aborts later parts. Audio stays intact and available for playback.
+- Mixed meetings get findings from the recognized transcript, with a visible partial-transcript warning and a per-part no-speech label. The combined transcript explicitly marks unrecognized parts rather than pretending they contain speech or are still pending.
+- All-empty meetings finish in review with **No speech recognized**, without requesting or reserving AI analysis. No automatic repeat transcription occurs. An explicit owner retry may try those parts again within the unchanged three-attempt and monthly limits; earlier reservations remain. Completed spoken transcripts are reused on other retries and when separating meetings.
+- A malformed transcription response gets `transcription_format`; storage and interrupted-processing errors retain their own diagnostics. Normal provider/network failures remain failures and are not silently skipped or retried.
+- Private ownership, consent acknowledgement, webhook credential, receiving mode, retention, models and $10 allowance are unchanged. No schema migration is required.
+
+### Recovery and remaining acceptance
+
+This repair does not bulk requeue historical failed meetings or infer their missing response bodies. After deployment, review the saved audio and explicitly retry a chosen affected meeting. The longer November 18 meeting displayed an additional reservation estimate of about $0.46 before the repair; re-read its current estimate before approving recovery. Saved spoken transcripts should be reused, remaining parts should continue, and the final review must flag unrecognized parts. Do not describe recovery as completed without observing it.
+
+Compare one affected recording's audio/transcript with the official Omi app, and confirm whether Austin is now using the physical device or the phone microphone. Delivery completeness, background/Bluetooth behavior and why particular audio produced empty responses remain separate checks. The one interrupted recording needs an explicit recovery attempt; this repair does not eliminate hosting restarts.
+
+### Local verification and release boundary
+
+- **69/69** focused provider, audio, grouping and isolated PostgreSQL tests passed, including empty parts in each position, all-empty review, explicit owner recovery, malformed responses, cached transcript reuse, privacy, retention, leases and allowance limits.
+- **6/6** desktop/phone browser journeys passed against a freshly seeded isolated PostgreSQL fixture, with mocked storage/OpenAI and no real recordings or paid requests. Earlier runs hit stale fixture data and a development hot reload during upload; the final unchanged-code run passed. TypeScript, project Oxlint and `git diff --check` passed.
+- The first production build was blocked by a known vulnerability in Next.js 16.4.2. Updated only the Next.js patch dependency and its lockfile to **16.4.6**; the production Webpack build and production dependency audit then passed, with zero reported vulnerabilities. This maintenance fix is separate from the transcription failure. See the [upstream advisory](https://github.com/advisories/GHSA-pc58-hwjq-p385).
+- No schema migration, production credential, receiving-mode or allowance change is required. Source is prepared for main; deployment and the controlled production recovery are not established by local checks. Record their observed results below when available.
+- No production recording was retried and no paid API call was made during initial diagnosis or local testing. The transcription response contract was checked against [OpenAI's file-transcription documentation](https://developers.openai.com/api/docs/guides/speech-to-text).

@@ -2,6 +2,22 @@ import {test,expect,type Page} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 const pcm=(value:number)=>{const b=Buffer.alloc(32044,value);b.write('RIFF');b.writeUInt32LE(32036,4);b.write('WAVEfmt ',8);b.writeUInt32LE(16,16);b.writeUInt16LE(1,20);b.writeUInt16LE(1,22);b.writeUInt32LE(16000,24);b.writeUInt32LE(32000,28);b.writeUInt16LE(2,32);b.writeUInt16LE(16,34);b.write('data',36);b.writeUInt32LE(32000,40);return b;};
 async function signIn(page:Page,viewer=false){await page.goto('/sign-in');await page.getByLabel('Team email').fill(viewer?'viewer@example.test':'owner@example.test');await page.getByLabel('Password',{exact:true}).fill('Reporting-test-password-2026');await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page).toHaveURL(/\/dashboard$/);}
+
+test('an empty transcription is reviewable with saved audio and an explicit retry',async({page},info)=>{
+ await signIn(page);await page.goto('/dashboard/meetings');await page.getByRole('button',{name:'Add recording',exact:true}).click();
+ await page.getByText('Processing allowance & Omi devices',{exact:true}).click();await page.getByLabel('Monthly limit (USD)').fill('10');await page.getByRole('button',{name:'Save allowance',exact:true}).click();
+ await page.getByLabel('Meeting title',{exact:true}).fill(`No speech fixture ${info.project.name}`);
+ await page.locator('input[name=audio]').setInputFiles({name:'empty.wav',mimeType:'audio/wav',buffer:pcm(0)});
+ await page.getByLabel('Recording permission / consent notes').fill('Synthetic empty audio.');await page.getByLabel('I have permission to upload and process this recording.').check();await page.getByRole('button',{name:'Upload recording',exact:true}).click();
+ await expect(page).toHaveURL(/\/dashboard\/meetings\/[a-f0-9-]+$/);const id=page.url().split('/').at(-1)!;
+ await page.getByRole('button',{name:'Transcribe & analyze'}).click();await expect(page.getByText('Preparing the meeting review',{exact:true})).toBeVisible();
+ await page.request.post('/api/cron/meetings',{headers:{authorization:'Bearer local-preview-worker-not-for-production-123456'}});await page.getByRole('button',{name:'Refresh meeting'}).click();
+ await expect(page.getByRole('heading',{name:'No speech recognized',exact:true})).toBeVisible();await expect(page.locator('audio')).toBeVisible();await expect(page.getByRole('button',{name:'Retry processing',exact:true})).toBeVisible();
+ expect(await (await page.request.get(`/api/meetings?id=${id}`)).json()).toMatchObject({status:'review',error_code:'no_speech',findings:null});
+ await page.screenshot({path:info.outputPath('no-speech-review.png'),fullPage:true});
+ page.once('dialog',d=>d.dismiss());await page.getByRole('button',{name:'Retry processing',exact:true}).click();expect(await (await page.request.get(`/api/meetings?id=${id}`)).json()).toMatchObject({status:'review'});
+ await page.getByText('Recording permissions & deletion',{exact:true}).click();page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Permanently delete meeting'}).click();await expect(page).toHaveURL(/\/dashboard\/meetings$/);
+});
 test('upload → AI review → sparse prospect → discovery and referral → private deletion',async({page},info)=>{
  test.setTimeout(120000);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await signIn(page);await page.goto('/dashboard/meetings');
  await expect(page.getByRole('heading',{name:'Meetings & notes',exact:true})).toBeVisible();

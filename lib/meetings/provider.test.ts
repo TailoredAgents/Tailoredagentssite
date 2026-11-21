@@ -1,6 +1,6 @@
 import {afterEach,describe,expect,it,vi} from 'vitest';
 vi.mock('server-only',()=>({}));
-import {analyzeMeeting,parseMeetingAnalysisResponse,validateMeetingAnalysis} from './provider';
+import {analyzeMeeting,transcribeMeeting,parseMeetingAnalysisResponse,validateMeetingAnalysis} from './provider';
 
 const transcript='We copy orders into our CRM.';
 const sparse={summary:'A brief fragment mentions copying orders into a CRM; the wider workflow is unknown.',findings:[
@@ -9,6 +9,24 @@ const sparse={summary:'A brief fragment mentions copying orders into a CRM; the 
 ]};
 const completed=(value:unknown)=>({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(value)}]}]});
 afterEach(()=>{vi.unstubAllGlobals();vi.unstubAllEnvs();});
+
+describe('Meeting transcription results',()=>{
+ it.each(['',' \n\t'])('retains a successful empty transcript as a completed result',async text=>{
+  vi.stubEnv('OPENAI_API_KEY','fixture-only');
+  const fetcher=vi.fn().mockResolvedValue(Response.json({text}));vi.stubGlobal('fetch',fetcher);
+  expect(await transcribeMeeting(new Uint8Array(44),'audio/wav')).toBe('');
+  expect(fetcher).toHaveBeenCalledTimes(1);
+ });
+ it.each([null,{}, {text:null},{text:42}])('never treats malformed provider data as silence',async value=>{
+  vi.stubEnv('OPENAI_API_KEY','fixture-only');vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json(value)));
+  await expect(transcribeMeeting(new Uint8Array(44),'audio/wav')).rejects.toThrow('transcription_format');
+ });
+ it('keeps network/provider failures separate from completed empty results',async()=>{
+  vi.stubEnv('OPENAI_API_KEY','fixture-only');const fetcher=vi.fn().mockResolvedValue(new Response('unavailable',{status:503}));vi.stubGlobal('fetch',fetcher);
+  await expect(transcribeMeeting(new Uint8Array(44),'audio/wav')).rejects.toThrow('provider_unavailable');
+  expect(fetcher).toHaveBeenCalledTimes(1);
+ });
+});
 
 describe('Meeting analysis provider boundaries',()=>{
  it('accepts sparse evidence and explicit unknowns without filling every category',()=>{

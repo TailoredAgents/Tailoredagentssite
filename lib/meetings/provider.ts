@@ -13,7 +13,10 @@ export async function transcribeMeeting(bytes:Uint8Array,mime:string){
  const ext:Record<string,string>={'audio/wav':'wav','audio/mpeg':'mp3','audio/mp4':'m4a','audio/webm':'webm'};
  const form=new FormData();form.set('model','gpt-transcribe');form.set('file',new Blob([new Uint8Array(bytes)],{type:mime}),`meeting.${ext[mime]||'wav'}`);
  const result=await provider('audio/transcriptions',form);
- if(typeof result.text!=='string'||!result.text.trim())throw new Error('empty_audio');
+ // An empty, successful transcript is different from an invalid provider
+ // response. Keep it as a completed part so other recordings can continue.
+ if(!result||typeof result.text!=='string')throw new Error('transcription_format');
+ if(!result.text.trim())return '';
  if(Buffer.byteLength(result.text)>160_000)throw new Error('provider_unavailable');return result.text as string;
 }
 export function validateMeetingAnalysis(value:unknown,transcript:string):MeetingAnalysis{

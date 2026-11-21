@@ -11,5 +11,5 @@ export function processingEstimate(parts:Pick<MeetingPart,'duration_seconds'|'tr
 }
 export function combineTranscripts(parts:{part_order:number;part_transcript:string|null;gap_before_seconds:number;boundary_reason:string|null}[]){
  if(parts.length===1)return parts[0].part_transcript||'';
- return parts.map((p,i)=>`[Recording ${i+1}${p.gap_before_seconds?`; possible delivery gap: about ${p.gap_before_seconds} seconds`:''}${p.boundary_reason==='sample_rate'?'; audio sample rate changed':''}]\n${p.part_transcript||'[Transcription pending]'}`).join('\n\n');
+ return parts.map((p,i)=>`[Recording ${i+1}${p.gap_before_seconds?`; possible delivery gap: about ${p.gap_before_seconds} seconds`:''}${p.boundary_reason==='sample_rate'?'; audio sample rate changed':''}]\n${p.part_transcript===null?'[Transcription pending]':p.part_transcript||'[No speech recognized in this recording; original audio retained]'}`).join('\n\n');
 }

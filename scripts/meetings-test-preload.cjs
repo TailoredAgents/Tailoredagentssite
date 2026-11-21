@@ -13,6 +13,10 @@ globalThis.fetch = async function(input, options = {}) {
   const bytes = objects.get(key);return bytes?new Response(bytes,{headers:{'content-length':String(bytes.length)}}):new Response(null,{status:404});
  }
  if (url.origin === 'https://api.openai.com') {
+  if (url.pathname === '/v1/audio/transcriptions' && options.body instanceof FormData) {
+   const audio = Buffer.from(await options.body.get('file').arrayBuffer());
+   if (audio.subarray(44).every(byte => byte === 0)) return Response.json({text:''});
+  }
   if (url.pathname === '/v1/audio/transcriptions') return Response.json({text:'Morgan runs a freight brokerage. We use Excel. We spend five hours a week retyping shipment updates. Please send a workflow proposal on Friday.'});
   if (url.pathname === '/v1/responses') return Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({summary:'Synthetic freight discovery meeting. Review the order update workflow.',findings:[{category:'tool',detail:'The team uses Excel.',evidence:'We use Excel.',basis:'stated'},{category:'opportunity',detail:'Explore an automated shipment update workflow.',evidence:'',basis:'suggestion'},{category:'commitment',detail:'A workflow proposal was requested for Friday; confirm the specific date.',evidence:'Please send a workflow proposal on Friday.',basis:'stated'}]})}]}]});
   throw new Error('Unexpected OpenAI request in synthetic tests.');

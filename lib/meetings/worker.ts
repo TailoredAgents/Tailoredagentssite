@@ -42,10 +42,12 @@ export async function reserveMeetingStep(id?:string){
  if(!m){await db.query('COMMIT');return null;}
  const parts=(await db.query(`SELECT * FROM meetings WHERE id=$1 OR parent_meeting_id=$1 ORDER BY part_order,id FOR UPDATE`,[m.id])).rows;
  // Preserve a transcript completed by the old worker during a rolling deploy.
- if(parts.length===1&&!parts[0].part_transcript&&m.transcript){parts[0].part_transcript=m.transcript;await db.query('UPDATE meetings SET part_transcript=transcript WHERE id=$1',[m.id]);}
+ if(parts.length===1&&parts[0].part_transcript===null&&m.transcript){parts[0].part_transcript=m.transcript;await db.query('UPDATE meetings SET part_transcript=transcript WHERE id=$1',[m.id]);}
  if(parts.some(p=>!p.audio_key)||!!(await db.query('SELECT 1 FROM meeting_devices WHERE current_meeting_id=$1 AND (always_ready OR armed_until>now()) AND revoked_at IS NULL',[m.id])).rowCount){await db.query('COMMIT');return null;}
- const recording=parts.find(p=>!p.part_transcript),stage=recording?'transcribe':'analyze';
+ const recording=parts.find(p=>p.part_transcript===null),stage=recording?'transcribe':'analyze';
  const transcript=combineTranscripts(parts);
+ // Never pay for invented findings from only recording markers or empty audio.
+ if(stage==='analyze'&&!parts.some(p=>p.part_transcript?.trim())){await db.query("UPDATE meetings SET status='review',error_code='no_speech',transcript=$2,findings=NULL,updated_at=now(),revision=revision+1 WHERE id=$1",[m.id,transcript]);await db.query('COMMIT');return null;}
  if(stage==='analyze'&&Buffer.byteLength(transcript)>MAX_COMBINED_TRANSCRIPT_BYTES){await db.query("UPDATE meetings SET status='failed',error_code='transcript_too_long',transcript=$2 WHERE id=$1",[m.id,transcript]);await db.query('COMMIT');return null;}
  const amount=recording?transcriptionReserve(recording.duration_seconds):MEETING_ANALYZE_RESERVE;
  const requestMeetingId=recording?.id??m.id,version=recording?1:m.content_version;
@@ -71,7 +73,7 @@ export async function runMeetingWorker(id?:string){
  const db=getDatabasePool();try{
  let transcript=job.meeting.transcript;let findings=null;
  const active=async()=>{return Boolean((await db.query(`SELECT 1 FROM meetings m JOIN workspace_memberships wm ON wm.workspace_id=m.workspace_id AND wm.user_id=m.owner_user_id JOIN workspaces w ON w.id=m.workspace_id WHERE m.id=$1 AND m.lease_token=$2 AND m.status IN ('transcribing','analyzing') AND m.expires_at>now() AND wm.status='active' AND wm.role<>'viewer' AND w.status='active'`,[job.meeting.id,job.lease])).rowCount);}
- if(job.stage==='transcribe'){const audio=await factoryStorage().get(job.recording.audio_key,24_000_000);if(!await active())throw new Error('processing_interrupted');transcript=await transcribeMeeting(audio,job.recording.audio_type);}
+ if(job.stage==='transcribe'){let audio;try{audio=await factoryStorage().get(job.recording.audio_key,24_000_000);}catch{throw new Error('storage_unavailable');}if(!await active())throw new Error('processing_interrupted');transcript=await transcribeMeeting(audio,job.recording.audio_type);}
  else {if(!await active())throw new Error('processing_interrupted');findings=await analyzeMeeting(transcript!);}
  // Atomically save the part and rebuild the root transcript. A deleted root,
  // revoked membership or superseding lease cannot resurrect private content.
@@ -82,10 +84,13 @@ export async function runMeetingWorker(id?:string){
  if(job.stage==='transcribe')await connection.query('UPDATE meetings SET part_transcript=$2 WHERE id=$1 AND (id=$3 OR parent_meeting_id=$3)',[job.recording.id,transcript,job.meeting.id]);
  const parts=(await connection.query('SELECT part_order,part_transcript,gap_before_seconds,boundary_reason FROM meetings WHERE id=$1 OR parent_meeting_id=$1 ORDER BY part_order,id',[job.meeting.id])).rows;
  const combined=combineTranscripts(parts);
- await connection.query(`UPDATE meetings SET transcript=$3,findings=COALESCE($4::jsonb,findings),status=$5,lease_token=NULL,lease_until=NULL,updated_at=now(),revision=revision+1 WHERE id=$1 AND lease_token=$2`,[job.meeting.id,job.lease,combined,findings?JSON.stringify(findings):null,job.stage==='transcribe'?'queued':'review']);
+ const allDone=parts.every(p=>p.part_transcript!==null),hasSpeech=parts.some(p=>p.part_transcript?.trim());
+ const noSpeech=allDone&&!hasSpeech;
+ const warning=noSpeech?'no_speech':job.stage==='analyze'&&parts.some(p=>p.part_transcript==='')?'partial_transcript':null;
+ await connection.query(`UPDATE meetings SET transcript=$3,findings=COALESCE($4::jsonb,findings),status=$5,error_code=$6,lease_token=NULL,lease_until=NULL,updated_at=now(),revision=revision+1 WHERE id=$1 AND lease_token=$2`,[job.meeting.id,job.lease,combined,findings?JSON.stringify(findings):null,job.stage==='transcribe'&&!noSpeech?'queued':'review',warning]);
  }
  await connection.query("UPDATE meeting_requests SET state='completed' WHERE id=$1",[job.requestId]);await connection.query('COMMIT');
  }catch(e){await connection.query('ROLLBACK');throw e;}finally{connection.release();}
  return {checked:1,failed:0,more:true};
- }catch(e){const code=e instanceof Error&&['empty_audio','invalid_analysis','analysis_incomplete','analysis_refused','analysis_format','analysis_evidence'].includes(e.message)?e.message:'provider_unavailable';await db.query("UPDATE meeting_requests SET state='unknown' WHERE id=$1",[job.requestId]);await db.query("UPDATE meetings SET status='failed',error_code=$3,lease_token=NULL,lease_until=NULL,updated_at=now() WHERE id=$1 AND lease_token=$2 AND status IN ('transcribing','analyzing')",[job.meeting.id,job.lease,code]);return {checked:1,failed:1,more:false};}
+ }catch(e){const code=e instanceof Error&&['empty_audio','invalid_analysis','analysis_incomplete','analysis_refused','analysis_format','analysis_evidence','transcription_format','storage_unavailable','processing_interrupted'].includes(e.message)?e.message:'provider_unavailable';await db.query("UPDATE meeting_requests SET state='unknown' WHERE id=$1",[job.requestId]);await db.query("UPDATE meetings SET status='failed',error_code=$3,lease_token=NULL,lease_until=NULL,updated_at=now() WHERE id=$1 AND lease_token=$2 AND status IN ('transcribing','analyzing')",[job.meeting.id,job.lease,code]);return {checked:1,failed:1,more:false};}
 }

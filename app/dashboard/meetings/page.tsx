@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import {meetingStatusLabel} from '@/lib/meetings/contract';
 import {Mic, ArrowRight} from 'lucide-react';
 import {requireDashboardContext} from '@/lib/dashboard/data';
 import {listMeetings,meetingSettings} from '@/lib/meetings/service';
@@ -33,7 +34,7 @@ export default async function MeetingsPage({searchParams}:{searchParams:Promise<
      {data.items.length?data.items.map(m=><Link href={`/dashboard/meetings/${m.id}`} key={m.id}>
       <span className="meeting-list-icon"><Mic size={20} aria-hidden="true"/></span>
       <div><strong>{m.title}</strong><small>{m.owner_name} · {formatOperationalDate(new Date(m.created_at).toISOString())} · {m.visibility==='private'?'Private':'Team'}</small></div>
-      <span className={`meeting-badge status-${m.status}`}>{m.status.replaceAll('_',' ')}</span><ArrowRight size={16} aria-hidden="true"/>
+      <span className={`meeting-badge status-${m.status}`}>{meetingStatusLabel(m.status,m.error_code)}</span><ArrowRight size={16} aria-hidden="true"/>
      </Link>):<div className="meeting-empty">
       <Mic size={30} aria-hidden="true"/><h3>{p.q?'No matching recordings':'No recordings yet'}</h3>
       <p>{p.q?'Try another title or a phrase from the transcript.':'Add a recording or use Quick capture to save conversation notes.'}</p>{p.q&&<Link href="/dashboard/meetings">Clear search</Link>}

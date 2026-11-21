@@ -38,6 +38,43 @@ describe.skipIf(!url)('Meeting Intelligence with isolated PostgreSQL',()=>{
  it('denies revoked membership despite an old context',async()=>{const id=await upload();await db.query("UPDATE workspace_memberships SET status='suspended' WHERE user_id=$1",[owner.user.id]);await expect(getMeeting(owner,id)).rejects.toThrow();await expect(service.uploadChunk(owner,id,0,wav)).rejects.toThrow();});
  it('does not process without a budget and retains recording',async()=>{const id=await upload();await service.queueMeeting(owner,id,'Synthetic consent');await runMeetingWorker(id);expect((await getMeeting(owner,id)).error_code).toBe('allowance');expect(fixture.transcribe).not.toHaveBeenCalled();});
  it('processes durable stages exactly once with bounded reservations',async()=>{const id=await upload();await service.saveMeetingBudget(owner,10);await service.queueMeeting(owner,id,'Synthetic consent');await Promise.all([runMeetingWorker(id),runMeetingWorker(id)]);expect(fixture.transcribe).toHaveBeenCalledTimes(1);await runMeetingWorker(id);expect(fixture.analyze).toHaveBeenCalledTimes(1);expect((await getMeeting(owner,id)).status).toBe('review');expect((await service.meetingSettings(owner)).reserved).toBe(.256);await runMeetingWorker(id);expect(fixture.analyze).toHaveBeenCalledTimes(1);});
+ it.each([0,1,2])('continues past an empty transcription at part %i without losing other speech',async empty=>{
+  const d=await createMeetingDevice(owner,{label:'Mixed speech fixture',uid:'mixed'});
+  await armMeetingDevice(owner,{id:d.id,minutes:60,consentNote:'Synthetic permission',autoProcess:false});
+  for(const rate of [16000,8000,16000])await receiveOmi(d.secret,'mixed',rate,Buffer.alloc(rate*2,1));
+  const id=(await service.listMeetings(owner)).items[0].id;await service.finishUpload(owner,id);await service.saveMeetingBudget(owner,10);
+  fixture.transcribe.mockImplementation(async()=>fixture.transcribe.mock.calls.length-1===empty?'':`We use Excel. Part ${fixture.transcribe.mock.calls.length}.`);
+  await service.queueMeeting(owner,id,'Synthetic consent');for(let i=0;i<5;i++)await runMeetingWorker(id);
+  const m=await getMeeting(owner,id);expect(m).toMatchObject({status:'review',error_code:'partial_transcript'});
+  expect(m.parts.every(p=>p.transcribed)).toBe(true);expect(m.parts.filter(p=>p.no_speech)).toHaveLength(1);
+  expect(m.transcript).toContain('[No speech recognized in this recording; original audio retained]');expect(m.transcript).not.toContain('[Transcription pending]');
+  expect(fixture.transcribe).toHaveBeenCalledTimes(3);expect(fixture.analyze).toHaveBeenCalledTimes(1);expect((await service.meetingSettings(owner)).reserved).toBe(.268);
+  expect(fixture.objects.size).toBe(3);await expect(getMeeting(member,id)).rejects.toThrow('unavailable');
+ });
+ it('finishes all-empty audio without analysis and retries only on an explicit owner request',async()=>{
+  const id=await upload();await service.saveMeetingBudget(owner,10);fixture.transcribe.mockResolvedValue('');
+  await service.queueMeeting(owner,id,'Synthetic consent');for(let i=0;i<3;i++)await runMeetingWorker(id);
+  const m=await getMeeting(owner,id);expect(m).toMatchObject({status:'review',error_code:'no_speech',transcript:'',findings:null});expect(m.parts[0]).toMatchObject({transcribed:true,no_speech:true});
+  expect(m.processing_estimate).toBe(.256);expect(fixture.analyze).not.toHaveBeenCalled();expect(fixture.transcribe).toHaveBeenCalledTimes(1);expect((await service.meetingSettings(owner)).reserved).toBe(.006);
+  await expect(service.queueMeeting(member,id,'Synthetic consent')).rejects.toThrow('unavailable');
+  fixture.transcribe.mockResolvedValue('We use Excel.');await service.queueMeeting(owner,id,'Synthetic consent');await runMeetingWorker(id);await runMeetingWorker(id);
+  expect((await getMeeting(owner,id))).toMatchObject({status:'review',error_code:null});expect(fixture.transcribe).toHaveBeenCalledTimes(2);expect(fixture.analyze).toHaveBeenCalledTimes(1);expect((await service.meetingSettings(owner)).reserved).toBe(.262);
+ });
+ it('keeps malformed transcription failures visible and never skips their audio',async()=>{
+  const id=await upload();await service.saveMeetingBudget(owner,10);fixture.transcribe.mockRejectedValue(new Error('transcription_format'));await service.queueMeeting(owner,id,'Synthetic consent');await runMeetingWorker(id);
+  expect((await getMeeting(owner,id))).toMatchObject({status:'failed',error_code:'transcription_format',transcript:null});expect(fixture.analyze).not.toHaveBeenCalled();expect(fixture.objects.size).toBe(1);
+ });
+ it('preserves completed empty parts when separating conversations and never analyzes markers alone',async()=>{
+  const d=await createMeetingDevice(owner,{label:'Empty group fixture',uid:'empty_group'});
+  await armMeetingDevice(owner,{id:d.id,minutes:60,consentNote:'Synthetic permission',autoProcess:false});
+  await receiveOmi(d.secret,'empty_group',16000,Buffer.alloc(32000));await receiveOmi(d.secret,'empty_group',8000,Buffer.alloc(16000));
+  const id=(await service.listMeetings(owner)).items[0].id;await service.finishUpload(owner,id);await service.saveMeetingBudget(owner,10);
+  fixture.transcribe.mockResolvedValue('');await service.queueMeeting(owner,id,'Synthetic consent');for(let i=0;i<3;i++)await runMeetingWorker(id);
+  const m=await getMeeting(owner,id);expect(m).toMatchObject({status:'review',error_code:'no_speech'});expect(fixture.transcribe).toHaveBeenCalledTimes(2);expect(fixture.analyze).not.toHaveBeenCalled();
+  const separated=await service.separateMeeting(owner,{id,revision:m.revision,partId:m.parts[1].id,title:'Separated empty recording'});
+  for(const target of [id,separated.id]){await service.queueMeeting(owner,target,'Synthetic consent');await runMeetingWorker(target);expect((await getMeeting(owner,target))).toMatchObject({status:'review',error_code:'no_speech'});}
+  expect(fixture.transcribe).toHaveBeenCalledTimes(2);expect(fixture.analyze).not.toHaveBeenCalled();expect((await service.meetingSettings(owner)).reserved).toBe(.012);
+ });
  it('preserves analysis diagnostics and charges, then reuses the transcript only on explicit retry',async()=>{
  const id=await upload();await service.saveMeetingBudget(owner,10);await service.queueMeeting(owner,id,'Synthetic consent');await runMeetingWorker(id);
  fixture.analyze.mockRejectedValueOnce(new Error('analysis_evidence'));expect(await runMeetingWorker(id)).toMatchObject({failed:1});
