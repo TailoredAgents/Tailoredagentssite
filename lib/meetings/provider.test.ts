@@ -1,6 +1,8 @@
 import {afterEach,describe,expect,it,vi} from 'vitest';
 vi.mock('server-only',()=>({}));
 import {analyzeMeeting,transcribeMeeting,parseMeetingAnalysisResponse,validateMeetingAnalysis} from './provider';
+import {pcmWav} from './audio';
+import {UNRECOGNIZED_AUDIO_SECTION} from './grouping';
 
 const transcript='We copy orders into our CRM.';
 const sparse={summary:'A brief fragment mentions copying orders into a CRM; the wider workflow is unknown.',findings:[
@@ -11,6 +13,28 @@ const completed=(value:unknown)=>({status:'completed',output:[{type:'message',co
 afterEach(()=>{vi.unstubAllGlobals();vi.unstubAllEnvs();});
 
 describe('Meeting transcription results',()=>{
+ it('uses the proven Omi compatibility model with ordered four-minute sections and one deadline',async()=>{
+  vi.stubEnv('OPENAI_API_KEY','fixture-only');vi.stubEnv('MEETING_OMI_TRANSCRIPTION_MODEL','');
+  const samples=Buffer.alloc(16000*2*481,1),wav=pcmWav(samples,16000);
+  const fetcher=vi.fn().mockResolvedValueOnce(Response.json({text:'First portion.'})).mockResolvedValueOnce(Response.json({text:''})).mockResolvedValueOnce(Response.json({text:'Last portion.'}));vi.stubGlobal('fetch',fetcher);
+  const result=await transcribeMeeting(wav,'audio/wav','omi');expect(result).toContain('First portion.');expect(result).toContain(UNRECOGNIZED_AUDIO_SECTION);expect(result).toContain('[Audio section 3; starts at 8 minutes]\nLast portion.');
+  expect(fetcher).toHaveBeenCalledTimes(3);const calls=fetcher.mock.calls.map(c=>c[1]);
+  expect(new Set(calls.map(c=>c.signal)).size).toBe(1);expect(calls.every(c=>c.body.get('model')==='gpt-4o-transcribe')).toBe(true);
+  const pieces=await Promise.all(calls.map(async c=>Buffer.from(await c.body.get('file').arrayBuffer())));expect(pieces.map(p=>p.length)).toEqual([7680044,7680044,32044]);expect(Buffer.concat(pieces.map(p=>p.subarray(44))).equals(samples)).toBe(true);
+ });
+ it('keeps uploads on the recommended model and permits an explicit Omi model migration',async()=>{
+  vi.stubEnv('OPENAI_API_KEY','fixture-only');vi.stubEnv('MEETING_OMI_TRANSCRIPTION_MODEL','gpt-transcribe');const fetcher=vi.fn().mockImplementation(async()=>Response.json({text:'Speech.'}));vi.stubGlobal('fetch',fetcher);
+  await transcribeMeeting(pcmWav(Buffer.alloc(32000),16000),'audio/wav','omi');await transcribeMeeting(new Uint8Array(44),'audio/wav');expect(fetcher.mock.calls.every(c=>c[1].body.get('model')==='gpt-transcribe')).toBe(true);
+ });
+ it('stops on malformed sections instead of launching another model or claiming completion',async()=>{
+  vi.stubEnv('OPENAI_API_KEY','fixture-only');vi.stubEnv('MEETING_OMI_TRANSCRIPTION_MODEL','gpt-4o-transcribe');const fetcher=vi.fn().mockResolvedValueOnce(Response.json({text:'Saved only on complete part.'})).mockResolvedValueOnce(Response.json({}));vi.stubGlobal('fetch',fetcher);
+  await expect(transcribeMeeting(pcmWav(Buffer.alloc(16000*2*481),16000),'audio/wav','omi')).rejects.toThrow('transcription_format');expect(fetcher).toHaveBeenCalledTimes(2);
+ });
+ it('does not manufacture speech from all-empty sections or accept arbitrary configured models',async()=>{
+  vi.stubEnv('OPENAI_API_KEY','fixture-only');vi.stubEnv('MEETING_OMI_TRANSCRIPTION_MODEL','gpt-4o-transcribe');const fetcher=vi.fn().mockImplementation(async()=>Response.json({text:'  '}));vi.stubGlobal('fetch',fetcher);
+  expect(await transcribeMeeting(pcmWav(Buffer.alloc(16000*2*241),16000),'audio/wav','omi')).toBe('');expect(fetcher).toHaveBeenCalledTimes(2);
+  vi.stubEnv('MEETING_OMI_TRANSCRIPTION_MODEL','unapproved-model');await expect(transcribeMeeting(pcmWav(Buffer.alloc(32000),16000),'audio/wav','omi')).rejects.toThrow('transcription_model');expect(fetcher).toHaveBeenCalledTimes(2);
+ });
  it.each(['',' \n\t'])('retains a successful empty transcript as a completed result',async text=>{
   vi.stubEnv('OPENAI_API_KEY','fixture-only');
   const fetcher=vi.fn().mockResolvedValue(Response.json({text}));vi.stubGlobal('fetch',fetcher);

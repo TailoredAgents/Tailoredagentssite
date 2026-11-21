@@ -4,7 +4,7 @@ import {getDatabasePool} from '@/lib/dashboard/db';
 import {factoryStorage} from '@/lib/factory/storage';
 import type {DashboardContext} from '@/lib/dashboard/data';
 import {finishRecording,settleMeeting,audioPrefix} from './service';
-import {MEETING_ANALYZE_RESERVE,transcriptionReserve,combineTranscripts,MAX_COMBINED_TRANSCRIPT_BYTES} from './grouping';
+import {MEETING_ANALYZE_RESERVE,transcriptionReserve,combineTranscripts,MAX_COMBINED_TRANSCRIPT_BYTES,UNRECOGNIZED_AUDIO_SECTION} from './grouping';
 import {transcribeMeeting,analyzeMeeting} from './provider';
 import type {MeetingRecord} from './contract';
 import {closeIdleOmiMeetings} from './omi-sessions';
@@ -73,7 +73,7 @@ export async function runMeetingWorker(id?:string){
  const db=getDatabasePool();try{
  let transcript=job.meeting.transcript;let findings=null;
  const active=async()=>{return Boolean((await db.query(`SELECT 1 FROM meetings m JOIN workspace_memberships wm ON wm.workspace_id=m.workspace_id AND wm.user_id=m.owner_user_id JOIN workspaces w ON w.id=m.workspace_id WHERE m.id=$1 AND m.lease_token=$2 AND m.status IN ('transcribing','analyzing') AND m.expires_at>now() AND wm.status='active' AND wm.role<>'viewer' AND w.status='active'`,[job.meeting.id,job.lease])).rowCount);}
- if(job.stage==='transcribe'){let audio;try{audio=await factoryStorage().get(job.recording.audio_key,24_000_000);}catch{throw new Error('storage_unavailable');}if(!await active())throw new Error('processing_interrupted');transcript=await transcribeMeeting(audio,job.recording.audio_type);}
+ if(job.stage==='transcribe'){let audio;try{audio=await factoryStorage().get(job.recording.audio_key,24_000_000);}catch{throw new Error('storage_unavailable');}if(!await active())throw new Error('processing_interrupted');transcript=await transcribeMeeting(audio,job.recording.audio_type,job.meeting.source);}
  else {if(!await active())throw new Error('processing_interrupted');findings=await analyzeMeeting(transcript!);}
  // Atomically save the part and rebuild the root transcript. A deleted root,
  // revoked membership or superseding lease cannot resurrect private content.
@@ -86,11 +86,11 @@ export async function runMeetingWorker(id?:string){
  const combined=combineTranscripts(parts);
  const allDone=parts.every(p=>p.part_transcript!==null),hasSpeech=parts.some(p=>p.part_transcript?.trim());
  const noSpeech=allDone&&!hasSpeech;
- const warning=noSpeech?'no_speech':job.stage==='analyze'&&parts.some(p=>p.part_transcript==='')?'partial_transcript':null;
+ const warning=noSpeech?'no_speech':job.stage==='analyze'&&parts.some(p=>p.part_transcript===''||p.part_transcript?.includes(UNRECOGNIZED_AUDIO_SECTION))?'partial_transcript':null;
  await connection.query(`UPDATE meetings SET transcript=$3,findings=COALESCE($4::jsonb,findings),status=$5,error_code=$6,lease_token=NULL,lease_until=NULL,updated_at=now(),revision=revision+1 WHERE id=$1 AND lease_token=$2`,[job.meeting.id,job.lease,combined,findings?JSON.stringify(findings):null,job.stage==='transcribe'&&!noSpeech?'queued':'review',warning]);
  }
  await connection.query("UPDATE meeting_requests SET state='completed' WHERE id=$1",[job.requestId]);await connection.query('COMMIT');
  }catch(e){await connection.query('ROLLBACK');throw e;}finally{connection.release();}
  return {checked:1,failed:0,more:true};
- }catch(e){const code=e instanceof Error&&['empty_audio','invalid_analysis','analysis_incomplete','analysis_refused','analysis_format','analysis_evidence','transcription_format','storage_unavailable','processing_interrupted'].includes(e.message)?e.message:'provider_unavailable';await db.query("UPDATE meeting_requests SET state='unknown' WHERE id=$1",[job.requestId]);await db.query("UPDATE meetings SET status='failed',error_code=$3,lease_token=NULL,lease_until=NULL,updated_at=now() WHERE id=$1 AND lease_token=$2 AND status IN ('transcribing','analyzing')",[job.meeting.id,job.lease,code]);return {checked:1,failed:1,more:false};}
+ }catch(e){const code=e instanceof Error&&['empty_audio','invalid_analysis','analysis_incomplete','analysis_refused','analysis_format','analysis_evidence','transcription_format','transcription_model','invalid_audio','storage_unavailable','processing_interrupted'].includes(e.message)?e.message:'provider_unavailable';await db.query("UPDATE meeting_requests SET state='unknown' WHERE id=$1",[job.requestId]);await db.query("UPDATE meetings SET status='failed',error_code=$3,lease_token=NULL,lease_until=NULL,updated_at=now() WHERE id=$1 AND lease_token=$2 AND status IN ('transcribing','analyzing')",[job.meeting.id,job.lease,code]);return {checked:1,failed:1,more:false};}
 }

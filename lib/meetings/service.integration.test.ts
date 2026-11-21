@@ -64,6 +64,10 @@ describe.skipIf(!url)('Meeting Intelligence with isolated PostgreSQL',()=>{
   const id=await upload();await service.saveMeetingBudget(owner,10);fixture.transcribe.mockRejectedValue(new Error('transcription_format'));await service.queueMeeting(owner,id,'Synthetic consent');await runMeetingWorker(id);
   expect((await getMeeting(owner,id))).toMatchObject({status:'failed',error_code:'transcription_format',transcript:null});expect(fixture.analyze).not.toHaveBeenCalled();expect(fixture.objects.size).toBe(1);
  });
+ it('flags missing internal audio sections even when their parent part contains speech',async()=>{
+  const id=await upload();await service.saveMeetingBudget(owner,10);fixture.transcribe.mockResolvedValue('[Audio section 1; starts at 0 minutes]\nWe use Excel.\n\n[Audio section 2; starts at 4 minutes]\n[No speech recognized in this audio section; original audio retained]');await service.queueMeeting(owner,id,'Synthetic consent');await runMeetingWorker(id);await runMeetingWorker(id);
+  const m=await getMeeting(owner,id);expect(m).toMatchObject({status:'review',error_code:'partial_transcript'});expect(m.parts[0]).toMatchObject({transcribed:true,no_speech:false,partial_transcript:true});expect(fixture.analyze).toHaveBeenCalledTimes(1);
+ });
  it('preserves completed empty parts when separating conversations and never analyzes markers alone',async()=>{
   const d=await createMeetingDevice(owner,{label:'Empty group fixture',uid:'empty_group'});
   await armMeetingDevice(owner,{id:d.id,minutes:60,consentNote:'Synthetic permission',autoProcess:false});

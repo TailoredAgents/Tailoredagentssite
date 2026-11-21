@@ -1,9 +1,15 @@
 import {describe,it,expect,vi} from 'vitest';
 vi.mock('server-only',()=>({}));
-import {pcmWav,inspectAudio} from './audio';
+import {pcmWav,inspectAudio,splitOmiWav} from './audio';
 import {validateMeetingAnalysis} from './provider';
 import {validFactoryObjectKey} from '@/lib/factory/storage';
 describe('Meeting audio and evidence boundaries',()=>{
+ it.each([8000,16000])('splits canonical PCM at %i Hz without changing audio or billed minutes',rate=>{
+  const samples=Buffer.alloc(rate*2*481,2),parts=splitOmiWav(pcmWav(samples,rate));expect(parts).toHaveLength(3);expect(Buffer.concat(parts.map(p=>p.subarray(44))).equals(samples)).toBe(true);expect(parts.reduce((s,p)=>s+Math.ceil((p.length-44)/(rate*2*60)),0)).toBe(Math.ceil(481/60));
+ });
+ it('rejects invalid Omi WAV headers rather than slicing arbitrary media',()=>{
+  for(const offset of [4,16,20,22,24,28,32,34,36,40]){const wav=pcmWav(Buffer.alloc(32000),16000);wav[offset]^=128;expect(()=>splitOmiWav(wav)).toThrow('invalid_audio');}
+ });
  it('wraps documented Omi PCM16 in a playable WAV and computes duration',async()=>{const wav=pcmWav(Buffer.alloc(32000),16000);expect(wav.toString('ascii',0,4)).toBe('RIFF');expect(await inspectAudio(wav)).toMatchObject({seconds:1,mime:'audio/wav'});});
  it.each([0,44100,48000])('rejects undocumented Omi sample rate %s',rate=>expect(()=>pcmWav(Buffer.alloc(20),rate)).toThrow());
  it('rejects odd PCM frames and empty/truncated media',async()=>{expect(()=>pcmWav(Buffer.alloc(3),16000)).toThrow();await expect(inspectAudio(Buffer.from('fake audio.wav'))).rejects.toThrow();});

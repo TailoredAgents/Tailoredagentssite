@@ -6,6 +6,7 @@ export const MEETING_ANALYZE_RESERVE=250_000;
 export const transcriptionReserve=(seconds:number)=>Math.max(1,Math.ceil(seconds/60))*6_000;
 export const MAX_COMBINED_TRANSCRIPT_BYTES=160_000;
 export const MAX_MEETING_PARTS=24;
+export const UNRECOGNIZED_AUDIO_SECTION='[No speech recognized in this audio section; original audio retained]';
 export function processingEstimate(parts:Pick<MeetingPart,'duration_seconds'|'transcribed'>[]){
  return (parts.reduce((sum,p)=>sum+(p.transcribed?0:transcriptionReserve(p.duration_seconds??0)),0)+MEETING_ANALYZE_RESERVE)/1e6;
 }
