@@ -10,6 +10,8 @@ The internal CRM supports relationship-led discovery, sales, client account mana
 
 ## What exists and what remains
 
+**November 21 Omi preference:** Austin's existing connection remains Always ready, but automatic transcription/analysis is now **off**, saved and verified in production. Forwarded audio waits privately for his **Transcribe & analyze** choice; personal recordings can be deleted from the CRM separately. Preserve this selected-processing workflow. See the [current preference checkpoint](MEETING_INTELLIGENCE.md#austins-selected-processing-workflow--november-21).
+
 | Area | Current implementation / recorded evidence | Still open |
 | --- | --- | --- |
 | Public site | AI/automation-first positioning, custom solutions before standardized pricing, partnership conversation and retained website/SEO services. [Positioning](PUBLIC_SITE_POSITIONING.md) | Preserve truthful case-study claims; do not publish partnership terms without approval. |
