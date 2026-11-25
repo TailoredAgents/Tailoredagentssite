@@ -16,7 +16,7 @@
  async function action(url:string,method:string,body:unknown){
   error='';notice='';try{const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const b=await r.json();if(!r.ok){error=b.error;return false;}await invalidateAll();return true;}catch{error='Could not connect. Please try again.';return false;}
  }
- async function loadBlocked(){const r=await fetch('/api/settings/blocked');if(r.ok)blocked=(await r.json()).senders;}
+ async function loadBlocked(){try{const r=await fetch('/api/settings/blocked');if(r.ok)blocked=(await r.json()).addresses;}catch{error='Could not load blocked senders. Please try again.';}}
  onMount(()=>{preference=readThemePreference();void loadBlocked();});
  async function block(){if(await action('/api/settings/blocked','POST',{address})){address='';await loadBlocked();}}
  async function password(){if(await action('/api/settings/password','POST',{currentPassword,newPassword}))window.location.href='/login';}
@@ -27,6 +27,7 @@
  {#if error}<p role="alert" class="ta-warning">{error}</p>{/if}
  {#if notice}<p role="status">{notice}</p>{/if}
  {#if show('general')}
+ <section class="ta-panel"><h2>Smart inbox</h2><p>Junk and Not junk remember your choice for future messages from that address. Unknown senders stay in your inbox unless a rule identifies junk. You can always review and restore messages in Junk.</p><p>Open a message to see its sender authentication. Images load automatically when its domain is verified; use Images from this sender to change that preference. Flagged messages require a click, and recognizable hidden tracking pixels are removed.</p></section>
  <section class="ta-panel"><h2>Time zone</h2><p>Mail dates and daily sending limits follow Georgia time: Eastern (EST/EDT). The daily allowance resets at midnight Eastern, including daylight-saving changes.</p></section>
  <SignatureEditor signature={data.signature} banner={data.signatureBanner} />
  <section class="ta-panel"><h2>Blocked senders</h2><p>New messages from these addresses go to Junk.</p><form class="ta-inline" onsubmit={(e)=>{e.preventDefault();void block();}}><label>Email address<input type="email" required bind:value={address}/></label><button class="ta-button">Block sender</button></form>

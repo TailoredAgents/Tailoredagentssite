@@ -17,6 +17,19 @@ for(const [i,name,subject,text] of [[1,'Jamie Park','Your workspace is ready','W
  db.prepare("INSERT OR IGNORE INTO emails(id,user_id,direction,from_addr,from_name,to_addr,subject,body_text,thread_id,domain_id,address_id,category,import_state) VALUES (?,?,'inbound',?,?,?,?,?,?,'local-domain','local-owner-address','primary','complete')").run('local-message-'+i,'local-owner','sender'+i+'@example.net',name,'local-owner@tailoredagents.com',subject,text,'local-message-'+i);
 }
 db.prepare('DELETE FROM rate_limits').run();
+for (const [id,subject,authentication,spam] of [
+ ['verified','Verified sender preview',{spf:'pass',dkim:'pass',dmarc:'pass'},false],
+ ['unknown','Unknown sender preview',null,false],
+ ['failed','Failed sender preview',{spf:'fail',dkim:'fail',dmarc:'fail'},true],
+ ['links','A message with only a link',null,false]
+] as const) {
+ const html = id === 'links' ? '<p>Read <a href="https://example.com">our notes</a>.</p>'
+  : `<h2>${subject}</h2><p>Your project update is ready.</p><img src="https://images.example.invalid/${id}/banner.png" width="240" height="80" alt="Project banner"><img src="https://images.example.invalid/${id}/tracking.gif" width="1" height="1">`;
+ db.prepare(`INSERT INTO emails(id,user_id,direction,from_addr,to_addr,subject,body_html,thread_id,domain_id,address_id,authentication_json,spam_at,spam_source,junk_reason,import_state)
+ VALUES (?,'local-owner','inbound',?,'local-owner@tailoredagents.com',?,?,?,'local-domain','local-owner-address',?,?,?,?,'complete')
+ ON CONFLICT(id) DO UPDATE SET body_html=excluded.body_html,authentication_json=excluded.authentication_json,spam_at=excluded.spam_at,spam_source=excluded.spam_source,junk_reason=excluded.junk_reason,deleted_at=NULL,archived_at=NULL`)
+ .run('smart-'+id,id+'@example.net',subject,html,'smart-'+id,authentication?JSON.stringify(authentication):null,spam?'2026-11-24 12:00:00':null,spam?'auto':null,spam?'authentication':null);
+}
 db.prepare('UPDATE emails SET body_html=? WHERE id=?').run('<p>Welcome to Tailored Agents Mail. This is a safe-viewer test.</p><script>parent.emailExecuted=true</script><img src="https://tracker.invalid/pixel"><form action="https://tracker.invalid"><input name="secret"></form>','local-message-1');
 db.prepare("INSERT OR IGNORE INTO email_attachments(id,email_id,filename,content_type,size_bytes,content_base64) VALUES ('local-dangerous-file','local-message-1','example.html','text/html',21,?)").run(Buffer.from('<script>alert(1)</script>').toString('base64'));
 db.close();console.log('Local test users and sample messages are ready. No live services were contacted.');

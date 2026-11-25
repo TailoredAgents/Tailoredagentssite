@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { safeEmailHtml } from '$lib/utils/safe-email';
+	import { safeEmailHtml, hasRemoteImages } from '$lib/utils/safe-email';
+	import { automaticImageLoading, type MessageSecurity, type SenderImageMode } from '$lib/mail/security';
 	import { browser } from '$app/environment';
 	import {
 		EMAIL_STYLE_ID,
@@ -11,11 +12,34 @@
 	import { canFoldQuotes, foldQuotedHtml } from '$lib/utils/quotes';
 	import { t } from '$lib/i18n';
 
-	let { html }: { html: string } = $props();
+	let { html, messageId, security }: { html: string; messageId?: string; security?: MessageSecurity } = $props();
 
 	const rich = $derived(isRichHtml(html));
-	let allowRemoteImages = $state(false);
-	$effect(() => { void html; allowRemoteImages = false; });
+	let shownFor = $state<string | null>(null);
+	let preference = $state<{ id: string; mode: SenderImageMode } | null>(null);
+	let saving = $state(false);
+	let imageError = $state('');
+	const identity = $derived(messageId ?? html);
+	const imageMode = $derived(preference?.id === identity ? preference.mode : security?.imageMode ?? 'automatic');
+	const automatic = $derived(security ? automaticImageLoading(security.verification, imageMode, Boolean(security.junkReason), security.senderDisposition) : false);
+	const allowRemoteImages = $derived(shownFor === identity || automatic);
+	const remoteImages = $derived(browser && hasRemoteImages(html));
+	$effect(() => {
+		if (preference?.id === identity && preference.mode === security?.imageMode) preference = null;
+	});
+	async function changeImageMode(mode: SenderImageMode) {
+		if (!messageId) return;
+		const id = messageId;
+		saving = true; imageError = '';
+		try {
+			const response = await fetch(`/api/mail/${encodeURIComponent(id)}/images`, {
+				method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode })
+			});
+			if (!response.ok) throw new Error('Could not save the image preference. Please try again.');
+			preference = { id, mode }; shownFor = null;
+		} catch { imageError = 'Could not save the image preference. Please try again.'; }
+		finally { saving = false; }
+	}
 
 	/**
 	 * Stamped on <html> by the inline script in app.html, so it is settled well
@@ -253,8 +277,25 @@
 	});
 </script>
 
-{#if /https?:|url\(/i.test(html) && !allowRemoteImages}
-	<button type="button" class="ta-images-button" onclick={() => allowRemoteImages = true}>External images are hidden · Show images</button>
+{#if remoteImages}
+	<div class="image-controls">
+		{#if !allowRemoteImages}
+			<button type="button" class="ta-images-button" onclick={() => shownFor = identity}>External images are hidden · Show images</button>
+		{:else}
+			<span>{automatic ? 'Images shown automatically' : 'Images shown for this message'}</span>
+		{/if}
+		{#if messageId && security}
+			<label>Images from this sender
+				<select value={imageMode} disabled={saving} onchange={(event) => changeImageMode(event.currentTarget.value as SenderImageMode)}>
+					<option value="automatic">Show when verified</option>
+					<option value="allow">Always show</option>
+					<option value="block">Ask before showing</option>
+				</select>
+			</label>
+		{/if}
+		<small>Loading images contacts the sender’s image server. Junk and failed authentication always require a click.</small>
+		{#if imageError}<p role="alert">{imageError}</p>{/if}
+	</div>
 {/if}
 {#if mounted && srcdoc}
 	<iframe
@@ -284,6 +325,10 @@
 {/if}
 
 <style>
+	.image-controls { display: flex; align-items: center; gap: .5rem .8rem; flex-wrap: wrap; margin-bottom: .75rem; font-size: .75rem; color: var(--color-text-secondary); }
+	.image-controls label { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+	.image-controls select { font: inherit; padding: .35rem; border: 1px solid var(--color-border); border-radius: .35rem; background: var(--color-surface-muted); color: inherit; max-width: 100%; }
+	.image-controls small { flex-basis: 100%; line-height: 1.4; }
 	.frame {
 		display: block;
 		width: 100%;

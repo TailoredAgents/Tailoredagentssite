@@ -10,6 +10,8 @@ The internal CRM supports relationship-led discovery, sales, client account mana
 
 ## What exists and what remains
 
+**November 24 smart inbox:** Jeffrey selected standalone Mail with no new AI costs. Sender learning now applies on receipt; provider-backed domain authentication and per-sender image choices are implemented and locally verified. See [Smart inbox](SMART_INBOX.md) for the exact behavior, migration 0040, local/browser evidence and subsequent live release record. This does not activate paid classification or employee background permissions.
+
 **November 21 Omi preference:** Austin's existing connection remains Always ready, but automatic transcription/analysis is now **off**, saved and verified in production. Forwarded audio waits privately for his **Transcribe & analyze** choice; personal recordings can be deleted from the CRM separately. Preserve this selected-processing workflow. See the [current preference checkpoint](MEETING_INTELLIGENCE.md#austins-selected-processing-workflow--november-21).
 
 | Area | Current implementation / recorded evidence | Still open |

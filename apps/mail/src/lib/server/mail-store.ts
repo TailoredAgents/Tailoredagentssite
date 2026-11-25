@@ -1,5 +1,6 @@
 import { searchClauses } from './search';
 import { hydrateContent, retainObject } from './content';
+import { readMessageSecurity } from './message-security';
 import type { D1Database, R2Bucket } from '@cloudflare/workers-types';
 import { MAILBOX_PAGE_SIZE } from '$lib/constants';
 import { MAX_BODY_BYTES } from './constants';
@@ -691,11 +692,14 @@ export async function setEmailFlags(
 		assignments.push(update.trashed ? "deleted_at = datetime('now')" : 'deleted_at = NULL');
 	}
 	if (update.spam !== undefined) {
+		assignments.push('junk_reason = NULL');
 		if (update.spam) {
 			assignments.push("spam_at = datetime('now')", 'archived_at = NULL', 'spam_source = ?');
 			bindings.push(update.spamSource ?? 'user');
 		} else {
-			assignments.push('spam_at = NULL', 'spam_source = NULL');
+			// Keep an explicit Not junk decision locked through an in-flight import
+			// or classification retry, including the gap before sender learning saves.
+			assignments.push('spam_at = NULL', "spam_source = 'user'");
 		}
 		bumpEpoch = true;
 	}
@@ -1083,10 +1087,12 @@ export async function listThreadMessages(
       files.push(...chunk.results);
     }
 
+	const security = await readMessageSecurity(db, bucket, userId, threadId);
 	// The query already filters drafts out, so `status` is a delivery state or null
 	// and needs no further narrowing here.
 	return Promise.all(results.map(async (message) => ({
 		...await hydrateContent(bucket, message),
+		security: security.get(message.id),
 		category: parseInboxCategory(message.category),
 		is_read: message.is_read === 1,
 		is_starred: message.is_starred === 1,

@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import { invalidateAll } from '$app/navigation';
 	import EmailBody from '$lib/components/EmailBody.svelte';
+	import SenderStatus from '$lib/components/SenderStatus.svelte';
 	import { resolveInlineImages, visibleAttachments } from '$lib/utils/inline-images';
 	import RichTextEditor from '$lib/components/RichTextEditor.svelte';
 	import Tooltip from '$lib/components/Tooltip.svelte';
@@ -745,10 +746,11 @@
 						{@const files = visibleAttachments(message.body_html, message.attachments)}
 						<div class="z-msg-body">
 							<div class="z-msg-html">
+                                <SenderStatus security={message.security} />
                                 {#if message.direction === 'outbound' && message.status_detail}<p class="ta-warning" role="status">{message.status_detail}</p>{/if}
                                 {#if message.import_state === 'pending'}<p class="ta-warning" role="status">Some attachments are still downloading. We’ll keep trying automatically.</p>{/if}
                                 {#if message.body_html}
-                                    <EmailBody html={resolveInlineImages(message.body_html, message.id, message.attachments)} />
+                                    <EmailBody html={resolveInlineImages(message.body_html, message.id, message.attachments)} messageId={message.id} security={message.security} />
 								{:else}
 									<pre class="z-msg-text">{message.body_text}</pre>
 								{/if}

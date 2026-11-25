@@ -19,6 +19,8 @@ statements below that MCP is entirely disabled; ordinary private APIs remain clo
 
 ## For the team
 
+November 24 smart inbox update: [sender learning, domain verification and image preferences](../../docs/SMART_INBOX.md). Junk/Not junk now affect future deliveries, verified messages can show images automatically, and each sender has a remembered image choice. No new AI costs or paid content classification are enabled. See the runbook for migration, tests and live release evidence.
+
 November 11 source update: the [Mail/account visual pass](../../docs/SOFTWARE_MAIL_POLISH_2026-11-11.md) adds a clearer sender identity in Compose, selected appearance cards, folder-specific empty states and consistent account/permission screens. Local checks and the production build passed; Cloudflare authentication is unavailable on this machine, so this update still requires a separate Mail deployment. A website push does not release Mail.
 
 - Sign in with your email address and password. A temporary password must be changed before opening your inbox.
@@ -26,7 +28,7 @@ November 11 source update: the [Mail/account visual pass](../../docs/SOFTWARE_MA
 - Drafts save automatically. Wait for **Saved** before leaving. Attachments are saved too, and unchanged files are reused during later saves. Unfinished replies and forwards also appear in Drafts.
 - Up to 20 MB of outgoing attachments in total, with up to 20 newly attached files. Forwarded conversation files also count toward the same total size limit.
 - Inbox, Sent, Drafts, Archive, Starred, Junk, Trash, labels, bulk actions, and keyboard shortcuts are available. Search supports `from:`, `to:`, `subject:`, `after:YYYY-MM-DD`, `before:YYYY-MM-DD`, and `has:attachment` in the current folder.
-- External images start off. Only allow them if you want the sender’s image server contacted. Files that can contain active content download rather than opening as an active page on this site.
+- External images show automatically for messages with verified sending domains. In a message, use **Images from this sender** to show when verified, always show, or ask first. Junk and failed authentication always require a click. Loading remote images contacts their host; recognizable tiny/hidden tracking pixels are removed. Files that can contain active content download rather than opening as an active page on this site.
 - Settings contains your signature, light/dark appearance, blocked senders, password change and shortcut help.
 - Sending failures leave the draft available. “Waiting to send” can also mean the service is checking an uncertain response; do not create a second copy in a new draft.
 

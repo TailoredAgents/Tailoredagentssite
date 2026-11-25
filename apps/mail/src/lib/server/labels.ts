@@ -390,16 +390,19 @@ export async function setSenderPref(
 	fromAddr: string,
 	disposition: SenderDisposition
 ): Promise<void> {
-	await db
-		.prepare(
+  await db.batch([db.prepare(
 			`INSERT INTO sender_prefs (user_id, from_addr, disposition, updated_at)
 			 VALUES (?, ?, ?, datetime('now'))
 			 ON CONFLICT(user_id, from_addr) DO UPDATE SET
 			   disposition = excluded.disposition,
 			   updated_at = datetime('now')`
 		)
-		.bind(userId, fromAddr.trim().toLowerCase(), disposition)
-		.run();
+		.bind(userId, fromAddr.trim().toLowerCase(), disposition),
+    disposition === 'spam'
+      ? db.prepare('INSERT OR IGNORE INTO blocked_senders(user_id,address) VALUES (?,?)').bind(userId, fromAddr.trim().toLowerCase())
+      : db.prepare('DELETE FROM blocked_senders WHERE user_id=? AND address=?').bind(userId, fromAddr.trim().toLowerCase()),
+    db.prepare('UPDATE users SET mailbox_epoch=COALESCE(mailbox_epoch,0)+1 WHERE id=?').bind(userId)
+  ]);
 }
 
 export async function rememberSenders(

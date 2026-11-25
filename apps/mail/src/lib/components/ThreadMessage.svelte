@@ -3,6 +3,7 @@
 	import AttachmentList from './AttachmentList.svelte';
 	import DeliveryStatus from './DeliveryStatus.svelte';
 	import EmailBody from './EmailBody.svelte';
+	import SenderStatus from './SenderStatus.svelte';
 	import { resolveInlineImages, visibleAttachments } from '$lib/utils/inline-images';
 	import { formatFullDate, formatRelativeDate } from '$lib/utils/date';
 	import { splitQuotedText } from '$lib/utils/quotes';
@@ -133,8 +134,9 @@
 		</header>
 
 		<div class="body mail-body">
+			<SenderStatus security={message.security} />
 			{#if message.body_html}
-				<EmailBody html={resolveInlineImages(message.body_html, message.id, message.attachments)} />
+				<EmailBody html={resolveInlineImages(message.body_html, message.id, message.attachments)} messageId={message.id} security={message.security} />
 			{:else if text.body}
 				<p class="whitespace-pre-wrap">{text.body}</p>
 				{#if text.quoted}

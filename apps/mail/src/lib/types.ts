@@ -263,6 +263,7 @@ export type MailboxPage = {
 
 /** A single message inside an open conversation. */
 export type ThreadMessage = {
+  security?: import('./mail/security').MessageSecurity;
 	content_key?: string | null;
 	reply_to_addr?: string | null;
 	import_state?: string;

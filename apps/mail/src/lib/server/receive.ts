@@ -8,6 +8,8 @@ import { insertEmail } from './mail-store';
 import { normalizeContentId } from './attachments';
 import { saveContent } from './content';
 import { sha256Hex } from './send-attempts';
+import { getSenderPref } from './labels';
+import { inboundJunkReason, normalizeAuthentication } from '$lib/mail/security';
 
 export type MailEnv = { APP_URL?: string; API_SEND_ENABLED?: string; API_DAILY_SEND_LIMIT?: string; DB: D1Database; ATTACHMENTS: R2Bucket; RESEND_API_KEY: string; MAIL_DOMAIN: string };
 export function recipientAddresses(email: Pick<ReceivedEmail, 'to' | 'cc' | 'bcc'>, domain: string): string[] {
@@ -27,7 +29,7 @@ async function deliveryIdentity(email: ReceivedEmail, providerId: string): Promi
     files:email.attachments?.map(({filename,content_type,content_id,size})=>({filename,content_type,content_id,size}))}));
 }
 export function shouldFileAsJunk(email: ReceivedEmail, blocked: boolean): boolean {
-  return blocked || email.authentication?.dmarc === 'fail';
+  return inboundJunkReason(email.authentication, null, blocked) !== null;
 }
 export function boundedStream(body: ReadableStream<Uint8Array>, maxBytes: number): ReadableStream<Uint8Array> {
   let size = 0;
@@ -93,8 +95,14 @@ export async function receiveEmail(env: MailEnv, providerId: string, assignedUse
     // 'pending' is written before attachments. A retry resumes the same recipient copy.
     await env.DB.prepare("UPDATE emails SET content_key=?,reply_to_addr=?,created_at=datetime(?),import_state='pending',status_detail='Some files are still downloading. Please check again shortly.' WHERE id=?")
       .bind(contentKey,email.reply_to?.join(', ') || email.headers?.['reply-to'] || null,email.created_at,id).run();
-    const blocked = await env.DB.prepare('SELECT 1 FROM blocked_senders WHERE user_id=? AND address=?').bind(route.user_id,sender.address.toLowerCase()).first();
-    if (shouldFileAsJunk(email,Boolean(blocked))) await env.DB.prepare("UPDATE emails SET spam_at=datetime('now'),spam_source='auto' WHERE id=? AND spam_source IS NULL").bind(id).run();
+    const [blocked, disposition] = await Promise.all([
+      env.DB.prepare('SELECT 1 FROM blocked_senders WHERE user_id=? AND address=?').bind(route.user_id,sender.address.toLowerCase()).first(),
+      getSenderPref(env.DB, route.user_id, sender.address)
+    ]);
+    await env.DB.prepare('UPDATE emails SET authentication_json=? WHERE id=?')
+      .bind(JSON.stringify(normalizeAuthentication(email.authentication)), id).run();
+    const junkReason = inboundJunkReason(email.authentication, disposition, Boolean(blocked));
+    if (junkReason) await env.DB.prepare("UPDATE emails SET spam_at=datetime('now'),spam_source='auto',junk_reason=? WHERE id=? AND spam_source IS NULL").bind(junkReason,id).run();
     await indexFullText(env.DB,route.user_id,id,email.text ?? email.html ?? '');
     try {
       await storeReceivedFiles(env, current?.provider_id ?? providerId, id);

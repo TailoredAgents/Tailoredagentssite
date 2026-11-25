@@ -14,6 +14,7 @@ import {setUserPassword,login,getAuthenticatedSession} from '../src/lib/server/a
 import {queueEvent,processJob,maintainMail} from '../src/lib/server/mail-jobs';
 import {purgeExpiredMail} from '../src/lib/server/retention';
 import type {User} from '../src/lib/types';
+import {setSenderPref,rememberSenders} from '../src/lib/server/labels';
 function fixture(){
  const {db,sqlite}=createTestDb(),{bucket,objects}=testStorage();
  for(const id of ['alice','bob'])insertTestUser(sqlite,id);
@@ -30,6 +31,20 @@ function receiveMock(t:any,overrides:Record<string,unknown>={},failFile=false){
  t.mock.method(globalThis,'fetch',async(url:any)=>{const u=String(url);if(u.includes('/attachments'))return Response.json({data:files});if(u.includes('/emails/receiving/'))return Response.json(mail);if(u.includes('files.resend')){if(fileFails){fileFails=false;return new Response('temporary',{status:503});}return new Response('saved file');}throw new Error('Unexpected request '+u);});
  return mail;
 }
+test('live receive path honors learned junk and safe senders independently for each recipient',async t=>{
+ const f=fixture();receiveMock(t,{authentication:{spf:'pass',dkim:'pass',dmarc:'pass'}});
+ await setSenderPref(f.db,'alice','sender@example.net','spam');
+ await receiveEmail(f.env,'provider-1');
+ const alice=await f.db.prepare('SELECT id,spam_at,junk_reason,authentication_json FROM emails WHERE user_id=?').bind('alice').first<any>();
+ const bob=await f.db.prepare('SELECT spam_at FROM emails WHERE user_id=?').bind('bob').first<any>();
+ assert.ok(alice.spam_at);assert.equal(alice.junk_reason,'sender');assert.equal(bob.spam_at,null);
+ assert.equal(JSON.parse(alice.authentication_json).dmarc,'pass');
+ await rememberSenders(f.db,'alice',[alice.id],'safe');
+ await f.bucket.put('received/provider-2/source.json',JSON.stringify({id:'provider-2',from:'sender@example.net',to:['alice@tailoredagents.com','bob@tailoredagents.com'],subject:'Next message',text:'hello',html:null,message_id:'new@example.net',created_at:new Date().toISOString(),authentication:{dmarc:'fail'}}));
+ await receiveEmail(f.env,'provider-2');
+ const next=await f.db.prepare("SELECT user_id,spam_at,junk_reason FROM emails WHERE provider_id='provider-2' ORDER BY user_id").all<any>();
+ assert.equal(next.results[0].spam_at,null);assert.ok(next.results[1].spam_at);assert.equal(next.results[1].junk_reason,'authentication');
+});
 test('every recipient gets one private copy; long body, files and full-body search survive retries',async t=>{
  const f=fixture();const source=receiveMock(t);
  await receiveEmail(f.env,'provider-1');await receiveEmail(f.env,'provider-1');
