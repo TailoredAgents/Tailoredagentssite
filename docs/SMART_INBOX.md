@@ -29,4 +29,12 @@ Before migration, export D1 to protected storage outside Git. The production bac
 
 Pre-release Worker versions: staging `05dd3664-ec9b-4af9-a501-a4e987ea5369`; production `c18a7f3b-817c-49f6-b89c-bba31df1cd09`. Keep production sender permissions, the existing 100/user/Eastern-day assistant send cap, secrets and background opt-in gates. Sending/reply-all/attachment delivery tests require separately approved recipients/content. This task authorizes no test messages.
 
-Live release evidence will be appended after staging and production deployment. Local tests alone do not establish live acceptance.
+## Live release evidence — November 24, 2026
+
+Implementation `3ced054` is pushed to `main`. Staging migrations 0037–0040 and production migrations 0039–0040 completed after private backups; production reports no pending migrations. No existing production OAuth grants were reset.
+
+- **Staging:** Worker `2bc8b519-7dcc-46f2-832f-d8021b142768`. The existing synthetic owner account signed in successfully. General settings rendered Smart inbox, mailbox and an already-read thread returned 200, and that historical thread exposed a provider-backed **verified** result. Unauthenticated mailbox access returned 401; OAuth discovery returned 200. The test session was signed out afterward.
+- **Production:** Worker `612cb273-c4d8-48c9-8c66-4c752cbd921f` deployed to `mail.tailoredagents.com`, observed at 10:10 PM Eastern. Login and OAuth discovery returned 200, unauthenticated mailbox access returned 401, and the new domain-verification and image-preference client assets were fetched successfully. The existing Austin Mail MCP connection still authenticates with its prior scopes and reports sending enabled, 100/day, resetting in America/New_York. No mail was sent.
+- Production bindings retain the same database, private bucket, queue, five-minute maintenance schedule and send settings. The paid AI classifier remains disabled; background access remains an explicit employee opt-in and was not activated here.
+
+The authenticated browser journeys and tracking-request assertions were local; the authenticated API/settings checks were staging. A fresh production delivery through the new sender-learning path and every employee's production browser remain follow-up acceptance, not results implied by these smoke checks. The later Mail polish and background/compose source already on `main` are included in this deployment; their broader delivery/device acceptance is separate from this inbox release.

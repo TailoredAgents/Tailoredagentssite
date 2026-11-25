@@ -1,3 +1,13 @@
+# Mail smart inbox release — November 24, 2026
+
+Jeffrey selected the standalone Mail app, sender learning and authentication, with no new AI costs. Implementation `3ced054` is pushed to `main` and deployed: production Worker `612cb273-c4d8-48c9-8c66-4c752cbd921f`, staging Worker `2bc8b519-7dcc-46f2-832f-d8021b142768`. Private backups preceded migrations; both environments are through 0040. The previously pending production migration 0039 and separate Mail source deployment are complete. No production grants were reset.
+
+Junk/Not junk now teach future deliveries, provider evidence identifies verified domains, and images have remembered sender controls. Existing Austin MCP identity/scopes and the 100/day Eastern send cap were observed unchanged. No test mail, paid classifier or employee background processing was enabled. [Behavior, 445 server tests, 17 distinct browser journeys and exact staging/production checks](docs/SMART_INBOX.md).
+
+The old release steps below are historical. Remaining: observe fresh real delivery through sender learning, employee production-browser acceptance, and separately approved enhanced-compose/delivery/background workflows. The staging authenticated check observed an existing verified message; production checks established the new deployed assets, endpoint health and continuing MCP access, not all employee journeys. Keep the existing scopes, approvals and sending cap.
+
+---
+
 # SEO autonomy addendum — November 11, 2026
 
 Austin requested automatic SEO operation without individual publication approvals. The website release adds migration `0067_seo_autonomy.sql`, owner-authorized automatic metadata publishing, AI/automation-first planning and recovery from the scan/planning race that blocked November 2 and 9. Follow [the current SEO runbook](docs/SEO_MANAGER_SETUP.md) for exact scope, tests, activation and rollback. No Cloudflare/Mail work, new provider account or new budget is required; the separate $10/month SEO cap stays in place.

@@ -10,18 +10,19 @@ Based on Quickinbox commit `2af17e2fcd824aff0f5e8c91194f226dc2090d87`. Its MIT l
 
 **Trial scope.** The owner requested deployment to the final address before completing attachment investigation. The attachment issue has since been fixed and verified on the live application. The remaining launch checklist items still apply; passing the attachment checks alone does not establish every mail-client behavior or mailbox placement.
 
-## Assistant connection (local repair, awaiting deployment approval)
+## Assistant connection
 
-The existing authenticated MCP integration has been repaired and expanded locally.
-Production has **not** been enabled by this change. See [MCP setup, permissions,
-verification and deployment](MCP_SETUP.md). That runbook supersedes historical
-statements below that MCP is entirely disabled; ordinary private APIs remain closed.
+The existing authenticated MCP integration remains available. The latest source and
+migration 0039 were deployed with the [November 24 Mail release](../../docs/SMART_INBOX.md).
+Employee background access and enhanced delivery acceptance remain separate opt-in
+steps. See [MCP setup, permissions, verification and deployment](MCP_SETUP.md);
+historical deployment blockers below do not mean the existing MCP connection is disabled.
 
 ## For the team
 
-November 24 smart inbox update: [sender learning, domain verification and image preferences](../../docs/SMART_INBOX.md). Junk/Not junk now affect future deliveries, verified messages can show images automatically, and each sender has a remembered image choice. No new AI costs or paid content classification are enabled. See the runbook for migration, tests and live release evidence.
+November 24 smart inbox update is deployed: [sender learning, domain verification and image preferences](../../docs/SMART_INBOX.md). Junk/Not junk now affect future deliveries, verified messages can show images automatically, and each sender has a remembered image choice. No new AI costs or paid content classification are enabled. Production is on Worker `612cb273-c4d8-48c9-8c66-4c752cbd921f` with migrations through 0040. See the runbook for tests and precise live acceptance.
 
-November 11 source update: the [Mail/account visual pass](../../docs/SOFTWARE_MAIL_POLISH_2026-11-11.md) adds a clearer sender identity in Compose, selected appearance cards, folder-specific empty states and consistent account/permission screens. Local checks and the production build passed; Cloudflare authentication is unavailable on this machine, so this update still requires a separate Mail deployment. A website push does not release Mail.
+November 11 source update: the [Mail/account visual pass](../../docs/SOFTWARE_MAIL_POLISH_2026-11-11.md) adds a clearer sender identity in Compose, selected appearance cards, folder-specific empty states and consistent account/permission screens. Its historical deployment blocker was resolved by the separate November 24 Mail release above. A website push does not release Mail.
 
 - Sign in with your email address and password. A temporary password must be changed before opening your inbox.
 - Use Compose to write messages, add CC/BCC and files, and choose one of your assigned sending addresses.
